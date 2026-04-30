@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-04-30 · 앱 엔트리 정리 1차 (중복 의존성 제거)
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**한 일:**
+1. `app.py` 상단 import에서 중복 선언된 `insights`, `cardnews`, `LocalNewsRepository`를 제거해 엔트리 스크립트 가독성을 개선.
+2. 코드 동작을 바꾸지 않는 안전한 범위의 리팩토링으로 정리.
+3. `CHANGELOG.md` Unreleased에 변경 이력 추가.
+4. `app.py`의 인라인 CSS를 제거하고 `assets/styles.css`를 읽어 주입하는 `_inject_global_styles()`로 이관.
+
+**다음 세션 TODO:**
+- 렌더/스토리지/도메인 이벤트 핸들러를 기능별로 helper 함수 분리
+- 미사용 컴포넌트 파일 참조 여부 검증 후 제거
+
+**블로커:** 없음.
+
+---
+
 ## 2026-04-28 · Phase 1 Step 4 (제안서 아티팩트 저장/다운로드)
 
 **브랜치:** `work`
