@@ -14,8 +14,12 @@ from scraper import (
 import insights
 import cardnews
 from local_store import LocalNewsRepository
-from shipyard_store import ingest_shipyard_excel, REQUIRED_COLUMNS, load_latest_shipyard_tasks
+from shipyard_store import ingest_shipyard_excel, REQUIRED_COLUMNS, load_latest_shipyard_tasks, create_fake_shipyard_tasks
 from proposal_engine import suggest_for_tasks, proposals_to_markdown, save_proposals_artifacts
+from workspace_overview import build_workspace_metrics
+from workspace_ui import render_workspace
+from data_quality import render_data_quality
+from proposal_filters import render_task_filters
 
 
 def _safe_filename(text: str, fallback: str = "news") -> str:
@@ -62,6 +66,8 @@ for k, v in [
     ("articles_tech", bootstrap_tech),
     ("proposal_results", []),
     ("proposal_artifacts", {}),
+    ("cn_last_png", b""),
+    ("cn_deck_zip", b""),
 ]:
     if k not in st.session_state:
         st.session_state[k] = v
@@ -74,10 +80,12 @@ with st.sidebar:
     app_mode = st.radio(
         "작업할 기능을 선택하세요.",
         [
+            "🏠 워크스페이스",
             "🔍 네이버 뉴스 검색",
             "🚀 최신 기술 동향 (AI/자동화)",
             "🏭 조선소 작업 데이터",
             "🤝 자동화 과제 제안",
+            "🧪 데이터 품질",
             "📊 인사이트 보드",
             "🎨 카드뉴스",
         ],
@@ -259,7 +267,14 @@ def render_results(articles, keyword_display, session_key_prefix, mode="naver"):
 # ─────────────────────────────────────────────
 # 화면 1: 네이버 뉴스 검색
 # ─────────────────────────────────────────────
-if app_mode == "🔍 네이버 뉴스 검색":
+if app_mode == "🏠 워크스페이스":
+    metrics = build_workspace_metrics(st.session_state)
+    render_workspace(metrics)
+
+# ─────────────────────────────────────────────
+# 화면 1: 네이버 뉴스 검색
+# ─────────────────────────────────────────────
+elif app_mode == "🔍 네이버 뉴스 검색":
     st.markdown("""
     <div class="header-wrap">
         <span class="header-logo">📰 네이버 뉴스 스크래퍼</span>
@@ -468,6 +483,23 @@ elif app_mode == "🏭 조선소 작업 데이터":
     """, unsafe_allow_html=True)
 
     st.caption("필수 컬럼: " + ", ".join(REQUIRED_COLUMNS))
+    st.caption("샘플 컬럼 예시: team, process, task_name (예: 생산팀/조립/취부)")
+
+    c_sample1, c_sample2 = st.columns([1, 2])
+    with c_sample1:
+        fake_rows = st.slider("페이크 데이터 행 수", min_value=10, max_value=100, value=30, step=10)
+    with c_sample2:
+        if st.button("🧪 페이크 조선소 데이터 생성", use_container_width=True):
+            fake_result = create_fake_shipyard_tasks(row_count=fake_rows)
+            if fake_result.is_valid:
+                st.success(f"✅ 페이크 데이터 생성 완료: {fake_result.row_count}행")
+                st.caption(f"parquet 저장: {fake_result.parquet_path}")
+            else:
+                st.error("❌ 페이크 데이터 생성 실패")
+                for err in fake_result.errors:
+                    st.warning(f"- {err}")
+
+    st.markdown("---")
     uploaded = st.file_uploader(
         "작업 데이터 엑셀(.xlsx)을 업로드하세요.",
         type=["xlsx"],
@@ -500,22 +532,23 @@ elif app_mode == "🤝 자동화 과제 제안":
     """, unsafe_allow_html=True)
 
     tasks_df = load_latest_shipyard_tasks()
+    filtered_tasks_df = render_task_filters(tasks_df) if not tasks_df.empty else tasks_df
     news_pool = list(st.session_state.articles_naver) + list(st.session_state.articles_tech)
 
     c1, c2 = st.columns(2)
     with c1:
-        st.metric("작업 데이터", f"{len(tasks_df)}건")
+        st.metric("작업 데이터", f"{len(filtered_tasks_df)}건")
     with c2:
         st.metric("뉴스 풀", f"{len(news_pool)}건")
 
-    if tasks_df.empty:
+    if filtered_tasks_df.empty:
         st.info("먼저 [🏭 조선소 작업 데이터]에서 엑셀 업로드를 완료하세요.")
     elif not news_pool:
         st.info("먼저 [🔍 네이버 뉴스 검색] 또는 [🚀 최신 기술 동향]에서 뉴스를 수집하세요.")
     else:
         top_k = st.slider("작업별 추천 기사 수", min_value=1, max_value=5, value=3)
         if st.button("제안 생성", use_container_width=True):
-            proposals = suggest_for_tasks(tasks_df, news_pool, top_k=top_k)
+            proposals = suggest_for_tasks(filtered_tasks_df, news_pool, top_k=top_k)
             st.session_state.proposal_results = proposals
             st.session_state.proposal_artifacts = save_proposals_artifacts(proposals)
 
@@ -571,7 +604,14 @@ elif app_mode == "🤝 자동화 과제 제안":
                             st.caption(rec["summary"])
 
 # ─────────────────────────────────────────────
-# 화면 6: 카드뉴스 (스켈레톤)
+# 화면 6: 데이터 품질
+# ─────────────────────────────────────────────
+elif app_mode == "🧪 데이터 품질":
+    quality_pool = (st.session_state.articles_naver or []) + (st.session_state.articles_tech or [])
+    render_data_quality(quality_pool)
+
+# ─────────────────────────────────────────────
+# 화면 7: 카드뉴스 (스켈레톤)
 # ─────────────────────────────────────────────
 elif app_mode == "🎨 카드뉴스":
     st.markdown("""
@@ -589,4 +629,45 @@ elif app_mode == "🎨 카드뉴스":
         idx = st.selectbox("카드로 렌더할 기사 선택", range(len(pool)), format_func=lambda i: titles[i])
         template = st.selectbox("템플릿", cardnews.available_templates())
         st.markdown(cardnews.render_html(pool[idx], template=template), unsafe_allow_html=True)
-        st.caption("※ PNG export 는 차기 세션에서 Pillow 연동 예정.")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🖼 선택 기사 PNG 생성", use_container_width=True):
+                try:
+                    png_bytes = cardnews.render_png(pool[idx], template=template)
+                    st.session_state.cn_last_png = png_bytes
+                    st.success("PNG 생성 완료")
+                except Exception as e:
+                    st.error(f"PNG 생성 실패: {e}")
+
+            if st.session_state.get("cn_last_png"):
+                st.download_button(
+                    "⬇ 선택 기사 PNG 다운로드",
+                    data=st.session_state.cn_last_png,
+                    file_name=f"cardnews_{idx+1}.png",
+                    mime="image/png",
+                    use_container_width=True,
+                )
+
+        with c2:
+            deck_size = st.slider("덱 생성 기사 수", min_value=1, max_value=min(10, len(pool)), value=min(3, len(pool)))
+            if st.button("📦 PNG 덱 ZIP 생성", use_container_width=True):
+                try:
+                    deck_pngs = cardnews.render_deck(pool[:deck_size], template=template)
+                    zip_buf = io.BytesIO()
+                    import zipfile as _zipfile
+                    with _zipfile.ZipFile(zip_buf, mode="w", compression=_zipfile.ZIP_DEFLATED) as zf:
+                        for i, png in enumerate(deck_pngs, start=1):
+                            zf.writestr(f"cardnews_{i}.png", png)
+                    st.session_state.cn_deck_zip = zip_buf.getvalue()
+                    st.success(f"ZIP 생성 완료 ({deck_size}장)")
+                except Exception as e:
+                    st.error(f"ZIP 생성 실패: {e}")
+
+            if st.session_state.get("cn_deck_zip"):
+                st.download_button(
+                    "⬇ PNG 덱 ZIP 다운로드",
+                    data=st.session_state.cn_deck_zip,
+                    file_name="cardnews_deck.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                )

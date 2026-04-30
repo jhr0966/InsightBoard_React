@@ -18,10 +18,12 @@ def test_app_renders_sidebar_modes() -> None:
     mode_radio = radios[0]
     options = list(mode_radio.options)
 
+    assert "🏠 워크스페이스" in options
     assert "🔍 네이버 뉴스 검색" in options
     assert "🚀 최신 기술 동향 (AI/자동화)" in options
     assert "🏭 조선소 작업 데이터" in options
     assert "🤝 자동화 과제 제안" in options
+    assert "🧪 데이터 품질" in options
     assert "📊 인사이트 보드" in options
     assert "🎨 카드뉴스" in options
 
