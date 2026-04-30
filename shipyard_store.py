@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import BinaryIO
+import random
 
 import pandas as pd
 
@@ -128,3 +129,75 @@ def load_latest_shipyard_tasks(data_root: str | Path = "data") -> pd.DataFrame:
         return pd.DataFrame()
 
     return pd.read_parquet(candidates[0])
+
+
+def create_fake_shipyard_tasks(
+    row_count: int = 30,
+    data_root: str | Path = "data",
+) -> ShipyardIngestResult:
+    """조선소 관련 페이크 작업 데이터를 생성해 parquet로 저장."""
+    root = Path(data_root)
+    processed_base = root / "shipyard" / "processed"
+    now = _utc_now()
+    stamp = now.strftime("%Y%m%d_%H%M%S")
+    processed_dir = _dated_dir(processed_base, now)
+
+    teams = ["생산팀", "도장팀", "의장팀", "품질팀", "안전팀"]
+    process_map = {
+        "생산팀": ["조립", "취부", "수동용접", "자동용접"],
+        "도장팀": ["전처리", "선체도장", "블라스팅", "도막검사"],
+        "의장팀": ["의장설치", "배관설치", "케이블포설", "시운전준비"],
+        "품질팀": ["비파괴검사", "치수검사", "용접부검사", "품질문서검토"],
+        "안전팀": ["작업허가", "위험성평가", "가스측정", "안전순찰"],
+    }
+    task_map = {
+        "조립": ["블록 정렬", "프레임 고정"],
+        "취부": ["가접", "부재 위치맞춤"],
+        "수동용접": ["필렛 용접", "맞대기 용접"],
+        "자동용접": ["SAW 용접", "로봇 용접"],
+        "전처리": ["표면 세척", "녹 제거"],
+        "선체도장": ["하도 도장", "중도 도장", "상도 도장"],
+        "블라스팅": ["샷 블라스팅", "그릿 블라스팅"],
+        "도막검사": ["도막 두께 측정", "핀홀 검사"],
+        "의장설치": ["밸브 설치", "펌프 설치"],
+        "배관설치": ["배관 피팅", "플랜지 체결"],
+        "케이블포설": ["케이블 루트 포설", "단자 결선"],
+        "시운전준비": ["체크리스트 점검", "장비 예열"],
+        "비파괴검사": ["UT 검사", "RT 검사"],
+        "치수검사": ["정렬도 측정", "간격 측정"],
+        "용접부검사": ["비드 외관 검사", "결함 리포트 작성"],
+        "품질문서검토": ["검사 성적서 검토", "변경 이력 검토"],
+        "작업허가": ["고소작업 허가", "밀폐공간 허가"],
+        "위험성평가": ["JSA 작성", "위험요인 식별"],
+        "가스측정": ["산소 농도 측정", "가연성 가스 측정"],
+        "안전순찰": ["현장 순찰", "PPE 착용 점검"],
+    }
+
+    rows: list[dict[str, str]] = []
+    for i in range(1, row_count + 1):
+        team = random.choice(teams)
+        process = random.choice(process_map[team])
+        task_name = random.choice(task_map[process])
+        rows.append(
+            {
+                "task_id": f"TASK-{stamp[-6:]}-{i:03d}",
+                "team": team,
+                "process": process,
+                "task_name": task_name,
+                "description": f"{team} {process} 공정에서 수행되는 '{task_name}' 작업 자동화 검토",
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    errors = validate_shipyard_df(df)
+    if errors:
+        return ShipyardIngestResult(is_valid=False, errors=errors, row_count=len(df))
+
+    parquet_path = processed_dir / f"shipyard_tasks_fake_{stamp}.parquet"
+    df.to_parquet(parquet_path, index=False)
+    return ShipyardIngestResult(
+        is_valid=True,
+        errors=[],
+        parquet_path=str(parquet_path),
+        row_count=len(df),
+    )

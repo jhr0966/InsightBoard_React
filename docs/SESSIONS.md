@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-04-30 · 앱 엔트리 정리 1차 (중복 의존성 제거)
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**한 일:**
+1. `app.py` 상단 import에서 중복 선언된 `insights`, `cardnews`, `LocalNewsRepository`를 제거해 엔트리 스크립트 가독성을 개선.
+2. 코드 동작을 바꾸지 않는 안전한 범위의 리팩토링으로 정리.
+3. `CHANGELOG.md` Unreleased에 변경 이력 추가.
+4. `app.py`의 인라인 CSS를 제거하고 `assets/styles.css`를 읽어 주입하는 `_inject_global_styles()`로 이관.
+5. `🏠 워크스페이스` 모드를 추가하고 수집/제안 KPI 요약 홈 화면을 `workspace_ui.py` + `workspace_overview.py`로 분리 구현.
+6. `🧪 데이터 품질` 모드(`data_quality.py`)를 추가해 누락 필드/출처 분포를 즉시 확인할 수 있는 운영 점검 화면을 구현.
+7. 조선소 업로드 전에도 흐름을 검증할 수 있도록 `create_fake_shipyard_tasks()`와 UI 생성 버튼을 추가해 팀/공정/작업 페이크 데이터를 parquet로 저장하도록 확장.
+8. 자동화 과제 제안 화면에 팀/공정 필터(`proposal_filters.py`)를 추가해 타깃 작업군 중심으로 제안 생성이 가능하도록 개선.
+9. 카드뉴스 화면에 PNG 단건 생성/다운로드 및 덱 ZIP 생성/다운로드를 추가하고 `tests/test_cardnews.py`로 기본 렌더 동작을 검증.
+
+**다음 세션 TODO:**
+- 렌더/스토리지/도메인 이벤트 핸들러를 기능별로 helper 함수 분리
+- 미사용 컴포넌트 파일 참조 여부 검증 후 제거
+
+**블로커:** 없음.
+
+---
+
 ## 2026-04-28 · Phase 1 Step 4 (제안서 아티팩트 저장/다운로드)
 
 **브랜치:** `work`

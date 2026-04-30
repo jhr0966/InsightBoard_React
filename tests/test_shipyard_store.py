@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
+import sys
 
 import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import shipyard_store
 
@@ -56,3 +61,19 @@ def test_ingest_shipyard_excel_missing_engine(tmp_path: Path, monkeypatch) -> No
 
     assert result.is_valid is False
     assert any("openpyxl" in e for e in result.errors)
+
+
+def test_create_fake_shipyard_tasks(tmp_path: Path) -> None:
+    result = shipyard_store.create_fake_shipyard_tasks(
+        row_count=20,
+        data_root=tmp_path / "data",
+    )
+
+    assert result.is_valid is True
+    assert result.row_count == 20
+    assert result.parquet_path is not None
+    parquet_path = Path(result.parquet_path)
+    assert parquet_path.exists()
+
+    df = pd.read_parquet(parquet_path)
+    assert {"task_id", "team", "process", "task_name", "description"}.issubset(df.columns)
