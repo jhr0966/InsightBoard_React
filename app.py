@@ -4,6 +4,7 @@ import io
 import re
 import html
 import json
+from pathlib import Path
 from scraper import (
     search_naver_news,
     fetch_latest_tech_news,
@@ -15,9 +16,6 @@ import cardnews
 from local_store import LocalNewsRepository
 from shipyard_store import ingest_shipyard_excel, REQUIRED_COLUMNS, load_latest_shipyard_tasks
 from proposal_engine import suggest_for_tasks, proposals_to_markdown, save_proposals_artifacts
-import insights
-import cardnews
-from local_store import LocalNewsRepository
 
 
 def _safe_filename(text: str, fallback: str = "news") -> str:
@@ -43,67 +41,12 @@ def _show_debug():
 # ─────────────────────────────────────────────
 st.set_page_config(page_title="통합 뉴스 스크래퍼", page_icon="📰", layout="wide", initial_sidebar_state="expanded")
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap');
+def _inject_global_styles() -> None:
+    css = Path("assets/styles.css").read_text(encoding="utf-8")
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
-:root {
-    --accent:    #1D6FE8;
-    --bg:        #F7F6F2;
-    --card-bg:   #FFFFFF;
-    --border:    #E2E0D8;
-    --text-1:    #1A1918;
-    --text-2:    #5A5854;
-    --text-3:    #9A9690;
-    --green:     #1A8C5B;
-    --tag-bg:    #EEF3FD;
-    --tag-txt:   #1D6FE8;
-}
 
-.stApp { background: var(--bg) !important; }
-.block-container { padding: 2rem 3rem !important; max-width: 1400px !important; }
-
-.header-wrap { display: flex; align-items: baseline; gap: 14px; border-bottom: 3px solid var(--text-1); padding-bottom: 10px; margin-bottom: 2rem; }
-.header-logo { font-family: 'Noto Serif KR', serif; font-size: 2rem; font-weight: 700; color: var(--text-1); letter-spacing: -0.03em; }
-.header-sub { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 0.82rem; color: var(--text-3); font-weight: 300; letter-spacing: 0.04em; }
-
-.stTextInput > div > div > input { font-family: 'IBM Plex Sans KR', sans-serif !important; font-size: 1rem !important; border: 2px solid var(--border) !important; border-radius: 6px !important; background: var(--card-bg) !important; padding: 0.65rem 1rem !important; color: var(--text-1) !important; }
-.stTextInput > div > div > input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(29,111,232,.1) !important; }
-
-.stButton > button { font-family: 'IBM Plex Sans KR', sans-serif !important; font-weight: 600 !important; font-size: 0.9rem !important; background: var(--text-1) !important; color: #fff !important; border: none !important; border-radius: 6px !important; padding: 0.6rem 1.6rem !important; transition: background .2s; }
-.stButton > button:hover { background: var(--accent) !important; }
-
-.news-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.3rem; margin-bottom: 1.1rem; transition: box-shadow .2s, transform .2s; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,.04); min-height: 280px; }
-.news-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.09); transform: translateY(-2px); }
-
-/* 이미지 스타일 */
-.card-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; margin-bottom: 1rem; background-color: #f1f3f5; border: 1px solid var(--border); }
-.card-img-placeholder { width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; margin-bottom: 1rem; background-color: #f1f3f5; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 0.8rem; font-family: 'IBM Plex Sans KR', sans-serif; border: 1px solid var(--border); }
-
-.card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 0.65rem; flex-wrap: wrap; }
-.card-press { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 0.72rem; font-weight: 600; background: var(--tag-bg); color: var(--tag-txt); padding: 2px 8px; border-radius: 20px; }
-.card-date { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 0.72rem; color: var(--text-3); font-weight: 300; }
-.card-num { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 0.72rem; color: var(--text-3); margin-left: auto; }
-.card-title { font-family: 'Noto Serif KR', serif; font-size: 0.95rem; font-weight: 700; color: var(--text-1); line-height: 1.55; margin-bottom: 0.6rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-
-/* 키워드 뱃지 스타일 */
-.card-keywords { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 0.8rem; }
-.keyword-badge { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 0.7rem; background-color: #F1F5F9; color: #475569; padding: 3px 8px; border-radius: 4px; border: 1px solid #E2E8F0; }
-
-.card-body { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 0.82rem; color: var(--text-2); line-height: 1.7; flex: 1; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 0.9rem; }
-.card-link a { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 0.78rem; font-weight: 600; color: var(--accent); text-decoration: none; }
-
-.result-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; padding: 0.8rem 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; font-family: 'IBM Plex Sans KR', sans-serif; }
-.result-kw { font-size: 1.05rem; font-weight: 600; color: var(--accent); }
-.result-count { font-size: 0.85rem; color: var(--text-2); }
-.result-badge { margin-left: auto; font-size: 0.72rem; color: var(--green); font-weight: 500; background: #EBF7F2; padding: 3px 10px; border-radius: 20px; }
-
-.stProgress > div > div > div { background: var(--accent) !important; }
-hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
-.stTabs [data-baseweb="tab"] { font-family: 'IBM Plex Sans KR', sans-serif !important; font-size: 0.88rem !important; font-weight: 500 !important; }
-.debug-box { background: #0D1117; color: #C9D1D9; font-family: monospace; font-size: 0.8rem; padding: 1rem; border-radius: 8px; white-space: pre-wrap; line-height: 1.6; max-height: 400px; overflow-y: auto; }
-</style>
-""", unsafe_allow_html=True)
+_inject_global_styles()
 
 # ─────────────────────────────────────────────
 # 세션 상태 초기화
@@ -119,18 +62,6 @@ for k, v in [
     ("articles_tech", bootstrap_tech),
     ("proposal_results", []),
     ("proposal_artifacts", {}),
-]:
-    if k not in st.session_state:
-        st.session_state[k] = v
-NEWS_REPOSITORY = LocalNewsRepository()
-bootstrap_naver = NEWS_REPOSITORY.load_latest_articles("naver")
-bootstrap_tech = NEWS_REPOSITORY.load_latest_articles("tech")
-
-for k, v in [
-    ("articles_naver", bootstrap_naver),
-    ("keyword_naver", ""),
-    ("debug_log", ""),
-    ("articles_tech", bootstrap_tech),
 ]:
     if k not in st.session_state:
         st.session_state[k] = v
@@ -383,18 +314,6 @@ if app_mode == "🔍 네이버 뉴스 검색":
         except Exception as e:
             status_box.empty(); prog_bar.empty()
             st.error(f"❌ 오류 발생: {e}")
-                enrich_articles_parallel(arts_list, progress_cb=on_progress)
-
-                st.session_state.articles_naver = arts_list
-                saved = NEWS_REPOSITORY.save_articles_batch("naver", arts_list, keyword=keyword.strip())
-                status_box.empty(); prog_bar.empty()
-                st.success(f"✅ 네이버 뉴스 **{total}건** 수집 완료!")
-                if saved:
-                    st.caption(f"💾 로컬 저장 완료: {saved['processed']}")
-        except Exception as e:
-            status_box.empty(); prog_bar.empty()
-            st.error(f"❌ 오류 발생: {e}")
-
     if st.session_state.articles_naver:
         render_results(st.session_state.articles_naver, st.session_state.keyword_naver, "naver", mode="naver")
         if debug_mode: _show_debug()
