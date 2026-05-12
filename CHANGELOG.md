@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+### Added (M4-β — 페르소나 + 3영역 UI 재편)
+- `persona/` 패키지 — 사용자 부서·직무·관심 공정을 영구화하는 도메인 모델.
+  - `schema.Persona` dataclass + `to_dict/from_dict`.
+  - `store.load/save/reset` — `data/persona/profile.json` JSON 영구화.
+  - `context.system_block(persona)` — LLM 시스템 프롬프트에 붙일 페르소나 안내.
+- `ui/sidebar.py` — 사이드바에 페르소나 설정 패널(부서 select + 직무 자유 입력 + 관심 Lv3 멀티) + 영역 선택(홈/탐색/작업실) + LLM 상태.
+- `ui/home_tab.py` — 페르소나 카드, 우리 부서 관련 뉴스, 우리 부서 AI 인사이트, 빠른 행동 안내.
+- `ui/task_tree.py` — 부서→Lv1→Lv2→Lv3 단계적 드릴다운 위젯. board_tab·sola_tab 제안서에서 재사용.
+- `app.py` 3영역 재편 — 홈 / 탐색(수집·로드맵·보드) / 작업실(SOLA·뉴스) + 사이드바.
+- `sola.propose.propose_for_task(persona=...)` — 제안서 생성 시 페르소나 컨텍스트 자동 주입.
+- `ui/sola_tab.py` 채팅·제안서에 페르소나 컨텍스트 주입, 제안서 작업 선택을 task_tree 드릴다운으로 교체.
+- `ui/board_tab.py` — 사용자 부서 인사이트 카드 우선 정렬 + 강조 테두리, 매칭 필터를 task_tree로 교체.
+- `tests/test_persona.py` 6건 + `test_sola.py` 페르소나 주입 검증 1건. 전체 52/52 통과.
+- `tests/conftest.py` — `persona.store`, `store.cache`, `store.chat_log` 의 from-import 바인딩도 동기 패치.
+
 ### Added (M4-α — 본문 enrich + 도메인 사이트)
 - `scraping/enrich.py` — 기사 본문 fetch + LLM 키워드/요약, 본문 해시 캐시.
   - `fetch_content(url)` 단일 진입점, 다양한 본문 selector + p-fallback.

@@ -6,7 +6,9 @@ import html
 import streamlit as st
 
 from config import llm_backend, llm_base_url, llm_model
-from roadmap.query import filter_hierarchy, load_latest as load_roadmap
+from persona import context as persona_ctx
+from persona.schema import Persona
+from roadmap.query import load_latest as load_roadmap
 from sola import chat_ctx, propose, summarize
 from sola.client import LLMNotConfigured, chat, is_configured
 from sola.prompts import SYSTEM_CHAT
@@ -62,33 +64,29 @@ def _render_propose() -> None:
         st.info("뉴스 수집을 먼저 진행하세요.")
         return
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        dept_options = ["(전체)"] + sorted(roadmap["dept"].dropna().astype(str).unique().tolist())
-        dept = st.selectbox("부서", dept_options, key="prop_dept")
-    with col2:
-        lv3_options = ["(전체)"] + sorted(roadmap["lv3"].dropna().astype(str).unique().tolist())
-        lv3 = st.selectbox("공정(Lv3)", lv3_options, key="prop_lv3")
-    with col3:
-        filtered = filter_hierarchy(
-            roadmap,
-            dept=None if dept == "(전체)" else dept,
-            lv3=None if lv3 == "(전체)" else lv3,
-        )
-        task_labels = [
-            f"{r['dept']} / {r['lv3']} / {r['task']} / {r['sub_task']}".strip(" /")
-            for _, r in filtered.iterrows()
-        ]
-        idx = st.selectbox(
-            "작업 선택",
-            range(len(task_labels)),
-            format_func=lambda i: task_labels[i] if task_labels else "(없음)",
-            key="prop_task_idx",
-        ) if task_labels else None
+    from ui import task_tree
 
-    if idx is None or not task_labels:
+    persona: Persona = st.session_state.get("persona") or Persona()
+    # 페르소나가 있으면 부서를 기본 필터로 미리 적용
+    if persona.dept and "prop_dept" not in st.session_state:
+        st.session_state["prop_dept"] = persona.dept
+
+    _selection, filtered = task_tree.render_drilldown(roadmap, key_prefix="prop", show_task_picker=False)
+
+    if filtered.empty:
         st.info("필터 조건에 맞는 작업이 없습니다.")
         return
+
+    task_labels = [
+        f"{r['dept']} / {r['lv3']} / {r['task']} / {r['sub_task']}".strip(" /")
+        for _, r in filtered.iterrows()
+    ]
+    idx = st.selectbox(
+        "작업 선택",
+        range(len(task_labels)),
+        format_func=lambda i: task_labels[i],
+        key="prop_task_idx",
+    )
 
     task_row = filtered.iloc[idx].to_dict()
     matches = score_matches(news, filtered.iloc[[idx]], top_k=10)
@@ -104,7 +102,9 @@ def _render_propose() -> None:
     if st.session_state.pop("_do_propose", False):
         try:
             with st.spinner("LLM 호출 중…"):
-                st.session_state["sola_prop_result"] = propose.propose_for_task(task_row, related)
+                st.session_state["sola_prop_result"] = propose.propose_for_task(
+                    task_row, related, persona=persona,
+                )
         except LLMNotConfigured as e:
             st.session_state["sola_prop_result"] = f"⚠️ LLM 미설정: {e}"
         except Exception as e:  # noqa: BLE001
@@ -154,8 +154,10 @@ def _render_chat() -> None:
 
     if st.session_state.pop("_pending_chat", False):
         try:
+            persona: Persona = st.session_state.get("persona") or Persona()
             ctx = chat_ctx.build_context_block(load_all_today(), load_roadmap())
-            messages = [{"role": "system", "content": SYSTEM_CHAT + ctx}]
+            persona_block = persona_ctx.system_block(persona)
+            messages = [{"role": "system", "content": SYSTEM_CHAT + persona_block + ctx}]
             messages.extend({"role": m["role"], "content": m["content"]} for m in history)
             with st.spinner("LLM 호출 중…"):
                 reply = chat(messages=messages, temperature=0.3)

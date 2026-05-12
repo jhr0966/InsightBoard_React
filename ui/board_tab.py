@@ -6,19 +6,12 @@ import html
 import pandas as pd
 import streamlit as st
 
-from roadmap.query import filter_hierarchy, load_latest as load_roadmap
+from roadmap.query import load_latest as load_roadmap
 from sola.insight import insight_for_dept
 from store import trends
 from store.match import score_matches
 from store.news_db import load_all_today
 from ui.styles import page_header
-
-
-def _select(label: str, options: list[str], key: str) -> str | None:
-    if not options:
-        return None
-    choice = st.selectbox(label, ["(전체)"] + options, key=key)
-    return None if choice == "(전체)" else choice
 
 
 def _render_trends(news: pd.DataFrame) -> None:
@@ -57,17 +50,28 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
         st.info("위 버튼을 누르면 부서별 한 줄 인사이트가 생성됩니다.")
         return
 
-    depts = sorted(roadmap["dept"].dropna().astype(str).unique().tolist())
+    from persona.schema import Persona
+
+    persona: Persona = st.session_state.get("persona") or Persona()
+    depts_raw = sorted(roadmap["dept"].dropna().astype(str).unique().tolist())
+    # 사용자 부서를 맨 앞으로
+    if persona.dept and persona.dept in depts_raw:
+        depts = [persona.dept] + [d for d in depts_raw if d != persona.dept]
+    else:
+        depts = depts_raw
+
     cols = st.columns(2)
     for i, dept in enumerate(depts):
         with cols[i % 2]:
-            related = news.copy()
-            text = insight_for_dept(dept, related)
+            is_mine = persona.dept and dept == persona.dept
+            border = "border: 2px solid var(--accent);" if is_mine else ""
+            badge = "🎯 " if is_mine else ""
+            text = insight_for_dept(dept, news)
             st.markdown(
                 f"""
-                <div class="news-card" style="min-height:auto;">
+                <div class="news-card" style="min-height:auto; {border}">
                     <div class="card-meta">
-                        <span class="card-press">{html.escape(dept)}</span>
+                        <span class="card-press">{badge}{html.escape(dept)}</span>
                     </div>
                     <div class="card-body" style="-webkit-line-clamp: 6;">{html.escape(text)}</div>
                 </div>
@@ -77,17 +81,16 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
 
 def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
-    st.subheader("계층 필터 · 뉴스 매칭")
-    fcol1, fcol2, fcol3 = st.columns(3)
-    with fcol1:
-        dept = _select("부서", sorted(roadmap["dept"].dropna().astype(str).unique().tolist()), "board_dept")
-    with fcol2:
-        lv1 = _select("분류(Lv1)", sorted(roadmap["lv1"].dropna().astype(str).unique().tolist()), "board_lv1")
-    with fcol3:
-        lv3 = _select("공정(Lv3)", sorted(roadmap["lv3"].dropna().astype(str).unique().tolist()), "board_lv3")
+    from persona.schema import Persona
+    from ui import task_tree
 
-    filtered = filter_hierarchy(roadmap, dept=dept, lv1=lv1, lv3=lv3)
-    st.caption(f"필터 적용 작업: {len(filtered):,}건")
+    st.subheader("계층 필터 · 뉴스 매칭")
+    # 페르소나 부서를 기본 필터로 미리 적용
+    persona: Persona = st.session_state.get("persona") or Persona()
+    if persona.dept and "board_dept" not in st.session_state:
+        st.session_state["board_dept"] = persona.dept
+
+    _selection, filtered = task_tree.render_drilldown(roadmap, key_prefix="board")
     if filtered.empty:
         st.warning("선택한 필터에 해당하는 작업이 없습니다.")
         return

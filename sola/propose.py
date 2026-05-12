@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from persona import context as persona_ctx
+from persona.schema import Persona
 from sola.client import chat
 from sola.prompts import SYSTEM_PROPOSE
 
@@ -25,16 +27,23 @@ def _format_news(news: pd.DataFrame, *, max_items: int = 10) -> str:
     return "\n".join(lines)
 
 
-def propose_for_task(task: dict, news_df: pd.DataFrame, *, max_news: int = 10) -> str:
+def propose_for_task(
+    task: dict,
+    news_df: pd.DataFrame,
+    *,
+    max_news: int = 10,
+    persona: Persona | None = None,
+) -> str:
     user = (
         "## [작업]\n"
         f"{_format_task(task)}\n\n"
         "## [관련 뉴스]\n"
         f"{_format_news(news_df, max_items=max_news)}"
     )
+    persona_block = persona_ctx.system_block(persona) if persona else ""
     return chat(
         messages=[
-            {"role": "system", "content": SYSTEM_PROPOSE},
+            {"role": "system", "content": SYSTEM_PROPOSE + persona_block},
             {"role": "user", "content": user},
         ],
         temperature=0.3,

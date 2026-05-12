@@ -26,4 +26,26 @@ def _isolated_data_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(paths_mod, "NEWS_DIR", news, raising=True)
     monkeypatch.setattr(paths_mod, "ROADMAP_DIR", roadmap, raising=True)
+
+    # persona.store 도 동일하게 동기화
+    try:
+        import persona.store as persona_store_mod
+
+        monkeypatch.setattr(persona_store_mod, "DATA_ROOT", root, raising=True)
+    except ImportError:
+        pass
+
+    # store.cache / chat_log 는 import 시 SOLA_DIR 를 from-import 함
+    try:
+        import store.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "SOLA_DIR", sola, raising=True)
+    except ImportError:
+        pass
+    try:
+        import store.chat_log as chat_log_mod
+
+        monkeypatch.setattr(chat_log_mod, "SOLA_DIR", sola, raising=True)
+    except ImportError:
+        pass
     yield Path(root)

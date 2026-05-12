@@ -48,6 +48,10 @@ News_TEST/
 │   ├── trends.py            # by_date / by_source / top_keywords
 │   ├── cache.py             # 파일 기반 LLM 응답 캐시
 │   └── chat_log.py          # 채팅 히스토리 JSONL
+├── persona/                 # 사용자 부서·직무·관심사 (M4-β)
+│   ├── schema.py            # Persona dataclass
+│   ├── store.py             # data/persona/profile.json JSON 영구화
+│   └── context.py           # LLM 시스템 프롬프트용 컨텍스트 블록
 ├── sola/                    # LLM 분석 엔진 (OpenAI 호환)
 │   ├── client.py            # ── chat(messages, ...) 단일 호출 진입점
 │   ├── prompts.py           # 시스템 프롬프트 (요약/제안/채팅/인사이트)
@@ -55,13 +59,16 @@ News_TEST/
 │   ├── propose.py           # 자동화 과제 제안서 생성
 │   ├── chat_ctx.py          # 채팅용 컨텍스트(뉴스+로드맵) 조립
 │   └── insight.py           # 부서별 한 문단 인사이트 (캐시)
-├── ui/                      # Streamlit 탭
+├── ui/                      # Streamlit — 3영역 재편
+│   ├── sidebar.py           # 페르소나 설정 + 영역 선택 + LLM 상태
 │   ├── styles.py            # CSS 주입
-│   ├── ingest_tab.py
-│   ├── roadmap_tab.py
-│   ├── news_tab.py
-│   ├── sola_tab.py
-│   └── board_tab.py
+│   ├── task_tree.py         # 부서→Lv1→Lv2→Lv3 드릴다운 위젯
+│   ├── home_tab.py          # 🏠 홈 (페르소나 기반 오늘 인사이트)
+│   ├── ingest_tab.py        # 🔍 탐색 sub: 수집·Enrich
+│   ├── roadmap_tab.py       # 🔍 탐색 sub: 로드맵 업로드
+│   ├── board_tab.py         # 🔍 탐색 sub: 인사이트보드
+│   ├── sola_tab.py          # 💼 작업실 sub: SOLA (요약·제안서·채팅)
+│   └── news_tab.py          # 💼 작업실 sub: 뉴스 콘텐츠
 ├── assets/styles.css
 ├── data/  (.gitignore)
 │   ├── news/YYYY-MM-DD/*.parquet

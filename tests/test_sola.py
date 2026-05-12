@@ -48,6 +48,26 @@ def test_propose_for_task_includes_task_and_news():
     assert "용접 로봇 신기술" in user
 
 
+def test_propose_for_task_injects_persona_when_provided():
+    from persona.schema import Persona
+
+    news = pd.DataFrame([{"title": "용접 로봇", "press": "X", "summary": "", "link": "z"}])
+    task = {"dept": "가공부", "task": "강재선별"}
+    persona = Persona(dept="가공부", job="용접 담당")
+    captured: dict = {}
+
+    def _fake_chat(messages, **kw):
+        captured["messages"] = messages
+        return "## 1. 작업 개요"
+
+    with patch.object(propose, "chat", _fake_chat):
+        propose.propose_for_task(task, news, persona=persona)
+
+    system_msg = captured["messages"][0]["content"]
+    assert "사용자 페르소나" in system_msg
+    assert "용접 담당" in system_msg
+
+
 def test_chat_ctx_build_includes_news_and_roadmap():
     news = pd.DataFrame([
         {"title": "용접 자동화", "press": "AITimes"},

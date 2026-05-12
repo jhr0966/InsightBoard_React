@@ -1,18 +1,24 @@
-"""제조기술 로드맵 인사이트보드 — Streamlit 평탄 진입점.
+"""제조기술 로드맵 인사이트보드 — Streamlit 평탄 진입점 (3영역 재편).
 
-다이어그램 5단계:
-  1. 데이터 입력  → ui.ingest_tab, ui.roadmap_tab
-  2. 저장·정제    → store, roadmap
-  3. AI 분석(SOLA) → ui.sola_tab (M2)
-  4. 서비스 UI    → ui.news_tab, ui.board_tab
-  5. 산출물·활용  → M3 (제안서 export)
+영역:
+  🏠 홈   — 페르소나 기반 오늘의 인사이트 (ui.home_tab)
+  🔍 탐색 — 뉴스 수집 / 로드맵 / 인사이트보드 (sub-tabs)
+  💼 작업실 — SOLA 채팅·요약·제안서 / 뉴스 콘텐츠 (sub-tabs)
 """
 from __future__ import annotations
 
 import streamlit as st
 
 from config import ensure_data_dirs
-from ui import board_tab, ingest_tab, news_tab, roadmap_tab, sola_tab
+from ui import (
+    board_tab,
+    home_tab,
+    ingest_tab,
+    news_tab,
+    roadmap_tab,
+    sidebar,
+    sola_tab,
+)
 from ui.styles import inject_global_styles
 
 
@@ -27,27 +33,23 @@ ensure_data_dirs()
 inject_global_styles()
 
 with st.sidebar:
-    st.markdown("## 🛠️ 메뉴")
-    mode = st.radio(
-        "단계",
-        (
-            "1. 뉴스 수집",
-            "2. 로드맵 업로드",
-            "3. SOLA (AI 분석)",
-            "4. 뉴스 콘텐츠",
-            "5. 인사이트보드",
-        ),
-        key="app_mode",
-    )
-    st.caption("M1 — 룰 기반 매칭까지 동작. SOLA·LLM UI는 M2/M3.")
+    area = sidebar.render()
 
-if mode.startswith("1"):
-    ingest_tab.render()
-elif mode.startswith("2"):
-    roadmap_tab.render()
-elif mode.startswith("3"):
-    sola_tab.render()
-elif mode.startswith("4"):
-    news_tab.render()
+if area.startswith("🏠"):
+    home_tab.render()
+elif area.startswith("🔍"):
+    tab_collect, tab_roadmap, tab_board = st.tabs(
+        ["뉴스 수집·Enrich", "로드맵 업로드", "인사이트보드"]
+    )
+    with tab_collect:
+        ingest_tab.render()
+    with tab_roadmap:
+        roadmap_tab.render()
+    with tab_board:
+        board_tab.render()
 else:
-    board_tab.render()
+    tab_sola, tab_news = st.tabs(["SOLA (요약·제안서·채팅)", "뉴스 콘텐츠"])
+    with tab_sola:
+        sola_tab.render()
+    with tab_news:
+        news_tab.render()
