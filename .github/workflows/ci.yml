@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: py_compile (모든 .py)
+        run: |
+          mapfile -t files < <(git ls-files '*.py')
+          python -m py_compile "${files[@]}"
+
+      - name: 금지 패턴 — on_click
+        run: |
+          if grep -rnE 'on_click\s*=' app.py ui/ 2>/dev/null; then
+            echo "::error::on_click= 사용 발견. CLAUDE.md §3 위반 (pending flag + st.rerun 사용)"
+            exit 1
+          fi
+
+      - name: 금지 패턴 — requests 직접 호출
+        run: |
+          # scraping/http.py 의 build_session 내부만 예외.
+          violations=$(grep -rnE 'requests\.(get|post|Session)\(' \
+            --include='*.py' \
+            --exclude-dir=__pycache__ \
+            --exclude-dir=.venv \
+            --exclude-dir=.git \
+            . 2>/dev/null | grep -vE '(^\./)?scraping/http\.py:' || true)
+          if [ -n "$violations" ]; then
+            echo "::error::requests.* 직접 호출 발견. CLAUDE.md §4 위반 (scraping.http.build_session 사용)"
+            echo "$violations"
+            exit 1
+          fi
+
+      - name: pytest
+        run: pytest -q
