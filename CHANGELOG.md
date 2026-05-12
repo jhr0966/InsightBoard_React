@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### Added (M2 — 구글 뉴스 + SOLA LLM 채팅)
+- `scraping/google.py` — 구글 뉴스 RSS(`news.google.com/rss/search`) 기반 검색. 표준 라이브러리 ElementTree 로 파싱(추가 의존성 없음).
+- `ui/ingest_tab.py` 소스 선택 UI — 네이버 / 구글 / 둘 다.
+- `sola/client.py` — OpenAI 호환 SDK 단일 호출 진입점, `LLM_BACKEND` 스위치, `LLMNotConfigured` 예외.
+- `sola/prompts.py` — 시스템 프롬프트 3종 (요약/제안서/채팅).
+- `sola/summarize.py` — 뉴스 DataFrame → 마크다운 요약.
+- `sola/propose.py` — 작업 1건 + 매칭 뉴스로 자동화 과제 제안서 마크다운.
+- `sola/chat_ctx.py` — 채팅 시 오늘 뉴스 헤드라인·로드맵 분포를 컨텍스트로 자동 첨부.
+- `ui/sola_tab.py` 재작성 — 3 sub-mode (뉴스 요약 / 자동화 과제 제안서 / 채팅). 채팅은 `st.chat_message`/`st.chat_input` 사용, 히스토리는 세션에 보관, 제안서는 마크다운 다운로드 지원.
+- `tests/test_google_search.py` — RSS 파싱 / 빈 키워드 / 중복 제거 / HTTP 실패 회귀 (4건).
+- `tests/test_sola.py` — 요약/제안서 입력 포맷팅 + 컨텍스트 조립 (4건).
+- `tests/test_sola_client.py` — 환경변수 미설정 분기 + OpenAI 호출 라우팅 (4건).
+
+### Changed
+- `config.py` — `python-dotenv` 사용해 `.env` 자동 로드 (없으면 무시).
+- `requirements.txt` — `openai>=1.40`, `python-dotenv` 추가, 불필요한 `Pillow` 제거.
+- `docs/ARCHITECTURE.md` — sola 모듈 계약 · 새 세션 prefix(`sola_*`, `prop_*`) 반영.
+
 ### Added (M1 — 인사이트보드 시스템 처음부터 재구성)
 - `config.py` — `.env` 기반 LLM 라우팅(`LLM_BACKEND=groq|internal|ollama`) 및 데이터 경로 상수.
 - `.env.example` — Groq 기본 / 사내 OpenAI 호환 API 전환용 템플릿.

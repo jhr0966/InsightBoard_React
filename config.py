@@ -7,6 +7,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 
 REPO_ROOT = Path(__file__).resolve().parent
 DATA_ROOT = REPO_ROOT / "data"

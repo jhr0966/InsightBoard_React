@@ -3,5 +3,8 @@ beautifulsoup4
 lxml
 requests
 pandas
-Pillow
+pyarrow
+openpyxl
+openai>=1.40
+python-dotenv
 pytest

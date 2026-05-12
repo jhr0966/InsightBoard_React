@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-05-12 · M2 구글 뉴스 + SOLA LLM 채팅
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**한 일:**
+1. `scraping/google.py` — Google News RSS 검색 (ElementTree 파서, 추가 의존성 없음).
+2. `ui/ingest_tab.py` — 소스 셀렉터(네이버/구글/둘 다) 및 소스별 저장 통계 표시.
+3. `sola/client.py` — OpenAI SDK 단일 진입점, `LLM_BACKEND` 라우팅, `LLMNotConfigured` 예외.
+4. `sola/prompts.py` — 한국어 출력 가정 시스템 프롬프트 3종.
+5. `sola/summarize.py`, `sola/propose.py`, `sola/chat_ctx.py` — 요약/제안서/채팅 컨텍스트.
+6. `ui/sola_tab.py` 재작성 — 3 sub-mode + `st.chat_message`/`st.chat_input` 기반 채팅.
+7. `config.py` 에 `python-dotenv` 로 `.env` 자동 로드, `requirements.txt` 갱신.
+8. 테스트 12건 추가 (구글 RSS / SOLA 호출·컨텍스트 모킹). 전체 24/24 통과.
+
+**다음 세션 TODO (M3):**
+- 제안서 PDF export (Markdown → PDF).
+- 부서별 자동 인사이트 카드 (배치 LLM 호출 + 캐싱).
+- 채팅 히스토리 영구 저장(JSONL).
+
+**블로커:** 없음. 사용자가 `.env` 에 `LLM_API_KEY` 를 채우면 즉시 동작.
+
+---
+
 ## 2026-05-12 · M1 인사이트보드 시스템 처음부터 재구성
 
 **브랜치:** `claude/plan-insight-board-system-5MfMe`
