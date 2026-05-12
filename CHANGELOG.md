@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+### Added (M4-α — 본문 enrich + 도메인 사이트)
+- `scraping/enrich.py` — 기사 본문 fetch + LLM 키워드/요약, 본문 해시 캐시.
+  - `fetch_content(url)` 단일 진입점, 다양한 본문 selector + p-fallback.
+  - `enrich_one(article, with_llm)`, `enrich_articles(articles, progress_cb)` — Streamlit 진행률 콜백 호환.
+  - LLM 미설정 시 본문만 채우고 graceful degrade.
+- `scraping/tech_sites.py` — AI Times, 오토메이션월드 도메인 사이트.
+  - `TECH_SITES` dict 로 확장 가능.
+  - 휴리스틱(제목 길이 + 같은 root domain + nav blocklist) 기반 추출.
+  - `search_all()` 사이트별 실패 swallow + 합본.
+- `sola/prompts.py` — `SYSTEM_KEYWORD_EXTRACT`, `SYSTEM_SUMMARY_SHORT` 추가.
+- `store/news_db.py` 스키마 확장 — `content`, `keywords_llm`, `summary_llm`, `enriched_at` 컬럼.
+  - `_normalize_loaded()` 로 과거 Parquet 도 안전 로드.
+  - `drop_duplicates(keep="last")` 로 enrich 결과가 원본을 덮어쓰도록.
+- `ui/ingest_tab.py` 재작성 — 멀티 소스 선택, "본문 Enrich" 버튼, Streamlit 진행률, LLM 키워드 뱃지·LLM 요약 카드 표시.
+- 테스트 10건 추가 (`test_enrich.py` 6 + `test_tech_sites.py` 4). 전체 45/45 통과.
+
 ### Added (M3 — 트렌드 + 부서별 AI 인사이트 + 채팅 영구화)
 - `store/cache.py` — 파일 기반 LLM 응답 캐시 (SHA1 키, UTF-8 텍스트). 동일 입력에 LLM 재호출 방지.
 - `store/trends.py` — `by_date` / `by_source` / `top_keywords` 집계.

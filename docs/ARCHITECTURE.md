@@ -34,7 +34,9 @@ News_TEST/
 │   ├── http.py              # ── _build_session, default_headers
 │   ├── extract.py           # 날짜/키워드/셀렉터 공용
 │   ├── naver.py             # 네이버 뉴스 검색
-│   └── google.py            # 구글 뉴스 RSS 검색
+│   ├── google.py            # 구글 뉴스 RSS 검색
+│   ├── tech_sites.py        # AI Times, 오토메이션월드 도메인 사이트
+│   └── enrich.py            # 본문 fetch + LLM 키워드/요약 (캐시)
 ├── roadmap/                 # 조선소 엑셀 → 정규화 → Parquet
 │   ├── schema.py            # 한국어 헤더 ↔ snake_case
 │   ├── ingest.py            # 업로드/검증/저장

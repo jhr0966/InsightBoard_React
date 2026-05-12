@@ -1,0 +1,128 @@
+"""scraping.enrich — 본문 fetch + LLM 키워드/요약 (HTTP / LLM 모킹)."""
+from __future__ import annotations
+
+from unittest.mock import patch
+
+from scraping import enrich
+from store import cache
+
+
+_HTML_WITH_BODY = """
+<html><body>
+  <script>noise()</script>
+  <header>nav</header>
+  <article itemprop="articleBody">
+    <p>이번 발표에서 회사는 비전 AI 기반 용접 검사 시스템을 공개했다.</p>
+    <p>해당 기술은 6축 매니퓰레이터와 결합해 검사 시간을 30% 단축한다.</p>
+    <p>현장 적용은 가공·조립 공정에서 우선 진행된다.</p>
+  </article>
+  <footer>foot</footer>
+</body></html>
+"""
+
+
+class _FakeResp:
+    def __init__(self, text: str, status: int = 200):
+        self.text = text
+        self.status_code = status
+        self.encoding = "utf-8"
+        self.apparent_encoding = "utf-8"
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+def _fake_session(text: str = _HTML_WITH_BODY):
+    class FakeSession:
+        def get(self, *a, **kw):
+            return _FakeResp(text)
+
+    return FakeSession()
+
+
+def test_fetch_content_extracts_article_body():
+    with patch.object(enrich, "build_session", lambda: _fake_session()):
+        text = enrich.fetch_content("https://example.com/article/1")
+    assert "비전 AI" in text
+    assert "noise()" not in text  # script stripped
+    assert "nav" not in text  # header stripped
+
+
+def test_fetch_content_returns_empty_for_invalid_url():
+    assert enrich.fetch_content("") == ""
+    assert enrich.fetch_content("not-a-url") == ""
+
+
+def test_enrich_one_uses_llm_when_with_llm_true():
+    cache.clear()
+    article = {"link": "https://example.com/a", "source": "naver"}
+    captured: dict = {"calls": 0}
+
+    def _fake_kw(content):
+        captured["calls"] += 1
+        return "비전 AI, 용접 로봇, 검사 시스템"
+
+    def _fake_sum(content):
+        return "비전 AI 기반 용접 검사로 시간을 단축한다."
+
+    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+         patch.object(enrich, "_llm_keywords", _fake_kw), \
+         patch.object(enrich, "_llm_summary", _fake_sum):
+        out = enrich.enrich_one(article, with_llm=True)
+
+    assert out["content"] and "비전 AI" in out["content"]
+    assert out["keywords_llm"].startswith("비전 AI")
+    assert "단축" in out["summary_llm"]
+    assert out["enriched_at"]
+
+
+def test_enrich_one_caches_llm_results():
+    cache.clear()
+    article1 = {"link": "https://example.com/a", "source": "naver"}
+    article2 = {"link": "https://example.com/b", "source": "naver"}  # 동일 본문이라 캐시 히트
+    calls = {"n": 0}
+
+    def _fake_kw(content):
+        calls["n"] += 1
+        return "x, y"
+
+    def _fake_sum(content):
+        calls["n"] += 1
+        return "요약"
+
+    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+         patch.object(enrich, "_llm_keywords", _fake_kw), \
+         patch.object(enrich, "_llm_summary", _fake_sum):
+        enrich.enrich_one(article1, with_llm=True)
+        enrich.enrich_one(article2, with_llm=True)
+
+    # 동일 본문 → 캐시 히트로 kw+sum 합쳐 총 2회만 호출
+    assert calls["n"] == 2
+
+
+def test_enrich_one_skips_llm_when_with_llm_false():
+    cache.clear()
+    article = {"link": "https://example.com/a", "source": "naver"}
+    with patch.object(enrich, "build_session", lambda: _fake_session()):
+        out = enrich.enrich_one(article, with_llm=False)
+    assert out["content"]
+    assert "keywords_llm" not in out
+    assert "summary_llm" not in out
+
+
+def test_enrich_articles_calls_progress_cb():
+    cache.clear()
+    articles = [
+        {"link": "https://example.com/1", "source": "naver"},
+        {"link": "https://example.com/2", "source": "naver"},
+    ]
+    progress: list[tuple[int, int]] = []
+
+    def _cb(done, total, _art):
+        progress.append((done, total))
+
+    with patch.object(enrich, "build_session", lambda: _fake_session()):
+        enrich.enrich_articles(articles, with_llm=False, progress_cb=_cb)
+
+    assert progress == [(1, 2), (2, 2)]

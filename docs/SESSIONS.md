@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-05-12 · M4-α 본문 Enrich + 도메인 사이트 (AI Times, 오토메이션월드)
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**시스템 재기획 (사용자 확정):**
+- 목적 재정리: "조선소 작업 정의를 알고 있는 AI 어시스턴트가 외부 기술 동향을 우리 작업에 어떻게 적용할지 번역해주는 시스템".
+- 페르소나 = 부서(엑셀 자동) + 자유 입력 직무 — M4-β.
+- UI 3영역(홈/탐색/작업실) 재편 — M4-β.
+- M4-α 부터 순차 진행.
+
+**M4-α 한 일:**
+1. `scraping/enrich.py` — 본문 fetch + LLM 키워드/요약, 본문 해시 캐시(`store.cache`).
+2. `scraping/tech_sites.py` — AI Times, 오토메이션월드 휴리스틱 수집, `search_all()` 합본.
+3. `sola/prompts.py` — `SYSTEM_KEYWORD_EXTRACT`, `SYSTEM_SUMMARY_SHORT` 추가.
+4. `store/news_db.py` 컬럼 확장(`content`, `keywords_llm`, `summary_llm`, `enriched_at`), 과거 Parquet 안전 로드, last-wins 중복 제거.
+5. `ui/ingest_tab.py` — 멀티 소스 선택 + "본문 Enrich" 버튼 + 진행률 + LLM 결과 뱃지/카드.
+6. 테스트 10건 추가 (HTTP·LLM 모킹), 전체 45/45 통과.
+
+**다음 세션 TODO (M4-β):**
+- `persona.py` + `store/persona_db.py` — 부서·직무·관심 작업 영구화.
+- `ui/` 3영역 재편 — `home_tab.py` 신설, 5탭 → 홈/탐색/작업실로 합쳐서 그룹화.
+- 작업 트리 뷰 (부서 → Lv1 → Lv2 → Lv3 드릴다운).
+- 페르소나 컨텍스트가 SOLA 채팅·인사이트 카드에 자동 주입.
+
+**블로커:** 없음. 본문 enrich 결과는 LLM 키 있어야 풀 동작.
+
+---
+
 ## 2026-05-12 · M3 트렌드·부서별 AI 인사이트·채팅 영구화
 
 **브랜치:** `claude/plan-insight-board-system-5MfMe`
