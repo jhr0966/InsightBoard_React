@@ -1,122 +1,108 @@
-# ARCHITECTURE — News
+# ARCHITECTURE — 제조기술 로드맵 인사이트보드
 
 > 모듈 경계와 데이터 플로우. 새 기능 추가 전 이 문서로 "어디에 들어갈 코드인가" 확정.
 
-## 개요
-
-단일 Streamlit 앱. `app.py`는 평탄 스크립트, 비즈니스 로직은 세 도메인 모듈로 분리:
+## 5단계 파이프라인
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                         app.py                                │
-│  (Streamlit 평탄 스크립트: 페이지·탭·세션 상태·이벤트 디스패치)   │
-└──────┬──────────────────┬──────────────────────┬─────────────┘
-       │                  │                      │
-       ▼                  ▼                      ▼
- ┌──────────┐       ┌───────────┐          ┌────────────┐
- │scraper.py│  ───► │insights.py│  ─────►  │cardnews.py │
- │ (수집)    │       │ (집계)     │          │ (렌더/export)│
- └──────────┘       └───────────┘          └────────────┘
-       │                  │                      │
-       ▼                  ▼                      ▼
-  외부 HTTP           pandas DataFrame       PNG / HTML 카드
+1. 데이터 입력              2. 저장·정제              3. AI 분석(SOLA)
+┌────────────────┐        ┌────────────────┐        ┌────────────────┐
+│ scraping/naver │  ───►  │ store/news_db  │  ───►  │ store/match    │ (M1: 룰)
+│  + extract     │        │ roadmap/ingest │        │ sola/* (M2)    │
+│ roadmap/ingest │        │ roadmap/query  │        │                │
+└────────────────┘        └────────────────┘        └────────────────┘
+                                                            │
+                                  ┌────────────────┐        ▼
+                                  │   ui tabs      │  ◄─── 4. 서비스 UI
+                                  │ ingest/roadmap │
+                                  │ news/sola/board│
+                                  └────────────────┘
+                                          │
+                                          ▼
+                                    5. 산출물 (M3)
 ```
 
-데이터 흐름은 **단방향**: `scraper → insights → cardnews`.
-역방향 import는 금지 (insights가 scraper를 쓰는 것은 OK, 그 반대는 불가).
+`app.py`는 평탄 Streamlit 진입점, 위→아래 5탭 라디오 디스패치.
+
+## 디렉토리 레이아웃
+
+```
+News_TEST/
+├── app.py                   # 평탄 진입점
+├── config.py                # .env 로드, 경로, LLM 라우팅
+├── scraping/                # HTTP 수집 (단일 진입점 http.build_session)
+│   ├── http.py              # ── _build_session, default_headers
+│   ├── extract.py           # 날짜/키워드/셀렉터 공용
+│   └── naver.py             # 네이버 뉴스 검색
+├── roadmap/                 # 조선소 엑셀 → 정규화 → Parquet
+│   ├── schema.py            # 한국어 헤더 ↔ snake_case
+│   ├── ingest.py            # 업로드/검증/저장
+│   └── query.py             # by_dept, by_lv, filter_hierarchy
+├── store/                   # 저장소·매칭
+│   ├── paths.py             # 일자별 디렉토리
+│   ├── news_db.py           # 뉴스 Parquet load/save
+│   └── match.py             # 룰 기반 뉴스↔작업 매칭 (M2에 LLM 대체)
+├── sola/ (M2)               # LLM client / summarize / propose
+├── ui/                      # Streamlit 탭
+│   ├── styles.py            # CSS 주입
+│   ├── ingest_tab.py
+│   ├── roadmap_tab.py
+│   ├── news_tab.py
+│   ├── sola_tab.py
+│   └── board_tab.py
+├── assets/styles.css
+├── data/  (.gitignore)
+│   ├── news/YYYY-MM-DD/*.parquet
+│   ├── roadmap/roadmap_*.parquet
+│   └── sola/
+└── tests/
+```
 
 ## 모듈 계약
 
-### scraper.py — 수집 계층
+### scraping
+- `scraping.http.build_session()` — 외부 HTTP의 **단일 진입점**. 다른 모듈은 `requests` 직접 import 금지.
+- `scraping.naver.search(keyword, max_results) -> list[dict]`
+- article dict: `title, press, date, published_at, link, summary, keywords, source, query`.
 
-**공개 함수 (외부 진입점):**
-- `search_naver_news(keyword, max_results, debug) -> list[dict]`
-- `fetch_latest_tech_news(site_name, site_url, max_results, debug) -> list[dict]`
-- `enrich_articles_parallel(articles, progress_cb, max_workers) -> list[dict]`
-- `articles_to_dataframe(articles) -> pd.DataFrame`
-- `extract_keywords(text, top_n) -> str`
+### roadmap
+- `roadmap.schema.COLUMN_MAP` — 첨부3 한국어 헤더 → snake_case.
+- 정규화 컬럼: `team, dept, lv1, lv2, lv3, task, sub_task, task_def, sws_no, sws_name`.
+- 필수: `team, dept, lv1, lv2, lv3, task`.
+- `roadmap.ingest.ingest_excel(fileobj, sheet_name) -> IngestResult` — 검증·Parquet 저장.
+- `roadmap.query.load_latest() / by_dept() / by_lv() / filter_hierarchy()`.
 
-**공통 article dict 스키마** (scraper 가 실제로 사용하는 키):
-```python
-{
-    "title":   str,        # HTML escape 완료
-    "link":    str,        # 정규화된 절대 URL (주의: 'url' 아님)
-    "press":   str,        # 언론사/사이트명
-    "date":    str,        # "YYYY-MM-DD" 또는 "" (사이트 모드는 "최신 동향")
-    "published_at": str,   # ISO8601 UTC (예: 2026-04-27T10:30:00+00:00)
-    "img_url": str,        # 이미지 URL (없으면 "") (주의: 'thumbnail' 아님)
-    "summary": str,        # 리스트 페이지의 요약
-    "content": str,        # enrich 후 채워짐, 없으면 ""
-    "keywords": str,       # extract_keywords 결과, comma-separated
-}
-```
+### store
+- `store.news_db.save_articles(articles, source) -> Path | None` — 오늘자 디렉토리에 저장.
+- `store.news_db.load_latest(source) / load_all_today() -> DataFrame`.
+- `store.match.score_matches(news_df, roadmap_df, top_k) -> DataFrame`
+  - 컬럼: `dept, lv1, lv2, lv3, task, sub_task, news_title, link, score`.
 
-> ⚠️ `articles_to_dataframe()` 는 export 용으로 컬럼을 한국어로 rename 한다
-> (`title→제목`, `link→링크`, `img_url→이미지URL` 등).
-> **집계·분석은 rename 전 dict 리스트**로 해야 한다 — `insights.*` 함수는 list[dict] 를 받는다.
+### sola (M2 예정)
+- `sola.client` — OpenAI SDK 기반, `LLM_BACKEND={groq|internal|ollama}` 스위치.
+- `sola.summarize` / `sola.match` / `sola.propose` — M1 룰을 점진적으로 대체.
 
-**내부 규약:**
-- 모든 HTTP는 `_build_session()`을 통해. 직접 `requests.get` 금지.
-- 파서는 `_soup()` 경유 (lxml fallback → html.parser).
-- 기사 URL은 `_is_plausible_article_link` + `_same_root_domain` 양쪽 통과 필수.
+### ui
+- 모든 탭은 `render()` 단일 진입점.
+- pending flag 패턴만: `if st.button(): st.session_state["_do_X"] = True` → 본문에서 `pop` → `st.rerun()`.
+- `on_click=` 금지. CLAUDE.md §3.
 
-### insights.py — 집계 계층
-
-**공개 함수:**
-- `by_press(articles) -> pd.DataFrame` — 언론사별 기사 수. 컬럼: `press, count`.
-- `by_keyword(articles, top_n) -> pd.DataFrame` — 키워드 빈도. 컬럼: `keyword, count`.
-- `trend_by_date(articles) -> pd.DataFrame` — 일자별 기사 수. 컬럼: `date, count`.
-- `related_articles(articles, keyword) -> list[dict]` — 키워드 필터링 (입력과 동일 형태).
-
-**입력:** `list[dict]` — scraper 가 반환하는 rename 전 article 리스트.
-**출력:** 집계 결과는 `pd.DataFrame` (Streamlit `st.dataframe`/`st.bar_chart` 로 바로 렌더).
-`related_articles` 만 list[dict] (다시 카드/테이블 렌더링에 넘기기 위함).
-
-### cardnews.py — 렌더 계층
-
-**공개 함수:**
-- `render_html(article, template="default") -> str` — 카드 1장 HTML.
-- `render_png(article, template="default", size=(1080, 1080)) -> bytes` — 이미지(Pillow).
-- `render_deck(articles, template="default") -> list[bytes]` — 다수 카드 일괄.
-- `available_templates() -> list[str]`
-
-**템플릿 위치:** `components/cardnews_template/<template>.html` + `assets/styles.css`의 `.cn-*` 클래스.
-
-**제약:**
-- 이미지 합성은 `render_png`가 유일 진입점. 폰트 경로·여백 상수는 모듈 상단에 하나만.
-- HTML 출력은 반드시 `html.escape`로 safe (외부 문자열 직접 format 금지).
-
-## app.py 구조
-
-```
-1. import / page_config
-2. 전역 CSS 로드 (assets/styles.css)
-3. 세션 상태 초기화 (sc_*, ins_*, cn_*)
-4. Pending flag 처리 (_search_pending, _enrich_pending, ...)  ← 최상단에서만 state 쓰기
-5. 사이드바 (모드 선택: 스크래핑 | 인사이트 | 카드뉴스)
-6. 메인 영역 (모드별 분기, 평탄 if/elif)
-7. 푸터/디버그
-```
-
-## 세션 상태 키
+## 세션 상태 prefix
 
 | prefix | 도메인 |
 |---|---|
-| `sc_*` | 스크래핑 결과·검색어·디버그 로그 |
-| `ins_*` | 인사이트 필터·선택된 차트 |
-| `cn_*` | 카드뉴스 선택된 기사·템플릿·미리보기 |
-| `_*_pending` | 다음 run 최상단에서 처리할 이벤트 |
+| `ins_*` | 뉴스 수집 (검색어, 결과 상태) |
+| `rm_*` | 로드맵 업로드 (업로드 파일, 상태) |
+| `board_*` | 인사이트보드 필터 |
+| `_do_*` | pending flag, 다음 run 본문에서 1회 처리 |
 
-## 외부 의존성
+## 환경변수 (`.env`)
 
-`requirements.txt`:
-- `streamlit` — UI
-- `requests` — HTTP
-- `beautifulsoup4`, `lxml` — 파싱 (lxml 실패 시 html.parser)
-- `pandas` — DataFrame
-- `Pillow` (예정) — `cardnews.render_png`용
+- `LLM_BACKEND=groq|internal|ollama` (기본 groq)
+- `LLM_API_KEY` — 백엔드별 키
+- `LLM_BASE_URL` — 사내 API 사용 시 명시
+- `LLM_MODEL` — 명시 안 하면 백엔드별 기본값
 
 ## 배포
 
-Streamlit Cloud가 `main` 브랜치를 트래킹. `main` 머지 = 즉시 배포.
-따라서 작업 브랜치에서 **Streamlit Cloud 미리보기 또는 로컬 `streamlit run app.py`**로 검증 후 머지.
+Streamlit Cloud가 `main` 트래킹. 작업 브랜치 → PR → 머지 → 즉시 배포.

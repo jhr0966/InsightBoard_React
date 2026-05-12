@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-05-12 · M1 인사이트보드 시스템 처음부터 재구성
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (M1 PR 대상)
+
+**기획 결정 (사용자 확정):**
+- 첨부3(조선소 작업 정의) 엑셀 풍부한 계층을 모두 보존하도록 **스키마 확장**.
+- SOLA: 사내 OpenAI 호환 API + 임시 무료 **Groq**, 기존 코드는 폐기하고 처음부터 재구성.
+- 진행 순서: **M1(스키마·집계) → M2(SOLA) → M3(LLM UI)** 단계적.
+
+**M1에서 한 일:**
+1. 레거시 모듈 9종 + 종속 테스트 5종 + `components/` 삭제.
+2. 새 패키지 레이아웃: `scraping/ roadmap/ store/ sola/ ui/`.
+3. `config.py` — `.env` 기반 LLM 라우팅 (Groq / 사내 / Ollama), 데이터 경로 상수.
+4. `roadmap/schema.py` — 첨부3 한국어 헤더 ↔ snake_case 매핑(`team/dept/lv1/lv2/lv3/task/sub_task/task_def/sws_no/sws_name`).
+5. `roadmap/ingest.py` + `query.py` — 엑셀 → 검증 → Parquet, 부서/Lv별 집계, 계층 필터.
+6. `scraping/http.py` — HTTP 단일 진입점(`build_session`, 재시도 어댑터).
+7. `scraping/naver.py` — 네이버 뉴스 검색만 슬림하게 재구현.
+8. `store/news_db.py` — 일자별 Parquet 저장/조회, `store/match.py` — 룰 기반 뉴스↔작업 매칭.
+9. `ui/*` 5탭 — `ingest`/`roadmap`/`news`/`sola(M2 placeholder)`/`board`, pending flag 패턴 준수.
+10. `app.py` 평탄 진입점 — 사이드바 5단계 라디오 디스패치.
+11. 테스트 12개 통과: ingest 라운드트립, HTTP 어댑터, 매칭 스코어링, 저장소 입출력.
+12. `docs/ARCHITECTURE.md` 전면 갱신, `CHANGELOG.md` [Unreleased] 추가.
+
+**다음 세션 TODO (M2):**
+- `sola/client.py` — OpenAI SDK 래퍼, `LLM_BACKEND` 스위치.
+- `sola/summarize.py` — 일자별 뉴스 요약 (캐시 + 프롬프트 분리).
+- `sola/match.py` — 룰 후보 → LLM 정제, `store.match.score_matches` 대체.
+- `ui/sola_tab.py` — Q&A 채팅 / 자동화 과제 추출 UI.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-04-30 · 앱 엔트리 정리 1차 (중복 의존성 제거)
 
 **브랜치:** `work`
