@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (M4-δ — 제안서 채팅 컨텍스트 첨부)
+- `sola/chat_ctx.build_context_block(..., proposal=...)` — 채팅 시스템 프롬프트에 제안서 본문을 최우선 컨텍스트로 첨부. None/공백이면 자동 무시.
+- `ui/sola_tab._build_proposal_context` — 채팅 탭에서 (1) 직전 작성 제안서 토글 + (2) 북마크된 제안서 selectbox 두 경로로 컨텍스트 첨부.
+- `ui/sola_tab._render_chat` — "📎 제안서 컨텍스트 첨부" expander 신설. 직전 제안서 없으면 토글 자동 disable.
+- `tests/test_sola.py` proposal 케이스 3건 추가 (앞쪽 배치 / proposal-only / None·빈문자열 무시). 전체 66/66 통과.
+
 ### Added (M4-γ — 자동화 기회 매트릭스 + 북마크)
 - `sola/opportunity.py` — 부서×공정(Lv3) 셀별 자동화 기회 점수.
   - `score_cells(news, roadmap, cell_level)` — 매칭 점수 누적 + 샘플 작업/뉴스.

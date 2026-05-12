@@ -146,13 +146,73 @@ def _render_propose() -> None:
                 st.rerun()
 
 
+def _build_proposal_context() -> str | None:
+    """채팅 컨텍스트에 첨부할 제안서 문자열 조립.
+
+    - 토글이 켜져 있으면 세션의 직전 제안서 결과 첨부.
+    - 북마크 selectbox 에서 선택된 항목이 있으면 함께 첨부.
+    """
+    parts: list[tuple[str, str]] = []
+
+    if st.session_state.get("chat_inc_session_prop"):
+        session_prop = st.session_state.get("sola_prop_result")
+        if session_prop:
+            parts.append(("직전 작성 제안서", session_prop))
+
+    bm_id = st.session_state.get("chat_attached_bm_id")
+    if bm_id:
+        from store import bookmarks
+
+        for it in bookmarks.list_all(type_="proposal"):
+            if it.id == bm_id:
+                parts.append((f"북마크: {it.title}", it.content))
+                break
+
+    if not parts:
+        return None
+    return "\n\n".join(f"### {title}\n{body.strip()}" for title, body in parts)
+
+
 def _render_chat() -> None:
     st.subheader("LLM 채팅")
-    st.caption("오늘 뉴스와 로드맵이 컨텍스트로 자동 첨부됩니다. 대화는 `data/sola/chat_history.jsonl`에 저장돼 새로고침 후에도 복원됩니다.")
+    st.caption(
+        "오늘 뉴스 · 로드맵 · 페르소나 + (옵션) 제안서가 컨텍스트로 자동 첨부됩니다. "
+        "대화는 `data/sola/chat_history.jsonl`에 저장돼 새로고침 후에도 복원됩니다."
+    )
 
     if "sola_chat_history" not in st.session_state:
         st.session_state["sola_chat_history"] = chat_log.load_history()
     history: list[dict] = st.session_state["sola_chat_history"]
+
+    from store import bookmarks
+
+    proposal_bms = bookmarks.list_all(type_="proposal")
+    has_session_prop = bool(st.session_state.get("sola_prop_result"))
+
+    with st.expander("📎 제안서 컨텍스트 첨부", expanded=has_session_prop or bool(proposal_bms)):
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.checkbox(
+                "직전 작성 제안서 포함",
+                value=has_session_prop and st.session_state.get("chat_inc_session_prop", True),
+                disabled=not has_session_prop,
+                key="chat_inc_session_prop",
+                help="[제안서] 탭에서 방금 생성한 제안서 본문을 채팅 시스템 컨텍스트에 첨부합니다.",
+            )
+            if not has_session_prop:
+                st.caption("(제안서 탭에서 먼저 생성하세요)")
+        with c2:
+            options = [""] + [bm.id for bm in proposal_bms]
+            labels = {"": "(없음)"} | {
+                bm.id: f"{bm.title[:40]} · {bm.created_at[:10]}" for bm in proposal_bms
+            }
+            st.selectbox(
+                "📚 북마크된 제안서 첨부",
+                options=options,
+                format_func=lambda i: labels.get(i, "(없음)"),
+                key="chat_attached_bm_id",
+                help="작업실에서 ★북마크해둔 제안서를 추가 컨텍스트로 첨부합니다.",
+            )
 
     cols = st.columns([1, 4])
     with cols[0]:
@@ -178,7 +238,10 @@ def _render_chat() -> None:
     if st.session_state.pop("_pending_chat", False):
         try:
             persona: Persona = st.session_state.get("persona") or Persona()
-            ctx = chat_ctx.build_context_block(load_all_today(), load_roadmap())
+            proposal_text = _build_proposal_context()
+            ctx = chat_ctx.build_context_block(
+                load_all_today(), load_roadmap(), proposal=proposal_text,
+            )
             persona_block = persona_ctx.system_block(persona)
             messages = [{"role": "system", "content": SYSTEM_CHAT + persona_block + ctx}]
             messages.extend({"role": m["role"], "content": m["content"]} for m in history)

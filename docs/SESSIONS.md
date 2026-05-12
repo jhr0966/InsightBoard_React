@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-05-12 · M4-δ 제안서 채팅 컨텍스트 첨부
+
+**브랜치:** `feat-chat-proposal-context`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+사용자가 "제안서까지 채팅으로 이어가나?" 검증 요청. 코드 확인 결과 `chat_ctx.build_context_block`이 뉴스+로드맵만 받고 있어 생성된 제안서를 채팅 컨텍스트로 못 잇는 갭 발견. 갭 메움.
+
+**한 일:**
+1. `sola/chat_ctx.build_context_block` 시그니처에 `proposal: str | None = None` 추가. 제안서가 있으면 최상단(뉴스보다 먼저)에 배치.
+2. `ui/sola_tab._build_proposal_context` 신설 — 세션의 `sola_prop_result` + 북마크 selectbox 두 경로 통합.
+3. `ui/sola_tab._render_chat` "📎 제안서 컨텍스트 첨부" expander 추가. 직전 제안서 없으면 토글 disable, 북마크 없으면 selectbox 빈 옵션만.
+4. `tests/test_sola.py` proposal 케이스 3건 추가 (앞쪽 배치 / proposal-only / None·빈문자열 무시).
+5. 전체 66/66 통과, on_click·외부 requests 0건.
+
+**다음 세션 TODO:**
+- GitHub Actions CI (pytest + py_compile + 금지 패턴).
+- 다중 일자 트렌드 (현재 오늘만).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성 (배치 미리 채우기).
+- 제안서 PDF export.
+- 작업 트리 검색창.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-12 · M4-γ 자동화 기회 매트릭스 + 북마크
 
 **브랜치:** `claude/plan-insight-board-system-5MfMe`

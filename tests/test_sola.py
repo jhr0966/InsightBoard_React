@@ -86,3 +86,32 @@ def test_chat_ctx_build_includes_news_and_roadmap():
 
 def test_chat_ctx_empty_returns_empty_string():
     assert chat_ctx.build_context_block(pd.DataFrame(), pd.DataFrame()) == ""
+
+
+def test_chat_ctx_includes_proposal_first_when_provided():
+    news = pd.DataFrame([{"title": "용접 자동화", "press": "AITimes"}])
+    proposal_md = "## 1. 작업 개요\n- 강재선별 자동화"
+    block = chat_ctx.build_context_block(news, pd.DataFrame(), proposal=proposal_md)
+    assert "첨부 제안서" in block
+    assert "강재선별 자동화" in block
+    # 제안서가 뉴스보다 먼저 등장해야 한다.
+    assert block.index("첨부 제안서") < block.index("오늘 뉴스 헤드라인")
+
+
+def test_chat_ctx_proposal_only_works_without_news_roadmap():
+    block = chat_ctx.build_context_block(
+        pd.DataFrame(), pd.DataFrame(), proposal="제안서 본문",
+    )
+    assert "첨부 제안서" in block
+    assert "제안서 본문" in block
+
+
+def test_chat_ctx_proposal_none_or_empty_ignored():
+    news = pd.DataFrame([{"title": "용접", "press": "X"}])
+    assert "첨부 제안서" not in chat_ctx.build_context_block(news, pd.DataFrame())
+    assert "첨부 제안서" not in chat_ctx.build_context_block(
+        news, pd.DataFrame(), proposal="",
+    )
+    assert "첨부 제안서" not in chat_ctx.build_context_block(
+        news, pd.DataFrame(), proposal=None,
+    )
