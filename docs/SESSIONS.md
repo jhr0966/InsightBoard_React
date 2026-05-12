@@ -22,13 +22,32 @@
 5. 전체 66/66 통과, on_click·외부 requests 0건.
 
 **다음 세션 TODO:**
-- GitHub Actions CI (pytest + py_compile + 금지 패턴).
 - 다중 일자 트렌드 (현재 오늘만).
 - 매트릭스 셀별 LLM 코멘트 일괄 생성 (배치 미리 채우기).
 - 제안서 PDF export.
 - 작업 트리 검색창.
 
 **블로커:** 없음.
+
+---
+
+## 2026-05-12 · chore Quick Wins (CI + 라우팅 정정 + env sanitize) ✅ merged
+
+**브랜치:** `chore-quick-wins`
+**카테고리:** `chore`
+**상태:** ✅ merged (PR #5 → main `b5a3ba6`)
+
+**배경:**
+M1~M4-γ 진행 동안 `CLAUDE.md`/`DEV_GUIDELINES.md`/`README.md` 가 폐기된 옛 파일명(`scraper.py`/`insights.py`/`cardnews.py`)을 가리키고 있어 다음 세션이 잘못된 파일을 찾을 위험. PR 자동 검증도 부재. `.env.example` 에 실제 API 키가 박혀 커밋된 상태.
+
+**한 일:**
+1. `.github/workflows/ci.yml` 신설 — py_compile · on_click 금지 · requests 직접호출 금지(scraping/http.py 제외) · pytest 4단계 검증.
+2. `CLAUDE.md` — 도메인 설명 + 라우팅 표 + 검증 명령 갱신 (실제 패키지 구조 `scraping/ roadmap/ store/ sola/ persona/ ui/` 반영).
+3. `DEV_GUIDELINES.md` §2/§3/§4/§6/§8 — 파일별 역할표, 라우팅 표, invariant, 검증 명령, 스택 모두 갱신.
+4. `README.md` — 옛 파일명 제거, 페이지 스모크 안내 → 일반 pytest 안내.
+5. `.env.example` — Groq 실키를 `your-api-key-here` placeholder 로 교체.
+
+**블로커:** 없음. 단, 이전에 커밋된 실키는 별도 rotate 필요.
 
 ---
 
