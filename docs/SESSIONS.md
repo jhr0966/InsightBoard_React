@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-05-12 · M3 트렌드·부서별 AI 인사이트·채팅 영구화
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**한 일:**
+1. `store/cache.py` — 파일 기반 LLM 응답 캐시 (SHA1 16자 키).
+2. `store/trends.py` — `by_date(published_at 우선)` / `by_source` / `top_keywords` 집계.
+3. `store/chat_log.py` — 채팅 히스토리 JSONL 영구 저장/복원.
+4. `sola/insight.py` + `SYSTEM_INSIGHT` — 부서 한 문단 인사이트, (부서·뉴스 제목셋·모델) 키 캐싱.
+5. `ui/board_tab.py` — 일자별·소스별 트렌드 차트, 버튼 트리거 부서별 인사이트 카드(2열).
+6. `ui/sola_tab.py` — 채팅 자동 로드/저장, 초기화 시 파일도 제거.
+7. 테스트 11건 추가 (캐시·트렌드·채팅·인사이트 캐싱). 전체 35/35 통과.
+
+**다음 세션 TODO (M4 후보):**
+- 제안서 PDF export (한글 폰트 임베딩).
+- GitHub Actions CI (pytest + py_compile + 금지 패턴 검사).
+- 부서별 인사이트 카드에 "원문 보기" 링크 / 근거 뉴스 토글.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-12 · M2 구글 뉴스 + SOLA LLM 채팅
 
 **브랜치:** `claude/plan-insight-board-system-5MfMe`

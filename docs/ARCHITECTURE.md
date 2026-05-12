@@ -39,16 +39,20 @@ News_TEST/
 │   ├── schema.py            # 한국어 헤더 ↔ snake_case
 │   ├── ingest.py            # 업로드/검증/저장
 │   └── query.py             # by_dept, by_lv, filter_hierarchy
-├── store/                   # 저장소·매칭
+├── store/                   # 저장소·매칭·집계·캐시
 │   ├── paths.py             # 일자별 디렉토리
 │   ├── news_db.py           # 뉴스 Parquet load/save
-│   └── match.py             # 룰 기반 뉴스↔작업 매칭 (M2에 LLM 대체)
-├── sola/                    # M2 — LLM 분석 엔진 (OpenAI 호환)
+│   ├── match.py             # 룰 기반 뉴스↔작업 매칭
+│   ├── trends.py            # by_date / by_source / top_keywords
+│   ├── cache.py             # 파일 기반 LLM 응답 캐시
+│   └── chat_log.py          # 채팅 히스토리 JSONL
+├── sola/                    # LLM 분석 엔진 (OpenAI 호환)
 │   ├── client.py            # ── chat(messages, ...) 단일 호출 진입점
-│   ├── prompts.py           # 시스템 프롬프트 (요약/제안/채팅)
+│   ├── prompts.py           # 시스템 프롬프트 (요약/제안/채팅/인사이트)
 │   ├── summarize.py         # 뉴스 요약
 │   ├── propose.py           # 자동화 과제 제안서 생성
-│   └── chat_ctx.py          # 채팅용 컨텍스트(뉴스+로드맵) 조립
+│   ├── chat_ctx.py          # 채팅용 컨텍스트(뉴스+로드맵) 조립
+│   └── insight.py           # 부서별 한 문단 인사이트 (캐시)
 ├── ui/                      # Streamlit 탭
 │   ├── styles.py            # CSS 주입
 │   ├── ingest_tab.py

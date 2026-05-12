@@ -10,6 +10,7 @@ from roadmap.query import filter_hierarchy, load_latest as load_roadmap
 from sola import chat_ctx, propose, summarize
 from sola.client import LLMNotConfigured, chat, is_configured
 from sola.prompts import SYSTEM_CHAT
+from store import chat_log
 from store.match import score_matches
 from store.news_db import load_all_today
 from ui.styles import page_header
@@ -124,9 +125,11 @@ def _render_propose() -> None:
 
 def _render_chat() -> None:
     st.subheader("LLM 채팅")
-    st.caption("오늘 뉴스와 로드맵이 컨텍스트로 자동 첨부됩니다.")
+    st.caption("오늘 뉴스와 로드맵이 컨텍스트로 자동 첨부됩니다. 대화는 `data/sola/chat_history.jsonl`에 저장돼 새로고침 후에도 복원됩니다.")
 
-    history: list[dict] = st.session_state.setdefault("sola_chat_history", [])
+    if "sola_chat_history" not in st.session_state:
+        st.session_state["sola_chat_history"] = chat_log.load_history()
+    history: list[dict] = st.session_state["sola_chat_history"]
 
     cols = st.columns([1, 4])
     with cols[0]:
@@ -134,6 +137,7 @@ def _render_chat() -> None:
             st.session_state["_do_chat_reset"] = True
     if st.session_state.pop("_do_chat_reset", False):
         st.session_state["sola_chat_history"] = []
+        chat_log.reset()
         st.rerun()
 
     for msg in history:
@@ -144,6 +148,7 @@ def _render_chat() -> None:
     if user_input:
         history.append({"role": "user", "content": user_input})
         st.session_state["sola_chat_history"] = history
+        chat_log.save_history(history)
         st.session_state["_pending_chat"] = True
         st.rerun()
 
@@ -160,6 +165,7 @@ def _render_chat() -> None:
             reply = f"⚠️ 호출 실패: {e}"
         history.append({"role": "assistant", "content": reply})
         st.session_state["sola_chat_history"] = history
+        chat_log.save_history(history)
         st.rerun()
 
 
