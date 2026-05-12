@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (M4-ε — 제안서 작업장: 살아있는 제안서)
+- `sola/refine.py:refine_proposal(current_md, instruction, persona=None)` — 활성 제안서 MD + 사용자 지시 → 수정된 전체 MD 반환.
+- `sola/prompts.SYSTEM_PROPOSAL_REFINE` — "출력은 완성된 제안서 전체 MD만, 기존 섹션 구조 유지" 가정.
+- `ui/proposal_workbench.py` 신설 — 2열 레이아웃(좌: 카드 뷰 / 우: SOLA 패널).
+  - 입력 소스: 직전 작성 제안서 **또는** 북마크된 제안서.
+  - 모드 라디오: **💬 대화** (활성 제안서를 컨텍스트로 일반 채팅) / **✏️ 수정** (지시 → in-place 교체 + 1단계 undo).
+  - 액션: ↶ 되돌리기 / ★ 작업장 버전 북마크 저장 / ⬇️ MD 다운로드.
+- `app.py` — 작업실에 "📝 제안서 작업장" sub-tab 추가.
+- `tests/test_refine.py` 4건 (MD·지시 전달 / 페르소나 주입 / 페르소나 None / 낮은 temperature). 전체 70/70 통과.
+
 ### Added (M4-δ — 제안서 채팅 컨텍스트 첨부)
 - `sola/chat_ctx.build_context_block(..., proposal=...)` — 채팅 시스템 프롬프트에 제안서 본문을 최우선 컨텍스트로 첨부. None/공백이면 자동 무시.
 - `ui/sola_tab._build_proposal_context` — 채팅 탭에서 (1) 직전 작성 제안서 토글 + (2) 북마크된 제안서 selectbox 두 경로로 컨텍스트 첨부.

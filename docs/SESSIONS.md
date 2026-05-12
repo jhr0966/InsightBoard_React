@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-05-12 · M4-ε 제안서 작업장 (살아있는 제안서)
+
+**브랜치:** `feat-proposal-workbench`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+"한 사이클이 완성되려면?" 질문에 대해 사용자가 PDF export 대신 **제안서를 살아있는 문서로 다루는 워크플로**를 선택. 즉 제안서를 PC에서 .md 연 것처럼 카드 뷰로 보여주고, LLM 채팅으로 (1) 내용 수정 (2) 요약·개선 (3) 제안서 기반 대화를 이어가는 작업장.
+
+**한 일:**
+1. `sola/refine.py` 신설 — `refine_proposal(current_md, instruction, persona)` (현 MD + 지시 → 새 MD).
+2. `sola/prompts.SYSTEM_PROPOSAL_REFINE` 추가 — "완성된 전체 MD 만 출력, 기존 섹션 구조 유지" 가정.
+3. `ui/proposal_workbench.py` 신설 — 2열(좌: 카드 뷰 / 우: SOLA 패널), 입력 소스 selectbox(세션 직전 + 북마크), 모드 라디오(💬 대화 / ✏️ 수정), 액션(↶ undo · ★ 북마크 저장 · ⬇️ MD).
+4. `app.py` — 작업실 sub-tab 에 "📝 제안서 작업장" 추가 (총 4개: SOLA / 작업장 / 뉴스 / 북마크).
+5. `tests/test_refine.py` 4건 추가 (MD·지시 전달 / 페르소나 주입 / 페르소나 None / 낮은 temperature). 전체 70/70 통과.
+
+**다음 세션 TODO:**
+- 북마크에 status 필드 (`pending`/`adopted`/`rejected`) → 사이클 추적.
+- 다중 일자 트렌드.
+- 매트릭스 셀별 LLM 코멘트 일괄 생성.
+- 작업 트리 검색창.
+- 일일 자동 수집 (cron/GH Actions).
+
+**블로커:** 없음. workbench 는 LLM 미설정 상태에서도 대화 모드의 LLM 호출만 실패하고 좌측 뷰·수정 모드는 graceful degrade.
+
+---
+
 ## 2026-05-12 · M4-δ 제안서 채팅 컨텍스트 첨부
 
 **브랜치:** `feat-chat-proposal-context`

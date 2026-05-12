@@ -16,6 +16,7 @@ from ui import (
     home_tab,
     ingest_tab,
     news_tab,
+    proposal_workbench,
     roadmap_tab,
     sidebar,
     sola_tab,
@@ -49,11 +50,13 @@ elif area.startswith("🔍"):
     with tab_board:
         board_tab.render()
 else:
-    tab_sola, tab_news, tab_bm = st.tabs(
-        ["SOLA (요약·제안서·채팅)", "뉴스 콘텐츠", "📌 북마크"]
+    tab_sola, tab_wb, tab_news, tab_bm = st.tabs(
+        ["SOLA (요약·제안서·채팅)", "📝 제안서 작업장", "뉴스 콘텐츠", "📌 북마크"]
     )
     with tab_sola:
         sola_tab.render()
+    with tab_wb:
+        proposal_workbench.render()
     with tab_news:
         news_tab.render()
     with tab_bm:
