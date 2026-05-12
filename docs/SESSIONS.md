@@ -5,6 +5,174 @@
 
 ---
 
+## 2026-05-12 · M4-γ 자동화 기회 매트릭스 + 북마크
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**한 일:**
+1. `sola/opportunity.py` — 부서×공정 셀별 점수(`score_cells`) + 셀당 한 줄 LLM 코멘트(`llm_commentary`, 캐시).
+2. `sola/prompts.py` — `SYSTEM_OPPORTUNITY` 추가.
+3. `store/bookmarks.py` — JSONL 영구화 (`data/bookmarks/items.jsonl`). 4가지 타입(opportunity/proposal/news/task).
+4. `ui/board_tab.py` — 자동화 기회 매트릭스 섹션(표 + 2열 카드 + ☆ 북마크 + 페르소나 부서 강조).
+5. `ui/bookmarks_tab.py` 신설 — 타입 필터 + 카드 리스트 + 🗑️ 삭제.
+6. `app.py` — 작업실에 "📌 북마크" sub-tab 추가.
+7. `ui/sola_tab.py` — 제안서 결과에 ☆ 북마크 버튼.
+8. 테스트 11건 추가 (opportunity 5 + bookmarks 6). 전체 63/63 통과.
+
+**다음 세션 TODO (M4-δ 또는 M5 후보):**
+- 작업 트리에 검색창 (수천 작업 대비).
+- 제안서 PDF export (한글 폰트 임베딩).
+- GitHub Actions CI (pytest + py_compile + 금지 패턴).
+- 다중 일자 트렌드 (현재 오늘만).
+- 부서별 매트릭스 셀별 LLM 코멘트 일괄 생성 (배치 미리 채우기).
+
+**블로커:** 없음. 페르소나 미설정 상태에서도 매트릭스/북마크 모두 정상 동작.
+
+---
+
+## 2026-05-12 · M4-β 페르소나 + 3영역 UI 재편
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**한 일:**
+1. `persona/` 패키지 신설 — schema(dataclass) / store(JSON) / context(LLM 프롬프트 블록).
+2. `ui/sidebar.py` — 페르소나 설정 패널(부서 select + 직무 자유 입력 + 관심 Lv3 멀티) + 영역 선택 + LLM 상태.
+3. `ui/task_tree.py` — 부서→Lv1→Lv2→Lv3 단계적 드릴다운 위젯, board·propose에서 재사용.
+4. `ui/home_tab.py` 신설 — 페르소나 카드, 우리 부서 관련 뉴스, 부서 AI 인사이트, 빠른 행동.
+5. `app.py` 3영역 재편 — 홈 / 탐색(수집·로드맵·보드 sub-tabs) / 작업실(SOLA·뉴스 sub-tabs).
+6. `sola.propose.propose_for_task` 가 `persona=` 인자 받고 시스템 프롬프트에 페르소나 자동 주입.
+7. `ui/sola_tab.py` 채팅·제안서가 페르소나 컨텍스트 사용, 작업 선택이 task_tree 드릴다운으로.
+8. `ui/board_tab.py` — 사용자 부서 인사이트 카드를 맨 앞으로 정렬, 강조 테두리 + 🎯 뱃지.
+9. 테스트 7건 추가, 전체 52/52 통과.
+10. `tests/conftest.py` — `persona.store`, `store.cache`, `store.chat_log` 의 from-import 바인딩도 동기 패치.
+
+**다음 세션 TODO (M4-γ 후보):**
+- `sola/opportunity.py` — 부서×공정 매트릭스 셀별 자동화 점수 (배치 LLM).
+- `store/bookmarks.py` — 관심 뉴스/제안서 즐겨찾기 영구화.
+- 작업 트리에 검색창 추가 (수천 작업 대비).
+
+**블로커:** 없음. 페르소나 미설정 상태에서도 모든 화면이 정상 동작 (안내 메시지만 표시).
+
+---
+
+## 2026-05-12 · M4-α 본문 Enrich + 도메인 사이트 (AI Times, 오토메이션월드)
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**시스템 재기획 (사용자 확정):**
+- 목적 재정리: "조선소 작업 정의를 알고 있는 AI 어시스턴트가 외부 기술 동향을 우리 작업에 어떻게 적용할지 번역해주는 시스템".
+- 페르소나 = 부서(엑셀 자동) + 자유 입력 직무 — M4-β.
+- UI 3영역(홈/탐색/작업실) 재편 — M4-β.
+- M4-α 부터 순차 진행.
+
+**M4-α 한 일:**
+1. `scraping/enrich.py` — 본문 fetch + LLM 키워드/요약, 본문 해시 캐시(`store.cache`).
+2. `scraping/tech_sites.py` — AI Times, 오토메이션월드 휴리스틱 수집, `search_all()` 합본.
+3. `sola/prompts.py` — `SYSTEM_KEYWORD_EXTRACT`, `SYSTEM_SUMMARY_SHORT` 추가.
+4. `store/news_db.py` 컬럼 확장(`content`, `keywords_llm`, `summary_llm`, `enriched_at`), 과거 Parquet 안전 로드, last-wins 중복 제거.
+5. `ui/ingest_tab.py` — 멀티 소스 선택 + "본문 Enrich" 버튼 + 진행률 + LLM 결과 뱃지/카드.
+6. 테스트 10건 추가 (HTTP·LLM 모킹), 전체 45/45 통과.
+
+**다음 세션 TODO (M4-β):**
+- `persona.py` + `store/persona_db.py` — 부서·직무·관심 작업 영구화.
+- `ui/` 3영역 재편 — `home_tab.py` 신설, 5탭 → 홈/탐색/작업실로 합쳐서 그룹화.
+- 작업 트리 뷰 (부서 → Lv1 → Lv2 → Lv3 드릴다운).
+- 페르소나 컨텍스트가 SOLA 채팅·인사이트 카드에 자동 주입.
+
+**블로커:** 없음. 본문 enrich 결과는 LLM 키 있어야 풀 동작.
+
+---
+
+## 2026-05-12 · M3 트렌드·부서별 AI 인사이트·채팅 영구화
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**한 일:**
+1. `store/cache.py` — 파일 기반 LLM 응답 캐시 (SHA1 16자 키).
+2. `store/trends.py` — `by_date(published_at 우선)` / `by_source` / `top_keywords` 집계.
+3. `store/chat_log.py` — 채팅 히스토리 JSONL 영구 저장/복원.
+4. `sola/insight.py` + `SYSTEM_INSIGHT` — 부서 한 문단 인사이트, (부서·뉴스 제목셋·모델) 키 캐싱.
+5. `ui/board_tab.py` — 일자별·소스별 트렌드 차트, 버튼 트리거 부서별 인사이트 카드(2열).
+6. `ui/sola_tab.py` — 채팅 자동 로드/저장, 초기화 시 파일도 제거.
+7. 테스트 11건 추가 (캐시·트렌드·채팅·인사이트 캐싱). 전체 35/35 통과.
+
+**다음 세션 TODO (M4 후보):**
+- 제안서 PDF export (한글 폰트 임베딩).
+- GitHub Actions CI (pytest + py_compile + 금지 패턴 검사).
+- 부서별 인사이트 카드에 "원문 보기" 링크 / 근거 뉴스 토글.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-12 · M2 구글 뉴스 + SOLA LLM 채팅
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**한 일:**
+1. `scraping/google.py` — Google News RSS 검색 (ElementTree 파서, 추가 의존성 없음).
+2. `ui/ingest_tab.py` — 소스 셀렉터(네이버/구글/둘 다) 및 소스별 저장 통계 표시.
+3. `sola/client.py` — OpenAI SDK 단일 진입점, `LLM_BACKEND` 라우팅, `LLMNotConfigured` 예외.
+4. `sola/prompts.py` — 한국어 출력 가정 시스템 프롬프트 3종.
+5. `sola/summarize.py`, `sola/propose.py`, `sola/chat_ctx.py` — 요약/제안서/채팅 컨텍스트.
+6. `ui/sola_tab.py` 재작성 — 3 sub-mode + `st.chat_message`/`st.chat_input` 기반 채팅.
+7. `config.py` 에 `python-dotenv` 로 `.env` 자동 로드, `requirements.txt` 갱신.
+8. 테스트 12건 추가 (구글 RSS / SOLA 호출·컨텍스트 모킹). 전체 24/24 통과.
+
+**다음 세션 TODO (M3):**
+- 제안서 PDF export (Markdown → PDF).
+- 부서별 자동 인사이트 카드 (배치 LLM 호출 + 캐싱).
+- 채팅 히스토리 영구 저장(JSONL).
+
+**블로커:** 없음. 사용자가 `.env` 에 `LLM_API_KEY` 를 채우면 즉시 동작.
+
+---
+
+## 2026-05-12 · M1 인사이트보드 시스템 처음부터 재구성
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (M1 PR 대상)
+
+**기획 결정 (사용자 확정):**
+- 첨부3(조선소 작업 정의) 엑셀 풍부한 계층을 모두 보존하도록 **스키마 확장**.
+- SOLA: 사내 OpenAI 호환 API + 임시 무료 **Groq**, 기존 코드는 폐기하고 처음부터 재구성.
+- 진행 순서: **M1(스키마·집계) → M2(SOLA) → M3(LLM UI)** 단계적.
+
+**M1에서 한 일:**
+1. 레거시 모듈 9종 + 종속 테스트 5종 + `components/` 삭제.
+2. 새 패키지 레이아웃: `scraping/ roadmap/ store/ sola/ ui/`.
+3. `config.py` — `.env` 기반 LLM 라우팅 (Groq / 사내 / Ollama), 데이터 경로 상수.
+4. `roadmap/schema.py` — 첨부3 한국어 헤더 ↔ snake_case 매핑(`team/dept/lv1/lv2/lv3/task/sub_task/task_def/sws_no/sws_name`).
+5. `roadmap/ingest.py` + `query.py` — 엑셀 → 검증 → Parquet, 부서/Lv별 집계, 계층 필터.
+6. `scraping/http.py` — HTTP 단일 진입점(`build_session`, 재시도 어댑터).
+7. `scraping/naver.py` — 네이버 뉴스 검색만 슬림하게 재구현.
+8. `store/news_db.py` — 일자별 Parquet 저장/조회, `store/match.py` — 룰 기반 뉴스↔작업 매칭.
+9. `ui/*` 5탭 — `ingest`/`roadmap`/`news`/`sola(M2 placeholder)`/`board`, pending flag 패턴 준수.
+10. `app.py` 평탄 진입점 — 사이드바 5단계 라디오 디스패치.
+11. 테스트 12개 통과: ingest 라운드트립, HTTP 어댑터, 매칭 스코어링, 저장소 입출력.
+12. `docs/ARCHITECTURE.md` 전면 갱신, `CHANGELOG.md` [Unreleased] 추가.
+
+**다음 세션 TODO (M2):**
+- `sola/client.py` — OpenAI SDK 래퍼, `LLM_BACKEND` 스위치.
+- `sola/summarize.py` — 일자별 뉴스 요약 (캐시 + 프롬프트 분리).
+- `sola/match.py` — 룰 후보 → LLM 정제, `store.match.score_matches` 대체.
+- `ui/sola_tab.py` — Q&A 채팅 / 자동화 과제 추출 UI.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-04-30 · 앱 엔트리 정리 1차 (중복 의존성 제거)
 
 **브랜치:** `work`

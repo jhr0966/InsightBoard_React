@@ -5,7 +5,103 @@
 
 ## [Unreleased]
 
+### Added (M4-γ — 자동화 기회 매트릭스 + 북마크)
+- `sola/opportunity.py` — 부서×공정(Lv3) 셀별 자동화 기회 점수.
+  - `score_cells(news, roadmap, cell_level)` — 매칭 점수 누적 + 샘플 작업/뉴스.
+  - `llm_commentary(dept, lv3, sample_news, sample_tasks)` — 셀당 한 줄 LLM 코멘트, 캐시.
+- `sola/prompts.SYSTEM_OPPORTUNITY` 추가.
+- `store/bookmarks.py` — JSONL 영구화 북마크 (`data/bookmarks/items.jsonl`).
+  - 타입: `opportunity` / `proposal` / `news` / `task`.
+  - `Bookmark` dataclass + `add/list_all/remove/has/clear/make_id`.
+- `ui/board_tab.py` — 자동화 기회 매트릭스 섹션 (표 + 2열 카드 + 셀별 ☆ 북마크 버튼 + 페르소나 부서 강조).
+- `ui/bookmarks_tab.py` 신설 — 타입별 필터 + 카드 리스트 + 삭제.
+- `app.py` — 작업실에 "📌 북마크" sub-tab 추가.
+- `ui/sola_tab.py` — 제안서 생성 결과에 ☆ 북마크 버튼.
+- `tests/test_opportunity.py` 5건 + `tests/test_bookmarks.py` 6건. 전체 63/63 통과.
+- `tests/conftest.py` — `store.bookmarks` 의 DATA_ROOT from-import 바인딩 동기 패치.
+
+### Added (M4-β — 페르소나 + 3영역 UI 재편)
+- `persona/` 패키지 — 사용자 부서·직무·관심 공정을 영구화하는 도메인 모델.
+  - `schema.Persona` dataclass + `to_dict/from_dict`.
+  - `store.load/save/reset` — `data/persona/profile.json` JSON 영구화.
+  - `context.system_block(persona)` — LLM 시스템 프롬프트에 붙일 페르소나 안내.
+- `ui/sidebar.py` — 사이드바에 페르소나 설정 패널(부서 select + 직무 자유 입력 + 관심 Lv3 멀티) + 영역 선택(홈/탐색/작업실) + LLM 상태.
+- `ui/home_tab.py` — 페르소나 카드, 우리 부서 관련 뉴스, 우리 부서 AI 인사이트, 빠른 행동 안내.
+- `ui/task_tree.py` — 부서→Lv1→Lv2→Lv3 단계적 드릴다운 위젯. board_tab·sola_tab 제안서에서 재사용.
+- `app.py` 3영역 재편 — 홈 / 탐색(수집·로드맵·보드) / 작업실(SOLA·뉴스) + 사이드바.
+- `sola.propose.propose_for_task(persona=...)` — 제안서 생성 시 페르소나 컨텍스트 자동 주입.
+- `ui/sola_tab.py` 채팅·제안서에 페르소나 컨텍스트 주입, 제안서 작업 선택을 task_tree 드릴다운으로 교체.
+- `ui/board_tab.py` — 사용자 부서 인사이트 카드 우선 정렬 + 강조 테두리, 매칭 필터를 task_tree로 교체.
+- `tests/test_persona.py` 6건 + `test_sola.py` 페르소나 주입 검증 1건. 전체 52/52 통과.
+- `tests/conftest.py` — `persona.store`, `store.cache`, `store.chat_log` 의 from-import 바인딩도 동기 패치.
+
+### Added (M4-α — 본문 enrich + 도메인 사이트)
+- `scraping/enrich.py` — 기사 본문 fetch + LLM 키워드/요약, 본문 해시 캐시.
+  - `fetch_content(url)` 단일 진입점, 다양한 본문 selector + p-fallback.
+  - `enrich_one(article, with_llm)`, `enrich_articles(articles, progress_cb)` — Streamlit 진행률 콜백 호환.
+  - LLM 미설정 시 본문만 채우고 graceful degrade.
+- `scraping/tech_sites.py` — AI Times, 오토메이션월드 도메인 사이트.
+  - `TECH_SITES` dict 로 확장 가능.
+  - 휴리스틱(제목 길이 + 같은 root domain + nav blocklist) 기반 추출.
+  - `search_all()` 사이트별 실패 swallow + 합본.
+- `sola/prompts.py` — `SYSTEM_KEYWORD_EXTRACT`, `SYSTEM_SUMMARY_SHORT` 추가.
+- `store/news_db.py` 스키마 확장 — `content`, `keywords_llm`, `summary_llm`, `enriched_at` 컬럼.
+  - `_normalize_loaded()` 로 과거 Parquet 도 안전 로드.
+  - `drop_duplicates(keep="last")` 로 enrich 결과가 원본을 덮어쓰도록.
+- `ui/ingest_tab.py` 재작성 — 멀티 소스 선택, "본문 Enrich" 버튼, Streamlit 진행률, LLM 키워드 뱃지·LLM 요약 카드 표시.
+- 테스트 10건 추가 (`test_enrich.py` 6 + `test_tech_sites.py` 4). 전체 45/45 통과.
+
+### Added (M3 — 트렌드 + 부서별 AI 인사이트 + 채팅 영구화)
+- `store/cache.py` — 파일 기반 LLM 응답 캐시 (SHA1 키, UTF-8 텍스트). 동일 입력에 LLM 재호출 방지.
+- `store/trends.py` — `by_date` / `by_source` / `top_keywords` 집계.
+- `store/chat_log.py` — 채팅 히스토리 JSONL 영구 저장 (`data/sola/chat_history.jsonl`). 새로고침 후에도 복원.
+- `sola/insight.py` — 부서 단위 한 문단 인사이트 생성. (부서·뉴스셋·모델) 조합으로 캐시.
+- `sola/prompts.SYSTEM_INSIGHT` 추가 — 1~2문장 평문 출력 가정.
+- `ui/board_tab.py` 강화 — 트렌드(일자별·소스별) 차트 + 버튼 트리거 부서별 AI 인사이트 카드(2열 그리드).
+- `ui/sola_tab.py` — 채팅 히스토리 자동 로드/저장, 초기화 버튼이 디스크 캐시도 함께 삭제.
+- `tests/test_m3_cache_trends.py` (8건) + `tests/test_sola_insight.py` (3건) — 캐시·트렌드·채팅 영구화·인사이트 캐싱 동작 검증. 전체 35/35 통과.
+
+### Added (M2 — 구글 뉴스 + SOLA LLM 채팅)
+- `scraping/google.py` — 구글 뉴스 RSS(`news.google.com/rss/search`) 기반 검색. 표준 라이브러리 ElementTree 로 파싱(추가 의존성 없음).
+- `ui/ingest_tab.py` 소스 선택 UI — 네이버 / 구글 / 둘 다.
+- `sola/client.py` — OpenAI 호환 SDK 단일 호출 진입점, `LLM_BACKEND` 스위치, `LLMNotConfigured` 예외.
+- `sola/prompts.py` — 시스템 프롬프트 3종 (요약/제안서/채팅).
+- `sola/summarize.py` — 뉴스 DataFrame → 마크다운 요약.
+- `sola/propose.py` — 작업 1건 + 매칭 뉴스로 자동화 과제 제안서 마크다운.
+- `sola/chat_ctx.py` — 채팅 시 오늘 뉴스 헤드라인·로드맵 분포를 컨텍스트로 자동 첨부.
+- `ui/sola_tab.py` 재작성 — 3 sub-mode (뉴스 요약 / 자동화 과제 제안서 / 채팅). 채팅은 `st.chat_message`/`st.chat_input` 사용, 히스토리는 세션에 보관, 제안서는 마크다운 다운로드 지원.
+- `tests/test_google_search.py` — RSS 파싱 / 빈 키워드 / 중복 제거 / HTTP 실패 회귀 (4건).
+- `tests/test_sola.py` — 요약/제안서 입력 포맷팅 + 컨텍스트 조립 (4건).
+- `tests/test_sola_client.py` — 환경변수 미설정 분기 + OpenAI 호출 라우팅 (4건).
+
 ### Changed
+- `config.py` — `python-dotenv` 사용해 `.env` 자동 로드 (없으면 무시).
+- `requirements.txt` — `openai>=1.40`, `python-dotenv` 추가, 불필요한 `Pillow` 제거.
+- `docs/ARCHITECTURE.md` — sola 모듈 계약 · 새 세션 prefix(`sola_*`, `prop_*`) 반영.
+
+### Added (M1 — 인사이트보드 시스템 처음부터 재구성)
+- `config.py` — `.env` 기반 LLM 라우팅(`LLM_BACKEND=groq|internal|ollama`) 및 데이터 경로 상수.
+- `.env.example` — Groq 기본 / 사내 OpenAI 호환 API 전환용 템플릿.
+- `scraping/` 패키지 — `http.build_session()` 단일 진입점, `naver.search()`, 공용 `extract.py`.
+- `roadmap/` 패키지 — 첨부 엑셀(Master_Table) 한국어 헤더 → snake_case 정규화, 검증, Parquet 저장.
+  - 정규화 스키마: `team/dept/lv1/lv2/lv3/task/sub_task/task_def/sws_no/sws_name`.
+- `store/` 패키지 — 일자별 뉴스 Parquet, 룰 기반 뉴스↔작업 매칭(`store.match.score_matches`).
+- `ui/` 패키지 — 5탭 Streamlit UI(`ingest_tab`, `roadmap_tab`, `news_tab`, `sola_tab`, `board_tab`) + `styles.py`.
+- `app.py` 평탄 진입점 — 사이드바 5단계 라디오 디스패치, pending flag 패턴 준수.
+- `tests/conftest.py` — `data/` 경로를 tmp_path로 격리.
+- `tests/test_roadmap_ingest.py`, `tests/test_scraping_http.py`, `tests/test_news_db.py` — 12개 단위 테스트.
+
+### Changed
+- `requirements.txt` — `pyarrow`, `openpyxl` 추가 (Parquet · xlsx).
+- `docs/ARCHITECTURE.md` — 5단계 파이프라인·새 디렉토리 구조로 전면 갱신.
+
+### Removed
+- `scraper.py`, `insights.py`, `cardnews.py`, `local_store.py`, `shipyard_store.py`,
+  `proposal_engine.py`, `proposal_filters.py`, `workspace_overview.py`, `workspace_ui.py`,
+  `data_quality.py` — 인사이트보드 시스템 재설계에 따라 폐기. 스크래핑 로직은 `scraping/`에 슬림하게 재구현.
+- `components/`, 기존 `tests/test_*` 5종 — 폐기 모듈에 종속되어 함께 제거.
+
+### Changed (이전 작업, 변경 없음)
 - `app.py` import 구문을 정리해 중복 import(`insights`, `cardnews`, `LocalNewsRepository`)를 제거하고 엔트리 스크립트 의존성을 단순화.
 - `app.py` 인라인 `<style>` 블록을 제거하고 `assets/styles.css`를 로딩하는 `_inject_global_styles()`로 이관해 UI 스타일 자산을 코드와 분리.
 - `app.py`에 신규 진입 모드 `🏠 워크스페이스`를 추가하고, 수집/제안 현황을 요약하는 대시보드형 홈 화면을 연결.
