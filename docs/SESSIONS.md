@@ -5,11 +5,37 @@
 
 ---
 
-## 2026-05-12 · chore Quick Wins (CI + 라우팅 정정 + env sanitize)
+## 2026-05-12 · M4-δ 제안서 채팅 컨텍스트 첨부
+
+**브랜치:** `feat-chat-proposal-context`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+사용자가 "제안서까지 채팅으로 이어가나?" 검증 요청. 코드 확인 결과 `chat_ctx.build_context_block`이 뉴스+로드맵만 받고 있어 생성된 제안서를 채팅 컨텍스트로 못 잇는 갭 발견. 갭 메움.
+
+**한 일:**
+1. `sola/chat_ctx.build_context_block` 시그니처에 `proposal: str | None = None` 추가. 제안서가 있으면 최상단(뉴스보다 먼저)에 배치.
+2. `ui/sola_tab._build_proposal_context` 신설 — 세션의 `sola_prop_result` + 북마크 selectbox 두 경로 통합.
+3. `ui/sola_tab._render_chat` "📎 제안서 컨텍스트 첨부" expander 추가. 직전 제안서 없으면 토글 disable, 북마크 없으면 selectbox 빈 옵션만.
+4. `tests/test_sola.py` proposal 케이스 3건 추가 (앞쪽 배치 / proposal-only / None·빈문자열 무시).
+5. 전체 66/66 통과, on_click·외부 requests 0건.
+
+**다음 세션 TODO:**
+- 다중 일자 트렌드 (현재 오늘만).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성 (배치 미리 채우기).
+- 제안서 PDF export.
+- 작업 트리 검색창.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-12 · chore Quick Wins (CI + 라우팅 정정 + env sanitize) ✅ merged
 
 **브랜치:** `chore-quick-wins`
 **카테고리:** `chore`
-**상태:** in-progress
+**상태:** ✅ merged (PR #5 → main `b5a3ba6`)
 
 **배경:**
 M1~M4-γ 진행 동안 `CLAUDE.md`/`DEV_GUIDELINES.md`/`README.md` 가 폐기된 옛 파일명(`scraper.py`/`insights.py`/`cardnews.py`)을 가리키고 있어 다음 세션이 잘못된 파일을 찾을 위험. PR 자동 검증도 부재. `.env.example` 에 실제 API 키가 박혀 커밋된 상태.
@@ -20,12 +46,6 @@ M1~M4-γ 진행 동안 `CLAUDE.md`/`DEV_GUIDELINES.md`/`README.md` 가 폐기된
 3. `DEV_GUIDELINES.md` §2/§3/§4/§6/§8 — 파일별 역할표, 라우팅 표, invariant, 검증 명령, 스택 모두 갱신.
 4. `README.md` — 옛 파일명 제거, 페이지 스모크 안내 → 일반 pytest 안내.
 5. `.env.example` — Groq 실키를 `your-api-key-here` placeholder 로 교체.
-
-**다음 세션 TODO:**
-- 작업 트리 검색창 (수천 작업 대비).
-- 다중 일자 트렌드.
-- 매트릭스 셀별 LLM 코멘트 일괄 생성.
-- 제안서 PDF export.
 
 **블로커:** 없음. 단, 이전에 커밋된 실키는 별도 rotate 필요.
 

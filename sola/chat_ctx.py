@@ -4,9 +4,21 @@ from __future__ import annotations
 import pandas as pd
 
 
-def build_context_block(news_df: pd.DataFrame, roadmap_df: pd.DataFrame, *, max_news: int = 12) -> str:
-    """채팅 시스템 메시지 뒤에 붙일 컨텍스트 블록."""
+def build_context_block(
+    news_df: pd.DataFrame,
+    roadmap_df: pd.DataFrame,
+    *,
+    max_news: int = 12,
+    proposal: str | None = None,
+) -> str:
+    """채팅 시스템 메시지 뒤에 붙일 컨텍스트 블록.
+
+    `proposal` 이 주어지면 가장 먼저 배치돼 LLM 이 우선 참고하도록 한다.
+    """
     parts: list[str] = []
+
+    if proposal:
+        parts.append("[첨부 제안서]\n" + proposal.strip())
 
     if not news_df.empty:
         lines = []
