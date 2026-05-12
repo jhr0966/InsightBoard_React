@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+### Added (chore — CI + 라우팅 정정)
+- `.github/workflows/ci.yml` 신설 — PR/main push 마다 자동 검증.
+  - py_compile (모든 `git ls-files '*.py'`)
+  - `on_click=` 금지 패턴 검사 (app.py + ui/)
+  - `requests.{get,post,Session}(` 직접 호출 금지 (`scraping/http.py` 만 예외)
+  - `pytest -q`
+- 라우팅 문서 실제 디렉터리 구조 반영:
+  - `CLAUDE.md` 도메인/규칙/라우팅 표/검증 명령 — `scraper.py/insights.py/cardnews.py` 옛 이름 제거.
+  - `DEV_GUIDELINES.md` §2/§3/§4/§6/§8 — 패키지 단위 라우팅, invariant 갱신, 스택 갱신.
+  - `README.md` 도메인 설명·검증·테스트 섹션 갱신.
+
+### Security
+- `.env.example` 의 실제 Groq API 키를 `your-api-key-here` placeholder 로 교체. (커밋된 키는 별도 rotate 필요)
+
 ### Added (M4-γ — 자동화 기회 매트릭스 + 북마크)
 - `sola/opportunity.py` — 부서×공정(Lv3) 셀별 자동화 기회 점수.
   - `score_cells(news, roadmap, cell_level)` — 매칭 점수 누적 + 샘플 작업/뉴스.

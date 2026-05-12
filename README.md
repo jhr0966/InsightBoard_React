@@ -1,20 +1,24 @@
 # News
 
-뉴스 스크래퍼 기반 3대 도메인 Streamlit 앱:
+조선소 작업 정의를 이해하는 LLM 어시스턴트가 외부 기술 동향을 우리 작업에 어떻게 적용할지 번역해주는 Streamlit 시스템. 3대 축:
 
-1. **🔍 뉴스 스크래핑** — 네이버 뉴스 검색 · 사이트별 최신 기사 수집 (`scraper.py`)
-2. **📊 인사이트 보드** — 언론사 랭킹 · 키워드 빈도 · 일자별 트렌드 (`insights.py`)
-3. **🎨 카드뉴스** — 기사를 카드형 HTML/PNG 로 렌더 (`cardnews.py`)
+1. **🔍 수집·enrich** (`scraping/`) — 네이버 / 구글 RSS / AI Times / 오토메이션월드, 본문 fetch + LLM 키워드·요약.
+2. **🗂 로드맵·매칭** (`roadmap/`, `store/`) — 조선소 작업 정의 엑셀 → Parquet, 룰 기반 뉴스↔작업 매칭, 자동화 기회 매트릭스.
+3. **🤖 SOLA LLM** (`sola/`, `persona/`) — 요약·제안서·채팅·부서 인사이트, 페르소나 자동 주입.
+
+UI 는 3영역(`홈 · 탐색 · 작업실`) + `ui/<name>_tab.py` 탭 모듈로 분리.
 
 ## 실행
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env       # LLM_API_KEY=... 채우기 (LLM 기능을 쓰려면 필수)
 streamlit run app.py
 ```
 
 - Python ≥ 3.10
-- 최초 실행 시 `lxml` 설치 실패 시 `html.parser` 로 자동 fallback (`scraper._pick_parser`).
+- `lxml` 설치 실패 시 `html.parser` 로 자동 fallback.
+- LLM 미설정 상태에서도 수집·로드맵·매트릭스 표시는 정상 동작하며, LLM 결과만 graceful degrade.
 
 
 ## 빠른 개발 환경 세팅 (Streamlit)
@@ -61,22 +65,23 @@ git checkout -b <category>-<slug>    # fix|feat|refactor|style|docs|chore
 ## 커밋 전 검증
 
 ```bash
-python -m py_compile app.py scraper.py insights.py cardnews.py
-grep -nE 'on_click\s*=' app.py                                # 0
-grep -nE 'requests\.(get|post|Session)\(' scraper.py          # _build_session 내부 1건만
+# 스테이지된 .py 만 compile (CI 가 모든 .py 를 자동 검사)
+python -m py_compile $(git diff --name-only --cached | grep '\.py$')
+
+grep -rnE 'on_click\s*=' app.py ui/                                # 0
+grep -rnE 'requests\.(get|post|Session)\(' \
+     app.py ui/ sola/ store/ roadmap/ persona/ scraping/ \
+     | grep -v 'scraping/http\.py:'                                # 0
+
+pytest -q
 ```
 
-## 페이지 스모크 테스트
+> `.github/workflows/ci.yml` 이 PR 마다 동일 검증을 자동 실행합니다.
 
-지금까지 개발된 6개 페이지(네이버 검색/최신 기술 동향/조선소 작업 데이터/자동화 과제 제안/인사이트 보드/카드뉴스)가
-최소 렌더링에서 크래시 없이 뜨는지 자동으로 검사할 수 있습니다.
+## 테스트
 
 ```bash
-make test
+pytest -q
 ```
 
-개별 실행:
-
-```bash
-pytest -q tests/test_app_pages_smoke.py
-```
+`tests/` 아래 단위 테스트 60+건이 LLM 호출·HTTP·디스크 IO 를 모킹해 빠르게 돕니다.
