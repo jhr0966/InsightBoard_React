@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+### Added (M4-γ — 자동화 기회 매트릭스 + 북마크)
+- `sola/opportunity.py` — 부서×공정(Lv3) 셀별 자동화 기회 점수.
+  - `score_cells(news, roadmap, cell_level)` — 매칭 점수 누적 + 샘플 작업/뉴스.
+  - `llm_commentary(dept, lv3, sample_news, sample_tasks)` — 셀당 한 줄 LLM 코멘트, 캐시.
+- `sola/prompts.SYSTEM_OPPORTUNITY` 추가.
+- `store/bookmarks.py` — JSONL 영구화 북마크 (`data/bookmarks/items.jsonl`).
+  - 타입: `opportunity` / `proposal` / `news` / `task`.
+  - `Bookmark` dataclass + `add/list_all/remove/has/clear/make_id`.
+- `ui/board_tab.py` — 자동화 기회 매트릭스 섹션 (표 + 2열 카드 + 셀별 ☆ 북마크 버튼 + 페르소나 부서 강조).
+- `ui/bookmarks_tab.py` 신설 — 타입별 필터 + 카드 리스트 + 삭제.
+- `app.py` — 작업실에 "📌 북마크" sub-tab 추가.
+- `ui/sola_tab.py` — 제안서 생성 결과에 ☆ 북마크 버튼.
+- `tests/test_opportunity.py` 5건 + `tests/test_bookmarks.py` 6건. 전체 63/63 통과.
+- `tests/conftest.py` — `store.bookmarks` 의 DATA_ROOT from-import 바인딩 동기 패치.
+
 ### Added (M4-β — 페르소나 + 3영역 UI 재편)
 - `persona/` 패키지 — 사용자 부서·직무·관심 공정을 영구화하는 도메인 모델.
   - `schema.Persona` dataclass + `to_dict/from_dict`.

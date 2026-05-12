@@ -7,8 +7,11 @@ import pandas as pd
 import streamlit as st
 
 from roadmap.query import load_latest as load_roadmap
+from sola import opportunity
+from sola.client import is_configured as llm_ready
 from sola.insight import insight_for_dept
-from store import trends
+from store import bookmarks, trends
+from store.bookmarks import Bookmark
 from store.match import score_matches
 from store.news_db import load_all_today
 from ui.styles import page_header
@@ -80,6 +83,83 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
             )
 
 
+def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
+    st.subheader("🚀 자동화 기회 매트릭스 (부서 × 공정)")
+    st.caption("뉴스↔작업 매칭 점수를 셀 단위로 누적. 상위 셀이 자동화 기회가 큰 곳.")
+
+    cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
+    if cells.empty:
+        st.info("매칭되는 뉴스가 없습니다. 키워드 수집 또는 본문 Enrich 를 진행하세요.")
+        return
+
+    top_n = st.slider("상위 셀 개수", 3, 20, 8, key="board_opp_n")
+    use_llm_comment = st.checkbox(
+        "셀별 LLM 코멘트 사용 (캐시됨)", value=False, disabled=not llm_ready(),
+        help="LLM 미설정 시 룰 기반 표만 표시됩니다.",
+        key="board_opp_llm",
+    )
+
+    head = cells.head(top_n).copy()
+    # 표 보기
+    with st.expander("매트릭스 표 보기", expanded=False):
+        st.dataframe(head, use_container_width=True, hide_index=True)
+
+    # 카드 그리드 (2열)
+    from persona.schema import Persona
+
+    persona: Persona = st.session_state.get("persona") or Persona()
+    existing_ids = {b.id for b in bookmarks.list_all(type_="opportunity")}
+
+    cols = st.columns(2)
+    for i, (_, row) in enumerate(head.iterrows()):
+        bm_id = bookmarks.make_id("opportunity", str(row["dept"]), str(row["lv3"]))
+        with cols[i % 2]:
+            is_mine = persona.dept and row["dept"] == persona.dept
+            border = "border: 2px solid var(--accent);" if is_mine else ""
+            badge = "🎯 " if is_mine else ""
+            comment_html = ""
+            if use_llm_comment:
+                c = opportunity.llm_commentary(
+                    str(row["dept"]), str(row["lv3"]),
+                    str(row["sample_news"]), str(row["sample_tasks"]),
+                )
+                if c:
+                    comment_html = f'<div class="card-body" style="-webkit-line-clamp:5;">{html.escape(c)}</div>'
+
+            st.markdown(
+                f"""
+                <div class="news-card" style="min-height:auto; {border}">
+                    <div class="card-meta">
+                        <span class="card-press">{badge}{html.escape(str(row['dept']))}</span>
+                        <span class="card-date">{html.escape(str(row['lv3']))}</span>
+                        <span class="card-num">score {row['cell_score']:.1f}</span>
+                    </div>
+                    <div class="card-title" style="font-size:0.9rem;">{html.escape(str(row['sample_tasks']))}</div>
+                    {comment_html}
+                    <div class="card-body" style="-webkit-line-clamp:3;">관련 뉴스: {html.escape(str(row['sample_news']))}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            is_book = bm_id in existing_ids
+            btn_label = "★ 북마크됨" if is_book else "☆ 북마크"
+            if st.button(btn_label, key=f"opp_bm_{bm_id}", disabled=is_book):
+                bookmarks.add(Bookmark(
+                    id=bm_id,
+                    type="opportunity",
+                    title=f"{row['dept']} · {row['lv3']}",
+                    content=f"작업: {row['sample_tasks']}\n뉴스: {row['sample_news']}",
+                    tags=[str(row["dept"]), str(row["lv3"])],
+                ))
+                st.session_state["board_msg"] = ("ok", f"북마크 저장: {row['dept']} · {row['lv3']}")
+                st.rerun()
+
+    msg = st.session_state.pop("board_msg", None)
+    if msg:
+        kind, text = msg
+        {"ok": st.success, "warn": st.warning, "error": st.error}[kind](text)
+
+
 def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
     from persona.schema import Persona
     from ui import task_tree
@@ -143,6 +223,8 @@ def render() -> None:
 
     st.markdown("---")
     _render_trends(news)
+    st.markdown("---")
+    _render_opportunity(news, roadmap)
     st.markdown("---")
     _render_dept_insights(news, roadmap)
     st.markdown("---")

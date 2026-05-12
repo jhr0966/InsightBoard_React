@@ -27,11 +27,17 @@ def _isolated_data_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(paths_mod, "NEWS_DIR", news, raising=True)
     monkeypatch.setattr(paths_mod, "ROADMAP_DIR", roadmap, raising=True)
 
-    # persona.store 도 동일하게 동기화
+    # persona.store, store.bookmarks 도 동일하게 동기화
     try:
         import persona.store as persona_store_mod
 
         monkeypatch.setattr(persona_store_mod, "DATA_ROOT", root, raising=True)
+    except ImportError:
+        pass
+    try:
+        import store.bookmarks as bookmarks_mod
+
+        monkeypatch.setattr(bookmarks_mod, "DATA_ROOT", root, raising=True)
     except ImportError:
         pass
 

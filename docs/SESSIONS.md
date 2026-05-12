@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-05-12 · M4-γ 자동화 기회 매트릭스 + 북마크
+
+**브랜치:** `claude/plan-insight-board-system-5MfMe`
+**카테고리:** `feat`
+**상태:** in-progress (PR #3 에 누적)
+
+**한 일:**
+1. `sola/opportunity.py` — 부서×공정 셀별 점수(`score_cells`) + 셀당 한 줄 LLM 코멘트(`llm_commentary`, 캐시).
+2. `sola/prompts.py` — `SYSTEM_OPPORTUNITY` 추가.
+3. `store/bookmarks.py` — JSONL 영구화 (`data/bookmarks/items.jsonl`). 4가지 타입(opportunity/proposal/news/task).
+4. `ui/board_tab.py` — 자동화 기회 매트릭스 섹션(표 + 2열 카드 + ☆ 북마크 + 페르소나 부서 강조).
+5. `ui/bookmarks_tab.py` 신설 — 타입 필터 + 카드 리스트 + 🗑️ 삭제.
+6. `app.py` — 작업실에 "📌 북마크" sub-tab 추가.
+7. `ui/sola_tab.py` — 제안서 결과에 ☆ 북마크 버튼.
+8. 테스트 11건 추가 (opportunity 5 + bookmarks 6). 전체 63/63 통과.
+
+**다음 세션 TODO (M4-δ 또는 M5 후보):**
+- 작업 트리에 검색창 (수천 작업 대비).
+- 제안서 PDF export (한글 폰트 임베딩).
+- GitHub Actions CI (pytest + py_compile + 금지 패턴).
+- 다중 일자 트렌드 (현재 오늘만).
+- 부서별 매트릭스 셀별 LLM 코멘트 일괄 생성 (배치 미리 채우기).
+
+**블로커:** 없음. 페르소나 미설정 상태에서도 매트릭스/북마크 모두 정상 동작.
+
+---
+
 ## 2026-05-12 · M4-β 페르소나 + 3영역 UI 재편
 
 **브랜치:** `claude/plan-insight-board-system-5MfMe`

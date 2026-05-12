@@ -12,6 +12,7 @@ import streamlit as st
 from config import ensure_data_dirs
 from ui import (
     board_tab,
+    bookmarks_tab,
     home_tab,
     ingest_tab,
     news_tab,
@@ -48,8 +49,12 @@ elif area.startswith("🔍"):
     with tab_board:
         board_tab.render()
 else:
-    tab_sola, tab_news = st.tabs(["SOLA (요약·제안서·채팅)", "뉴스 콘텐츠"])
+    tab_sola, tab_news, tab_bm = st.tabs(
+        ["SOLA (요약·제안서·채팅)", "뉴스 콘텐츠", "📌 북마크"]
+    )
     with tab_sola:
         sola_tab.render()
     with tab_news:
         news_tab.render()
+    with tab_bm:
+        bookmarks_tab.render()

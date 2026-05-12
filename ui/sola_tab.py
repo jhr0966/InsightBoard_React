@@ -115,12 +115,35 @@ def _render_propose() -> None:
     if result:
         st.markdown("---")
         st.markdown(result)
-        st.download_button(
-            "마크다운 다운로드",
-            data=result.encode("utf-8"),
-            file_name=f"proposal_{task_row.get('task', 'task')}.md",
-            mime="text/markdown",
-        )
+        col_dl, col_bm = st.columns([1, 1])
+        with col_dl:
+            st.download_button(
+                "마크다운 다운로드",
+                data=result.encode("utf-8"),
+                file_name=f"proposal_{task_row.get('task', 'task')}.md",
+                mime="text/markdown",
+            )
+        with col_bm:
+            from store import bookmarks
+            from store.bookmarks import Bookmark
+
+            bm_id = bookmarks.make_id(
+                "proposal",
+                str(task_row.get("dept", "")),
+                str(task_row.get("task", "")),
+                str(task_row.get("sub_task", "")),
+            )
+            is_book = bookmarks.has(bm_id)
+            if st.button("★ 북마크됨" if is_book else "☆ 제안서 북마크", disabled=is_book, key="prop_bm_btn"):
+                bookmarks.add(Bookmark(
+                    id=bm_id,
+                    type="proposal",
+                    title=f"{task_row.get('dept', '')} · {task_row.get('task', '')}",
+                    content=result,
+                    tags=[str(task_row.get("dept", "")), str(task_row.get("lv3", ""))],
+                ))
+                st.success("북마크 저장됨")
+                st.rerun()
 
 
 def _render_chat() -> None:
