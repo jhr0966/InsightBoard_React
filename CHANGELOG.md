@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+### Changed (UI-1 — 디자인 시스템 v2 + 사이드 채팅 인프라)
+- `assets/styles.css` 전면 리뉴얼 — Pretendard 단일 폰트, 흰색 베이스 + 파란 포인트(`#2563EB`).
+  - 라운드 스케일(8/12/16/20px), shadow 스케일, neutral gray 시스템, 일관된 위젯(버튼·입력·라디오·탭·expander) modern화.
+  - 카드 컴포넌트 `.card` / `.card-flat` / `.news-card` + 호버 시 파란 액센트.
+  - 빠른 액션 그리드 `.quick-grid` / `.quick-tile`, 상태 배지 `.status-badge.*`.
+- `ui/styles.py:page_header(title, sub, chat_toggle_key=..., extra_chips=...)` — 모던 헤더 + LLM 상태 chip + 우측 💬 채팅 토글 버튼. 반환값으로 채팅 패널 활성 여부.
+- `ui/styles.py:section_label(text)` — 카드 그룹 위 작은 섹션 레이블 헬퍼.
+- `ui/layout.py` 신설 — `main_and_chat(chat_key, page_context_fn, persona, ...)` 컨텍스트 매니저로 메인 + (옵션) 우측 사이드 채팅 패널. 페이지 컨텍스트(현재 화면 내용)를 LLM 시스템 메시지에 자동 주입.
+  - `render_chat_panel(chat_key, page_context, persona, ...)` — 페이지별 분리된 히스토리(`_sidechat_<key>`), 초기화 버튼, pending flag 패턴.
+- `ui/sidebar.py` — modern 사이드바: 브랜드 마크, 영역 네비 라디오, 페르소나 패널, 시스템 상태 칩.
+- `ui/home_tab.py` — 새 디자인 적용 (demo). 페르소나 welcome 카드, 메트릭 3개, 부서 매칭 뉴스 + AI 인사이트(채팅 열리면 세로 배치), 빠른 행동 그리드.
+- 채팅 패널 토글 ON 시 메인 3:2 분할, OFF 시 전체폭. 컨텍스트는 lazy(토글 ON 일 때만 계산).
+
 ### Added (docs — 작업 완료 보고 규칙)
 - `CLAUDE.md` 절대 규칙 8번 — 모든 개발 지시 완료 후 (1) 무엇이 개발됐는지 (2) 어떻게 조치됐는지 (3) 다음 단계 3가지를 한 메시지로 의무 보고. 사용자가 매 PR 결과를 동일 포맷으로 확인 가능.
 
