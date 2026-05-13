@@ -115,3 +115,55 @@ def test_chat_ctx_proposal_none_or_empty_ignored():
     assert "첨부 제안서" not in chat_ctx.build_context_block(
         news, pd.DataFrame(), proposal=None,
     )
+
+
+def test_chat_ctx_includes_adopted_proposals_with_title_and_note():
+    from store.bookmarks import Bookmark
+
+    adopted = [
+        Bookmark(
+            id="a", type="proposal", title="용접 자동화 도입",
+            status="adopted", decided_at="2026-05-10T00:00:00+00:00",
+            decision_note="3분기 PoC 승인",
+        ),
+        Bookmark(
+            id="b", type="proposal", title="디지털 트윈 확장",
+            status="adopted", decided_at="2026-05-08T00:00:00+00:00",
+        ),
+    ]
+    block = chat_ctx.build_context_block(
+        pd.DataFrame(), pd.DataFrame(), adopted_proposals=adopted,
+    )
+    assert "이전 사이클에서 채택된 제안서" in block
+    assert "용접 자동화 도입" in block
+    assert "2026-05-10" in block
+    assert "3분기 PoC 승인" in block
+    assert "디지털 트윈 확장" in block
+    # 본문 content 는 노출 X (decision_note 만)
+
+
+def test_chat_ctx_adopted_proposals_after_attached_proposal_before_news():
+    """배치 순서: 첨부 제안서 → 채택 제안서 → 오늘 뉴스."""
+    from store.bookmarks import Bookmark
+
+    news = pd.DataFrame([{"title": "용접 로봇 신기술", "press": "AITimes"}])
+    block = chat_ctx.build_context_block(
+        news, pd.DataFrame(),
+        proposal="현재 제안서 본문",
+        adopted_proposals=[Bookmark(id="x", type="proposal", title="과거 채택", status="adopted")],
+    )
+    i_prop = block.index("첨부 제안서")
+    i_adopt = block.index("이전 사이클에서 채택된 제안서")
+    i_news = block.index("오늘 뉴스 헤드라인")
+    assert i_prop < i_adopt < i_news
+
+
+def test_chat_ctx_empty_or_none_adopted_ignored():
+    news = pd.DataFrame([{"title": "용접", "press": "X"}])
+    assert "이전 사이클" not in chat_ctx.build_context_block(news, pd.DataFrame())
+    assert "이전 사이클" not in chat_ctx.build_context_block(
+        news, pd.DataFrame(), adopted_proposals=[],
+    )
+    assert "이전 사이클" not in chat_ctx.build_context_block(
+        news, pd.DataFrame(), adopted_proposals=None,
+    )

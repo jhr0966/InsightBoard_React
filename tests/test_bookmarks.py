@@ -167,6 +167,33 @@ def test_expire_old_targets_only_specified_types():
     assert ids == {"old_news", "old_opp"}
 
 
+def test_list_adopted_proposals_returns_adopted_only_sorted_by_decided_at():
+    bookmarks.clear()
+    bookmarks.add(Bookmark(id="a", type="proposal", title="A", status="adopted",
+                           decided_at="2026-05-10T00:00:00+00:00"))
+    bookmarks.add(Bookmark(id="b", type="proposal", title="B", status="pending"))
+    bookmarks.add(Bookmark(id="c", type="proposal", title="C", status="adopted",
+                           decided_at="2026-05-12T00:00:00+00:00"))
+    bookmarks.add(Bookmark(id="d", type="proposal", title="D", status="rejected"))
+
+    out = bookmarks.list_adopted_proposals(limit=5)
+    ids = [b.id for b in out]
+    # adopted 만, decided_at 내림차순
+    assert ids == ["c", "a"]
+
+
+def test_list_adopted_proposals_respects_limit():
+    bookmarks.clear()
+    for i in range(8):
+        bookmarks.add(Bookmark(
+            id=f"p{i}", type="proposal", title=f"P{i}", status="adopted",
+            decided_at=f"2026-05-{12-i:02d}T00:00:00+00:00",
+        ))
+    out = bookmarks.list_adopted_proposals(limit=3)
+    assert len(out) == 3
+    assert out[0].id == "p0"  # 가장 최근
+
+
 def test_expire_old_preserves_when_created_at_unparseable():
     bookmarks.clear()
     now = datetime(2026, 5, 12, tzinfo=timezone.utc)

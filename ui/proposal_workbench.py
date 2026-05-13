@@ -68,6 +68,14 @@ def _load_selected(source: str) -> tuple[str, str] | None:
     return None
 
 
+def _active_bm_id() -> str:
+    """활성 제안서가 북마크 출처면 그 id, 아니면 빈 문자열."""
+    src = st.session_state.get("pw_active_source", "")
+    if src.startswith("bookmark:"):
+        return src.split(":", 1)[1]
+    return ""
+
+
 def _do_refine(instruction: str, persona: Persona) -> None:
     current = st.session_state.get("pw_active_md", "")
     if not current:
@@ -94,6 +102,23 @@ def _do_discuss(question: str, persona: Persona) -> None:
     current = st.session_state.get("pw_active_md", "")
     persona_block = persona_ctx.system_block(persona)
     ctx = f"\n\n--- 참고 제안서 ---\n{current.strip()}\n--- /참고 제안서 ---\n" if current else ""
+
+    # 이전 사이클에서 채택된 제안서를 자동 컨텍스트로 첨부 (제목·메모만).
+    from store import bookmarks as _bm
+
+    adopted = [b for b in _bm.list_adopted_proposals(limit=5) if b.id != _active_bm_id()]
+    if adopted:
+        lines = ["\n--- 이전 사이클에서 채택된 제안서 ---"]
+        for b in adopted:
+            head = f"- {b.title}"
+            if b.decided_at:
+                head += f" (채택: {b.decided_at[:10]})"
+            lines.append(head)
+            if b.decision_note:
+                lines.append(f"    메모: {b.decision_note}")
+        lines.append("--- /채택된 제안서 ---\n")
+        ctx += "\n".join(lines)
+
     history = st.session_state["pw_chat"]
     messages = [{"role": "system", "content": SYSTEM_CHAT + persona_block + ctx}]
     messages.extend({"role": m["role"], "content": m["content"]} for m in history if m["role"] in ("user", "assistant"))
