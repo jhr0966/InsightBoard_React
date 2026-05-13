@@ -298,15 +298,8 @@ def render() -> None:
             enr = int((news["content"].astype(str).str.len() >= 50).sum()) if not news.empty and "content" in news.columns else 0
             m3.metric("본문 확보", f"{enr:,}건")
 
-            if roadmap.empty or news.empty:
-                st.markdown(
-                    '<div class="card-flat" style="margin-top:1.5rem;">'
-                    '로드맵 업로드와 뉴스 수집을 먼저 진행하세요. '
-                    '<b>🔍 탐색</b> 영역으로 이동.</div>',
-                    unsafe_allow_html=True,
-                )
-            else:
-                # 🧠 SOLA 한 줄 + emergence 칩 위젯
+            if not news.empty:
+                # 🧠 SOLA 한 줄 + emergence 칩 위젯 — news 만 있으면 표시 (roadmap 무관)
                 wcol1, wcol2 = st.columns([5, 1])
                 with wcol1:
                     st.markdown(
@@ -333,6 +326,15 @@ def render() -> None:
                         )
                     st.rerun()
 
+            # 부서 뉴스 + 인사이트 — roadmap + news 둘 다 필요
+            if roadmap.empty or news.empty:
+                st.markdown(
+                    '<div class="card-flat" style="margin-top:1.5rem;">'
+                    '로드맵 업로드와 뉴스 수집을 먼저 진행하세요. '
+                    '<b>🔍 탐색</b> 영역으로 이동.</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
                 # 부서 뉴스 + 인사이트 2:1
                 st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
                 if chat_open:
