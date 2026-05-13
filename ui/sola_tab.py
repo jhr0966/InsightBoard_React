@@ -239,8 +239,12 @@ def _render_chat() -> None:
         try:
             persona: Persona = st.session_state.get("persona") or Persona()
             proposal_text = _build_proposal_context()
+            from store import bookmarks as _bm
+
             ctx = chat_ctx.build_context_block(
-                load_all_today(), load_roadmap(), proposal=proposal_text,
+                load_all_today(), load_roadmap(),
+                proposal=proposal_text,
+                adopted_proposals=_bm.list_adopted_proposals(limit=5),
             )
             persona_block = persona_ctx.system_block(persona)
             messages = [{"role": "system", "content": SYSTEM_CHAT + persona_block + ctx}]

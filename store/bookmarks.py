@@ -139,6 +139,17 @@ def clear() -> int:
     return len(items)
 
 
+def list_adopted_proposals(*, limit: int = 5) -> list[Bookmark]:
+    """채택된 제안서를 가장 최근 결정 순으로 N건 반환.
+
+    채팅 컨텍스트에 "지난 사이클 결정"으로 자동 노출하기 위한 헬퍼.
+    `decided_at` 우선, 없으면 `created_at` 으로 정렬.
+    """
+    items = [b for b in list_all(type_="proposal") if b.status == "adopted"]
+    items.sort(key=lambda b: b.decided_at or b.created_at, reverse=True)
+    return items[:limit]
+
+
 def set_status(bm_id: str, status: str, *, note: str = "") -> bool:
     """북마크 의사결정 상태를 갱신. 변경되면 True.
 

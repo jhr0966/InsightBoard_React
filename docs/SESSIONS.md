@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-05-13 · M4-η 채택된 제안서를 채팅 컨텍스트에 자동 노출
+
+**브랜치:** `feat-chat-adopted-context`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+M4-ζ 로 의사결정 상태(adopted)는 영구 보존되지만, 이번 사이클의 LLM 호출에 영향을 안 주면 사이클이 완전히 닫히지 않음. 채택된 제안서를 채팅 컨텍스트로 자동 노출해 **새 결정이 과거 결정과 일관되도록** 마무리.
+
+**한 일:**
+1. `store/bookmarks.list_adopted_proposals(*, limit=5)` — adopted 제안서를 `decided_at` 내림차순 N건.
+2. `sola/chat_ctx.build_context_block(..., adopted_proposals=...)` — "이전 사이클에서 채택된 제안서" 섹션. 제목 + 메모만 (본문 X). 배치: 첨부 제안서 → 채택 제안서 → 오늘 뉴스.
+3. `ui/sola_tab._render_chat` — `list_adopted_proposals(limit=5)` 자동 주입.
+4. `ui/proposal_workbench._do_discuss` — 대화 모드 동일. `_active_bm_id()` 로 활성 제안서 자신은 중복 제거.
+5. `tests/test_bookmarks.py` 2건 + `tests/test_sola.py` 3건. 전체 84/84 통과.
+
+**사이클 효과:**
+- 어제 회의에서 "용접 자동화 PoC 채택" → adopted + 메모 "3분기 PoC 승인".
+- 오늘 새 뉴스 수집 → 채팅에서 "이거 우리 어떻게 적용?" 물으면 LLM 이 어제 채택한 PoC 를 자동 인지하고 일관된 답변.
+
+**다음 세션 TODO:**
+- 다중 일자 트렌드 (오늘 vs 어제 vs 7일).
+- 일일 자동 수집 (cron/GH Actions).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성.
+- 작업 트리 검색창.
+
+**블로커:** 없음. 채택 제안서가 0건이면 컨텍스트 섹션 미노출 (graceful).
+
+---
+
 ## 2026-05-13 · M4-ζ 북마크 의사결정 상태 + 자동 만료
 
 **브랜치:** `feat-bookmark-status-expiry`

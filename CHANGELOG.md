@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (M4-η — 채택된 제안서를 채팅 컨텍스트에 자동 노출)
+- `store/bookmarks.list_adopted_proposals(*, limit=5)` — 채택 제안서를 `decided_at` 내림차순으로 N건 반환.
+- `sola/chat_ctx.build_context_block(..., adopted_proposals=...)` — 주어지면 "이전 사이클에서 채택된 제안서" 섹션으로 컨텍스트에 자동 포함 (제목 + 메모만, 본문 X → 토큰 부담 최소).
+- 배치 순서: 첨부 제안서 → 채택 제안서 → 오늘 뉴스 → 로드맵.
+- `ui/sola_tab._render_chat` — 채팅 호출 시 자동으로 채택 제안서 5건 주입.
+- `ui/proposal_workbench._do_discuss` — 대화 모드도 동일 (활성 제안서 자신은 중복 제거).
+- 사이클 효과: 이번 사이클 LLM 이 **지난 사이클의 결정**(채택된 제안서 + 메모)을 자연스럽게 참조 → 새 결정이 과거 결정과 일관됨.
+- `tests/test_bookmarks.py` 2건 + `tests/test_sola.py` 3건 추가 (adopted-only / limit / 배치 순서 / 빈 리스트 무시). 전체 84/84 통과.
+
 ### Added (M4-ζ — 북마크 의사결정 상태 + 자동 만료)
 - `store/bookmarks.Bookmark` 에 `status` (`pending`/`adopted`/`rejected`) + `decision_note` + `decided_at` 필드 추가. `from_dict` 가 옛 record 도 안전하게 backfill.
 - `store/bookmarks.set_status(bm_id, status, note="")` — 상태 + 메모 + decided_at 갱신.
