@@ -22,6 +22,19 @@ ROADMAP_DIR = DATA_ROOT / "roadmap"
 SOLA_DIR = DATA_ROOT / "sola"
 ASSETS_DIR = REPO_ROOT / "assets"
 
+# Phase 6-B: cron 일일 수집의 기본 키워드 세트 (조선소 도메인 + 인접 기술).
+# GH Actions workflow_dispatch 인자로 override 가능.
+DEFAULT_DAILY_KEYWORDS: tuple[str, ...] = (
+    "조선소 자동화",
+    "용접 로봇",
+    "디지털 트윈",
+    "스마트팩토리",
+    "산업용 로봇",
+    "협동 로봇",
+    "제조 AI",
+    "선박 건조",
+)
+
 
 def ensure_data_dirs() -> None:
     for p in (NEWS_DIR, ROADMAP_DIR, SOLA_DIR):
