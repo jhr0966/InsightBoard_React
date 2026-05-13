@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (Phase 6-B 후속 — cron 안 enrich 자동 호출)
+- `scripts/daily_scrape.py` 인자 추가 — `--enrich-max N`(기본 30, 0 이면 스킵) + `--no-llm`(본문 fetch 만, LLM 키워드·요약 끄기).
+- `scripts/daily_scrape._run_enrich(*, max_n, with_llm)` — collect_batch 직후 `load_all_today()` → `content` 부족 기사 head(N) → `enrich_articles` → 소스별 그룹 `upsert_articles`. 진행 로그는 10건/완료 시 stdout.
+- main 흐름에 enrich 단계 통합 — `report.total_articles > 0` + `enrich_max > 0` 일 때만 호출, `try/except Exception` 으로 격리(enrich 실패해도 cron exit 0 유지).
+- `tests/test_daily_scrape_enrich.py` 8건 — enrich 호출 / `--enrich-max 0` 스킵 / 수집 0건 스킵 / 예외 격리(exit 0) / max_n cap / `--no-llm` 전달 / 기본 with_llm=True / 이미 enrich 된 기사 제외. 전체 **142/142** 통과.
+
 ### Added (Phase 6-A — 홈 트렌드 위젯)
 - `ui/home_tab._compute_home_trend_payload(news_today, *, days=7, now=None)` — 홈용 (`period_df`, `vol_df`, `emergence`) 일괄 계산. `now` 주입으로 테스트 결정성 확보.
 - `ui/home_tab._chip_row(label, df, color)` — emergence 키워드 칩 행 HTML 생성. delta 컬럼 있으면 `+N`, 아니면 count. `<script>` 자동 escape.

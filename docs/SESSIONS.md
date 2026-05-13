@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-05-13 · Phase 6-B 후속 — cron 안 enrich 자동 호출
+
+**브랜치:** `feat-cron-enrich-auto` (main 위 — PR #22 머지 후)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 선택):**
+Phase 6-B 의 cron(GH Actions)이 raw 수집만 하고 본문 enrich 는 UI 버튼 수동이라, 홈 위젯의 "본문 확보 N건" 메트릭이 cron 만으로는 채워지지 않음. AskUserQuestion 결과 1순위로 **cron 안 enrich 자동 호출** 선택.
+
+**한 일:**
+1. `scripts/daily_scrape.py` 에 `--enrich-max N`(기본 30) + `--no-llm` 인자 추가.
+2. `_run_enrich(*, max_n, with_llm)` 헬퍼 — UI(ingest_tab) 의 enrich 흐름을 cron 친화 형태로 추출:
+   - `load_all_today` → `content` 짧은 기사 head(N) → `enrich_articles` → 소스별 `upsert_articles`.
+   - LLM 호출은 enrich 안에서 `LLMNotConfigured` 처리 — secret 없으면 자동 룰 폴백.
+3. main 흐름에 통합 — `total_articles > 0` + `enrich_max > 0` 일 때만 호출, `try/except` 로 격리하여 enrich 실패해도 cron exit 0.
+4. `tests/test_daily_scrape_enrich.py` 8건 — 모든 분기 검증.
+5. 전체 142/142 통과, on_click·외부 requests 0건.
+
+**효과:**
+- cron 한 번 실행 → 수집 → 자동 enrich (LLM secret 있으면 LLM 호출, 없으면 본문 fetch 만).
+- enrich 한도(`--enrich-max 30`) 로 LLM 호출 비용 상한 보호.
+- enrich 실패가 cron 안정성에 영향 없음 (exit 0 유지, stderr 경고만).
+
+**다음 세션 TODO:**
+- GH Actions 시크릿 점검 (`LLM_API_KEY` 설정 후 첫 cron 실행에서 LLM 키워드/요약이 채워지는지).
+- 위젯 칩 → 보드 emergence 표 점프 (인터랙티브).
+- Phase 6-C 매트릭스 셀 LLM 코멘트.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · Phase 6-A 홈 트렌드 위젯
 
 **브랜치:** `feat-home-trend-widget` (main 위, M5-β 머지 후)
