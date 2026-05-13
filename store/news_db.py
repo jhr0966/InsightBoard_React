@@ -1,11 +1,12 @@
 """뉴스 article dict 리스트 ↔ 일자별 Parquet 저장소."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
 
+from config import NEWS_DIR
 from store.paths import latest_parquet, news_dir_for
 
 
@@ -63,6 +64,35 @@ def load_all_today() -> pd.DataFrame:
     """오늘자 디렉토리의 모든 Parquet을 합쳐서 반환."""
     today_dir = news_dir_for()
     frames = [_normalize_loaded(pd.read_parquet(p)) for p in sorted(today_dir.glob("*.parquet"))]
+    if not frames:
+        return pd.DataFrame(columns=list(_ARTICLE_COLS))
+    return pd.concat(frames, ignore_index=True).drop_duplicates(subset=["link"], keep="last")
+
+
+def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.DataFrame:
+    """오늘 포함 최근 `days` 일치 일자 디렉토리의 모든 Parquet 합본.
+
+    Args:
+        days: 1 이상. `days=1` 이면 오늘만(= `load_all_today` 와 동등).
+        now: 테스트용 시점 주입 (UTC).
+
+    각 일자 디렉토리는 `data/news/YYYY-MM-DD/`. 존재하지 않으면 스킵.
+    중복 link 는 마지막(=최신 저장 시점) 항목 보존.
+    """
+    if days < 1:
+        raise ValueError("days must be >= 1")
+    cur = now or datetime.now(timezone.utc)
+    frames: list[pd.DataFrame] = []
+    for i in range(days):
+        d = (cur - timedelta(days=i)).strftime("%Y-%m-%d")
+        day_dir = NEWS_DIR / d
+        if not day_dir.exists():
+            continue
+        for p in sorted(day_dir.glob("*.parquet")):
+            try:
+                frames.append(_normalize_loaded(pd.read_parquet(p)))
+            except Exception:  # noqa: BLE001 — 깨진 parquet 은 스킵
+                continue
     if not frames:
         return pd.DataFrame(columns=list(_ARTICLE_COLS))
     return pd.concat(frames, ignore_index=True).drop_duplicates(subset=["link"], keep="last")

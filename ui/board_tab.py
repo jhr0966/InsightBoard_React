@@ -14,27 +14,85 @@ from sola.insight import insight_for_dept
 from store import bookmarks, trends
 from store.bookmarks import Bookmark
 from store.match import score_matches
-from store.news_db import load_all_today
+from store.news_db import load_all_today, load_news_for_days
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
 
-def _render_trends(news: pd.DataFrame) -> None:
-    col1, col2 = st.columns(2)
+_PERIOD_OPTIONS = {
+    "오늘": 1,
+    "최근 7일": 7,
+    "최근 30일": 30,
+}
+
+
+def _render_trends(news_today: pd.DataFrame) -> None:
+    """다중 일자 트렌드. 라디오로 기간 선택, 일자별 라인 + 키워드 emergence."""
+    period_label = st.radio(
+        "기간",
+        list(_PERIOD_OPTIONS.keys()),
+        horizontal=True,
+        key="board_period",
+        label_visibility="collapsed",
+    )
+    days = _PERIOD_OPTIONS[period_label]
+
+    if days == 1:
+        period_df = news_today
+    else:
+        period_df = load_news_for_days(days)
+
+    st.caption(f"{period_label} · 기사 {len(period_df):,}건")
+
+    col1, col2 = st.columns([2, 1])
     with col1:
-        st.markdown("**일자별 기사 수**")
-        date_df = trends.by_date(news)
-        if date_df.empty:
+        vol_df = trends.daily_volume(period_df, days=days)
+        if vol_df["count"].sum() == 0:
             st.caption("(데이터 없음)")
+        elif days == 1:
+            st.bar_chart(vol_df.set_index("date"))
         else:
-            st.bar_chart(date_df.set_index("date"))
+            st.line_chart(vol_df.set_index("date"))
     with col2:
-        st.markdown("**소스별 기사 수**")
-        src_df = trends.by_source(news)
+        st.caption("소스별 분포")
+        src_df = trends.by_source(period_df)
         if src_df.empty:
             st.caption("(데이터 없음)")
         else:
             st.dataframe(src_df, use_container_width=True, hide_index=True)
+
+    # 키워드 emergence — days > 1 일 때만 의미. 비교 기준: today vs (어제~)
+    if days > 1 and not period_df.empty:
+        from datetime import datetime, timezone
+
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        is_today = period_df.get("date", pd.Series("", index=period_df.index)).astype(str).eq(today_str)
+        today_only = period_df[is_today]
+        base_only = period_df[~is_today]
+        if not today_only.empty and not base_only.empty:
+            emergence = trends.keyword_emergence(today_only, base_only, top_n=8)
+            ec1, ec2, ec3 = st.columns(3)
+            with ec1:
+                st.markdown("**🆕 새 키워드**")
+                if emergence["new"].empty:
+                    st.caption("(없음)")
+                else:
+                    st.dataframe(emergence["new"], use_container_width=True, hide_index=True)
+            with ec2:
+                st.markdown("**📈 상승 키워드**")
+                if emergence["rising"].empty:
+                    st.caption("(없음)")
+                else:
+                    st.dataframe(
+                        emergence["rising"][["keyword", "today", "delta"]],
+                        use_container_width=True, hide_index=True,
+                    )
+            with ec3:
+                st.markdown("**📉 사라진 키워드**")
+                if emergence["gone"].empty:
+                    st.caption("(없음)")
+                else:
+                    st.dataframe(emergence["gone"], use_container_width=True, hide_index=True)
 
 
 def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
@@ -207,15 +265,41 @@ def _build_page_context(news: pd.DataFrame, roadmap: pd.DataFrame, persona: Pers
     if news.empty or roadmap.empty:
         return "\n".join(lines)
 
-    by_date = trends.by_date(news)
-    if not by_date.empty:
-        recent = by_date.tail(5).to_dict(orient="records")
-        lines.append("최근 일자별 기사 수: " + ", ".join(f"{r['date']}={r['count']}" for r in recent))
-    by_src = trends.by_source(news)
+    # 선택된 기간 (없으면 오늘)
+    period_label = st.session_state.get("board_period", "오늘")
+    days = _PERIOD_OPTIONS.get(period_label, 1)
+    lines.append(f"선택 기간: {period_label} ({days}일)")
+
+    period_df = news if days == 1 else load_news_for_days(days)
+    vol_df = trends.daily_volume(period_df, days=days)
+    if not vol_df.empty:
+        lines.append("일자별 기사 수: " + ", ".join(
+            f"{r['date']}={r['count']}" for _, r in vol_df.iterrows()
+        ))
+    by_src = trends.by_source(period_df)
     if not by_src.empty:
         lines.append("소스 분포: " + ", ".join(
             f"{r['source']}={r['count']}" for r in by_src.head(5).to_dict(orient="records")
         ))
+
+    # 다중 일자일 때 emergence 도 컨텍스트로
+    if days > 1 and not period_df.empty:
+        from datetime import datetime, timezone
+
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        is_today = period_df.get("date", pd.Series("", index=period_df.index)).astype(str).eq(today_str)
+        today_only = period_df[is_today]
+        base_only = period_df[~is_today]
+        if not today_only.empty and not base_only.empty:
+            emergence = trends.keyword_emergence(today_only, base_only, top_n=5)
+            if not emergence["new"].empty:
+                lines.append("새 키워드(오늘만): " + ", ".join(
+                    f"{r['keyword']}={r['count']}" for _, r in emergence["new"].iterrows()
+                ))
+            if not emergence["rising"].empty:
+                lines.append("상승 키워드(오늘↑base): " + ", ".join(
+                    f"{r['keyword']}(+{r['delta']})" for _, r in emergence["rising"].iterrows()
+                ))
 
     try:
         cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
