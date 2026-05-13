@@ -75,6 +75,33 @@ def test_compute_payload_empty_today_returns_empty_emergence():
     assert out["emergence"]["gone"].empty
 
 
+def test_compute_payload_uses_published_at_when_date_is_display_text():
+    """실데이터 회귀: 네이버 '1시간 전', 구글 RFC pubDate, tech '최신 동향' 처럼
+    date 가 표시 텍스트여도 published_at 으로 today 분류가 동작해야."""
+    from datetime import datetime, timezone
+
+    fixed_now = datetime(2026, 5, 13, 12, 0, 0, tzinfo=timezone.utc)
+
+    _save_at("2026-05-13", "naver", [
+        {"title": "오늘 a", "link": "u1",
+         "date": "1시간 전", "published_at": "2026-05-13T03:00:00+00:00",
+         "keywords_llm": "디지털트윈"},
+    ])
+    _save_at("2026-05-12", "naver", [
+        {"title": "어제 b", "link": "u2",
+         "date": "Tue, 12 May 2026 09:00:00 GMT", "published_at": "2026-05-12T09:00:00+00:00",
+         "keywords_llm": "그라인딩"},
+    ])
+
+    today_df = news_db.load_news_for_days(days=1, now=fixed_now)
+    out = home_tab._compute_home_trend_payload(today_df, days=7, now=fixed_now)
+    em = out["emergence"]
+    # 디지털트윈은 published_at 기준 오늘만 → new
+    assert "디지털트윈" in set(em["new"]["keyword"].astype(str))
+    # 그라인딩은 어제만 → gone
+    assert "그라인딩" in set(em["gone"]["keyword"].astype(str))
+
+
 # ── _chip_row ─────────────────────────────────────────────────────
 
 def test_chip_row_renders_keywords_with_count():

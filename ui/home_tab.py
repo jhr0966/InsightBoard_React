@@ -39,7 +39,9 @@ def _compute_home_trend_payload(
 
     if days > 1 and not period_df.empty:
         today_str = cur.strftime("%Y-%m-%d")
-        is_today = period_df.get("date", pd.Series("", index=period_df.index)).astype(str).eq(today_str)
+        # 스크래퍼별로 `date` 컬럼이 표시 텍스트("1시간 전", "최신 동향", RFC pubDate)
+        # 일 수 있어 정규화된 `published_at` 을 우선 사용 (store/trends._date_col 동일 패턴).
+        is_today = trends._date_col(period_df).eq(today_str)
         today_only = period_df[is_today]
         base_only = period_df[~is_today]
         if not today_only.empty and not base_only.empty:

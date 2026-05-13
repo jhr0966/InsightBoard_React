@@ -12,7 +12,8 @@
 - `ui/home_tab._build_trend_context(brief_text, payload)` — 일자별 카운트 + 새/상승 키워드 + brief 를 사이드 채팅 컨텍스트 라인으로 직렬화.
 - `ui/home_tab.render` — 메인 영역(부서 뉴스 위)에 위젯 + `[🔄 갱신]` 버튼 (pending flag → `st.rerun` 패턴) 삽입. brief 는 `_home_brief_text` 세션 키로 보관, page_context 에 자동 합류.
 - `_build_page_context(..., trend_ctx="")` 시그니처 확장 — 홈 트렌드 컨텍스트가 부서 뉴스/인사이트와 동등하게 사이드 채팅에 전달.
-- `tests/test_home_trend_widget.py` 13건 신설 — payload(days=1/7/empty) + 칩 HTML(count/delta/empty/XSS escape) + 위젯 HTML(brief 표시/placeholder) + trend_context 합산 + page_context 통합. 전체 **126/126** 통과.
+- `tests/test_home_trend_widget.py` 14건 신설 — payload(days=1/7/empty/published_at fallback) + 칩 HTML(count/delta/empty/XSS escape) + 위젯 HTML(brief 표시/placeholder) + trend_context 합산 + page_context 통합. 전체 **134/134** 통과.
+- 회귀 수정 (Codex review #20): `_compute_home_trend_payload` 의 today/base 분류가 raw `date` 컬럼 대신 `store.trends._date_col` 패턴(`published_at` 우선) 사용. 스크래퍼별로 `date` 가 표시 텍스트("1시간 전", RFC pubDate, "최근 동향")인 실데이터에서도 emergence 칩이 빈 결과로 떨어지지 않음.
 
 ### Added (Phase 6-B — cron 일일 자동 수집)
 - `config.DEFAULT_DAILY_KEYWORDS` 추가 — 조선소 도메인 8개 기본 키워드(`조선소 자동화`, `용접 로봇`, `디지털 트윈`, `스마트팩토리`, `산업용 로봇`, `협동 로봇`, `제조 AI`, `선박 건조`). cron/CLI 기본값.
