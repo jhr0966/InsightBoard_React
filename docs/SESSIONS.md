@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-05-13 · UI-2 사이드 채팅 + 새 디자인 전체 탭 적용 (Phase 2)
+
+**브랜치:** `style-ui-redesign-phase2` (Phase 1 위에서 분기)
+**카테고리:** `style`
+**상태:** in-progress
+
+**배경:**
+Phase 1 에서 디자인 시스템 + 사이드 채팅 인프라(`ui/layout.py`) 를 만들고 `home_tab` 에 데모 적용. Phase 2 는 같은 패턴을 나머지 7개 탭에 일관 적용해 시스템 전체를 새 디자인 + 사이드 채팅 인지로 통일.
+
+**한 일:**
+1. **board_tab** — `main_and_chat("board")` + page_context(트렌드·매트릭스·기회 상위 8셀). 4개 섹션을 `section_label` 로 정리.
+2. **ingest_tab** — `main_and_chat("ingest")` + page_context(통계·소스 분포·최근 헤드라인).
+3. **news_tab** — `main_and_chat("news")` + page_context(언론사·키워드 분포).
+4. **bookmarks_tab** — `main_and_chat("bookmarks")` + page_context(현재 필터 목록). 상태 배지 인라인 style → `.status-badge` 클래스로 통일. 카드 루프를 `_render_items()` 헬퍼로 분리.
+5. **roadmap_tab** — `main_and_chat("roadmap")` + page_context(부서·Lv3 집계).
+6. **sola_tab** — 상태 패널 `.card-flat`, 라디오 label_visibility 정리. (자체 채팅 본체라 사이드 토글 제외)
+7. **proposal_workbench** — `st.subheader` → `page_header` 로 통일.
+8. 모든 탭의 페이지 컨텍스트는 lazy → 토글 OFF 일 때 평가 안 됨 → 추가 비용 0.
+
+**조치:**
+- pytest 84/84 ✅, py_compile OK, on_click·외부 requests 0건.
+- 기능 변경 0 (HTML 카드 구조/세션키/계산 로직 그대로).
+
+**다음 세션 TODO:**
+- 사이드 채팅 패널의 컨텍스트 자동 첨부 — 활성 북마크/제안서, 검색 결과 등 보다 풍부한 컨텍스트.
+- 사이드바 페르소나 패널 → 컴팩트 카드.
+- 다중 일자 트렌드 (기능 작업).
+- 일일 자동 수집 (cron/GH Actions).
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · UI-1 디자인 시스템 v2 + 사이드 채팅 인프라 (Phase 1)
 
 **브랜치:** `style-ui-redesign-phase1`
