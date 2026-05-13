@@ -54,4 +54,12 @@ def _isolated_data_dirs(monkeypatch, tmp_path):
         monkeypatch.setattr(chat_log_mod, "SOLA_DIR", sola, raising=True)
     except ImportError:
         pass
+
+    # store.news_db 가 NEWS_DIR 를 from-import 함 (load_news_for_days 용)
+    try:
+        import store.news_db as news_db_mod
+
+        monkeypatch.setattr(news_db_mod, "NEWS_DIR", news, raising=True)
+    except ImportError:
+        pass
     yield Path(root)

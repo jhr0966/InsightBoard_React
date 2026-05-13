@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (M5-α — 다중 일자 트렌드, Phase 5)
+- `store/news_db.load_news_for_days(days=7, now=None)` — 오늘 포함 최근 N일 일자 디렉토리(`data/news/YYYY-MM-DD/*.parquet`)를 합쳐 반환. 누락 일자 스킵, `link` 기준 중복 제거.
+- `store/trends.daily_volume(df, days=7, now=None)` — 최근 N일 일자별 기사 수, **데이터 없는 일자는 0 으로 채움** (라인 차트 끊김 방지).
+- `store/trends.keyword_emergence(today_df, base_df, top_n=10, min_count=1)` — 오늘 vs 기준 기간 키워드 차이. `new`(오늘만 등장), `gone`(기준에만 등장), `rising`(둘 다 있지만 today 가 더 많음) 3개 DataFrame 반환. `keywords_llm` 우선, fallback `keywords`.
+- `store/trends.compare_distribution(today_df, base_df, key="press", top_n=10)` — 분포 비교 (delta 내림차순).
+- `ui/board_tab` 트렌드 섹션 — **기간 라디오** (오늘 / 최근 7일 / 최근 30일) 추가. 라인 차트(days>1) / 바 차트(days=1) 자동 전환. days>1 일 때 🆕 새 키워드 / 📈 상승 키워드 / 📉 사라진 키워드 3열 카드.
+- `ui/board_tab._build_page_context` — 선택된 기간 + 일자별 카운트 + emergence 가 사이드 채팅 컨텍스트에 자동 포함.
+- `tests/test_trends_multi_day.py` 11건 — `load_news_for_days`(다일 합본·누락 스킵·중복 dedupe·zero 거부) + `daily_volume`(zero-fill·empty·zero 거부) + `keyword_emergence`(new/gone/rising 분리·empty·top_n) + `compare_distribution`(delta 정렬). 전체 105/105 통과.
+- `tests/conftest.py` — `store.news_db.NEWS_DIR` from-import 바인딩도 동기 패치.
+
 ### Changed (UI-4 — 사이드바 컴팩트 개편, Phase 4)
 - `ui/sidebar.py` 리팩터 — 페르소나가 설정된 상태에서는 큰 폼이 아닌 **컴팩트 카드** 노출.
   - `.persona-card` — 아바타(이름/부서 첫글자, 파랑 그라데이션) + 이름 + 부서·직무·팀 meta. ellipsis 처리.

@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-05-13 · M5-α 다중 일자 트렌드 (Phase 5)
+
+**브랜치:** `feat-multi-day-trends` (main 위에서 분기, Phase 2~4 통합 머지 후)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 선택):**
+Phase 4 통합 머지 직후 AskUserQuestion 결과 **다중 일자 트렌드** 선택. 지금까지 인사이트보드 트렌드는 '오늘' 만 보여서 사이클 관점이 빠져있던 것을 7일/30일 대조로 확장.
+
+**한 일:**
+1. `store/news_db.load_news_for_days(days, now)` — 오늘 포함 최근 N 일 디렉토리 합본 + link dedupe + 누락 일자 스킵 + 깨진 parquet 스킵.
+2. `store/trends.daily_volume(df, days, now)` — 일자별 카운트, 데이터 없는 일자도 0 으로 채움 (라인 차트 끊김 방지).
+3. `store/trends.keyword_emergence(today, base, top_n, min_count)` — new/gone/rising 3분류. `keywords_llm` 우선.
+4. `store/trends.compare_distribution(today, base, key, top_n)` — 분포 비교 (delta 내림차순).
+5. `ui/board_tab` 트렌드 섹션 — 기간 라디오(오늘/7일/30일), 라인 ↔ 바 자동 전환, days>1 일 때 🆕/📈/📉 emergence 3열.
+6. `ui/board_tab._build_page_context` — 선택 기간 + 일자별 카운트 + emergence 를 사이드 채팅 컨텍스트에 자동 포함.
+7. `tests/test_trends_multi_day.py` 11건 + conftest 에 `news_db.NEWS_DIR` 동기화. 전체 105/105 통과.
+
+**효과:**
+- "오늘 새로 떠오른 키워드는?" "어제까지 많이 나오던 게 오늘 사라졌나?" 같은 사이클 단위 질의 가능.
+- 사이드 채팅이 자동으로 기간 컨텍스트 + emergence 를 인지 → LLM 응답이 더 정확.
+
+**다음 세션 TODO:**
+- 일일 자동 수집 (cron / GH Actions).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성 (배치 미리 채우기).
+- emergence 결과를 LLM 으로 해석한 "오늘의 트렌드 한 줄" 카드.
+
+**블로커:** 없음. 과거 데이터가 없으면 emergence 가 조용히 빈 결과 반환 (graceful).
+
+---
+
 ## 2026-05-13 · UI-4 사이드바 컴팩트 개편 (Phase 4)
 
 **브랜치:** `style-sidebar-polish` (Phase 3 위에서 분기)
