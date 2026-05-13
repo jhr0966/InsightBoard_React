@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-05-13 · Phase 6-A 후속 — 트렌드 위젯 roadmap 의존성 제거
+
+**브랜치:** `fix-home-trend-roadmap-gate`
+**카테고리:** `fix`
+**상태:** in-progress
+
+**배경:**
+PR #21 머지 직후 Codex P2 review #2 — `render()` 의 `if roadmap.empty or news.empty:` 분기 안에 위젯이 갇혀 있어 로드맵 미업로드(뉴스만 수집된 onboarding) 상태에서 위젯이 안 보임. 트렌드 위젯 자체는 roadmap 의존성이 없으므로 분기 분리 필요.
+
+**한 일:**
+- `ui/home_tab.render` 의 위젯 블록을 roadmap-gate 바깥으로 이동. 새 분기:
+  1. `if not news.empty:` → 트렌드 위젯 (roadmap 무관) 렌더.
+  2. `if roadmap.empty or news.empty:` → 안내 카드. 아니면 부서 뉴스 + AI 인사이트 2:1.
+- 페이로드 계산은 이미 stateless (빈 news 도 안전), 신규 테스트 없이 기존 14건 통과.
+
+**다음 세션 TODO:**
+- cron 안에서 enrich 자동 호출 (Phase 6-B 후속).
+- Phase 6-C 매트릭스 셀 LLM 코멘트.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · Phase 6-A 홈 트렌드 위젯
 
 **브랜치:** `feat-home-trend-widget` (main 위, M5-β 머지 후)

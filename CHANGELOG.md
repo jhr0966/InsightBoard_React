@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Fixed (Phase 6-A 후속 — roadmap 의존성 제거)
+- `ui/home_tab.render` 의 트렌드 위젯이 `if roadmap.empty or news.empty` 분기 안에 갇혀 있어 로드맵 미업로드 onboarding 상태(뉴스만 수집된 상태)에서 위젯이 보이지 않던 버그 수정 (Codex review #21). 트렌드 위젯은 roadmap 의존성이 없으므로 `news` 만 있어도 렌더되도록 분기 분리. 부서 매칭 카드/안내는 기존대로 roadmap+news 모두 필요.
+
 ### Added (Phase 6-A — 홈 트렌드 위젯)
 - `ui/home_tab._compute_home_trend_payload(news_today, *, days=7, now=None)` — 홈용 (`period_df`, `vol_df`, `emergence`) 일괄 계산. `now` 주입으로 테스트 결정성 확보.
 - `ui/home_tab._chip_row(label, df, color)` — emergence 키워드 칩 행 HTML 생성. delta 컬럼 있으면 `+N`, 아니면 count. `<script>` 자동 escape.
