@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-05-13 · Phase 6-C 후속 — 매트릭스 셀 → 매칭 뉴스 점프
+
+**브랜치:** `feat-matrix-cell-jump-matches` (main 위, PR #21/#22 머지 후)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 지시):**
+"다음 작업 진행해" — 이전 추천 1순위(매트릭스 카드 → 매칭 뉴스 점프) 선택. PR #24 가 매트릭스 셀에 LLM 코멘트를 채웠지만, "이 셀의 실제 뉴스가 뭐냐"로 가는 경로가 없어 onboarding 단절.
+
+**한 일:**
+1. `ui/board_tab._matches_for_focus(news, roadmap, dept, lv3)` — stateless 헬퍼. 빈 입력 / 미존재 / 깨진 스키마 모두 graceful.
+2. `_render_opportunity` 카드 — `[🔗 매칭 뉴스]` 버튼 (북마크 옆 2열). pending flag → 루프 후 `board_match_focus` 세션 승격 + `st.rerun`. CLAUDE.md §3 패턴 준수.
+3. `_render_matches` — focus 있으면 task_tree 우회. 상단 안내 카드 + `[↩️ 전체 매칭 보기로 되돌리기]`.
+4. `tests/test_board_match_focus.py` 7건. 전체 141/141 통과.
+
+**효과:**
+- 매트릭스 진입 → 상위 셀에서 `[🔗 매칭 뉴스]` 한 번 → 토스트 + 매칭 섹션이 해당 (dept · lv3) 뉴스만 표시.
+- 사용자가 "이 셀의 자동화 기회가 큰데 어떤 뉴스가 근거인지?" 즉답 가능.
+- `[↩️ 전체 보기]` 로 언제든 자유 필터(task_tree)로 복귀.
+
+**다음 세션 TODO:**
+- 위젯 칩 → 보드 emergence 표 점프 (Phase 6-A 후속).
+- cron 안에서 매트릭스 prefill 자동 호출 (PR #23+#24 머지 후).
+- 트렌드 헬퍼 DRY 리팩터.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · Phase 6-A 홈 트렌드 위젯
 
 **브랜치:** `feat-home-trend-widget` (main 위, M5-β 머지 후)

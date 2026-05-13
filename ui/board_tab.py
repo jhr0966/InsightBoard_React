@@ -246,16 +246,38 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
             )
             is_book = bm_id in existing_ids
             btn_label = "★ 북마크됨" if is_book else "☆ 북마크"
-            if st.button(btn_label, key=f"opp_bm_{bm_id}", disabled=is_book):
-                bookmarks.add(Bookmark(
-                    id=bm_id,
-                    type="opportunity",
-                    title=f"{row['dept']} · {row['lv3']}",
-                    content=f"작업: {row['sample_tasks']}\n뉴스: {row['sample_news']}",
-                    tags=[str(row["dept"]), str(row["lv3"])],
-                ))
-                st.session_state["board_msg"] = ("ok", f"북마크 저장: {row['dept']} · {row['lv3']}")
-                st.rerun()
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button(btn_label, key=f"opp_bm_{bm_id}", disabled=is_book, use_container_width=True):
+                    bookmarks.add(Bookmark(
+                        id=bm_id,
+                        type="opportunity",
+                        title=f"{row['dept']} · {row['lv3']}",
+                        content=f"작업: {row['sample_tasks']}\n뉴스: {row['sample_news']}",
+                        tags=[str(row["dept"]), str(row["lv3"])],
+                    ))
+                    st.session_state["board_msg"] = ("ok", f"북마크 저장: {row['dept']} · {row['lv3']}")
+                    st.rerun()
+            with b2:
+                if st.button(
+                    "🔗 매칭 뉴스",
+                    key=f"opp_jump_{bm_id}",
+                    use_container_width=True,
+                    help="이 셀(부서·공정)의 매칭 뉴스만 아래 매칭 섹션에 표시합니다.",
+                ):
+                    st.session_state["_do_match_focus"] = {
+                        "dept": str(row["dept"]),
+                        "lv3": str(row["lv3"]),
+                    }
+
+    pending_focus = st.session_state.pop("_do_match_focus", None)
+    if pending_focus is not None:
+        st.session_state["board_match_focus"] = pending_focus
+        st.session_state["board_msg"] = (
+            "ok",
+            f"🔗 '{pending_focus['dept']} · {pending_focus['lv3']}' 셀의 매칭 뉴스를 아래에서 확인하세요.",
+        )
+        st.rerun()
 
     msg = st.session_state.pop("board_msg", None)
     if msg:
@@ -263,23 +285,62 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
         {"ok": st.success, "warn": st.warning, "error": st.error}[kind](text)
 
 
+def _matches_for_focus(news: pd.DataFrame, roadmap: pd.DataFrame, dept: str, lv3: str) -> pd.DataFrame:
+    """매트릭스 셀 점프용 — (dept, lv3) 행에 대한 매칭 결과만 추출.
+
+    빈 roadmap·뉴스·매칭 없음은 빈 DataFrame 반환. `_render_matches` 의 자유 필터 경로와
+    분리된 stateless 함수 — 단위 테스트 가능.
+    """
+    if news.empty or roadmap.empty:
+        return pd.DataFrame()
+    if "dept" not in roadmap.columns or "lv3" not in roadmap.columns:
+        return pd.DataFrame()
+    sub = roadmap[(roadmap["dept"] == dept) & (roadmap["lv3"] == lv3)]
+    if sub.empty:
+        return pd.DataFrame()
+    return score_matches(news, sub, top_k=3)
+
+
 def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
     from ui import task_tree
 
-    # 페르소나 부서를 기본 필터로 미리 적용
-    persona: Persona = st.session_state.get("persona") or Persona()
-    if persona.dept and "board_dept" not in st.session_state:
-        st.session_state["board_dept"] = persona.dept
+    # 매트릭스 카드에서 점프해 들어온 경우: task_tree 필터를 우회하고 (dept, lv3) 직접 필터.
+    focus = st.session_state.get("board_match_focus")
+    if isinstance(focus, dict) and focus.get("dept") and focus.get("lv3"):
+        f_dept = str(focus["dept"])
+        f_lv3 = str(focus["lv3"])
+        cl_col, _ = st.columns([4, 1])
+        with cl_col:
+            st.markdown(
+                f'<div class="card-flat" style="margin-bottom:8px;">'
+                f'🔗 매트릭스 셀 매칭 보기 — <b>{html.escape(f_dept)}</b> · '
+                f'<b>{html.escape(f_lv3)}</b></div>',
+                unsafe_allow_html=True,
+            )
+        if st.button("↩️ 전체 매칭 보기로 되돌리기", key="board_match_focus_clear"):
+            st.session_state["_do_clear_match_focus"] = True
+        if st.session_state.pop("_do_clear_match_focus", False):
+            st.session_state.pop("board_match_focus", None)
+            st.rerun()
+        matches = _matches_for_focus(news, roadmap, f_dept, f_lv3)
+        if matches.empty:
+            st.info(f"'{f_dept} · {f_lv3}' 셀에 매칭되는 뉴스가 없습니다.")
+            return
+    else:
+        # 페르소나 부서를 기본 필터로 미리 적용
+        persona: Persona = st.session_state.get("persona") or Persona()
+        if persona.dept and "board_dept" not in st.session_state:
+            st.session_state["board_dept"] = persona.dept
 
-    _selection, filtered = task_tree.render_drilldown(roadmap, key_prefix="board")
-    if filtered.empty:
-        st.warning("선택한 필터에 해당하는 작업이 없습니다.")
-        return
+        _selection, filtered = task_tree.render_drilldown(roadmap, key_prefix="board")
+        if filtered.empty:
+            st.warning("선택한 필터에 해당하는 작업이 없습니다.")
+            return
 
-    matches = score_matches(news, filtered, top_k=3)
-    if matches.empty:
-        st.info("매칭되는 뉴스가 없습니다. 다른 키워드로 수집해보세요.")
-        return
+        matches = score_matches(news, filtered, top_k=3)
+        if matches.empty:
+            st.info("매칭되는 뉴스가 없습니다. 다른 키워드로 수집해보세요.")
+            return
 
     agg = (
         matches.groupby(["dept", "lv3", "task"], dropna=False)

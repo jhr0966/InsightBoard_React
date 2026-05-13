@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (Phase 6-C 후속 — 매트릭스 셀 → 매칭 뉴스 점프)
+- `ui/board_tab._matches_for_focus(news, roadmap, dept, lv3) -> DataFrame` — (dept, lv3) 셀의 매칭 결과만 추출하는 stateless 헬퍼. 빈 입력·존재하지 않는 셀·깨진 스키마는 모두 빈 DF 반환.
+- `_render_opportunity` 카드 — 북마크 버튼 옆에 `[🔗 매칭 뉴스]` 버튼 추가. 클릭 시 `_do_match_focus={dept, lv3}` pending flag → 루프 끝에서 `board_match_focus` 세션으로 승격 + `st.rerun`. `board_msg` 토스트로 사용자에게 매칭 섹션 안내.
+- `_render_matches` — `board_match_focus` 가 있으면 `task_tree.render_drilldown` 우회하고 `_matches_for_focus` 결과만 표시. 상단에 `🔗 (dept · lv3)` 안내 카드 + `[↩️ 전체 매칭 보기로 되돌리기]` 버튼.
+- `tests/test_board_match_focus.py` 7건 — 부분집합 반환 / 미존재 셀·부서 빈 결과 / 빈 news·roadmap 처리 / 깨진 스키마(컬럼 누락) graceful / 반환 컬럼(`score`/`news_title`/`link`) 확인. 전체 **141/141** 통과.
+
 ### Added (Phase 6-A — 홈 트렌드 위젯)
 - `ui/home_tab._compute_home_trend_payload(news_today, *, days=7, now=None)` — 홈용 (`period_df`, `vol_df`, `emergence`) 일괄 계산. `now` 주입으로 테스트 결정성 확보.
 - `ui/home_tab._chip_row(label, df, color)` — emergence 키워드 칩 행 HTML 생성. delta 컬럼 있으면 `+N`, 아니면 count. `<script>` 자동 escape.
