@@ -2,18 +2,129 @@
 from __future__ import annotations
 
 import html
+from datetime import datetime, timezone
 
 import pandas as pd
 import streamlit as st
 
 from persona.schema import Persona
 from roadmap.query import load_latest as load_roadmap
+from sola import trend_brief
 from sola.client import is_configured as llm_ready
 from sola.insight import insight_for_dept
+from store import trends
 from store.match import score_matches
-from store.news_db import load_all_today
+from store.news_db import load_all_today, load_news_for_days
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
+
+HOME_TREND_DAYS = 7
+HOME_TREND_LABEL = "최근 7일"
+
+
+def _compute_home_trend_payload(
+    news_today: pd.DataFrame,
+    *,
+    days: int = HOME_TREND_DAYS,
+    now: datetime | None = None,
+) -> dict:
+    """홈 위젯용 트렌드 페이로드. days=1 이면 today only, days>1 이면 누적.
+
+    Args:
+        now: 테스트용 시점 주입 (UTC). 미지정 시 datetime.now(UTC).
+    """
+    cur = now or datetime.now(timezone.utc)
+    period_df = news_today if days == 1 else load_news_for_days(days, now=cur)
+    vol_df = trends.daily_volume(period_df, days=days, now=cur)
+
+    if days > 1 and not period_df.empty:
+        today_str = cur.strftime("%Y-%m-%d")
+        is_today = period_df.get("date", pd.Series("", index=period_df.index)).astype(str).eq(today_str)
+        today_only = period_df[is_today]
+        base_only = period_df[~is_today]
+        if not today_only.empty and not base_only.empty:
+            emergence = trends.keyword_emergence(today_only, base_only, top_n=5)
+        else:
+            emergence = _empty_emergence()
+    else:
+        emergence = _empty_emergence()
+    return {"period_df": period_df, "vol_df": vol_df, "emergence": emergence}
+
+
+def _empty_emergence() -> dict[str, pd.DataFrame]:
+    return {
+        "new": pd.DataFrame(columns=["keyword", "count"]),
+        "gone": pd.DataFrame(columns=["keyword", "count"]),
+        "rising": pd.DataFrame(columns=["keyword", "today", "base", "delta"]),
+    }
+
+
+def _chip_row(label: str, df: pd.DataFrame, *, color: str) -> str:
+    """emergence DataFrame 을 작은 칩 줄 HTML 로 변환. df 비면 빈 칩."""
+    if df.empty:
+        chips_html = '<span style="font-size:0.78rem;color:var(--text-3);">(없음)</span>'
+    else:
+        chips: list[str] = []
+        for _, r in df.head(5).iterrows():
+            kw = html.escape(str(r["keyword"]))
+            if "delta" in df.columns:
+                n = f"+{int(r['delta'])}"
+            else:
+                n = str(int(r["count"]))
+            chips.append(
+                f'<span class="card-press" style="background:{color};color:#fff;'
+                f'margin-right:6px;font-weight:600;">{kw} · {n}</span>'
+            )
+        chips_html = "".join(chips)
+    return (
+        f'<div style="margin-bottom:8px;">'
+        f'<span style="font-size:0.82rem;color:var(--text-2);margin-right:8px;font-weight:600;">'
+        f'{html.escape(label)}</span>{chips_html}</div>'
+    )
+
+
+def _trend_widget_html(brief_text: str, emergence: dict[str, pd.DataFrame]) -> str:
+    """🧠 SOLA 한 줄 + 🆕/📈/📉 칩 3행 카드."""
+    brief_safe = html.escape(brief_text) if brief_text else (
+        '<span style="color:var(--text-3);">버튼을 눌러 LLM 해석을 생성하세요.</span>'
+    )
+    return (
+        f'<div class="card" style="margin-top:1.5rem;">'
+        f'<div class="card-meta">'
+        f'<span class="card-press">🧠 SOLA 한 줄</span>'
+        f'<span class="card-date">{html.escape(HOME_TREND_LABEL)}</span>'
+        f'</div>'
+        f'<div class="card-body" style="-webkit-line-clamp:4;font-size:0.95rem;'
+        f'margin-bottom:10px;">{brief_safe}</div>'
+        f'<div style="border-top:1px solid var(--border);padding-top:10px;">'
+        f'{_chip_row("🆕 새 키워드", emergence["new"], color="#2563eb")}'
+        f'{_chip_row("📈 상승 키워드", emergence["rising"], color="#16a34a")}'
+        f'{_chip_row("📉 사라진 키워드", emergence["gone"], color="#9ca3af")}'
+        f'</div></div>'
+    )
+
+
+def _build_trend_context(brief_text: str, payload: dict) -> str:
+    """홈 page_context 에 합칠 트렌드 라인들."""
+    lines: list[str] = []
+    vol_df = payload["vol_df"]
+    if not vol_df.empty:
+        lines.append(
+            f"\n[{HOME_TREND_LABEL} 트렌드] 일자별 기사 수: "
+            + ", ".join(f"{r['date']}={r['count']}" for _, r in vol_df.iterrows())
+        )
+    em = payload["emergence"]
+    if not em["new"].empty:
+        lines.append("새 키워드(오늘만): " + ", ".join(
+            f"{r['keyword']}={r['count']}" for _, r in em["new"].head(5).iterrows()
+        ))
+    if not em["rising"].empty:
+        lines.append("상승 키워드: " + ", ".join(
+            f"{r['keyword']}(+{r['delta']})" for _, r in em["rising"].head(5).iterrows()
+        ))
+    if brief_text:
+        lines.append(f"SOLA 한 줄 해석: {brief_text}")
+    return "\n".join(lines)
 
 
 def _persona_welcome(persona: Persona) -> str:
@@ -120,11 +231,18 @@ def _dept_insight_card(persona: Persona, news: pd.DataFrame) -> tuple[str, str]:
     )
 
 
-def _build_page_context(persona: Persona, news_items: list[dict], insight_text: str) -> str:
+def _build_page_context(
+    persona: Persona,
+    news_items: list[dict],
+    insight_text: str,
+    trend_ctx: str = "",
+) -> str:
     """사이드 채팅에 주입할 페이지 컨텍스트."""
     lines = []
     if persona.is_set():
         lines.append(f"사용자 부서: {persona.dept or '미설정'}, 직무: {persona.job or '미설정'}")
+    if trend_ctx:
+        lines.append(trend_ctx)
     if insight_text:
         lines.append(f"\n부서 AI 인사이트:\n{insight_text}")
     if news_items:
@@ -154,7 +272,12 @@ def render() -> None:
     if not roadmap.empty and not news.empty:
         news_html, news_ctx = _dept_news_cards(persona, roadmap, news)
         insight_html, insight_text = _dept_insight_card(persona, news)
-    page_ctx = _build_page_context(persona, news_ctx, insight_text)
+
+    # 홈 트렌드 위젯 페이로드 (메인·컨텍스트 양쪽 재사용)
+    trend_payload = _compute_home_trend_payload(news)
+    brief_text = st.session_state.get("_home_brief_text", "")
+    trend_ctx = _build_trend_context(brief_text, trend_payload)
+    page_ctx = _build_page_context(persona, news_ctx, insight_text, trend_ctx=trend_ctx)
 
     with main_and_chat(
         "home",
@@ -181,6 +304,33 @@ def render() -> None:
                     unsafe_allow_html=True,
                 )
             else:
+                # 🧠 SOLA 한 줄 + emergence 칩 위젯
+                wcol1, wcol2 = st.columns([5, 1])
+                with wcol1:
+                    st.markdown(
+                        _trend_widget_html(brief_text, trend_payload["emergence"]),
+                        unsafe_allow_html=True,
+                    )
+                with wcol2:
+                    st.markdown("<div style='margin-top:1.6rem;'></div>", unsafe_allow_html=True)
+                    if st.button(
+                        "🔄 갱신",
+                        key="_home_brief_btn",
+                        use_container_width=True,
+                        disabled=trend_payload["period_df"].empty,
+                        help="LLM 으로 최근 7일 트렌드를 한 줄로 다시 해석합니다.",
+                    ):
+                        st.session_state["_do_home_brief"] = True
+
+                if st.session_state.pop("_do_home_brief", False):
+                    with st.spinner("LLM 호출 중…"):
+                        st.session_state["_home_brief_text"] = trend_brief.brief(
+                            period_label=HOME_TREND_LABEL,
+                            vol_df=trend_payload["vol_df"],
+                            emergence=trend_payload["emergence"],
+                        )
+                    st.rerun()
+
                 # 부서 뉴스 + 인사이트 2:1
                 st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
                 if chat_open:

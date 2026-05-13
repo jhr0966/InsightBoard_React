@@ -5,11 +5,42 @@
 
 ---
 
-## 2026-05-13 · Phase 6-B cron 일일 자동 수집
+## 2026-05-13 · Phase 6-A 홈 트렌드 위젯
+
+**브랜치:** `feat-home-trend-widget` (main 위, M5-β 머지 후)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 선택):**
+M5-β 가 보드 트렌드 섹션에만 한 줄 카드를 띄움 → 홈 진입 시에는 트렌드를 못 봄. AskUserQuestion 결과 **홈 카드에 SOLA 한 줄 + emergence 칩** 선택.
+
+**한 일:**
+1. `_compute_home_trend_payload(news_today, *, days=7, now=None)` — 보드의 헬퍼와 동일 패턴이지만 `now` 주입으로 테스트 결정성 확보. 보드의 헬퍼와는 의도적으로 분리(보드는 `st.session_state` 의존, 홈은 stateless).
+2. `_chip_row(label, df, color)` — count / delta 자동 분기. XSS escape.
+3. `_trend_widget_html(brief, emergence)` — 🧠 SOLA 한 줄 + 3행 칩 카드. brief 비면 안내 문구.
+4. `_build_trend_context(brief, payload)` + `_build_page_context(..., trend_ctx=)` — 사이드 채팅이 홈 트렌드를 자연스럽게 인지.
+5. `render()` 메인 영역에 위젯 + [🔄 갱신] 버튼 (pending flag 패턴). brief 는 `_home_brief_text` 세션 키.
+6. `tests/test_home_trend_widget.py` 13건. 전체 126/126 통과.
+
+**효과:**
+- 홈 진입 → 메트릭 아래 즉시 🧠 SOLA 한 줄 + 🆕 / 📈 / 📉 칩.
+- [갱신] → trend_brief.brief("최근 7일", ...) → 캐시 hit 빠름.
+- 사이드 채팅이 홈에서 "이 키워드 왜 떴어?" 같은 질문에 즉답 가능.
+
+**다음 세션 TODO:**
+- Phase 6-C 매트릭스 셀 LLM 코멘트 배치 미리 채우기.
+- 위젯 칩 클릭 → 보드 emergence 표 점프 (현재는 정적 표시만).
+- cron 안에서 enrich 자동 호출 (Phase 6-B 후속).
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-13 · Phase 6-B cron 일일 자동 수집 ✅ merged
 
 **브랜치:** `feat-daily-scrape-cron` (main 위에서 분기)
 **카테고리:** `feat`
-**상태:** in-progress
+**상태:** merged (PR #19)
 
 **배경 (사용자 선택):**
 emergence 정확도는 누적 데이터에 비례. 그러나 현재 수집은 UI 버튼 클릭 의존. AskUserQuestion 결과 **자동 PR 생성** 선택 — cron 이 매일 수집하되 main 직접 push 는 금지 (CLAUDE.md §7 준수), Draft PR 로 사람이 머지 결정.
