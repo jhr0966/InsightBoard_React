@@ -198,13 +198,42 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
         return
 
     top_n = st.slider("상위 셀 개수", 3, 20, 8, key="board_opp_n")
-    use_llm_comment = st.checkbox(
-        "셀별 LLM 코멘트 사용 (캐시됨)", value=False, disabled=not llm_ready(),
-        help="LLM 미설정 시 룰 기반 표만 표시됩니다.",
-        key="board_opp_llm",
-    )
+    ctrl_l, ctrl_r = st.columns([3, 2])
+    with ctrl_l:
+        use_llm_comment = st.checkbox(
+            "셀별 LLM 코멘트 사용 (캐시됨)",
+            value=st.session_state.get("board_opp_llm", False),
+            disabled=not llm_ready(),
+            help="LLM 미설정 시 룰 기반 표만 표시됩니다.",
+            key="board_opp_llm",
+        )
+    with ctrl_r:
+        if st.button(
+            "📝 LLM 코멘트 일괄 생성",
+            key="board_opp_prefill_btn",
+            disabled=not llm_ready(),
+            use_container_width=True,
+            help=f"상위 {top_n}개 셀의 코멘트를 일괄 LLM 호출 → 캐시. "
+                 "완료 후 체크박스가 자동 ON 됩니다.",
+        ):
+            st.session_state["_do_opp_prefill"] = True
 
     head = cells.head(top_n).copy()
+
+    if st.session_state.pop("_do_opp_prefill", False):
+        prog = st.progress(0.0, text=f"매트릭스 LLM 코멘트 일괄 생성 중… (상위 {top_n}셀)")
+
+        def _opp_cb(done: int, total: int, _payload) -> None:
+            prog.progress(done / total, text=f"[{done}/{total}] 코멘트 생성 중…")
+
+        filled = opportunity.prefill_commentaries(head, max_cells=top_n, progress_cb=_opp_cb)
+        prog.empty()
+        st.session_state["board_opp_llm"] = True
+        st.session_state["board_msg"] = (
+            "ok",
+            f"매트릭스 LLM 코멘트 {len(filled)}/{len(head)}건 생성·캐시 완료.",
+        )
+        st.rerun()
     # 표 보기
     with st.expander("매트릭스 표 보기", expanded=False):
         st.dataframe(head, use_container_width=True, hide_index=True)

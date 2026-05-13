@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (Phase 6-C — 매트릭스 셀 LLM 코멘트 일괄 생성)
+- `sola/opportunity.prefill_commentaries(cells_df, *, max_cells=20, progress_cb=None) -> dict[(dept, lv3), str]` — 상위 N 셀에 대해 `llm_commentary` 를 순차 호출 → 결과를 디스크 캐시(`store.cache`)에 적재. LLM 미설정(`sola.client.is_configured()==False`) 시 호출 없이 빈 dict 즉시 반환. `progress_cb(done, total, (dept, lv3, comment))` 콜백 지원.
+- `ui/board_tab._render_opportunity` — 상위 셀 컨트롤 행에 `[📝 LLM 코멘트 일괄 생성]` 버튼 추가 (pending flag → `st.rerun` 패턴). 클릭 시 `prefill_commentaries(head, max_cells=top_n)` → progress bar → 완료 후 체크박스 자동 ON + `board_msg` 토스트. 그 다음 렌더에서 모든 셀이 캐시 hit → 한 번의 클릭으로 매트릭스 전체 코멘트 확인.
+- `tests/test_opportunity.py` 7건 추가 — dict 키 형식 / `max_cells` cap / 같은 입력 캐시 hit / LLM 미설정 시 빈 dict + 호출 0건 / progress_cb 호출 횟수 / 빈 입력(빈 DF·max=0) / 빈 코멘트 제외. 전체 **141/141** 통과.
+
 ### Added (Phase 6-A — 홈 트렌드 위젯)
 - `ui/home_tab._compute_home_trend_payload(news_today, *, days=7, now=None)` — 홈용 (`period_df`, `vol_df`, `emergence`) 일괄 계산. `now` 주입으로 테스트 결정성 확보.
 - `ui/home_tab._chip_row(label, df, color)` — emergence 키워드 칩 행 HTML 생성. delta 컬럼 있으면 `+N`, 아니면 count. `<script>` 자동 escape.

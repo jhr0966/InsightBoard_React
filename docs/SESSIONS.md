@@ -5,6 +5,34 @@
 
 ---
 
+## 2026-05-13 · Phase 6-C 매트릭스 셀 LLM 코멘트 일괄 생성
+
+**브랜치:** `feat-matrix-commentary-prefill` (main 위, PR #21/#22 머지 후)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 지시):**
+"다음단계 진행" — 이전 추천 3건 중 가장 사용자 가치 큰 Phase 6-C(매트릭스 셀 LLM 코멘트) 선택. 현재 매트릭스에는 셀별로 사용자가 체크박스를 켤 때마다 동기로 LLM 호출 N번 → 첫 렌더 느림. 일괄 prefill 으로 한 번에 캐시 채우고 즉시 표시.
+
+**한 일:**
+1. `sola/opportunity.prefill_commentaries(cells_df, *, max_cells=20, progress_cb=None)` — 상위 N 셀 코멘트 일괄 채움. `sola.client.is_configured()` 가드로 미설정 환경에서 호출 0건 즉시 반환. 빈 코멘트는 dict 에서 제외.
+2. `ui/board_tab._render_opportunity` — 컨트롤 행에 `[📝 LLM 코멘트 일괄 생성]` 버튼 (pending flag → `st.rerun`). 진행률 bar + 완료 후 체크박스 자동 ON + 토스트.
+3. `tests/test_opportunity.py` +7건 — dict 형식 / cap / 캐시 hit / 미설정 빈 dict / progress_cb / 빈 입력 / 빈 코멘트 제외. 전체 141/141 통과.
+
+**효과:**
+- 매트릭스 진입 → 슬라이더로 상위 N 셀 선택 → `[📝 LLM 코멘트 일괄 생성]` 한 번 → progress bar (예: 8/8) → 자동으로 체크박스 ON → 모든 카드에 한 줄 코멘트 즉시 표시.
+- 같은 데이터에서 두 번째 클릭은 모두 캐시 hit → LLM 호출 0건.
+- LLM 미설정 환경에서는 버튼 disabled → 룰 기반 표만.
+
+**다음 세션 TODO:**
+- cron(daily_scrape) 안에서 prefill 자동 호출 (현재는 PR #23 의 enrich 만 자동).
+- 매트릭스 셀 카드 클릭 → 보드의 매칭 뉴스/제안서 작업장으로 이동.
+- 위젯 칩 → 보드 emergence 표 점프.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · Phase 6-A 홈 트렌드 위젯
 
 **브랜치:** `feat-home-trend-widget` (main 위, M5-β 머지 후)

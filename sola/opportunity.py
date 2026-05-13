@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+from typing import Callable
+
 import pandas as pd
 
 from sola.client import LLMNotConfigured, chat
@@ -105,3 +107,49 @@ def llm_commentary(dept: str, lv3: str, sample_news: str, sample_tasks: str) -> 
 
     cache.put(key, reply)
     return reply
+
+
+def prefill_commentaries(
+    cells_df: pd.DataFrame,
+    *,
+    max_cells: int = 20,
+    progress_cb: Callable[[int, int, tuple[str, str, str]], None] | None = None,
+) -> dict[tuple[str, str], str]:
+    """상위 max_cells 개 셀에 대해 LLM 코멘트를 미리 채워 캐시에 적재.
+
+    Args:
+        cells_df: `score_cells()` 결과 (cell_score 내림차순 가정).
+        max_cells: cron/UI 1회당 LLM 호출 상한.
+        progress_cb: `(done, total, (dept, lv3, comment))` 콜백.
+
+    Returns:
+        `{(dept, lv3): comment}` — 빈 코멘트는 제외. LLM 미설정 시 빈 dict.
+    """
+    if cells_df.empty or max_cells <= 0:
+        return {}
+
+    from sola.client import is_configured
+
+    if not is_configured():
+        # 미설정 환경에서는 호출 자체가 무의미 (llm_commentary 가 빈 문자열 반환).
+        return {}
+
+    head = cells_df.head(max_cells)
+    total = len(head)
+    out: dict[tuple[str, str], str] = {}
+    for i, (_, row) in enumerate(head.iterrows(), start=1):
+        dept = str(row["dept"])
+        lv3 = str(row["lv3"])
+        comment = llm_commentary(
+            dept, lv3,
+            str(row.get("sample_news", "")),
+            str(row.get("sample_tasks", "")),
+        )
+        if comment:
+            out[(dept, lv3)] = comment
+        if progress_cb is not None:
+            try:
+                progress_cb(i, total, (dept, lv3, comment))
+            except Exception:  # noqa: BLE001
+                pass
+    return out
