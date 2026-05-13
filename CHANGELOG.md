@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (M4-ζ — 북마크 의사결정 상태 + 자동 만료)
+- `store/bookmarks.Bookmark` 에 `status` (`pending`/`adopted`/`rejected`) + `decision_note` + `decided_at` 필드 추가. `from_dict` 가 옛 record 도 안전하게 backfill.
+- `store/bookmarks.set_status(bm_id, status, note="")` — 상태 + 메모 + decided_at 갱신.
+- `store/bookmarks.expire_old(days=30, types=("proposal",), now=None)` — 미채택 제안서 만료 정리. **adopted 는 영구 보존**.
+- `app.py` — 세션당 1회 `expire_old()` 진입 시 자동 호출 (`_did_expire_check` 플래그).
+- `ui/bookmarks_tab.py` — 제안서 카드마다 상태 셀렉터 + 결정 메모 입력 + 💾 저장 버튼. 상태 배지(⏳/✅/✖) + 정책 안내 캡션.
+- `ui/proposal_workbench.py` — 북마크 출처 제안서에 좌측 상단 상태 셀렉터(즉시 저장).
+- `tests/test_bookmarks.py` 9건 추가 (기본 status, from_dict 호환, set_status, expire_old: pending 만료 / adopted 보존 / 타입 한정 / 파싱 실패 보존). 전체 79/79 통과.
+
 ### Added (M4-ε — 제안서 작업장: 살아있는 제안서)
 - `sola/refine.py:refine_proposal(current_md, instruction, persona=None)` — 활성 제안서 MD + 사용자 지시 → 수정된 전체 MD 반환.
 - `sola/prompts.SYSTEM_PROPOSAL_REFINE` — "출력은 완성된 제안서 전체 MD만, 기존 섹션 구조 유지" 가정.

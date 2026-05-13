@@ -23,6 +23,14 @@ from persona.schema import Persona
 from sola import refine
 from sola.client import LLMNotConfigured, chat
 from sola.prompts import SYSTEM_CHAT
+from store.bookmarks import BOOKMARK_STATUSES
+
+
+_STATUS_LABEL = {
+    "pending": "⏳ 검토 중",
+    "adopted": "✅ 채택",
+    "rejected": "✖ 거절",
+}
 
 
 def _options() -> list[tuple[str, str, str]]:
@@ -149,7 +157,33 @@ def render() -> None:
 
     # ── 좌측: 제안서 뷰 ──────────────────────────────────────────
     with col_doc:
-        st.markdown(f"##### 📄 {st.session_state['pw_active_title']}")
+        title_cols = st.columns([3, 2])
+        with title_cols[0]:
+            st.markdown(f"##### 📄 {st.session_state['pw_active_title']}")
+        # 활성 제안서가 북마크 출처면 상태 셀렉터 + 즉시 저장.
+        active_source = st.session_state["pw_active_source"]
+        if active_source.startswith("bookmark:"):
+            from store import bookmarks
+
+            bm_id = active_source.split(":", 1)[1]
+            current_bm = next(
+                (it for it in bookmarks.list_all(type_="proposal") if it.id == bm_id),
+                None,
+            )
+            if current_bm is not None:
+                with title_cols[1]:
+                    new_status = st.selectbox(
+                        "상태",
+                        options=list(BOOKMARK_STATUSES),
+                        index=list(BOOKMARK_STATUSES).index(current_bm.status),
+                        format_func=lambda s: _STATUS_LABEL.get(s, s),
+                        key=f"pw_status_sel_{bm_id}",
+                        label_visibility="collapsed",
+                    )
+                if new_status != current_bm.status:
+                    bookmarks.set_status(bm_id, new_status)
+                    st.toast(f"상태를 '{_STATUS_LABEL.get(new_status, new_status)}'로 변경했습니다.")
+                    st.rerun()
         with st.container(border=True):
             st.markdown(st.session_state["pw_active_md"] or "_(비어 있음)_")
 

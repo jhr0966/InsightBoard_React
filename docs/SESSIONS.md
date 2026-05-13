@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-05-13 · M4-ζ 북마크 의사결정 상태 + 자동 만료
+
+**브랜치:** `feat-bookmark-status-expiry`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 요청):**
+"생성한 제안서는 30일 후에 삭제되고, 채택한 제안서는 삭제되지 않게 하자."
+한 사이클 닫는 다음 단계 — 의사결정 폐쇄 루프 + 자동 hygiene.
+
+**한 일:**
+1. `store/bookmarks.Bookmark` 에 `status`/`decision_note`/`decided_at` 필드 추가. 옛 record `from_dict` 호환.
+2. `store/bookmarks.set_status(bm_id, status, note)` — 상태 갱신 헬퍼.
+3. `store/bookmarks.expire_old(days=30, types=("proposal",), now=None)` — `created_at` 기준 N일 지나고 `status != "adopted"` 인 항목만 삭제. adopted 영구 보존, 다른 타입 미적용.
+4. `app.py` — 세션당 1회 진입 시 `expire_old()` 자동 호출.
+5. `ui/bookmarks_tab.py` — 카드마다 상태 셀렉터(pending/adopted/rejected) + 결정 메모 + 💾 저장. 상태 배지(⏳/✅/✖) + 정책 안내 캡션.
+6. `ui/proposal_workbench.py` — 북마크 출처 활성 제안서에 좌측 상단 상태 셀렉터 (즉시 저장).
+7. `tests/test_bookmarks.py` 9건 추가. 전체 79/79 통과.
+
+**사이클 효과:**
+- 작업장에서 ★ 저장 → 기본 `pending` → bookmarks 탭/작업장에서 회의 후 `adopted` 또는 `rejected` 로 변경 → adopted 는 영원히 보존, 다른 것은 30일 후 자동 정리.
+- 30일 만료는 hygiene → 작업장 입력 selectbox 가 옛 폐기된 제안서로 어지러워지지 않음.
+
+**다음 세션 TODO:**
+- 채팅 컨텍스트에 "최근 채택된 제안 N건" 자동 노출 (사이클 간 연결).
+- 다중 일자 트렌드.
+- 일일 자동 수집 (cron/GH Actions).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성.
+
+**블로커:** 없음. 만료는 idempotent + decided_at 가 없는 옛 record 도 안전.
+
+---
+
 ## 2026-05-12 · M4-ε 제안서 작업장 (살아있는 제안서)
 
 **브랜치:** `feat-proposal-workbench`

@@ -1,19 +1,31 @@
 """북마크 영구화 (`data/bookmarks/items.jsonl`).
 
 작은 데이터셋(수백~수천) 가정. 매 변경 시 전체 rewrite.
+
+상태/만료 정책
+---------------
+제안서(`type == "proposal"`) 북마크는 의사결정 상태를 가진다:
+  - `pending`  — 작성 후 검토 중 (기본값)
+  - `adopted`  — 채택 (영구 보존)
+  - `rejected` — 거절
+
+`expire_old(days=N)` 는 `created_at` 기준 N일 지난 항목 중
+`status != "adopted"` 인 것만 삭제한다. 즉 **채택된 제안서는 만료되지 않는다.**
 """
 from __future__ import annotations
 
 import hashlib
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from config import DATA_ROOT, ensure_data_dirs
 
 
 BOOKMARK_TYPES = ("news", "proposal", "opportunity", "task")
+BOOKMARK_STATUSES = ("pending", "adopted", "rejected")
+DEFAULT_EXPIRE_DAYS = 30
 
 
 @dataclass
@@ -25,12 +37,19 @@ class Bookmark:
     link: str = ""
     tags: list[str] = field(default_factory=list)
     created_at: str = ""
+    # 의사결정 상태 (제안서 전용 의미를 가지지만 모든 타입에 존재).
+    status: str = "pending"
+    decision_note: str = ""
+    decided_at: str = ""  # status 가 마지막으로 변한 시점 (UTC ISO)
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict) -> "Bookmark":
+        status = str(data.get("status") or "pending")
+        if status not in BOOKMARK_STATUSES:
+            status = "pending"
         return cls(
             id=str(data.get("id", "")),
             type=str(data.get("type", "")),
@@ -39,6 +58,9 @@ class Bookmark:
             link=str(data.get("link", "")),
             tags=list(data.get("tags", []) or []),
             created_at=str(data.get("created_at", "")),
+            status=status,
+            decision_note=str(data.get("decision_note", "")),
+            decided_at=str(data.get("decided_at", "")),
         )
 
 
@@ -115,3 +137,79 @@ def clear() -> int:
     items = list_all()
     _write_all([])
     return len(items)
+
+
+def set_status(bm_id: str, status: str, *, note: str = "") -> bool:
+    """북마크 의사결정 상태를 갱신. 변경되면 True.
+
+    - `status` 가 BOOKMARK_STATUSES 밖이면 ValueError.
+    - 동일 status 로 재설정하면 메모만 갱신. decided_at 은 항상 현재 시각으로 갱신.
+    """
+    if status not in BOOKMARK_STATUSES:
+        raise ValueError(f"unknown status: {status!r}, expected one of {BOOKMARK_STATUSES}")
+    items = list_all()
+    changed = False
+    for it in items:
+        if it.id == bm_id:
+            it.status = status
+            it.decision_note = note
+            it.decided_at = _utc_now_iso()
+            changed = True
+            break
+    if changed:
+        _write_all(items)
+    return changed
+
+
+def _parse_iso(s: str) -> datetime | None:
+    if not s:
+        return None
+    try:
+        # 표준 ISO 처리. 끝에 Z 가 붙은 옛 표기도 허용.
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def expire_old(
+    *,
+    days: int = DEFAULT_EXPIRE_DAYS,
+    types: tuple[str, ...] = ("proposal",),
+    now: datetime | None = None,
+) -> int:
+    """만료 정책: `created_at` 기준 `days` 일 지나고 `status != "adopted"` 인 항목 삭제.
+
+    - `types` 가 주어지면 그 타입만 대상. 기본은 제안서만.
+    - `created_at` 이 비어있거나 파싱 실패한 항목은 보존(만료 대상 아님).
+    - `now` 는 테스트 주입용. 기본은 UTC 현재 시각.
+    - 반환: 삭제된 항목 수.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=days)
+
+    items = list_all()
+    keep: list[Bookmark] = []
+    removed = 0
+    for it in items:
+        if types and it.type not in types:
+            keep.append(it)
+            continue
+        if it.status == "adopted":
+            keep.append(it)
+            continue
+        created = _parse_iso(it.created_at)
+        if created is None:
+            # 파싱 불가 → 안전하게 보존
+            keep.append(it)
+            continue
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if created < cutoff:
+            removed += 1
+            continue
+        keep.append(it)
+
+    if removed:
+        _write_all(keep)
+    return removed
