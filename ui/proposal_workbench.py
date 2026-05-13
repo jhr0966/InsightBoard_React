@@ -24,6 +24,7 @@ from sola import refine
 from sola.client import LLMNotConfigured, chat
 from sola.prompts import SYSTEM_CHAT
 from store.bookmarks import BOOKMARK_STATUSES
+from ui.styles import page_header
 
 
 _STATUS_LABEL = {
@@ -133,10 +134,9 @@ def _do_discuss(question: str, persona: Persona) -> None:
 
 
 def render() -> None:
-    st.subheader("📝 제안서 작업장")
-    st.caption(
-        "직전에 만든 제안서 또는 북마크된 제안서를 골라 좌측에 띄우고, "
-        "우측에서 LLM 과 대화하거나 지시로 직접 수정하세요."
+    page_header(
+        "📝 제안서 작업장",
+        "직전 / 북마크 제안서를 좌측에 띄우고 우측 SOLA 와 대화·수정",
     )
 
     # 세션 초기화

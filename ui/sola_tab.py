@@ -19,11 +19,18 @@ from ui.styles import page_header
 
 
 def _status_panel() -> None:
-    cols = st.columns(4)
-    cols[0].markdown(f"**backend** `{llm_backend()}`")
-    cols[1].markdown(f"**model** `{llm_model() or '(미설정)'}`")
-    cols[2].markdown(f"**base_url** `{(llm_base_url() or '(미설정)')[:38]}`")
-    cols[3].markdown(f"**ready** {'✅' if is_configured() else '❌'}")
+    st.markdown(
+        f"""
+        <div class="card-flat" style="display:flex;flex-wrap:wrap;gap:18px;
+                 font-size:0.84rem;color:var(--text-2);margin-bottom:0.6rem;">
+          <div><b>backend</b> <code>{html.escape(llm_backend())}</code></div>
+          <div><b>model</b> <code>{html.escape(llm_model() or '(미설정)')}</code></div>
+          <div><b>base_url</b> <code>{html.escape((llm_base_url() or '(미설정)')[:48])}</code></div>
+          <div><b>ready</b> {'✅' if is_configured() else '⚠️'}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _render_summary() -> None:
@@ -264,13 +271,13 @@ def _render_chat() -> None:
 def render() -> None:
     page_header("SOLA", "LLM 기반 요약 · 제안서 · 채팅")
     _status_panel()
-    st.markdown("---")
 
     mode = st.radio(
         "기능",
         ("뉴스 요약", "자동화 과제 제안서", "채팅"),
         horizontal=True,
         key="sola_mode",
+        label_visibility="collapsed",
     )
 
     if mode == "뉴스 요약":

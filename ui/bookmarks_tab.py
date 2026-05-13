@@ -5,9 +5,11 @@ import html
 
 import streamlit as st
 
+from persona.schema import Persona
 from store import bookmarks
 from store.bookmarks import BOOKMARK_STATUSES, DEFAULT_EXPIRE_DAYS
-from ui.styles import page_header
+from ui.layout import main_and_chat
+from ui.styles import page_header, section_label
 
 
 _TYPE_LABEL = {
@@ -26,42 +28,76 @@ _STATUS_LABEL = {
 
 
 def _status_badge_html(status: str) -> str:
-    color = {
-        "pending": "#9A9690",
-        "adopted": "#1A8C5B",
-        "rejected": "#C44848",
-    }.get(status, "#9A9690")
+    cls = {"pending": "pending", "adopted": "adopted", "rejected": "rejected"}.get(status, "pending")
     label = _STATUS_LABEL.get(status, status)
-    return (
-        f'<span style="display:inline-block;padding:2px 10px;border-radius:20px;'
-        f'background:{color};color:#fff;font-size:0.72rem;font-weight:600;">'
-        f'{html.escape(label)}</span>'
-    )
+    return f'<span class="status-badge {cls}">{html.escape(label)}</span>'
+
+
+def _build_page_context(items) -> str:
+    lines = ["화면: 북마크 (자동화 기회·제안서·뉴스·작업 모음 + 의사결정 상태)"]
+    if not items:
+        lines.append("(비어 있음)")
+        return "\n".join(lines)
+    lines.append(f"표시 중인 북마크: {len(items)}건")
+    by_type: dict[str, list] = {}
+    for it in items:
+        by_type.setdefault(it.type, []).append(it)
+    for typ, group in by_type.items():
+        lines.append(f"\n[{_TYPE_LABEL.get(typ, typ)}] {len(group)}건")
+        for bm in group[:5]:
+            extra = f" ({_STATUS_LABEL.get(bm.status, bm.status)})" if bm.type == "proposal" else ""
+            lines.append(f"- {bm.title}{extra}")
+            if bm.decision_note:
+                lines.append(f"    메모: {bm.decision_note}")
+    return "\n".join(lines)
 
 
 def render() -> None:
-    page_header("📌 북마크", "관심 자동화 기회·뉴스·제안서 모음")
-
-    st.caption(
-        f"ℹ 제안서는 작성 후 **{DEFAULT_EXPIRE_DAYS}일** 지나면 자동 삭제됩니다. "
-        "**채택(adopted)** 상태로 변경하면 영구 보존됩니다. "
-        "(만료 정리는 앱 진입 시 1회 자동 수행)"
+    persona: Persona = st.session_state.get("persona") or Persona()
+    page_header(
+        "📌 북마크",
+        "관심 자동화 기회·뉴스·제안서 모음",
+        chat_toggle_key="bookmarks",
     )
 
     type_keys = list(_TYPE_LABEL.keys())
-    chosen = st.radio(
-        "타입", type_keys,
-        format_func=lambda k: _TYPE_LABEL[k],
-        horizontal=True,
-        key="bm_type",
-    )
-    items = bookmarks.list_all(type_=None if chosen == "all" else chosen)
-    st.caption(f"{len(items)}건")
+    chosen = st.session_state.get("bm_type", "all")
+    items_for_ctx = bookmarks.list_all(type_=None if chosen == "all" else chosen)
 
-    if not items:
-        st.info("아직 북마크가 없습니다. 인사이트보드의 ☆ 또는 제안서 화면의 ☆ 버튼으로 저장하세요.")
-        return
+    with main_and_chat(
+        "bookmarks",
+        page_context_fn=lambda: _build_page_context(items_for_ctx),
+        persona=persona,
+        hint="현재 필터링된 북마크 목록을 컨텍스트로 대화합니다.",
+    ) as main:
+        with main:
+            st.caption(
+                f"ℹ 제안서는 작성 후 **{DEFAULT_EXPIRE_DAYS}일** 지나면 자동 삭제됩니다. "
+                "**채택(adopted)** 상태로 변경하면 영구 보존됩니다. "
+                "(만료 정리는 앱 진입 시 1회 자동 수행)"
+            )
 
+            chosen = st.radio(
+                "타입", type_keys,
+                format_func=lambda k: _TYPE_LABEL[k],
+                horizontal=True,
+                key="bm_type",
+            )
+            items = bookmarks.list_all(type_=None if chosen == "all" else chosen)
+            st.caption(f"{len(items)}건")
+
+            if not items:
+                st.markdown(
+                    '<div class="card-flat">아직 북마크가 없습니다. '
+                    '인사이트보드의 ☆ 또는 제안서 화면의 ☆ 버튼으로 저장하세요.</div>',
+                    unsafe_allow_html=True,
+                )
+                return
+
+            _render_items(items)
+
+
+def _render_items(items) -> None:
     for bm in reversed(items):
         type_label = _TYPE_LABEL.get(bm.type, bm.type)
         tag_html = "".join(

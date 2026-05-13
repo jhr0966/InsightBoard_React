@@ -6,6 +6,7 @@ import html
 import pandas as pd
 import streamlit as st
 
+from persona.schema import Persona
 from roadmap.query import load_latest as load_roadmap
 from sola import opportunity
 from sola.client import is_configured as llm_ready
@@ -14,11 +15,11 @@ from store import bookmarks, trends
 from store.bookmarks import Bookmark
 from store.match import score_matches
 from store.news_db import load_all_today
-from ui.styles import page_header
+from ui.layout import main_and_chat
+from ui.styles import page_header, section_label
 
 
 def _render_trends(news: pd.DataFrame) -> None:
-    st.subheader("트렌드")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**일자별 기사 수**")
@@ -37,7 +38,6 @@ def _render_trends(news: pd.DataFrame) -> None:
 
 
 def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
-    st.subheader("부서별 AI 인사이트")
     st.caption("첫 호출만 LLM 사용, 동일 (부서·뉴스셋) 조합은 캐시에서 즉시 응답합니다.")
 
     if st.button("AI 인사이트 생성·갱신", key="board_insight_btn"):
@@ -52,8 +52,6 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
     if not show:
         st.info("위 버튼을 누르면 부서별 한 줄 인사이트가 생성됩니다.")
         return
-
-    from persona.schema import Persona
 
     persona: Persona = st.session_state.get("persona") or Persona()
     depts_raw = sorted(roadmap["dept"].dropna().astype(str).unique().tolist())
@@ -84,8 +82,7 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
 
 def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
-    st.subheader("🚀 자동화 기회 매트릭스 (부서 × 공정)")
-    st.caption("뉴스↔작업 매칭 점수를 셀 단위로 누적. 상위 셀이 자동화 기회가 큰 곳.")
+    st.caption("부서×공정 셀별 매칭 점수 누적. 상위 셀이 자동화 기회가 큰 곳.")
 
     cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
     if cells.empty:
@@ -105,8 +102,6 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
         st.dataframe(head, use_container_width=True, hide_index=True)
 
     # 카드 그리드 (2열)
-    from persona.schema import Persona
-
     persona: Persona = st.session_state.get("persona") or Persona()
     existing_ids = {b.id for b in bookmarks.list_all(type_="opportunity")}
 
@@ -161,10 +156,8 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
 
 def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
-    from persona.schema import Persona
     from ui import task_tree
 
-    st.subheader("계층 필터 · 뉴스 매칭")
     # 페르소나 부서를 기본 필터로 미리 적용
     persona: Persona = st.session_state.get("persona") or Persona()
     if persona.dept and "board_dept" not in st.session_state:
@@ -206,26 +199,83 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
         )
 
 
-def render() -> None:
-    page_header("인사이트보드", "트렌드 · 부서별 AI 인사이트 · 작업 매칭")
+def _build_page_context(news: pd.DataFrame, roadmap: pd.DataFrame, persona: Persona) -> str:
+    """인사이트보드 화면의 핵심 데이터를 LLM 컨텍스트로 압축."""
+    lines: list[str] = ["화면: 인사이트보드 (트렌드 · 자동화 기회 매트릭스 · 부서 인사이트 · 매칭)"]
+    if persona.is_set():
+        lines.append(f"사용자 부서: {persona.dept or '-'} / 직무: {persona.job or '-'}")
+    if news.empty or roadmap.empty:
+        return "\n".join(lines)
 
+    by_date = trends.by_date(news)
+    if not by_date.empty:
+        recent = by_date.tail(5).to_dict(orient="records")
+        lines.append("최근 일자별 기사 수: " + ", ".join(f"{r['date']}={r['count']}" for r in recent))
+    by_src = trends.by_source(news)
+    if not by_src.empty:
+        lines.append("소스 분포: " + ", ".join(
+            f"{r['source']}={r['count']}" for r in by_src.head(5).to_dict(orient="records")
+        ))
+
+    try:
+        cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
+        if not cells.empty:
+            lines.append("\n자동화 기회 매트릭스 상위 셀(부서 / 공정 / score):")
+            for _, row in cells.head(8).iterrows():
+                lines.append(
+                    f"- {row['dept']} / {row['lv3']} (score={row['cell_score']:.1f}) "
+                    f"sample_task={row['sample_tasks']}"
+                )
+    except Exception:  # noqa: BLE001
+        pass
+
+    return "\n".join(lines)
+
+
+def render() -> None:
+    persona: Persona = st.session_state.get("persona") or Persona()
     roadmap = load_roadmap()
     news = load_all_today()
 
-    col_a, col_b, col_c = st.columns(3)
-    col_a.metric("로드맵 작업", f"{len(roadmap):,}건")
-    col_b.metric("오늘 뉴스", f"{len(news):,}건")
-    col_c.metric("부서 수", f"{roadmap['dept'].nunique() if not roadmap.empty else 0}")
+    chat_open = page_header(
+        "인사이트보드",
+        "트렌드 · 자동화 기회 · 부서별 AI 인사이트 · 매칭",
+        chat_toggle_key="board",
+    )
 
-    if roadmap.empty or news.empty:
-        st.info("로드맵 업로드와 뉴스 수집을 먼저 진행하세요.")
-        return
+    with main_and_chat(
+        "board",
+        page_context_fn=lambda: _build_page_context(news, roadmap, persona),
+        persona=persona,
+        hint="현재 보드(트렌드·매트릭스·부서 인사이트·매칭)를 컨텍스트로 대화합니다.",
+    ) as main:
+        with main:
+            col_a, col_b, col_c = st.columns(3)
+            col_a.metric("로드맵 작업", f"{len(roadmap):,}건")
+            col_b.metric("오늘 뉴스", f"{len(news):,}건")
+            col_c.metric("부서 수", f"{roadmap['dept'].nunique() if not roadmap.empty else 0}")
 
-    st.markdown("---")
-    _render_trends(news)
-    st.markdown("---")
-    _render_opportunity(news, roadmap)
-    st.markdown("---")
-    _render_dept_insights(news, roadmap)
-    st.markdown("---")
-    _render_matches(news, roadmap)
+            if roadmap.empty or news.empty:
+                st.markdown(
+                    '<div class="card-flat" style="margin-top:1.2rem;">'
+                    '로드맵 업로드와 뉴스 수집을 먼저 진행하세요.</div>',
+                    unsafe_allow_html=True,
+                )
+                return
+
+            st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+            section_label("트렌드")
+            _render_trends(news)
+
+            st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+            section_label("자동화 기회 매트릭스")
+            _render_opportunity(news, roadmap)
+
+            st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+            section_label("부서별 AI 인사이트")
+            _render_dept_insights(news, roadmap)
+
+            st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+            section_label("계층 필터 · 뉴스 매칭")
+            _render_matches(news, roadmap)
+    _ = chat_open  # 채팅 토글 결과는 main_and_chat 내부에서 처리됨
