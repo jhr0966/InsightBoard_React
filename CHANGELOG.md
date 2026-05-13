@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Added (docs — 작업 완료 보고 규칙)
+- `CLAUDE.md` 절대 규칙 8번 — 모든 개발 지시 완료 후 (1) 무엇이 개발됐는지 (2) 어떻게 조치됐는지 (3) 다음 단계 3가지를 한 메시지로 의무 보고. 사용자가 매 PR 결과를 동일 포맷으로 확인 가능.
+
 ### Added (M4-η — 채택된 제안서를 채팅 컨텍스트에 자동 노출)
 - `store/bookmarks.list_adopted_proposals(*, limit=5)` — 채택 제안서를 `decided_at` 내림차순으로 N건 반환.
 - `sola/chat_ctx.build_context_block(..., adopted_proposals=...)` — 주어지면 "이전 사이클에서 채택된 제안서" 섹션으로 컨텍스트에 자동 포함 (제목 + 메모만, 본문 X → 토큰 부담 최소).
