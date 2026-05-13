@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Changed (UI-4 — 사이드바 컴팩트 개편, Phase 4)
+- `ui/sidebar.py` 리팩터 — 페르소나가 설정된 상태에서는 큰 폼이 아닌 **컴팩트 카드** 노출.
+  - `.persona-card` — 아바타(이름/부서 첫글자, 파랑 그라데이션) + 이름 + 부서·직무·팀 meta. ellipsis 처리.
+  - `.persona-cta` — 미설정 상태일 때 dashed border 파란 CTA 카드 + 폼 즉시 열림.
+  - **편집 토글** — 카드 아래 `✏️ 편집` 버튼으로 폼 expander 열고 닫기. 저장 시 자동 닫힘.
+  - 내부 헬퍼 분리: `_avatar_text` / `_persona_card_html` / `_persona_form_body` / `_handle_persona_pending` / `_render_persona_block`.
+- 시스템 상태 → **사이드바 푸터** 로 이동 (`.sidebar-footer`). 작은 점선 인디케이터 (`.sidebar-dot.ok/warn`) + backend/model 2줄.
+- 영역 네비 라디오 — 큰 네비 버튼 스타일 (전폭, padding `9px 13px`, 좌측 정렬). 사이드바 안의 라디오만 세로 컬럼 배치.
+- 결과: 페르소나 설정 후 사이드바가 한눈에 짧아져 영역 네비·시스템 정보 가독성 ↑. on_click 0건 (편집 토글은 pending flag 패턴 유지).
+
 ### Added (UI-3 — 사이드 채팅 컨텍스트 강화, Phase 3)
 - `sola/side_context.py` 신설 — `build_side_system(base_system, persona, page_context, session_proposal, adopted_proposals, max_chars)` 순수 함수.
   - 배치: base 시스템 → 페르소나 → 현재 화면 → 직전 작성 제안서 → 이전 사이클 채택 제안서.

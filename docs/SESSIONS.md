@@ -5,6 +5,34 @@
 
 ---
 
+## 2026-05-13 · UI-4 사이드바 컴팩트 개편 (Phase 4)
+
+**브랜치:** `style-sidebar-polish` (Phase 3 위에서 분기)
+**카테고리:** `style`
+**상태:** in-progress
+
+**배경 (사용자 지시):**
+"아까 사이드바 개편하는 건?" — Phase 1 에서 브랜드/섹션만 가다듬었는데 페르소나 큰 폼이 항상 노출돼 사이드바가 너무 길었던 문제. 컴팩트화 진행.
+
+**한 일:**
+1. `.persona-card` — 아바타(이름/부서 첫글자, 파랑 그라데이션) + 이름 + 부서·직무·팀 meta(ellipsis). 페르소나 설정됨 상태에서만 노출.
+2. `.persona-cta` — 미설정 상태일 때 dashed 파란 CTA + 폼 즉시 노출.
+3. 편집 토글 — `✏️ 편집` 버튼으로 폼 expander 열고 닫기 (pending flag 패턴). 저장 시 자동 닫힘.
+4. 시스템 상태 → 사이드바 푸터(`.sidebar-footer` + `.sidebar-dot` ok/warn) 로 이동.
+5. 영역 네비 라디오 — 큰 네비 버튼 스타일(전폭, 좌측 정렬, padding 9/13).
+6. `ui/sidebar.py` 내부 헬퍼 분리(`_avatar_text` / `_persona_card_html` / `_persona_form_body` / `_handle_persona_pending` / `_render_persona_block`).
+7. 전체 94/94 통과, on_click·외부 requests 0건.
+
+**다음 세션 TODO:**
+- 다중 일자 트렌드 (기능).
+- 일일 자동 수집 (cron/GH Actions).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성.
+- 사이드바 영역 네비 → 아이콘 + 텍스트의 더 큰 버튼 (선택).
+
+**블로커:** 없음. 기능 변경 0, UI만 재배치.
+
+---
+
 ## 2026-05-13 · UI-3 사이드 채팅 컨텍스트 강화 (Phase 3)
 
 **브랜치:** `style-ui-redesign-phase3` (Phase 2 위에서 분기)

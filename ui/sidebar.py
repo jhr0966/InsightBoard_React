@@ -1,5 +1,7 @@
-"""사이드바: 페르소나 설정 + 영역 선택 + 시스템 상태."""
+"""사이드바: 컴팩트 페르소나 카드 + 영역 네비 + 시스템 푸터."""
 from __future__ import annotations
+
+import html as _html
 
 import streamlit as st
 
@@ -19,9 +21,32 @@ def _load_persona_into_state() -> Persona:
     return st.session_state["persona"]
 
 
-def _persona_form(roadmap_df) -> None:
-    persona = _load_persona_into_state()
+def _avatar_text(persona: Persona) -> str:
+    if persona.name:
+        return persona.name.strip()[0]
+    if persona.dept:
+        return persona.dept.strip()[0]
+    return "?"
 
+
+def _persona_card_html(persona: Persona) -> str:
+    avatar = _html.escape(_avatar_text(persona))
+    name = _html.escape(persona.name or "사용자")
+    meta_bits = [bit for bit in (persona.dept, persona.job, persona.team) if bit]
+    meta = _html.escape(" · ".join(meta_bits) or "정보 없음")
+    return f"""
+    <div class="persona-card">
+      <div class="persona-avatar">{avatar}</div>
+      <div class="persona-info">
+        <div class="persona-name">{name}</div>
+        <div class="persona-meta">{meta}</div>
+      </div>
+    </div>
+    """
+
+
+def _persona_form_body(persona: Persona, roadmap_df) -> None:
+    """페르소나 입력 폼 (expander 안에 들어가는 내부 위젯들)."""
     dept_opts = (
         [""] + sorted(roadmap_df["dept"].dropna().astype(str).unique().tolist())
         if not roadmap_df.empty else [""]
@@ -35,39 +60,40 @@ def _persona_form(roadmap_df) -> None:
         if not roadmap_df.empty else []
     )
 
-    with st.expander("👤 페르소나 설정", expanded=not persona.is_set()):
-        new_name = st.text_input("이름(선택)", value=persona.name, key="px_name")
-        new_team = st.selectbox(
-            "팀", team_opts,
-            index=team_opts.index(persona.team) if persona.team in team_opts else 0,
-            key="px_team",
-        )
-        new_dept = st.selectbox(
-            "부서", dept_opts,
-            index=dept_opts.index(persona.dept) if persona.dept in dept_opts else 0,
-            key="px_dept",
-        )
-        new_job = st.text_input(
-            "직무 (자유 입력)",
-            value=persona.job,
-            placeholder="예: 용접 담당, 절단 담당, 검사관",
-            key="px_job",
-        )
-        new_interest_lv3 = st.multiselect(
-            "관심 공정(Lv3)",
-            options=lv3_opts,
-            default=[v for v in persona.interest_lv3 if v in lv3_opts],
-            key="px_lv3",
-        )
+    st.text_input("이름(선택)", value=persona.name, key="px_name")
+    st.selectbox(
+        "팀", team_opts,
+        index=team_opts.index(persona.team) if persona.team in team_opts else 0,
+        key="px_team",
+    )
+    st.selectbox(
+        "부서", dept_opts,
+        index=dept_opts.index(persona.dept) if persona.dept in dept_opts else 0,
+        key="px_dept",
+    )
+    st.text_input(
+        "직무 (자유 입력)",
+        value=persona.job,
+        placeholder="예: 용접 담당, 절단 담당, 검사관",
+        key="px_job",
+    )
+    st.multiselect(
+        "관심 공정(Lv3)",
+        options=lv3_opts,
+        default=[v for v in persona.interest_lv3 if v in lv3_opts],
+        key="px_lv3",
+    )
 
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("저장", type="primary", key="px_save_btn"):
-                st.session_state["_do_persona_save"] = True
-        with c2:
-            if st.button("초기화", key="px_reset_btn"):
-                st.session_state["_do_persona_reset"] = True
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("저장", type="primary", key="px_save_btn", use_container_width=True):
+            st.session_state["_do_persona_save"] = True
+    with c2:
+        if st.button("초기화", key="px_reset_btn", use_container_width=True):
+            st.session_state["_do_persona_reset"] = True
 
+
+def _handle_persona_pending(persona: Persona) -> None:
     if st.session_state.pop("_do_persona_save", False):
         new = Persona(
             name=st.session_state.get("px_name", "").strip(),
@@ -80,6 +106,7 @@ def _persona_form(roadmap_df) -> None:
         persona_store.save(new)
         st.session_state["persona"] = new
         st.session_state["persona_msg"] = ("ok", f"저장됨: {new.label()}")
+        st.session_state["_persona_edit_open"] = False
         st.rerun()
 
     if st.session_state.pop("_do_persona_reset", False):
@@ -92,6 +119,34 @@ def _persona_form(roadmap_df) -> None:
     if msg:
         kind, text = msg
         {"ok": st.success, "warn": st.warning, "error": st.error}[kind](text)
+
+
+def _render_persona_block(persona: Persona, roadmap_df) -> None:
+    """페르소나 영역: 설정됨 → 카드 + ✏️ 편집 토글, 미설정 → CTA + 폼 열림."""
+    edit_open_key = "_persona_edit_open"
+
+    if persona.is_set():
+        st.markdown(_persona_card_html(persona), unsafe_allow_html=True)
+        is_open = st.session_state.get(edit_open_key, False)
+        if st.button(
+            "닫기" if is_open else "✏️ 편집",
+            key="persona_toggle_btn",
+            use_container_width=True,
+        ):
+            st.session_state[edit_open_key] = not is_open
+            st.rerun()
+        if st.session_state.get(edit_open_key, False):
+            _persona_form_body(persona, roadmap_df)
+    else:
+        st.markdown(
+            '<div class="persona-cta">'
+            '👤 페르소나를 설정하면 부서·직무 기반 맞춤 인사이트가 표시됩니다.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        _persona_form_body(persona, roadmap_df)
+
+    _handle_persona_pending(persona)
 
 
 def render() -> str:
@@ -116,17 +171,22 @@ def render() -> str:
 
     # 페르소나
     st.markdown('<div class="sidebar-section">페르소나</div>', unsafe_allow_html=True)
-    st.caption(persona.label() if persona.is_set() else "미설정")
-    _persona_form(roadmap_df)
+    _render_persona_block(persona, roadmap_df)
 
-    # 시스템 상태
-    st.markdown('<div class="sidebar-section">시스템</div>', unsafe_allow_html=True)
-    status_icon = "✅" if llm_ready() else "⚠️"
+    # 시스템 푸터 (점선 인디케이터)
+    dot_cls = "ok" if llm_ready() else "warn"
+    backend = _html.escape(llm_backend())
+    model = _html.escape(llm_model() or "(미설정)")
     st.markdown(
-        f"<div style='font-size:0.82rem;color:var(--text-2);line-height:1.7;'>"
-        f"{status_icon} LLM <code>{llm_backend()}</code><br>"
-        f"<span style='color:var(--text-3);'>{llm_model() or '(미설정)'}</span>"
-        f"</div>",
+        f"""
+        <div class="sidebar-footer">
+          <span class="sidebar-dot {dot_cls}"></span>
+          <span class="sidebar-footer-text">
+            <b>LLM · {backend}</b><br>
+            <span class="muted">{model}</span>
+          </span>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
