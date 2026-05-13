@@ -5,6 +5,39 @@
 
 ## [Unreleased]
 
+### Changed (UI-4 — 사이드바 컴팩트 개편, Phase 4)
+- `ui/sidebar.py` 리팩터 — 페르소나가 설정된 상태에서는 큰 폼이 아닌 **컴팩트 카드** 노출.
+  - `.persona-card` — 아바타(이름/부서 첫글자, 파랑 그라데이션) + 이름 + 부서·직무·팀 meta. ellipsis 처리.
+  - `.persona-cta` — 미설정 상태일 때 dashed border 파란 CTA 카드 + 폼 즉시 열림.
+  - **편집 토글** — 카드 아래 `✏️ 편집` 버튼으로 폼 expander 열고 닫기. 저장 시 자동 닫힘.
+  - 내부 헬퍼 분리: `_avatar_text` / `_persona_card_html` / `_persona_form_body` / `_handle_persona_pending` / `_render_persona_block`.
+- 시스템 상태 → **사이드바 푸터** 로 이동 (`.sidebar-footer`). 작은 점선 인디케이터 (`.sidebar-dot.ok/warn`) + backend/model 2줄.
+- 영역 네비 라디오 — 큰 네비 버튼 스타일 (전폭, padding `9px 13px`, 좌측 정렬). 사이드바 안의 라디오만 세로 컬럼 배치.
+- 결과: 페르소나 설정 후 사이드바가 한눈에 짧아져 영역 네비·시스템 정보 가독성 ↑. on_click 0건 (편집 토글은 pending flag 패턴 유지).
+
+### Added (UI-3 — 사이드 채팅 컨텍스트 강화, Phase 3)
+- `sola/side_context.py` 신설 — `build_side_system(base_system, persona, page_context, session_proposal, adopted_proposals, max_chars)` 순수 함수.
+  - 배치: base 시스템 → 페르소나 → 현재 화면 → 직전 작성 제안서 → 이전 사이클 채택 제안서.
+  - 채택 제안서는 (제목 + 결정일 + 메모)만 노출 → 토큰 부담 최소.
+  - 직전 제안서는 `PROPOSAL_HEAD_CHARS=3000` 까지 앞부분만.
+  - 전체 `max_chars=8000` 초과 시 뒷부분 절단.
+  - 반환값 `(sys_msg, labels)` — 라벨은 패널 UI 에 첨부 칩으로 노출.
+- `ui/layout.render_chat_panel` 강화 — 시그니처에 `include_adopted` / `include_session_proposal` / `adopted_limit` 추가.
+  - 패널 헤더 아래 `📎 페르소나 · 현재 화면 · 직전 제안서 · 채택 제안서 N건` 첨부 칩 자동 노출.
+  - 모든 탭(home/board/ingest/news/bookmarks/roadmap)의 사이드 채팅이 자동으로 채택 제안서 5건 + 직전 제안서를 인지.
+- `tests/test_side_context.py` 10건 — 빈 입력 / 페이지 컨텍스트 마커 / 페르소나 설정·미설정 라벨 / 직전 제안서 절단 / 채택 제안서 필드·라벨 / 빈 adopted / max_chars 절단 / 배치 순서 / base 시스템 위치. 전체 94/94 통과.
+
+### Changed (UI-2 — 사이드 채팅 + 새 디자인 전체 탭 적용, Phase 2)
+- `ui/board_tab` 인사이트보드 — `main_and_chat("board")` + page_context: 트렌드(일자/소스), 자동화 기회 매트릭스 상위 8셀. `section_label` 로 4개 섹션 정리.
+- `ui/ingest_tab` 뉴스 수집 — `main_and_chat("ingest")` + page_context: 오늘 통계 + 소스 분포 + 최근 10건 헤드라인.
+- `ui/news_tab` 뉴스 콘텐츠 — `main_and_chat("news")` + page_context: 언론사 분포 + 키워드 빈도. `section_label` 정리.
+- `ui/bookmarks_tab` 북마크 — `main_and_chat("bookmarks")` + page_context: 현재 필터링된 북마크 목록(타입별 그룹 + 상태). 상태 배지를 인라인 style → `.status-badge.*` 클래스로 통일. 내부 렌더 `_render_items()` 분리.
+- `ui/roadmap_tab` 로드맵 — `main_and_chat("roadmap")` + page_context: 부서별/Lv3별 작업 수 상위.
+- `ui/sola_tab` SOLA — 상단 상태 패널을 `.card-flat` 으로 통일, 모드 라디오 label_visibility 정리. (자체 채팅이 본체라 사이드 채팅 토글 제외)
+- `ui/proposal_workbench` 제안서 작업장 — `st.subheader` → `page_header` 로 통일. (자체 채팅 본체)
+- 모든 탭의 페이지 컨텍스트는 lazy (`page_context_fn`), 토글 ON 일 때만 평가 → 닫혀 있으면 추가 비용 0.
+- 전체 84/84 통과, on_click·외부 requests 0건.
+
 ### Changed (UI-1 — 디자인 시스템 v2 + 사이드 채팅 인프라)
 - `assets/styles.css` 전면 리뉴얼 — Pretendard 단일 폰트, 흰색 베이스 + 파란 포인트(`#2563EB`).
   - 라운드 스케일(8/12/16/20px), shadow 스케일, neutral gray 시스템, 일관된 위젯(버튼·입력·라디오·탭·expander) modern화.

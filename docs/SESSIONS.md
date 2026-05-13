@@ -5,6 +5,98 @@
 
 ---
 
+## 2026-05-13 · UI-4 사이드바 컴팩트 개편 (Phase 4)
+
+**브랜치:** `style-sidebar-polish` (Phase 3 위에서 분기)
+**카테고리:** `style`
+**상태:** in-progress
+
+**배경 (사용자 지시):**
+"아까 사이드바 개편하는 건?" — Phase 1 에서 브랜드/섹션만 가다듬었는데 페르소나 큰 폼이 항상 노출돼 사이드바가 너무 길었던 문제. 컴팩트화 진행.
+
+**한 일:**
+1. `.persona-card` — 아바타(이름/부서 첫글자, 파랑 그라데이션) + 이름 + 부서·직무·팀 meta(ellipsis). 페르소나 설정됨 상태에서만 노출.
+2. `.persona-cta` — 미설정 상태일 때 dashed 파란 CTA + 폼 즉시 노출.
+3. 편집 토글 — `✏️ 편집` 버튼으로 폼 expander 열고 닫기 (pending flag 패턴). 저장 시 자동 닫힘.
+4. 시스템 상태 → 사이드바 푸터(`.sidebar-footer` + `.sidebar-dot` ok/warn) 로 이동.
+5. 영역 네비 라디오 — 큰 네비 버튼 스타일(전폭, 좌측 정렬, padding 9/13).
+6. `ui/sidebar.py` 내부 헬퍼 분리(`_avatar_text` / `_persona_card_html` / `_persona_form_body` / `_handle_persona_pending` / `_render_persona_block`).
+7. 전체 94/94 통과, on_click·외부 requests 0건.
+
+**다음 세션 TODO:**
+- 다중 일자 트렌드 (기능).
+- 일일 자동 수집 (cron/GH Actions).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성.
+- 사이드바 영역 네비 → 아이콘 + 텍스트의 더 큰 버튼 (선택).
+
+**블로커:** 없음. 기능 변경 0, UI만 재배치.
+
+---
+
+## 2026-05-13 · UI-3 사이드 채팅 컨텍스트 강화 (Phase 3)
+
+**브랜치:** `style-ui-redesign-phase3` (Phase 2 위에서 분기)
+**카테고리:** `style`
+**상태:** in-progress
+
+**배경 (사용자 선택):**
+Phase 2 가 머지된 직후 "다음 단계 진행" 지시. AskUserQuestion 결과 **사이드 채팅 컨텍스트 강화** 선택.
+지금까지 사이드 채팅은 페이지 컨텍스트(현재 화면)만 받았는데, 사용자의 이전 결정(채택 제안서)·작업 중인 제안서·페르소나가 자동 첨부되면 LLM 이 일관된 답을 줄 수 있음.
+
+**한 일:**
+1. `sola/side_context.py` 신설 — `build_side_system()` 순수 함수.
+   - 배치: base → 페르소나 → 현재 화면 → 직전 작성 제안서 → 채택 제안서.
+   - 채택 제안서는 (제목·결정일·메모)만 / 직전 제안서는 앞 3000자 / 전체 8000자 cap.
+   - 반환값 `(sys_msg, labels)` — 라벨은 패널 헤더에 첨부 칩으로 노출.
+2. `ui/layout.render_chat_panel` 강화 — `include_adopted` / `include_session_proposal` / `adopted_limit` 옵션 추가. 패널 헤더 아래에 `📎 ...` 첨부 칩 자동 노출. LLM 호출은 같은 헬퍼로 시스템 조립.
+3. `tests/test_side_context.py` 10건 — 모든 경계(빈 / 미설정 / 절단 / 정렬) 검증. 전체 94/94 통과.
+
+**효과:**
+- 어제 회의에서 "용접 PoC 채택" → 오늘 어느 탭이든 💬 토글 → "이 화면이랑 관련된 게 뭐가 있을까?" 물으면 자동으로 어제 채택안을 인지.
+- 제안서 작성 직후 보드/뉴스 탭에서 채팅 → 직전 제안서가 자동 컨텍스트 → 일관된 후속 질의 가능.
+
+**다음 세션 TODO:**
+- 사이드바 페르소나 패널 컴팩트화.
+- 다중 일자 트렌드.
+- 일일 자동 수집 (cron/GH Actions).
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-13 · UI-2 사이드 채팅 + 새 디자인 전체 탭 적용 (Phase 2)
+
+**브랜치:** `style-ui-redesign-phase2` (Phase 1 위에서 분기)
+**카테고리:** `style`
+**상태:** in-progress
+
+**배경:**
+Phase 1 에서 디자인 시스템 + 사이드 채팅 인프라(`ui/layout.py`) 를 만들고 `home_tab` 에 데모 적용. Phase 2 는 같은 패턴을 나머지 7개 탭에 일관 적용해 시스템 전체를 새 디자인 + 사이드 채팅 인지로 통일.
+
+**한 일:**
+1. **board_tab** — `main_and_chat("board")` + page_context(트렌드·매트릭스·기회 상위 8셀). 4개 섹션을 `section_label` 로 정리.
+2. **ingest_tab** — `main_and_chat("ingest")` + page_context(통계·소스 분포·최근 헤드라인).
+3. **news_tab** — `main_and_chat("news")` + page_context(언론사·키워드 분포).
+4. **bookmarks_tab** — `main_and_chat("bookmarks")` + page_context(현재 필터 목록). 상태 배지 인라인 style → `.status-badge` 클래스로 통일. 카드 루프를 `_render_items()` 헬퍼로 분리.
+5. **roadmap_tab** — `main_and_chat("roadmap")` + page_context(부서·Lv3 집계).
+6. **sola_tab** — 상태 패널 `.card-flat`, 라디오 label_visibility 정리. (자체 채팅 본체라 사이드 토글 제외)
+7. **proposal_workbench** — `st.subheader` → `page_header` 로 통일.
+8. 모든 탭의 페이지 컨텍스트는 lazy → 토글 OFF 일 때 평가 안 됨 → 추가 비용 0.
+
+**조치:**
+- pytest 84/84 ✅, py_compile OK, on_click·외부 requests 0건.
+- 기능 변경 0 (HTML 카드 구조/세션키/계산 로직 그대로).
+
+**다음 세션 TODO:**
+- 사이드 채팅 패널의 컨텍스트 자동 첨부 — 활성 북마크/제안서, 검색 결과 등 보다 풍부한 컨텍스트.
+- 사이드바 페르소나 패널 → 컴팩트 카드.
+- 다중 일자 트렌드 (기능 작업).
+- 일일 자동 수집 (cron/GH Actions).
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · UI-1 디자인 시스템 v2 + 사이드 채팅 인프라 (Phase 1)
 
 **브랜치:** `style-ui-redesign-phase1`
