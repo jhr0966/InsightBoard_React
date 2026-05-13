@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (M5-β — 트렌드 LLM 한 줄 해석 카드)
+- `sola/prompts.SYSTEM_TREND_BRIEF` 추가 — "1~2문장 평문, 굵은 키워드 1~3개, 입력에 없는 사실 금지" 가정.
+- `sola/trend_brief.py` 신설 — `brief(period_label, vol_df, emergence, force=False)` 함수.
+  - 입력: `daily_volume` + `keyword_emergence` 결과 + 사용자에게 노출되는 기간 라벨.
+  - 파일 캐시(`store.cache`) 적용 — 동일 (period · top 키워드 셋 · 모델) 입력은 LLM 재호출 없이 즉시 반환.
+  - `LLMNotConfigured` 또는 호출 실패 시 룰 기반 fallback 문장(총 기사 수 + 새/상승 키워드) 생성 → graceful degrade.
+- `ui/board_tab` 트렌드 섹션 상단에 **🧠 SOLA 한 줄 카드** + [갱신] 버튼 추가. 갱신 결과는 `_brief_text_<period>` 세션에 보관, 페이지 컨텍스트에도 자동 포함 → 사이드 채팅 LLM 이 해석을 인지.
+- 내부 리팩터: `_compute_trends_payload(news_today)` 헬퍼로 (period, days, period_df, vol_df, emergence) 일괄 계산 → `_render_trends` 와 `_build_page_context` 가 동일 로직 재사용 (DRY).
+- `tests/test_trend_brief.py` 8건 — 시스템·user 프롬프트 포맷 / 캐시 히트 / `force` 우회 / `LLMNotConfigured` fallback / 일반 예외 fallback / "변화 없음" 분기 / period 다른 캐시 키 / 키워드 다른 캐시 키. 전체 113/113 통과.
+
 ### Added (M5-α — 다중 일자 트렌드, Phase 5)
 - `store/news_db.load_news_for_days(days=7, now=None)` — 오늘 포함 최근 N일 일자 디렉토리(`data/news/YYYY-MM-DD/*.parquet`)를 합쳐 반환. 누락 일자 스킵, `link` 기준 중복 제거.
 - `store/trends.daily_volume(df, days=7, now=None)` — 최근 N일 일자별 기사 수, **데이터 없는 일자는 0 으로 채움** (라인 차트 끊김 방지).

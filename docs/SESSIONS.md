@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-05-13 · M5-β 트렌드 LLM 한 줄 해석 카드
+
+**브랜치:** `feat-trend-brief` (M5-α 머지 후 main 위에서 재구성)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 선택):**
+M5-α 로 다중 일자 트렌드 (일자별 카운트 + emergence 3분류) 가 들어갔지만 사용자가 표를 직접 읽어야 했음. AskUserQuestion 결과 **emergence LLM 해석 카드** 선택 — 표 위에 SOLA 가 1~2문장으로 "이번 기간 핵심 트렌드"를 자연어로 보여주는 카드.
+
+**한 일:**
+1. `sola/prompts.SYSTEM_TREND_BRIEF` — 1~2문장 평문 / 굵은 키워드 1~3개 / 입력에 없는 사실 금지.
+2. `sola/trend_brief.brief(period_label, vol_df, emergence, force)` — LLM 호출 + 디스크 캐시 + 룰 기반 fallback.
+3. `ui/board_tab` 트렌드 섹션 상단 **🧠 SOLA 한 줄** 카드 + [갱신] 버튼 (pending flag 패턴). 결과는 `_brief_text_<period>` 세션 키.
+4. `_compute_trends_payload(news_today)` 헬퍼로 (period, days, period_df, vol_df, emergence) 일괄 계산 — `_render_trends` 와 `_build_page_context` 가 같은 로직 재사용.
+5. brief 텍스트도 page_context 에 자동 포함 → 사이드 채팅이 SOLA 해석을 인지.
+6. `tests/test_trend_brief.py` 8건. 전체 113/113 통과.
+
+**효과:**
+- 보드 진입 → 기간 "최근 7일" → [갱신] → "최근 일주일 **용접 자동화** 와 **디지털트윈** 이 두드러집니다" 같은 한 줄.
+- 같은 입력은 캐시 → 무료 재로딩. 다른 기간/키워드면 자동 재호출.
+- LLM 미설정 환경에서도 룰 기반 1줄로 graceful.
+
+**다음 세션 TODO:**
+- 일일 자동 수집 (cron/GH Actions).
+- 매트릭스 셀별 LLM 코멘트 일괄 생성 (배치 미리 채우기).
+- 트렌드 한 줄을 홈 카드에도 노출 (홈 위젯).
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · M5-α 다중 일자 트렌드 (Phase 5)
 
 **브랜치:** `feat-multi-day-trends` (main 위에서 분기, Phase 2~4 통합 머지 후)
