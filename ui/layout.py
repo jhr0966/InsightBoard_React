@@ -16,13 +16,14 @@
 from __future__ import annotations
 
 import contextlib
+import html as _html
 from typing import Iterator
 
 import streamlit as st
 
-from persona import context as persona_ctx
 from persona.schema import Persona
 from sola.client import LLMNotConfigured, chat
+from sola.side_context import build_side_system
 
 
 def split_with_chat(is_open: bool, *, main_chat_ratio: tuple[int, int] = (3, 2)):
@@ -47,19 +48,26 @@ def render_chat_panel(
     placeholder: str = "이 화면에 대해 물어보세요…",
     title: str = "💬 SOLA",
     hint: str = "",
+    include_adopted: bool = True,
+    include_session_proposal: bool = True,
+    adopted_limit: int = 5,
 ) -> None:
-    """우측 사이드 채팅 패널. 페이지 컨텍스트(현재 화면 내용)를 시스템에 자동 주입.
+    """우측 사이드 채팅 패널. 페이지 + 페르소나 + 채택 제안서 + 직전 제안서를 시스템에 자동 주입.
 
     Args:
         chat_key: 페이지별 히스토리 분리용 키. `st.session_state[f"_sidechat_{chat_key}"]`.
-        page_context: 현재 화면의 내용 텍스트 (LLM 컨텍스트로 주입).
+        page_context: 현재 화면의 내용 텍스트.
         persona: 페르소나 (있으면 시스템에 주입).
         system_prompt: 추가 시스템 지시 (선택). 비면 기본 SYSTEM_CHAT 사용.
         placeholder: 입력창 placeholder.
         title: 패널 헤더.
         hint: 패널 헤더 아래 1줄 안내.
+        include_adopted: 채택된 제안서 N건을 자동 컨텍스트로 첨부.
+        include_session_proposal: 세션 직전 작성 제안서(`sola_prop_result`) 자동 첨부.
+        adopted_limit: 첨부할 채택 제안서 최대 건수.
     """
     from sola.prompts import SYSTEM_CHAT
+    from store import bookmarks as _bm
 
     history_key = f"_sidechat_{chat_key}"
     pending_key = f"_sidechat_pending_{chat_key}"
@@ -67,6 +75,19 @@ def render_chat_panel(
 
     st.session_state.setdefault(history_key, [])
     history: list[dict] = st.session_state[history_key]
+
+    # 자동 첨부 컨텍스트 수집 (헤더 칩 표시 + LLM 호출 모두 동일 데이터 사용)
+    adopted = _bm.list_adopted_proposals(limit=adopted_limit) if include_adopted else []
+    session_prop = st.session_state.get("sola_prop_result") if include_session_proposal else None
+
+    base_system = system_prompt or SYSTEM_CHAT
+    _, labels = build_side_system(
+        base_system=base_system,
+        persona=persona,
+        page_context=page_context,
+        session_proposal=session_prop,
+        adopted_proposals=adopted,
+    )
 
     # 헤더 + 초기화
     head_cols = st.columns([3, 1])
@@ -82,6 +103,18 @@ def render_chat_panel(
     if hint:
         st.markdown(
             f'<div class="chat-panel-hint">{hint}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # 자동 첨부 칩 노출
+    if labels:
+        chips = "".join(
+            f'<span class="app-header-chip" style="font-size:0.68rem;padding:3px 9px;">'
+            f'📎 {_html.escape(lbl)}</span>'
+            for lbl in labels
+        )
+        st.markdown(
+            f'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:0.7rem;">{chips}</div>',
             unsafe_allow_html=True,
         )
 
@@ -102,15 +135,13 @@ def render_chat_panel(
         st.rerun()
 
     if st.session_state.pop(pending_key, False):
-        persona_block = persona_ctx.system_block(persona) if persona else ""
-        ctx_block = ""
-        if page_context.strip():
-            ctx_block = (
-                "\n\n--- 현재 화면 컨텍스트 ---\n"
-                + page_context.strip()
-                + "\n--- /컨텍스트 ---\n"
-            )
-        sys_msg = (system_prompt or SYSTEM_CHAT) + persona_block + ctx_block
+        sys_msg, _ = build_side_system(
+            base_system=base_system,
+            persona=persona,
+            page_context=page_context,
+            session_proposal=session_prop,
+            adopted_proposals=adopted,
+        )
         messages = [{"role": "system", "content": sys_msg}]
         messages.extend(
             {"role": m["role"], "content": m["content"]}
