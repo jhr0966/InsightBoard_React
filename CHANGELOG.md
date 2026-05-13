@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (Phase 6-A — 홈 트렌드 위젯)
+- `ui/home_tab._compute_home_trend_payload(news_today, *, days=7, now=None)` — 홈용 (`period_df`, `vol_df`, `emergence`) 일괄 계산. `now` 주입으로 테스트 결정성 확보.
+- `ui/home_tab._chip_row(label, df, color)` — emergence 키워드 칩 행 HTML 생성. delta 컬럼 있으면 `+N`, 아니면 count. `<script>` 자동 escape.
+- `ui/home_tab._trend_widget_html(brief_text, emergence)` — 🧠 SOLA 한 줄 + 🆕 새 / 📈 상승 / 📉 사라진 키워드 칩 3행 카드.
+- `ui/home_tab._build_trend_context(brief_text, payload)` — 일자별 카운트 + 새/상승 키워드 + brief 를 사이드 채팅 컨텍스트 라인으로 직렬화.
+- `ui/home_tab.render` — 메인 영역(부서 뉴스 위)에 위젯 + `[🔄 갱신]` 버튼 (pending flag → `st.rerun` 패턴) 삽입. brief 는 `_home_brief_text` 세션 키로 보관, page_context 에 자동 합류.
+- `_build_page_context(..., trend_ctx="")` 시그니처 확장 — 홈 트렌드 컨텍스트가 부서 뉴스/인사이트와 동등하게 사이드 채팅에 전달.
+- `tests/test_home_trend_widget.py` 13건 신설 — payload(days=1/7/empty) + 칩 HTML(count/delta/empty/XSS escape) + 위젯 HTML(brief 표시/placeholder) + trend_context 합산 + page_context 통합. 전체 **126/126** 통과.
+
 ### Added (M5-β — 트렌드 LLM 한 줄 해석 카드)
 - `sola/prompts.SYSTEM_TREND_BRIEF` 추가 — "1~2문장 평문, 굵은 키워드 1~3개, 입력에 없는 사실 금지" 가정.
 - `sola/trend_brief.py` 신설 — `brief(period_label, vol_df, emergence, force=False)` 함수.
