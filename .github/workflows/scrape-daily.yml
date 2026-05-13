@@ -1,0 +1,87 @@
+name: scrape-daily
+
+# Phase 6-B: 매일 KST 09:00 (UTC 00:00) 일일 뉴스 수집.
+# 결과 parquet 은 자동 브랜치에 commit 후 Draft PR 생성 — 사람이 머지 결정.
+# 수동 트리거: GitHub Actions UI → Run workflow (keywords/max_results override 가능).
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # KST 09:00
+  workflow_dispatch:
+    inputs:
+      keywords:
+        description: "공백으로 구분된 키워드 (미지정 시 config.DEFAULT_DAILY_KEYWORDS)"
+        required: false
+        default: ""
+      max_results:
+        description: "키워드/사이트당 최대 건수"
+        required: false
+        default: "10"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily scrape
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BACKEND: ${{ secrets.LLM_BACKEND }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        run: |
+          KEYWORDS_INPUT="${{ github.event.inputs.keywords }}"
+          MAX_RESULTS="${{ github.event.inputs.max_results || '10' }}"
+          if [ -n "$KEYWORDS_INPUT" ]; then
+            # shellcheck disable=SC2086
+            python -m scripts.daily_scrape --max-results "$MAX_RESULTS" --keywords $KEYWORDS_INPUT
+          else
+            python -m scripts.daily_scrape --max-results "$MAX_RESULTS"
+          fi
+
+      - name: Check data changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain data/news/)" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore(scrape): 일일 뉴스 수집 ${{ steps.changes.outputs.today }}"
+          title: "chore(scrape): 일일 뉴스 수집 ${{ steps.changes.outputs.today }}"
+          body: |
+            자동 생성 PR — Phase 6-B 일일 수집 cron.
+
+            - 트리거: ${{ github.event_name }}
+            - 실행 시각 (UTC): ${{ steps.changes.outputs.today }}
+            - 수집 키워드: `config.DEFAULT_DAILY_KEYWORDS` 또는 workflow_dispatch override
+
+            머지 전에 `data/news/<date>/` 파일 수와 소스 분포를 확인하세요.
+          branch: scrape/daily-${{ steps.changes.outputs.today }}
+          base: main
+          draft: true
+          add-paths: |
+            data/news/**
+          labels: |
+            automated
+            scrape

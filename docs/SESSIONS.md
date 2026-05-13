@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-05-13 · Phase 6-B cron 일일 자동 수집
+
+**브랜치:** `feat-daily-scrape-cron` (main 위에서 분기)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경 (사용자 선택):**
+emergence 정확도는 누적 데이터에 비례. 그러나 현재 수집은 UI 버튼 클릭 의존. AskUserQuestion 결과 **자동 PR 생성** 선택 — cron 이 매일 수집하되 main 직접 push 는 금지 (CLAUDE.md §7 준수), Draft PR 로 사람이 머지 결정.
+
+**구현:**
+1. `config.DEFAULT_DAILY_KEYWORDS` — 조선소 도메인 8개 기본 키워드 상수.
+2. `scraping/run_daily.py` — UI 와 독립된 배치 진입점.
+   - `collect_batch(keywords, sources, max_results, on_step)` — 키워드×소스 매트릭스 수집.
+   - **핵심 결정:** 같은 소스의 키워드별 결과를 메모리 누적 후 소스당 1번만 `save_articles` (file stamp 가 초 단위라 같은 초 내 다중 저장 시 덮어쓰기 버그).
+   - `CollectionReport` dataclass — saved/errors 분리, `summary_lines()` 로그용.
+3. `scripts/daily_scrape.py` — `python -m scripts.daily_scrape` CLI (argparse, 항상 exit 0).
+4. `.github/workflows/scrape-daily.yml` — cron `0 0 * * *` (KST 09:00) + `workflow_dispatch` (keywords/max_results override). peter-evans/create-pull-request@v6 로 Draft PR 자동 생성.
+5. `tests/test_run_daily.py` 7건 — search 함수를 monkeypatch 해서 디스패치/저장/에러 격리/CLI 기본값 검증.
+
+**검증:**
+- pytest 120/120 통과.
+- 금지 패턴 (on_click, requests 직접 호출) 모두 0건.
+- workflow YAML 문법은 GH Actions 실제 실행 시 검증 (로컬 dry-run 안 함).
+
+**다음 단계 후보:**
+1. Repo settings 에서 GH secrets `LLM_API_KEY`/`LLM_BACKEND`/`LLM_MODEL` 설정 (선택 — enrich 활성화 시).
+2. 첫 cron 실행 후 자동 PR 동작 확인 → 머지 시 main 의 `data/news/` 누적.
+3. 후속: cron 안에서 enrich 자동 호출(현재는 raw 수집만), 또는 누적 일수 늘어나면 emergence 자체에 기간 가중치 도입.
+
+---
+
 ## 2026-05-13 · M5-β 트렌드 LLM 한 줄 해석 카드
 
 **브랜치:** `feat-trend-brief` (M5-α 머지 후 main 위에서 재구성)

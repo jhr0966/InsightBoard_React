@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### Added (Phase 6-B — cron 일일 자동 수집)
+- `config.DEFAULT_DAILY_KEYWORDS` 추가 — 조선소 도메인 8개 기본 키워드(`조선소 자동화`, `용접 로봇`, `디지털 트윈`, `스마트팩토리`, `산업용 로봇`, `협동 로봇`, `제조 AI`, `선박 건조`). cron/CLI 기본값.
+- `scraping/run_daily.py` 신설 — UI 와 분리된 배치 진입점.
+  - `collect_batch(keywords, *, sources, max_results, on_step)` — 키워드×소스 매트릭스 수집. 키워드 기반 소스(`naver`/`google`)는 키워드별 결과를 메모리에 누적 후 **소스당 1번만** `save_articles` 호출(stamp 충돌 회피). `tech` 는 키워드 무관 1회. 키워드/소스 단위 실패는 격리.
+  - `CollectionReport` dataclass — saved(소스당 1 entry: source/keywords/count/path) + errors(키워드 단위 실패). `summary_lines()` 가 CLI 로그용 사람 친화 텍스트 생성.
+- `scripts/daily_scrape.py` 신설 — `python -m scripts.daily_scrape` CLI.
+  - 인자: `--keywords`(미지정 시 DEFAULT_DAILY_KEYWORDS) / `--sources naver google tech` / `--max-results N`. 항상 exit 0 (cron 안정성).
+- `.github/workflows/scrape-daily.yml` 신설 — 매일 KST 09:00 (UTC 00:00) cron + `workflow_dispatch` 수동 트리거.
+  - 실행 흐름: checkout → pip install → `python -m scripts.daily_scrape` → `data/news/` 변경 감지 → `peter-evans/create-pull-request@v6` 로 **Draft PR 자동 생성** (브랜치 `scrape/daily-YYYY-MM-DD`, 라벨 `automated,scrape`). `LLM_*` secrets 노출(선택 — enrich 미사용 시 비워도 동작).
+- `tests/test_run_daily.py` 7건 — 매트릭스 디스패치/저장 / 키워드 단위 실패 격리 / 부분 키워드 실패 시 나머지 보존 / 빈 키워드 스킵 / 소스 필터 / `CollectionReport.summary_lines` 사람 친화 출력 / CLI 가 DEFAULT_DAILY_KEYWORDS 기본 사용. 전체 120/120 통과.
+
 ### Added (M5-β — 트렌드 LLM 한 줄 해석 카드)
 - `sola/prompts.SYSTEM_TREND_BRIEF` 추가 — "1~2문장 평문, 굵은 키워드 1~3개, 입력에 없는 사실 금지" 가정.
 - `sola/trend_brief.py` 신설 — `brief(period_label, vol_df, emergence, force=False)` 함수.
