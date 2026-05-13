@@ -10,6 +10,7 @@ from __future__ import annotations
 import streamlit as st
 
 from config import ensure_data_dirs
+from store import bookmarks as _bookmarks_store
 from ui import (
     board_tab,
     bookmarks_tab,
@@ -33,6 +34,11 @@ st.set_page_config(
 
 ensure_data_dirs()
 inject_global_styles()
+
+# 세션당 1회: 미채택 제안서 만료 정리 (기본 30일, adopted 는 보존).
+if not st.session_state.get("_did_expire_check"):
+    _bookmarks_store.expire_old()
+    st.session_state["_did_expire_check"] = True
 
 with st.sidebar:
     area = sidebar.render()
