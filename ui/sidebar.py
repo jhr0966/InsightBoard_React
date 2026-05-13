@@ -99,18 +99,35 @@ def render() -> str:
     roadmap_df = load_roadmap()
     persona = _load_persona_into_state()
 
-    st.markdown("## 🛠️ 인사이트보드")
-    st.caption(f"페르소나: **{persona.label()}**" if persona.is_set() else "페르소나 미설정")
+    # 브랜드
+    st.markdown(
+        """
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-mark">N</div>
+          <div class="sidebar-brand-text">News · Insight Board</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    area = st.radio("영역", AREAS, key="app_area")
-    st.markdown("---")
+    # 영역 네비
+    st.markdown('<div class="sidebar-section">영역</div>', unsafe_allow_html=True)
+    area = st.radio("영역", AREAS, key="app_area", label_visibility="collapsed")
 
+    # 페르소나
+    st.markdown('<div class="sidebar-section">페르소나</div>', unsafe_allow_html=True)
+    st.caption(persona.label() if persona.is_set() else "미설정")
     _persona_form(roadmap_df)
 
-    st.markdown("---")
-    st.caption("🔌 LLM 상태")
-    st.markdown(f"- backend: `{llm_backend()}`")
-    st.markdown(f"- model: `{llm_model() or '(미설정)'}`")
-    st.markdown(f"- ready: {'✅' if llm_ready() else '❌'}")
+    # 시스템 상태
+    st.markdown('<div class="sidebar-section">시스템</div>', unsafe_allow_html=True)
+    status_icon = "✅" if llm_ready() else "⚠️"
+    st.markdown(
+        f"<div style='font-size:0.82rem;color:var(--text-2);line-height:1.7;'>"
+        f"{status_icon} LLM <code>{llm_backend()}</code><br>"
+        f"<span style='color:var(--text-3);'>{llm_model() or '(미설정)'}</span>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
     return area

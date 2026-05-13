@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-05-13 · UI-1 디자인 시스템 v2 + 사이드 채팅 인프라 (Phase 1)
+
+**브랜치:** `style-ui-redesign-phase1`
+**카테고리:** `style`
+**상태:** in-progress
+
+**배경 (사용자 요청):**
+"시스템 UI가 처음 깃허브에 들어있던 코드 때문에 틀에 갇혔는데, 트렌디하고 깔끔하게 새롭게 디자인. 좌측 사이드바, 중간 메인, 필요시 우측 LLM 채팅창. ChatGPT/Claude 같이 라운드 카드 프레임. AI 친화적 UI/UX."
++ "깔끔한 흰색에 파란색이 포인트인 시스템."
+
+**선택 (AskUserQuestion 3건 Recommended):**
+- 진행 방식: Phase 1 (디자인 시스템 + 인프라) 먼저
+- 사이드 채팅: 상단 토글 버튼 on/off, 컨텍스트 자동 인지
+- 폰트: Pretendard 단일
+
+**한 일:**
+1. `assets/styles.css` 전면 리뉴얼 — 디자인 토큰, Pretendard, 흰색 + 파랑 액센트(`#2563EB`), 라운드 12~16px, subtle shadow, 일관된 모던 위젯(버튼·라디오·탭·입력·expander), 카드 컴포넌트, 빠른 액션 그리드.
+2. `ui/styles.py` 강화 — `page_header(chat_toggle_key=...)` 헤더 + 💬 채팅 토글, `section_label()` 헬퍼.
+3. `ui/layout.py` 신설 — `main_and_chat()` 컨텍스트 매니저로 메인 + 우측 사이드 채팅. `render_chat_panel()` 헬퍼. 페이지 컨텍스트 lazy 평가.
+4. `ui/sidebar.py` modern — 브랜드 마크 + 섹션 레이블 + 깔끔한 상태 칩.
+5. `ui/home_tab.py` Phase 1 demo 적용 — 페르소나 welcome, 메트릭 3개, 부서 뉴스/AI 인사이트(채팅 토글에 따라 반응형), 빠른 액션 그리드.
+6. 전체 84/84 통과 (UI 변경, 로직 변경 없음).
+
+**Phase 2 TODO (다음 세션):**
+- `ui/board_tab` / `ui/ingest_tab` / `ui/news_tab` / `ui/bookmarks_tab` / `ui/sola_tab` / `ui/proposal_workbench` / `ui/roadmap_tab` 에 새 디자인 + 사이드 채팅 적용.
+- 각 페이지의 `page_context_fn` (현재 화면 내용 → LLM 컨텍스트) 정의.
+- 기능 작업(다중 일자 트렌드, 일일 자동 수집 등)은 별도.
+
+**블로커:** 없음. 기능 변경 0, CSS·레이아웃 헬퍼만 추가.
+
+---
+
 ## 2026-05-13 · docs 작업 완료 보고 규칙
 
 **브랜치:** `docs-completion-report-rule`
