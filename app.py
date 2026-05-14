@@ -1,9 +1,12 @@
-"""제조기술 로드맵 인사이트보드 — Streamlit 평탄 진입점 (3영역 재편).
+"""제조기술 로드맵 인사이트보드 — 업무 흐름형 Streamlit 진입점.
 
-영역:
-  🏠 홈   — 페르소나 기반 오늘의 인사이트 (ui.home_tab)
-  🔍 탐색 — 뉴스 수집 / 로드맵 / 인사이트보드 (sub-tabs)
-  💼 작업실 — SOLA 채팅·요약·제안서 / 뉴스 콘텐츠 (sub-tabs)
+UX_REDESIGN_PLAN Phase 1: 3영역(홈/탐색/작업실)을 아래 5개 업무 메뉴로
+재구성한다.
+  1. 오늘의 보드      — 매일 확인하는 맞춤 인사이트
+  2. 데이터 관리      — 뉴스 수집·Enrich + 로드맵 업로드
+  3. 인사이트 분석    — 트렌드·매칭·자동화 기회
+  4. SOLA 작업실      — 요약·과제·제안서 초안
+  5. 산출물 보관함    — 뉴스 콘텐츠·북마크
 """
 from __future__ import annotations
 
@@ -27,7 +30,7 @@ from ui.styles import inject_global_styles
 
 st.set_page_config(
     page_title="제조기술 로드맵 인사이트보드",
-    page_icon="📰",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -43,27 +46,25 @@ if not st.session_state.get("_did_expire_check"):
 with st.sidebar:
     area = sidebar.render()
 
-if area.startswith("🏠"):
+if area == "📊 오늘의 보드":
     home_tab.render()
-elif area.startswith("🔍"):
-    tab_collect, tab_roadmap, tab_board = st.tabs(
-        ["뉴스 수집·Enrich", "로드맵 업로드", "인사이트보드"]
-    )
+elif area == "🧱 데이터 관리":
+    tab_collect, tab_roadmap = st.tabs(["1. 뉴스 수집·Enrich", "2. 로드맵 업로드"])
     with tab_collect:
         ingest_tab.render()
     with tab_roadmap:
         roadmap_tab.render()
-    with tab_board:
-        board_tab.render()
-else:
-    tab_sola, tab_wb, tab_news, tab_bm = st.tabs(
-        ["SOLA (요약·제안서·채팅)", "📝 제안서 작업장", "뉴스 콘텐츠", "📌 북마크"]
-    )
+elif area == "🔎 인사이트 분석":
+    board_tab.render()
+elif area == "🤖 SOLA 작업실":
+    tab_sola, tab_wb = st.tabs(["SOLA 작업", "제안서 작업장"])
     with tab_sola:
         sola_tab.render()
     with tab_wb:
         proposal_workbench.render()
-    with tab_news:
-        news_tab.render()
+else:
+    tab_bm, tab_news = st.tabs(["📌 북마크·채택", "뉴스 콘텐츠"])
     with tab_bm:
         bookmarks_tab.render()
+    with tab_news:
+        news_tab.render()

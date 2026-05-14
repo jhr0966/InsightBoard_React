@@ -1,4 +1,4 @@
-"""홈: 페르소나 기반 오늘의 인사이트 + 빠른 행동 + 사이드 채팅."""
+"""오늘의 보드: 페르소나 기반 인사이트 + 빠른 행동 + 사이드 채팅."""
 from __future__ import annotations
 
 import html
@@ -15,6 +15,7 @@ from sola.insight import insight_for_dept
 from store import trends
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
+from ui.components import action_card, action_grid, metric_card, metric_grid, status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -263,8 +264,8 @@ def render() -> None:
 
     # 페이지 헤더 (채팅 토글 포함)
     chat_open = page_header(
-        "홈",
-        "오늘의 페르소나 기반 인사이트",
+        "오늘의 보드",
+        "핵심 변화 · 부서 맞춤 인사이트 · 추천 다음 행동",
         chat_toggle_key="home",
     )
 
@@ -285,18 +286,22 @@ def render() -> None:
         "home",
         page_context_fn=lambda: page_ctx,
         persona=persona,
-        hint="현재 홈 화면(페르소나 · 매칭 뉴스 · AI 인사이트)을 컨텍스트로 대화합니다.",
+        hint="현재 오늘의 보드(페르소나 · 매칭 뉴스 · AI 인사이트)를 컨텍스트로 대화합니다.",
     ) as main:
         with main:
             # 페르소나 welcome
             st.markdown(_persona_welcome(persona), unsafe_allow_html=True)
 
-            # 메트릭 3개
-            m1, m2, m3 = st.columns(3)
-            m1.metric("오늘 뉴스", f"{len(news):,}건")
-            m2.metric("로드맵 작업", f"{len(roadmap):,}건")
+            # 핵심 상태 카드
             enr = int((news["content"].astype(str).str.len() >= 50).sum()) if not news.empty and "content" in news.columns else 0
-            m3.metric("본문 확보", f"{enr:,}건")
+            st.markdown(
+                metric_grid([
+                    metric_card("오늘 뉴스", f"{len(news):,}건", caption="수집된 최신 기사", icon="📰", tone="info"),
+                    metric_card("로드맵 작업", f"{len(roadmap):,}건", caption="매칭 가능한 작업 정의", icon="🗂", tone="teal"),
+                    metric_card("본문 확보", f"{enr:,}건", caption="요약·키워드 분석 준비", icon="✨", tone="ok" if enr else "warn"),
+                ]),
+                unsafe_allow_html=True,
+            )
 
             if not news.empty:
                 # 🧠 SOLA 한 줄 + emergence 칩 위젯 — news 만 있으면 표시 (roadmap 무관)
@@ -329,9 +334,12 @@ def render() -> None:
             # 부서 뉴스 + 인사이트 — roadmap + news 둘 다 필요
             if roadmap.empty or news.empty:
                 st.markdown(
-                    '<div class="card-flat" style="margin-top:1.5rem;">'
-                    '로드맵 업로드와 뉴스 수집을 먼저 진행하세요. '
-                    '<b>🔍 탐색</b> 영역으로 이동.</div>',
+                    status_card(
+                        "데이터 준비가 필요합니다",
+                        "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 메뉴의 🧱 데이터 관리에서 시작할 수 있습니다.",
+                        status="warn",
+                        icon="🧱",
+                    ),
                     unsafe_allow_html=True,
                 )
             else:
@@ -356,29 +364,11 @@ def render() -> None:
             st.markdown("<div style='margin-top:1.8rem;'></div>", unsafe_allow_html=True)
             section_label("빠른 행동")
             st.markdown(
-                """
-                <div class="quick-grid">
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">🔍</div>
-                    <div class="quick-tile-title">뉴스 수집·Enrich</div>
-                    <div class="quick-tile-desc">탐색 → 뉴스 수집. 새 키워드로 기사 추가.</div>
-                  </div>
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">📊</div>
-                    <div class="quick-tile-title">인사이트보드</div>
-                    <div class="quick-tile-desc">탐색 → 트렌드·자동화 기회 매트릭스.</div>
-                  </div>
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">💬</div>
-                    <div class="quick-tile-title">SOLA 채팅</div>
-                    <div class="quick-tile-desc">작업실 → 페르소나 컨텍스트로 질문.</div>
-                  </div>
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">📝</div>
-                    <div class="quick-tile-title">제안서 작업장</div>
-                    <div class="quick-tile-desc">작업실 → 살아있는 제안서 수정·요약.</div>
-                  </div>
-                </div>
-                """,
+                action_grid([
+                    action_card("🔍", "데이터 관리", "뉴스 수집·Enrich와 로드맵 업로드를 준비.", tone="teal"),
+                    action_card("📊", "인사이트 분석", "트렌드·매칭·자동화 기회를 한 흐름으로 확인."),
+                    action_card("💬", "SOLA 작업실", "요약·과제 후보·제안서 초안을 생성."),
+                    action_card("📝", "산출물 보관함", "북마크·채택 과제·뉴스 콘텐츠를 재사용."),
+                ]),
                 unsafe_allow_html=True,
             )
