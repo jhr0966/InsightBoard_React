@@ -1,4 +1,12 @@
-from ui.components import action_card, action_grid, metric_card, metric_grid, status_card
+from ui.components import (
+    action_card,
+    action_grid,
+    metric_card,
+    metric_grid,
+    status_card,
+    step_guide,
+    step_item,
+)
 
 
 def test_metric_card_escapes_text_and_allows_known_tone():
@@ -27,3 +35,13 @@ def test_action_and_metric_grids_wrap_cards():
     metrics = [metric_card("A", 1), metric_card("B", 2)]
     assert metric_grid(metrics).startswith('<div class="metric-grid">')
     assert metric_grid(metrics).count('class="metric-card"') == 2
+
+
+def test_step_guide_escapes_and_marks_active_step():
+    html = step_guide([step_item(1, "<Pick>", "Body<script>", active=True)])
+
+    assert html.startswith('<div class="step-guide">')
+    assert 'class="step-item active"' in html
+    assert "&lt;Pick&gt;" in html
+    assert "Body&lt;script&gt;" in html
+    assert "<script>" not in html

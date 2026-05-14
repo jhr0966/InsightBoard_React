@@ -9,7 +9,13 @@ import streamlit as st
 from persona.schema import Persona
 from roadmap.ingest import ingest_excel
 from roadmap.query import by_dept, by_lv, load_latest
-from ui.components import status_card
+from ui.components import (
+    metric_card,
+    metric_grid,
+    status_card,
+    step_guide,
+    step_item,
+)
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -65,6 +71,16 @@ def render() -> None:
         hint="현재 로드맵 통계(부서·공정 집계)를 컨텍스트로 대화합니다.",
     ) as main:
         with main:
+            st.markdown(
+                step_guide([
+                    step_item(1, "엑셀 선택", "Master_Table 원본 파일을 업로드", active=True),
+                    step_item(2, "시트 확인", "기본 시트명은 Master_Table"),
+                    step_item(3, "검증·저장", "스키마 검증 후 Parquet DB 저장"),
+                    step_item(4, "매칭 준비", "인사이트 분석에서 뉴스와 작업 연결"),
+                ]),
+                unsafe_allow_html=True,
+            )
+
             st.file_uploader("Master_Table.xlsx", type=["xlsx", "xlsm"], key="rm_upload")
             st.text_input("시트명", value="Master_Table", key="rm_sheet")
 
@@ -81,6 +97,41 @@ def render() -> None:
                 {"ok": st.success, "warn": st.warning, "error": st.error}[kind](msg)
 
             st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+            dept_count = (
+                df["dept"].nunique()
+                if not df.empty and "dept" in df.columns else 0
+            )
+            lv3_count = (
+                df["lv3"].nunique()
+                if not df.empty and "lv3" in df.columns else 0
+            )
+            st.markdown(
+                metric_grid([
+                    metric_card(
+                        "로드맵 작업",
+                        f"{len(df):,}건",
+                        caption="저장된 작업 정의",
+                        icon="🗂",
+                        tone="teal",
+                    ),
+                    metric_card(
+                        "부서 수",
+                        f"{dept_count:,}",
+                        caption="업로드된 조직 범위",
+                        icon="🏭",
+                        tone="ok" if dept_count else "warn",
+                    ),
+                    metric_card(
+                        "Lv3 공정",
+                        f"{lv3_count:,}",
+                        caption="뉴스 매칭 기준 공정",
+                        icon="⚙️",
+                        tone="info" if lv3_count else "warn",
+                    ),
+                ]),
+                unsafe_allow_html=True,
+            )
+
             if df.empty:
                 st.markdown(
                     status_card(
@@ -92,8 +143,6 @@ def render() -> None:
                     unsafe_allow_html=True,
                 )
                 return
-
-            st.caption(f"현재 로드맵: {len(df):,}행")
             col1, col2 = st.columns(2)
             with col1:
                 section_label("부서별 작업 수")

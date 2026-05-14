@@ -368,6 +368,55 @@ html, body, [class*="css"], .stApp, [data-testid="stAppViewContainer"],
     letter-spacing: -0.015em;
 }
 
+
+/* ── Phase 2 공통 컴포넌트: Step Guide ─────────────────────── */
+.step-guide {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+    margin: 0.5rem 0 1.4rem 0;
+}
+.step-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 0.95rem 1rem;
+    box-shadow: var(--shadow-1);
+}
+.step-item.active {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--accent-soft), var(--surface));
+}
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-full);
+    background: var(--navy-900);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+.step-item.active .step-number { background: var(--accent); }
+.step-title {
+    color: var(--text-1);
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+.step-body {
+    color: var(--text-3);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    margin-top: 0.25rem;
+}
+
 /* 뉴스 카드 (기존 호환) */
 .news-card {
     background: var(--surface);

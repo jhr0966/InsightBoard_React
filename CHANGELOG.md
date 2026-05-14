@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (UX Phase 2 후속 — 로드맵 업로드 단계 안내)
+- `ui/roadmap_tab.py` 에 `엑셀 선택 → 시트 확인 → 검증·저장 → 매칭 준비` StepGuide 를 추가하고, 로드맵 작업/부서 수/Lv3 공정 현황을 공통 `metric_card` 로 표시.
+
+### Added (UX Phase 2 후속 — 데이터 관리 단계 안내)
+- `ui.components.step_item` / `step_guide` 추가 — 데이터 준비처럼 순서가 중요한 화면에 쓰는 단계 안내 컴포넌트.
+- `ui/ingest_tab.py` 상단에 `키워드·소스 선택 → 수집·저장 → 본문 Enrich → 분석으로 이동` 4단계 가이드를 추가하고, 수집 현황을 공통 `metric_card`/`status_card` 로 정리.
+- `tests/test_ui_components.py` 에 StepGuide escape/active 상태 회귀 테스트 추가.
+
 ### Changed (UX Phase 2 후속 — 빈 상태 통일)
 - `roadmap_tab`, `board_tab`, `news_tab`, `bookmarks_tab`, `task_tree` 의 주요 빈 상태/준비 필요 안내를 공통 `status_card` 로 교체해 데이터 준비·분석·보관함 화면의 안내 문법 통일.
 - `board_tab` 상단 KPI 를 공통 `metric_card` 기반으로 교체해 오늘의 보드와 인사이트 분석의 핵심 지표 카드 스타일 정렬.

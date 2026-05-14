@@ -75,3 +75,21 @@ def action_card(icon: str, title: str, body: str, *, tone: str = "") -> str:
 def action_grid(cards: Iterable[str]) -> str:
     """Wrap prebuilt action cards in the standard responsive action grid."""
     return '<div class="action-grid">' + "".join(cards) + "</div>"
+
+def step_item(number: str | int, title: str, body: str, *, active: bool = False) -> str:
+    """Build one process step for guided workflows."""
+    cls = "step-item active" if active else "step-item"
+    return f"""
+    <div class="{cls}">
+      <div class="step-number">{_html.escape(str(number))}</div>
+      <div>
+        <div class="step-title">{_html.escape(title)}</div>
+        <div class="step-body">{_html.escape(body)}</div>
+      </div>
+    </div>
+    """
+
+
+def step_guide(items: Iterable[str]) -> str:
+    """Wrap prebuilt step items in the standard horizontal guide."""
+    return '<div class="step-guide">' + "".join(items) + "</div>"
