@@ -9,6 +9,7 @@ import streamlit as st
 from persona.schema import Persona
 from roadmap.ingest import ingest_excel
 from roadmap.query import by_dept, by_lv, load_latest
+from ui.components import status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -82,7 +83,12 @@ def render() -> None:
             st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             if df.empty:
                 st.markdown(
-                    '<div class="card-flat">아직 업로드된 로드맵이 없습니다.</div>',
+                    status_card(
+                        "로드맵 데이터가 없습니다",
+                        "Master_Table 엑셀을 업로드·검증·저장하면 부서/공정 집계와 뉴스 매칭을 시작할 수 있습니다.",
+                        status="warn",
+                        icon="🗂",
+                    ),
                     unsafe_allow_html=True,
                 )
                 return

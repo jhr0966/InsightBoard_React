@@ -8,6 +8,7 @@ import streamlit as st
 from persona.schema import Persona
 from store import bookmarks
 from store.bookmarks import BOOKMARK_STATUSES, DEFAULT_EXPIRE_DAYS
+from ui.components import status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -88,8 +89,12 @@ def render() -> None:
 
             if not items:
                 st.markdown(
-                    '<div class="card-flat">아직 북마크가 없습니다. '
-                    '인사이트보드의 ☆ 또는 제안서 화면의 ☆ 버튼으로 저장하세요.</div>',
+                    status_card(
+                        "아직 저장된 산출물이 없습니다",
+                        "인사이트 분석의 ☆ 또는 SOLA 작업실의 제안서 저장 버튼으로 검토할 항목을 보관하세요.",
+                        status="teal",
+                        icon="📌",
+                    ),
                     unsafe_allow_html=True,
                 )
                 return

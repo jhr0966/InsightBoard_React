@@ -15,6 +15,7 @@ from store import bookmarks, trends
 from store.bookmarks import Bookmark
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
+from ui.components import metric_card, metric_grid, status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -194,7 +195,15 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
     cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
     if cells.empty:
-        st.info("매칭되는 뉴스가 없습니다. 키워드 수집 또는 본문 Enrich 를 진행하세요.")
+        st.markdown(
+            status_card(
+                "자동화 기회로 계산할 매칭 뉴스가 없습니다",
+                "키워드 수집 또는 본문 Enrich를 진행하면 부서×공정 기회 셀이 계산됩니다.",
+                status="warn",
+                icon="⚙️",
+            ),
+            unsafe_allow_html=True,
+        )
         return
 
     top_n = st.slider("상위 셀 개수", 3, 20, 8, key="board_opp_n")
@@ -273,12 +282,28 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
     _selection, filtered = task_tree.render_drilldown(roadmap, key_prefix="board")
     if filtered.empty:
-        st.warning("선택한 필터에 해당하는 작업이 없습니다.")
+        st.markdown(
+            status_card(
+                "선택한 필터에 해당하는 작업이 없습니다",
+                "부서·공정 필터를 넓히거나 로드맵 데이터를 확인하세요.",
+                status="warn",
+                icon="🧭",
+            ),
+            unsafe_allow_html=True,
+        )
         return
 
     matches = score_matches(news, filtered, top_k=3)
     if matches.empty:
-        st.info("매칭되는 뉴스가 없습니다. 다른 키워드로 수집해보세요.")
+        st.markdown(
+            status_card(
+                "매칭되는 뉴스가 없습니다",
+                "다른 키워드로 뉴스를 수집하거나 Enrich 후 다시 시도하세요.",
+                status="warn",
+                icon="📰",
+            ),
+            unsafe_allow_html=True,
+        )
         return
 
     agg = (
@@ -376,15 +401,45 @@ def render() -> None:
         hint="현재 보드(트렌드·매트릭스·부서 인사이트·매칭)를 컨텍스트로 대화합니다.",
     ) as main:
         with main:
-            col_a, col_b, col_c = st.columns(3)
-            col_a.metric("로드맵 작업", f"{len(roadmap):,}건")
-            col_b.metric("오늘 뉴스", f"{len(news):,}건")
-            col_c.metric("부서 수", f"{roadmap['dept'].nunique() if not roadmap.empty else 0}")
+            dept_count = (
+                roadmap["dept"].nunique()
+                if not roadmap.empty and "dept" in roadmap.columns else 0
+            )
+            st.markdown(
+                metric_grid([
+                    metric_card(
+                        "로드맵 작업",
+                        f"{len(roadmap):,}건",
+                        caption="분석 가능한 작업 정의",
+                        icon="🗂",
+                        tone="teal",
+                    ),
+                    metric_card(
+                        "오늘 뉴스",
+                        f"{len(news):,}건",
+                        caption="매칭 후보 기사",
+                        icon="📰",
+                        tone="info",
+                    ),
+                    metric_card(
+                        "부서 수",
+                        f"{dept_count:,}",
+                        caption="로드맵 내 부서 범위",
+                        icon="🏭",
+                        tone="ok" if dept_count else "warn",
+                    ),
+                ]),
+                unsafe_allow_html=True,
+            )
 
             if roadmap.empty or news.empty:
                 st.markdown(
-                    '<div class="card-flat" style="margin-top:1.2rem;">'
-                    '로드맵 업로드와 뉴스 수집을 먼저 진행하세요.</div>',
+                    status_card(
+                        "인사이트 분석을 위한 데이터가 부족합니다",
+                        "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 🧱 데이터 관리 메뉴에서 준비할 수 있습니다.",
+                        status="warn",
+                        icon="🧱",
+                    ),
                     unsafe_allow_html=True,
                 )
                 return

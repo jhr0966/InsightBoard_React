@@ -5,6 +5,53 @@
 
 ---
 
+## 2026-05-14 · UX Phase 2 후속 — 빈 상태/상태 카드 통일
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 2 에서 공통 `MetricCard`/`StatusCard`/`ActionCard` 컴포넌트를 만들었지만, 여러 화면의 빈 상태는 여전히 `card-flat`, `st.info`, `st.warning` 등으로 들쭉날쭉하게 남아 있었음. 다음 개편 전 사용자 안내 문법을 우선 통일.
+
+**한 일:**
+1. `ui/roadmap_tab.py` — 로드맵 미업로드 상태를 `status_card` 로 교체.
+2. `ui/board_tab.py` — 상단 KPI 를 `metric_card` 로 교체하고, 분석 데이터 부족/매칭 없음/필터 결과 없음 상태를 `status_card` 로 교체.
+3. `ui/news_tab.py`, `ui/bookmarks_tab.py`, `ui/task_tree.py` — 뉴스 없음, 산출물 없음, 로드맵 없음 안내를 `status_card` 로 교체.
+4. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2 계속: `ingest_tab` 수집 상태/폼을 상태 카드 + 단계 안내로 재배치.
+- Phase 3: 오늘의 보드 추천 행동/자동화 기회 Top 카드 추가.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 2 — 공통 UI 컴포넌트 기반 정리
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+UX Phase 1 로 5개 업무 메뉴 앱 쉘을 만들었고, 다음 단계로 화면마다 반복되는 KPI/상태/빠른 행동 카드의 디자인 문법을 통일할 필요가 있음. `docs/UX_REDESIGN_PLAN.md` Phase 2 의 `MetricCard`/`StatusCard`/`ActionCard` 후보를 우선 구현.
+
+**한 일:**
+1. `ui/components.py` 신설 — `metric_card`, `metric_grid`, `status_card`, `action_card`, `action_grid` HTML 빌더 추가. 외부/사용자 문자열은 모두 `html.escape()` 처리하고 tone 은 allowlist 로 제한.
+2. `assets/styles.css` 에 Navy/Teal 제품 토큰과 metric/status/action 공통 카드 스타일 추가.
+3. `ui/home_tab.py` 의 기본 `st.metric` 3개, 데이터 준비 안내 card-flat, 빠른 행동 inline HTML 을 공통 컴포넌트로 교체.
+4. `tests/test_ui_components.py` 추가 — escape, tone sanitizing, grid wrapper 검증.
+5. `docs/ARCHITECTURE.md`, `CHANGELOG.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2 계속: `ingest_tab`, `roadmap_tab`, `board_tab` 의 빈 상태/상태 카드를 `status_card` 로 점진 교체.
+- Phase 3: 오늘의 보드에 추천 행동/자동화 기회 Top 카드 추가.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-14 · UX Phase 1 — 앱 쉘/네비게이션 개편
 
 **브랜치:** `work`

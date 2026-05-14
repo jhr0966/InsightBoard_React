@@ -63,7 +63,8 @@ News_TEST/
 │   └── opportunity.py       # 부서×공정 자동화 기회 매트릭스 + LLM 코멘트
 ├── ui/                      # Streamlit — 5개 업무 메뉴
 │   ├── sidebar.py           # 페르소나 설정 + 업무 흐름 네비 + LLM 상태
-│   ├── styles.py            # CSS 주입
+│   ├── styles.py            # CSS 주입 + 페이지 헤더
+│   ├── components.py        # Metric/Status/Action 공통 HTML 컴포넌트
 │   ├── task_tree.py         # 부서→Lv1→Lv2→Lv3 드릴다운 위젯
 │   ├── home_tab.py          # 📊 오늘의 보드 (페르소나 기반 오늘 인사이트)
 │   ├── ingest_tab.py        # 🧱 데이터 관리: 수집·Enrich
