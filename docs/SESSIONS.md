@@ -5,6 +5,121 @@
 
 ---
 
+## 2026-05-14 · UX Phase 2 후속 — 빈 상태/상태 카드 통일
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 2 에서 공통 `MetricCard`/`StatusCard`/`ActionCard` 컴포넌트를 만들었지만, 여러 화면의 빈 상태는 여전히 `card-flat`, `st.info`, `st.warning` 등으로 들쭉날쭉하게 남아 있었음. 다음 개편 전 사용자 안내 문법을 우선 통일.
+
+**한 일:**
+1. `ui/roadmap_tab.py` — 로드맵 미업로드 상태를 `status_card` 로 교체.
+2. `ui/board_tab.py` — 상단 KPI 를 `metric_card` 로 교체하고, 분석 데이터 부족/매칭 없음/필터 결과 없음 상태를 `status_card` 로 교체.
+3. `ui/news_tab.py`, `ui/bookmarks_tab.py`, `ui/task_tree.py` — 뉴스 없음, 산출물 없음, 로드맵 없음 안내를 `status_card` 로 교체.
+4. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2 계속: `ingest_tab` 수집 상태/폼을 상태 카드 + 단계 안내로 재배치.
+- Phase 3: 오늘의 보드 추천 행동/자동화 기회 Top 카드 추가.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 2 — 공통 UI 컴포넌트 기반 정리
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+UX Phase 1 로 5개 업무 메뉴 앱 쉘을 만들었고, 다음 단계로 화면마다 반복되는 KPI/상태/빠른 행동 카드의 디자인 문법을 통일할 필요가 있음. `docs/UX_REDESIGN_PLAN.md` Phase 2 의 `MetricCard`/`StatusCard`/`ActionCard` 후보를 우선 구현.
+
+**한 일:**
+1. `ui/components.py` 신설 — `metric_card`, `metric_grid`, `status_card`, `action_card`, `action_grid` HTML 빌더 추가. 외부/사용자 문자열은 모두 `html.escape()` 처리하고 tone 은 allowlist 로 제한.
+2. `assets/styles.css` 에 Navy/Teal 제품 토큰과 metric/status/action 공통 카드 스타일 추가.
+3. `ui/home_tab.py` 의 기본 `st.metric` 3개, 데이터 준비 안내 card-flat, 빠른 행동 inline HTML 을 공통 컴포넌트로 교체.
+4. `tests/test_ui_components.py` 추가 — escape, tone sanitizing, grid wrapper 검증.
+5. `docs/ARCHITECTURE.md`, `CHANGELOG.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2 계속: `ingest_tab`, `roadmap_tab`, `board_tab` 의 빈 상태/상태 카드를 `status_card` 로 점진 교체.
+- Phase 3: 오늘의 보드에 추천 행동/자동화 기회 Top 카드 추가.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 1 — 앱 쉘/네비게이션 개편
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+`docs/UX_REDESIGN_PLAN.md` 의 Phase 1 시작. 기존 `홈 · 탐색 · 작업실` 3영역은 기능 묶음에 가까워 사용자가 업무 순서를 이해하기 어려웠음. 첨부 구조도의 흐름을 따라 데이터 준비, 분석, SOLA 산출물 생성, 보관함으로 메뉴를 분리.
+
+**한 일:**
+1. `app.py` 라우팅을 `오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함` 5개 업무 메뉴로 변경.
+2. `ui/sidebar.py` 메뉴와 브랜드 문구를 업무 흐름형으로 변경하고, 기존 세션의 `app_area` 값이 새 메뉴에 없으면 오늘의 보드로 안전하게 보정.
+3. `ui/home_tab.py`, `ui/news_tab.py` 안내 문구와 빠른 행동 카드를 새 메뉴명에 맞게 갱신.
+4. `assets/styles.css` 에 사이드바 업무 흐름 힌트 스타일 추가.
+5. `README.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2: 공통 `MetricCard`/`StatusCard`/`ActionCard`/`EmptyState` 컴포넌트와 디자인 토큰 정리.
+- Phase 3: 오늘의 보드를 추천 행동 중심 대시보드로 재설계.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX 전면 개편 계획 문서화
+
+**브랜치:** `work`
+**카테고리:** `docs`
+**상태:** in-progress
+
+**배경:**
+사용자가 첨부한 제조기술 로드맵 인사이트보드 구조도를 기준으로, 현재 GitHub 레포 UI/UX가 복잡하고 흐름이 불명확하다는 피드백을 제공. Codex가 이후 개편 작업을 진행할 때 참고할 수 있도록 분석과 개편 계획을 레포 문서로 고정할 필요가 있음.
+
+**한 일:**
+1. `docs/UX_REDESIGN_PLAN.md` 신설 — 문제 진단, 목표 제품 이미지, 새 IA, 화면별 개편안, 디자인 방향, 사용자 시나리오, 단계별 구현 로드맵 정리.
+2. `README.md` 개발 문서 표에 UX 개편 계획 링크 추가.
+3. `CHANGELOG.md` [Unreleased] 에 문서 추가 내역 기록.
+
+**다음 세션 TODO:**
+- Phase 1: `app.py`/`ui/sidebar.py` 앱 쉘을 `오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함` 구조로 개편.
+- Phase 2: `assets/styles.css` 와 공통 UI 컴포넌트 정리.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · 검증/보안 정리 — env 예시와 Makefile 정렬
+
+**브랜치:** `work`
+**카테고리:** `fix`
+**상태:** in-progress
+
+**배경:**
+전체 상태 점검 중 `.env.example` 에 실제 API 키 형태의 값이 남아 있고, `Makefile` 이 삭제된 과거 파일명을 참조해 `make check` 가 즉시 실패하는 문제를 확인.
+
+**한 일:**
+1. `.env.example` 의 `LLM_API_KEY` 를 placeholder 로 교체하고, 실제 키는 `.env` 에만 입력하라는 주석 추가.
+2. `Makefile` 을 현재 레포 구조에 맞춰 `git ls-files '*.py'` 기반 compile, `rg` 금지 패턴 검사, 전체 `pytest -q` 실행으로 정렬.
+3. `make check` 에 `.env.example` API 키 패턴 검사를 추가해 예시 파일에 실제 키가 다시 들어오는 것을 차단.
+
+**다음 세션 TODO:**
+- 노출됐던 API 키는 공급자 콘솔에서 폐기/재발급.
+- 필요하면 secret scanning/pre-commit 도입.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · Phase 6-A 후속 — 트렌드 위젯 roadmap 의존성 제거
 
 **브랜치:** `fix-home-trend-roadmap-gate`

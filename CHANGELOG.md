@@ -5,6 +5,30 @@
 
 ## [Unreleased]
 
+### Changed (UX Phase 2 후속 — 빈 상태 통일)
+- `roadmap_tab`, `board_tab`, `news_tab`, `bookmarks_tab`, `task_tree` 의 주요 빈 상태/준비 필요 안내를 공통 `status_card` 로 교체해 데이터 준비·분석·보관함 화면의 안내 문법 통일.
+- `board_tab` 상단 KPI 를 공통 `metric_card` 기반으로 교체해 오늘의 보드와 인사이트 분석의 핵심 지표 카드 스타일 정렬.
+
+### Added (UX Phase 2 — 공통 UI 컴포넌트)
+- `ui/components.py` 추가 — `MetricCard`, `StatusCard`, `ActionCard` 계열 HTML 빌더를 공통화하고 모든 문자열을 escape 처리.
+- `assets/styles.css` 에 Navy/Teal 제품 토큰과 metric/status/action 공통 카드 스타일 추가.
+- `ui/home_tab.py` 의 오늘의 보드 KPI, 데이터 준비 안내, 빠른 행동 카드를 공통 컴포넌트로 교체.
+- `tests/test_ui_components.py` 추가 — HTML escape, tone class allowlist, grid wrapper 회귀 테스트.
+
+### Changed (UX Phase 1 — 앱 쉘)
+- `app.py` 와 `ui/sidebar.py` 를 UX 개편 계획의 5개 업무 메뉴(`오늘의 보드`, `데이터 관리`, `인사이트 분석`, `SOLA 작업실`, `산출물 보관함`)로 1차 재구성. 기존 `탐색`/`작업실` 하위 탭에 섞여 있던 기능을 업무 목적별 메뉴로 분리.
+- 홈 화면 문구와 빠른 행동 카드를 새 메뉴명에 맞게 갱신하고, 사이드바에 `데이터 준비 → 인사이트 분석 → SOLA 산출물 생성` 흐름 힌트 추가.
+- `README.md` 와 `docs/ARCHITECTURE.md` 의 UI 구조 설명을 5개 업무 메뉴 기준으로 갱신.
+
+### Added (UX 개편 계획)
+- `docs/UX_REDESIGN_PLAN.md` 추가 — 첨부 구조도의 5단계 흐름(데이터 입력 → 저장·정제 → SOLA 분석 → 서비스 UI → 최종 산출물)을 기준으로 새 IA, 화면별 재배치, 디자인 방향, 사용자 시나리오, 단계별 구현 로드맵 정리.
+- `README.md` 개발 문서 표에 UX 개편 계획 문서 링크 추가.
+
+### Fixed (검증/보안 정리)
+- `.env.example` 에 커밋되어 있던 실제 Groq API 키 형태의 값을 placeholder 로 교체하고, 실제 키는 gitignore 된 `.env` 에만 입력하도록 주석 추가.
+- `Makefile` 의 오래된 파일명(`scraper.py`, `insights.py`, `cardnews.py`, `tests/test_app_pages_smoke.py`) 참조를 제거하고, 현재 CI/README 기준과 같은 전체 Python compile, 금지 패턴 검사, 전체 pytest 실행으로 정렬.
+- `make check` 에 `.env.example` 내 API 키 패턴 검사를 추가해 예시 파일에 실제 키가 재유입되는 것을 방지.
+
 ### Fixed (Phase 6-A 후속 — roadmap 의존성 제거)
 - `ui/home_tab.render` 의 트렌드 위젯이 `if roadmap.empty or news.empty` 분기 안에 갇혀 있어 로드맵 미업로드 onboarding 상태(뉴스만 수집된 상태)에서 위젯이 보이지 않던 버그 수정 (Codex review #21). 트렌드 위젯은 roadmap 의존성이 없으므로 `news` 만 있어도 렌더되도록 분기 분리. 부서 매칭 카드/안내는 기존대로 roadmap+news 모두 필요.
 
