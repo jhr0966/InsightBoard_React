@@ -6,7 +6,7 @@
 2. **🗂 로드맵·매칭** (`roadmap/`, `store/`) — 조선소 작업 정의 엑셀 → Parquet, 룰 기반 뉴스↔작업 매칭, 자동화 기회 매트릭스.
 3. **🤖 SOLA LLM** (`sola/`, `persona/`) — 요약·제안서·채팅·부서 인사이트, 페르소나 자동 주입.
 
-UI 는 3영역(`홈 · 탐색 · 작업실`) + `ui/<name>_tab.py` 탭 모듈로 분리.
+UI 는 업무 흐름형 5개 메뉴(`오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함`) + `ui/<name>_tab.py` 모듈로 분리.
 
 ## 실행
 
@@ -51,6 +51,7 @@ make run
 | [`docs/SESSIONS.md`](./docs/SESSIONS.md) | 이전 세션 복원 (상단 1개만) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 릴리스 이력 |
 | [`docs/VIBE_CODING_BLUEPRINT.md`](./docs/VIBE_CODING_BLUEPRINT.md) | 제품/아키텍처/개발전략 청사진 |
+| [`docs/UX_REDESIGN_PLAN.md`](./docs/UX_REDESIGN_PLAN.md) | 인사이트보드 UI/UX 전면 개편 계획 |
 | [`docs/DEVELOPMENT_PHASES.md`](./docs/DEVELOPMENT_PHASES.md) | Streamlit + Local First 단계별 실행 계획 |
 
 ## 배포
