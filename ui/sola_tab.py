@@ -218,7 +218,7 @@ def _render_chat() -> None:
                 options=options,
                 format_func=lambda i: labels.get(i, "(없음)"),
                 key="chat_attached_bm_id",
-                help="작업실에서 ★북마크해둔 제안서를 추가 컨텍스트로 첨부합니다.",
+                help="산출물 보관함에서 ★북마크해둔 제안서를 추가 컨텍스트로 첨부합니다.",
             )
 
     cols = st.columns([1, 4])

@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-05-14 · UX Phase 1 — 앱 쉘/네비게이션 개편
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+`docs/UX_REDESIGN_PLAN.md` 의 Phase 1 시작. 기존 `홈 · 탐색 · 작업실` 3영역은 기능 묶음에 가까워 사용자가 업무 순서를 이해하기 어려웠음. 첨부 구조도의 흐름을 따라 데이터 준비, 분석, SOLA 산출물 생성, 보관함으로 메뉴를 분리.
+
+**한 일:**
+1. `app.py` 라우팅을 `오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함` 5개 업무 메뉴로 변경.
+2. `ui/sidebar.py` 메뉴와 브랜드 문구를 업무 흐름형으로 변경하고, 기존 세션의 `app_area` 값이 새 메뉴에 없으면 오늘의 보드로 안전하게 보정.
+3. `ui/home_tab.py`, `ui/news_tab.py` 안내 문구와 빠른 행동 카드를 새 메뉴명에 맞게 갱신.
+4. `assets/styles.css` 에 사이드바 업무 흐름 힌트 스타일 추가.
+5. `README.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2: 공통 `MetricCard`/`StatusCard`/`ActionCard`/`EmptyState` 컴포넌트와 디자인 토큰 정리.
+- Phase 3: 오늘의 보드를 추천 행동 중심 대시보드로 재설계.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-14 · UX 전면 개편 계획 문서화
 
 **브랜치:** `work`

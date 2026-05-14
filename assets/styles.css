@@ -116,6 +116,18 @@ html, body, [class*="css"], .stApp, [data-testid="stAppViewContainer"],
 .app-header-chip.ok { color: var(--green); background: var(--green-soft); border-color: transparent; }
 .app-header-chip.warn { color: var(--amber); background: var(--amber-soft); border-color: transparent; }
 
+
+.sidebar-flow-hint {
+    margin: 0.45rem 0 1rem 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, var(--accent-soft), #ECFEFF);
+    color: var(--text-2);
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
 /* ── 텍스트 입력 ────────────────────────────────────────── */
 .stTextInput > div > div > input,
 .stTextArea textarea,

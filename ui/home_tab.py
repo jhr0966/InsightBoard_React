@@ -1,4 +1,4 @@
-"""홈: 페르소나 기반 오늘의 인사이트 + 빠른 행동 + 사이드 채팅."""
+"""오늘의 보드: 페르소나 기반 인사이트 + 빠른 행동 + 사이드 채팅."""
 from __future__ import annotations
 
 import html
@@ -263,8 +263,8 @@ def render() -> None:
 
     # 페이지 헤더 (채팅 토글 포함)
     chat_open = page_header(
-        "홈",
-        "오늘의 페르소나 기반 인사이트",
+        "오늘의 보드",
+        "핵심 변화 · 부서 맞춤 인사이트 · 추천 다음 행동",
         chat_toggle_key="home",
     )
 
@@ -285,7 +285,7 @@ def render() -> None:
         "home",
         page_context_fn=lambda: page_ctx,
         persona=persona,
-        hint="현재 홈 화면(페르소나 · 매칭 뉴스 · AI 인사이트)을 컨텍스트로 대화합니다.",
+        hint="현재 오늘의 보드(페르소나 · 매칭 뉴스 · AI 인사이트)를 컨텍스트로 대화합니다.",
     ) as main:
         with main:
             # 페르소나 welcome
@@ -331,7 +331,7 @@ def render() -> None:
                 st.markdown(
                     '<div class="card-flat" style="margin-top:1.5rem;">'
                     '로드맵 업로드와 뉴스 수집을 먼저 진행하세요. '
-                    '<b>🔍 탐색</b> 영역으로 이동.</div>',
+                    '<b>🧱 데이터 관리</b> 메뉴로 이동.</div>',
                     unsafe_allow_html=True,
                 )
             else:
@@ -360,23 +360,23 @@ def render() -> None:
                 <div class="quick-grid">
                   <div class="quick-tile">
                     <div class="quick-tile-icon">🔍</div>
-                    <div class="quick-tile-title">뉴스 수집·Enrich</div>
-                    <div class="quick-tile-desc">탐색 → 뉴스 수집. 새 키워드로 기사 추가.</div>
+                    <div class="quick-tile-title">데이터 관리</div>
+                    <div class="quick-tile-desc">뉴스 수집·Enrich와 로드맵 업로드를 준비.</div>
                   </div>
                   <div class="quick-tile">
                     <div class="quick-tile-icon">📊</div>
-                    <div class="quick-tile-title">인사이트보드</div>
-                    <div class="quick-tile-desc">탐색 → 트렌드·자동화 기회 매트릭스.</div>
+                    <div class="quick-tile-title">인사이트 분석</div>
+                    <div class="quick-tile-desc">트렌드·매칭·자동화 기회를 한 흐름으로 확인.</div>
                   </div>
                   <div class="quick-tile">
                     <div class="quick-tile-icon">💬</div>
-                    <div class="quick-tile-title">SOLA 채팅</div>
-                    <div class="quick-tile-desc">작업실 → 페르소나 컨텍스트로 질문.</div>
+                    <div class="quick-tile-title">SOLA 작업실</div>
+                    <div class="quick-tile-desc">요약·과제 후보·제안서 초안을 생성.</div>
                   </div>
                   <div class="quick-tile">
                     <div class="quick-tile-icon">📝</div>
-                    <div class="quick-tile-title">제안서 작업장</div>
-                    <div class="quick-tile-desc">작업실 → 살아있는 제안서 수정·요약.</div>
+                    <div class="quick-tile-title">산출물 보관함</div>
+                    <div class="quick-tile-desc">북마크·채택 과제·뉴스 콘텐츠를 재사용.</div>
                   </div>
                 </div>
                 """,
