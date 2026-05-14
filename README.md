@@ -51,6 +51,7 @@ make run
 | [`docs/SESSIONS.md`](./docs/SESSIONS.md) | 이전 세션 복원 (상단 1개만) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 릴리스 이력 |
 | [`docs/VIBE_CODING_BLUEPRINT.md`](./docs/VIBE_CODING_BLUEPRINT.md) | 제품/아키텍처/개발전략 청사진 |
+| [`docs/UX_REDESIGN_PLAN.md`](./docs/UX_REDESIGN_PLAN.md) | 인사이트보드 UI/UX 전면 개편 계획 |
 | [`docs/DEVELOPMENT_PHASES.md`](./docs/DEVELOPMENT_PHASES.md) | Streamlit + Local First 단계별 실행 계획 |
 
 ## 배포
