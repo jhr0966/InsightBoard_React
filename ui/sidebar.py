@@ -1,4 +1,4 @@
-"""사이드바: 컴팩트 페르소나 카드 + 영역 네비 + 시스템 푸터."""
+"""사이드바: 업무 흐름형 네비 + 컴팩트 페르소나 카드 + 시스템 푸터."""
 from __future__ import annotations
 
 import html as _html
@@ -12,7 +12,13 @@ from roadmap.query import load_latest as load_roadmap
 from sola.client import is_configured as llm_ready
 
 
-AREAS = ("🏠 홈", "🔍 탐색", "💼 작업실")
+AREAS = (
+    "📊 오늘의 보드",
+    "🧱 데이터 관리",
+    "🔎 인사이트 분석",
+    "🤖 SOLA 작업실",
+    "📦 산출물 보관함",
+)
 
 
 def _load_persona_into_state() -> Persona:
@@ -158,16 +164,24 @@ def render() -> str:
     st.markdown(
         """
         <div class="sidebar-brand">
-          <div class="sidebar-brand-mark">N</div>
-          <div class="sidebar-brand-text">News · Insight Board</div>
+          <div class="sidebar-brand-mark">IB</div>
+          <div class="sidebar-brand-text">Insight Board</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # 영역 네비
-    st.markdown('<div class="sidebar-section">영역</div>', unsafe_allow_html=True)
-    area = st.radio("영역", AREAS, key="app_area", label_visibility="collapsed")
+    # 업무 흐름 네비
+    st.markdown('<div class="sidebar-section">업무 흐름</div>', unsafe_allow_html=True)
+    if st.session_state.get("app_area") not in AREAS:
+        st.session_state["app_area"] = AREAS[0]
+    area = st.radio("업무 흐름", AREAS, key="app_area", label_visibility="collapsed")
+    st.markdown(
+        '<div class="sidebar-flow-hint">'
+        '1 데이터 준비 → 2 인사이트 분석 → 3 SOLA 산출물 생성'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     # 페르소나
     st.markdown('<div class="sidebar-section">페르소나</div>', unsafe_allow_html=True)
