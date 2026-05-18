@@ -5,6 +5,36 @@
 
 ## [Unreleased]
 
+### Added (UX Phase 6 후속 — 제안서 작업장/보관함 연결)
+- `ui/bookmarks_tab.py` 제안서 카드에 `작업장` CTA 를 추가해 보관된 제안서를 바로 SOLA 제안서 작업장 수정 모드로 열 수 있게 개선.
+- `ui/proposal_workbench.py` 에 원본 북마크 업데이트, 상태/결정 메모 명시 저장, 다운로드 동선을 정리해 수정 결과가 보관함 기록으로 이어지도록 개선.
+- `store.bookmarks.update_content` 추가 — 작업장에서 수정한 제안서 본문/태그/제목을 기존 북마크에 in-place 반영.
+- `tests/test_bookmarks.py`, `tests/test_sola_workspace.py` 에 작업장 라우팅과 북마크 업데이트 회귀 테스트 추가.
+
+### Added (UX Phase 6 — SOLA 작업실/산출물 보관함 정리)
+- `ui/sola_tab.py` 에 작업 유형 카드와 SOLA 준비 상태 카드를 추가해 요약·제안서·채팅·보관함 흐름을 작업 단위로 안내.
+- SOLA 뉴스 요약 결과를 다운로드하거나 산출물 보관함에 저장할 수 있는 동선을 추가.
+- `store.bookmarks.summary_counts` 와 보관함 KPI 를 추가해 전체 산출물, 제안서, 채택 과제, 검토 중 상태를 한눈에 표시.
+- `tests/test_sola_workspace.py` 와 `tests/test_bookmarks.py` 회귀 테스트를 추가해 작업 카드/준비 상태/보관함 집계를 검증.
+
+### Added (UX Phase 5 — 인사이트 분석 실행 흐름)
+- `ui/board_tab.py` 에 `트렌드 확인 → 로드맵 연결 → 기회 선별 → SOLA 제안` 단계 가이드를 추가해 분석 화면의 실행 흐름을 명확히 표시.
+- 자동화 기회 카드에 `SOLA 제안` CTA 를 추가해 선택한 부서×공정 기회를 SOLA 제안서 생성 필터로 바로 전달.
+- 인사이트 분석 사이드 컨텍스트에 실행 전환 대상 자동화 기회 Top 후보를 포함하도록 개선.
+- `tests/test_board_flow.py` 추가 — 분석 흐름 StepGuide, SOLA 라우팅 상태, 기회 후보 context 회귀 테스트.
+
+### Added (UX Phase 4 — 데이터 관리 준비 상태 대시보드)
+- `ui/data_health.py` 추가 — 뉴스 DB, 본문 Enrich, 로드맵 DB, LLM 설정 상태를 한눈에 보는 데이터 준비 상태 대시보드.
+- `app.py` 의 `데이터 관리` 메뉴 상단에 준비 상태 KPI와 품질 점검 카드를 표시해 상세 탭 진입 전 필요한 조치를 안내.
+- `assets/styles.css` 에 데이터 품질 카드 그리드 스타일 추가.
+- `tests/test_data_health.py` 추가 — 준비 상태 판정, Enrich 비율, HTML escape, context 요약 회귀 테스트.
+
+### Added (UX Phase 3 — 오늘의 보드 추천 행동)
+- `ui/home_tab.py` 에 데이터 준비 상태·페르소나·자동화 기회 점수를 기반으로 우선순위를 정하는 `추천 다음 행동` 카드 섹션을 추가.
+- 오늘의 보드에 `자동화 기회 Top 5` 펄스 카드를 추가해 첫 화면에서 부서×공정 기준 실행 후보를 바로 확인하도록 개선.
+- `assets/styles.css` 에 추천 행동 카드와 자동화 기회 펄스 카드 스타일을 추가하고, 홈 컨텍스트에 추천 행동/Top 기회를 포함해 사이드 SOLA 대화 품질을 개선.
+- `tests/test_home_trend_widget.py` 에 추천 행동 우선순위, HTML escape, 내 부서 하이라이트, page context 회귀 테스트 추가.
+
 ### Added (UX Phase 2 후속 — 로드맵 업로드 단계 안내)
 - `ui/roadmap_tab.py` 에 `엑셀 선택 → 시트 확인 → 검증·저장 → 매칭 준비` StepGuide 를 추가하고, 로드맵 작업/부서 수/Lv3 공정 현황을 공통 `metric_card` 로 표시.
 

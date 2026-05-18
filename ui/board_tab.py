@@ -15,7 +15,7 @@ from store import bookmarks, trends
 from store.bookmarks import Bookmark
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
-from ui.components import metric_card, metric_grid, status_card
+from ui.components import metric_card, metric_grid, status_card, step_guide, step_item
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -59,6 +59,51 @@ def _compute_trends_payload(news_today: pd.DataFrame):
             "rising": pd.DataFrame(columns=["keyword", "today", "base", "delta"]),
         }
     return period_label, days, period_df, vol_df, emergence
+
+
+def _insight_flow_html(*, news_ready: bool, roadmap_ready: bool, has_opportunities: bool) -> str:
+    """Render the Phase 5 analysis workflow guide.
+
+    Flow: trend scan → roadmap connection → opportunity selection → SOLA proposal.
+    """
+    return step_guide([
+        step_item(1, "트렌드 확인", "기간별 기사량·새 키워드로 변화 신호를 확인", active=news_ready),
+        step_item(2, "로드맵 연결", "부서·공정 계층 필터로 관련 작업 범위를 좁힘", active=roadmap_ready),
+        step_item(3, "기회 선별", "부서×공정 매트릭스에서 점수 높은 셀을 검토", active=has_opportunities),
+        step_item(4, "SOLA 제안", "선택한 기회를 제안서 초안 생성 흐름으로 전달", active=has_opportunities),
+    ])
+
+
+def _opportunity_to_sola_state(row: pd.Series | dict) -> dict[str, str]:
+    """Build session-state updates that route one opportunity cell to SOLA propose mode."""
+    dept = str(row.get("dept", ""))
+    lv3 = str(row.get("lv3", ""))
+    return {
+        "app_area": "🤖 SOLA 작업실",
+        "sola_mode": "자동화 과제 제안서",
+        "prop_dept": dept,
+        "prop_lv3": lv3,
+        "board_dept": dept,
+        "board_lv3": lv3,
+    }
+
+
+def _apply_opportunity_to_sola(row: pd.Series | dict) -> None:
+    """Prime SOLA proposal filters from a selected opportunity cell."""
+    st.session_state.update(_opportunity_to_sola_state(row))
+
+
+def _opportunity_flow_context(cells: pd.DataFrame) -> str:
+    """Short context block describing the execution candidates."""
+    if cells.empty:
+        return "자동화 기회 후보: 없음"
+    lines = ["자동화 기회 후보(실행 전환 대상):"]
+    for _, row in cells.head(5).iterrows():
+        lines.append(
+            f"- {row['dept']} / {row['lv3']} score={row['cell_score']:.1f}; "
+            f"tasks={row['sample_tasks']}; news={row['sample_news']}"
+        )
+    return "\n".join(lines)
 
 
 def _render_trends(news_today: pd.DataFrame) -> None:
@@ -190,10 +235,11 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
             )
 
 
-def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
+def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.DataFrame | None = None) -> None:
     st.caption("부서×공정 셀별 매칭 점수 누적. 상위 셀이 자동화 기회가 큰 곳.")
 
-    cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
+    if cells is None:
+        cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
     if cells.empty:
         st.markdown(
             status_card(
@@ -255,16 +301,22 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
             )
             is_book = bm_id in existing_ids
             btn_label = "★ 북마크됨" if is_book else "☆ 북마크"
-            if st.button(btn_label, key=f"opp_bm_{bm_id}", disabled=is_book):
-                bookmarks.add(Bookmark(
-                    id=bm_id,
-                    type="opportunity",
-                    title=f"{row['dept']} · {row['lv3']}",
-                    content=f"작업: {row['sample_tasks']}\n뉴스: {row['sample_news']}",
-                    tags=[str(row["dept"]), str(row["lv3"])],
-                ))
-                st.session_state["board_msg"] = ("ok", f"북마크 저장: {row['dept']} · {row['lv3']}")
-                st.rerun()
+            bcol1, bcol2 = st.columns(2)
+            with bcol1:
+                if st.button(btn_label, key=f"opp_bm_{bm_id}", disabled=is_book, use_container_width=True):
+                    bookmarks.add(Bookmark(
+                        id=bm_id,
+                        type="opportunity",
+                        title=f"{row['dept']} · {row['lv3']}",
+                        content=f"작업: {row['sample_tasks']}\n뉴스: {row['sample_news']}",
+                        tags=[str(row["dept"]), str(row["lv3"])],
+                    ))
+                    st.session_state["board_msg"] = ("ok", f"북마크 저장: {row['dept']} · {row['lv3']}")
+                    st.rerun()
+            with bcol2:
+                if st.button("💬 SOLA 제안", key=f"opp_sola_{bm_id}", use_container_width=True):
+                    _apply_opportunity_to_sola(row)
+                    st.rerun()
 
     msg = st.session_state.pop("board_msg", None)
     if msg:
@@ -370,13 +422,7 @@ def _build_page_context(news: pd.DataFrame, roadmap: pd.DataFrame, persona: Pers
 
     try:
         cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
-        if not cells.empty:
-            lines.append("\n자동화 기회 매트릭스 상위 셀(부서 / 공정 / score):")
-            for _, row in cells.head(8).iterrows():
-                lines.append(
-                    f"- {row['dept']} / {row['lv3']} (score={row['cell_score']:.1f}) "
-                    f"sample_task={row['sample_tasks']}"
-                )
+        lines.append(_opportunity_flow_context(cells))
     except Exception:  # noqa: BLE001
         pass
 
@@ -444,13 +490,26 @@ def render() -> None:
                 )
                 return
 
+            cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
+
+            st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+            section_label("분석 실행 흐름")
+            st.markdown(
+                _insight_flow_html(
+                    news_ready=not news.empty,
+                    roadmap_ready=not roadmap.empty,
+                    has_opportunities=not cells.empty,
+                ),
+                unsafe_allow_html=True,
+            )
+
             st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             section_label("트렌드")
             _render_trends(news)
 
             st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
-            section_label("자동화 기회 매트릭스")
-            _render_opportunity(news, roadmap)
+            section_label("로드맵 연결 · 자동화 기회")
+            _render_opportunity(news, roadmap, cells)
 
             st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
             section_label("부서별 AI 인사이트")

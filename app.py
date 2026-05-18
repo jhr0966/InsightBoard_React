@@ -17,6 +17,7 @@ from store import bookmarks as _bookmarks_store
 from ui import (
     board_tab,
     bookmarks_tab,
+    data_health,
     home_tab,
     ingest_tab,
     news_tab,
@@ -49,6 +50,8 @@ with st.sidebar:
 if area == "📊 오늘의 보드":
     home_tab.render()
 elif area == "🧱 데이터 관리":
+    data_health.render()
+    st.markdown("<div style='height:0.8rem;'></div>", unsafe_allow_html=True)
     tab_collect, tab_roadmap = st.tabs(["1. 뉴스 수집·Enrich", "2. 로드맵 업로드"])
     with tab_collect:
         ingest_tab.render()
