@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html as _html
+from urllib.parse import quote, unquote
 
 import streamlit as st
 
@@ -19,6 +20,14 @@ AREAS = (
     "🤖 SOLA 작업실",
     "📦 산출물 보관함",
 )
+
+_AREA_DESCRIPTIONS = {
+    "📊 오늘의 보드": "맞춤 인사이트",
+    "🧱 데이터 관리": "수집 · 본문 확보",
+    "🔎 인사이트 분석": "트렌드 · 기회",
+    "🤖 SOLA 작업실": "초안 · 대화",
+    "📦 산출물 보관함": "북마크 · 재사용",
+}
 
 
 def _load_persona_into_state() -> Persona:
@@ -70,6 +79,40 @@ def _consume_persona_editor_query() -> None:
     del st.query_params["persona_editor"]
 
 
+def _consume_area_query() -> None:
+    """Open a sidebar area when the Apple-style nav link is clicked."""
+    raw = st.query_params.get("app_area")
+    if not raw:
+        return
+    area = unquote(raw)
+    if area in AREAS:
+        st.session_state["app_area"] = area
+        st.session_state["show_persona_editor"] = False
+    del st.query_params["app_area"]
+
+
+def _sidebar_nav_html(current_area: str) -> str:
+    """Return Apple-style sidebar navigation links without radio/button chrome."""
+    items = []
+    for idx, area in enumerate(AREAS, start=1):
+        active = area == current_area
+        cls = "sidebar-nav-item active" if active else "sidebar-nav-item"
+        title = _html.escape(area)
+        desc = _html.escape(_AREA_DESCRIPTIONS.get(area, ""))
+        href = f"?app_area={quote(area)}"
+        aria_current = ' aria-current="page"' if active else ""
+        items.append(
+            f"""<a class="{cls}" href="{href}" target="_self"{aria_current}>
+                <span class="sidebar-nav-index">{idx:02d}</span>
+                <span class="sidebar-nav-copy">
+                  <span class="sidebar-nav-title">{title}</span>
+                  <span class="sidebar-nav-desc">{desc}</span>
+                </span>
+              </a>"""
+        )
+    return '<nav class="sidebar-nav" aria-label="업무 흐름">' + "".join(items) + "</nav>"
+
+
 def _render_persona_block(persona: Persona, _roadmap_df) -> None:
     """Render a clickable profile summary; editing happens on the main page."""
     _consume_persona_editor_query()
@@ -101,13 +144,15 @@ def render() -> str:
     )
 
     # 업무 흐름 네비
-    st.markdown('<div class="sidebar-section">업무 흐름</div>', unsafe_allow_html=True)
+    _consume_area_query()
     if st.session_state.get("app_area") not in AREAS:
         st.session_state["app_area"] = AREAS[0]
-    area = st.radio("업무 흐름", AREAS, key="app_area", label_visibility="collapsed")
+    area = st.session_state["app_area"]
+    st.markdown('<div class="sidebar-section sidebar-section-nav">Workflow</div>', unsafe_allow_html=True)
+    st.markdown(_sidebar_nav_html(area), unsafe_allow_html=True)
     st.markdown(
-        '<div class="sidebar-flow-hint">'
-        '1 데이터 준비 → 2 인사이트 분석 → 3 SOLA 산출물 생성'
+        '<div class="sidebar-flow-hint apple">'
+        '데이터 준비 → 분석 → SOLA 산출물 → 보관'
         '</div>',
         unsafe_allow_html=True,
     )

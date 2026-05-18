@@ -42,3 +42,14 @@ def test_persona_page_options_helpers_handle_empty_and_columns():
     df = pd.DataFrame({"dept": ["B", "A", None], "lv3": ["용접", "검사", None]})
     assert persona_page._options(df, "dept") == ["", "A", "B"]
     assert persona_page._lv3_options(df) == ["검사", "용접"]
+
+
+def test_sidebar_nav_html_uses_link_list_not_radio_buttons():
+    html = sidebar._sidebar_nav_html("🔎 인사이트 분석")
+
+    assert 'class="sidebar-nav"' in html
+    assert html.count('class="sidebar-nav-item') == len(sidebar.AREAS)
+    assert 'aria-current="page"' in html
+    assert "%F0%9F%94%8E%20%EC%9D%B8%EC%82%AC%EC%9D%B4%ED%8A%B8%20%EB%B6%84%EC%84%9D" in html
+    assert "radio" not in html.lower()
+    assert "button" not in html.lower()

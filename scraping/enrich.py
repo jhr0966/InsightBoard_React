@@ -14,6 +14,7 @@ import time
 from typing import Callable
 
 import requests
+from bs4 import Comment
 
 from scraping.extract import soup_of
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
@@ -30,18 +31,97 @@ _CONTENT_SELECTORS = [
     "article#articleBody", "div.article_body", "div.article-body",
     "div#news_body_id", "div.news_body", "div#content-body",
     "div.news_content", "div.txt_article", "div.atc_body", "div.article_view",
+    "main article", "article", "main",
 ]
 
 _NOISE_SELECTORS = (
-    "script, style, .ad, .advertisement, figure, figcaption, "
-    "header, footer, nav, .header, .footer"
+    "script, style, noscript, template, svg, canvas, iframe, "
+    "pre, code, samp, kbd, form, button, input, textarea, select, "
+    "header, footer, nav, aside, figure, figcaption, "
+    ".ad, .ads, .advertisement, .banner, .sponsor, .sponsored, "
+    ".share, .sns, .social, .related, .recommend, .copyright, "
+    ".reply, .comment, .comments, .byline, .tag, .tags"
 )
 
 _MIN_CONTENT_LEN = 80
 
+_CODE_LINE_PATTERNS = (
+    re.compile(r"^\s*(var|let|const|function|return|if|else|for|while|import|export)\b"),
+    re.compile(r"^\s*[.#]?[A-Za-z0-9_-]+\s*\{[^}]*\}\s*$"),
+    re.compile(r"^\s*[{\[]\s*[\"'][A-Za-z0-9_-]+[\"']\s*:"),
+    re.compile(r"\b(window|document|navigator|jQuery|dataLayer|googletag|webpack)\."),
+    re.compile(r"[{};]{3,}"),
+)
+
+_BOILERPLATE_PATTERNS = (
+    re.compile(r"무단전재\s*(및)?\s*재배포\s*금지"),
+    re.compile(r"저작권자\s*©"),
+    re.compile(r"Copyright\s*\(c\)", re.IGNORECASE),
+    re.compile(r"기자\s*=?\s*[\w.+-]+@[\w.-]+"),
+    re.compile(r"^\s*(관련기사|추천기사|인기기사|ADVERTISEMENT|광고)\s*$", re.IGNORECASE),
+)
+
+
+def _strip_noise(soup) -> None:
+    """Remove non-article nodes before text extraction."""
+    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
+        comment.extract()
+    for noise in soup.select(_NOISE_SELECTORS):
+        noise.decompose()
+    for tag in soup.select("[hidden], [aria-hidden='true']"):
+        tag.decompose()
+    for tag in soup.find_all(style=True):
+        style = str(tag.get("style", "")).replace(" ", "").lower()
+        if "display:none" in style or "visibility:hidden" in style:
+            tag.decompose()
+
+
+def _looks_like_code(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return True
+    if any(pattern.search(stripped) for pattern in _CODE_LINE_PATTERNS):
+        return True
+    if len(stripped) >= 40:
+        symbol_count = sum(stripped.count(ch) for ch in "{}[]();=<>|\\")
+        if symbol_count / len(stripped) > 0.16 and not re.search(r"[가-힣]", stripped):
+            return True
+    return False
+
+
+def _looks_like_boilerplate(line: str) -> bool:
+    return any(pattern.search(line) for pattern in _BOILERPLATE_PATTERNS)
+
+
+def _clean_article_text(raw_text: str) -> str:
+    """Normalize article text and drop code/boilerplate fragments."""
+    if not raw_text:
+        return ""
+    text = raw_text.replace("\xa0", " ").replace("\u200b", " ")
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    lines: list[str] = []
+    seen: set[str] = set()
+    for line in re.split(r"\n+", text):
+        cleaned = re.sub(r"\s{2,}", " ", line).strip(" \t-–—")
+        if len(cleaned) < 2:
+            continue
+        if _looks_like_code(cleaned) or _looks_like_boilerplate(cleaned):
+            continue
+        # Keep only the first copy of repeated captions/share snippets.
+        dedupe_key = cleaned[:120]
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        lines.append(cleaned)
+    return re.sub(r"\s{2,}", " ", "\n".join(lines)).strip()
+
+
+def _text_from_tag(tag) -> str:
+    return _clean_article_text(tag.get_text(separator="\n", strip=True))
+
 
 def fetch_content(url: str, *, session=None) -> str:
-    """기사 URL → 본문 텍스트. 실패 시 빈 문자열."""
+    """기사 URL → 정제된 전체 본문 텍스트. 실패 시 빈 문자열."""
     if not url or not url.startswith("http"):
         return ""
     sess = session or build_session()
@@ -55,23 +135,26 @@ def fetch_content(url: str, *, session=None) -> str:
         return ""
 
     soup = soup_of(resp.text)
-    for noise in soup.select(_NOISE_SELECTORS):
-        noise.decompose()
+    _strip_noise(soup)
 
+    candidates: list[str] = []
     for sel in _CONTENT_SELECTORS:
         tag = soup.select_one(sel)
         if tag:
-            text = re.sub(r"\s{2,}", " ", tag.get_text(separator=" ", strip=True))
+            text = _text_from_tag(tag)
             if len(text) >= _MIN_CONTENT_LEN:
-                return text
+                candidates.append(text)
 
-    paragraphs = [p.get_text(strip=True) for p in soup.select("p") if len(p.get_text(strip=True)) > 30]
+    paragraphs = [_clean_article_text(p.get_text(separator="\n", strip=True)) for p in soup.select("p")]
+    paragraphs = [p for p in paragraphs if len(p) > 30]
     if paragraphs:
-        text = " ".join(paragraphs)
-        if len(text) >= _MIN_CONTENT_LEN:
-            return text
+        candidates.append("\n".join(paragraphs))
 
-    return ""
+    if not candidates:
+        return ""
+
+    # Prefer the longest clean candidate so multi-paragraph article bodies are not truncated.
+    return max(candidates, key=len)
 
 
 def _llm_keywords(content: str) -> str:

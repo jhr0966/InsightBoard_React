@@ -1169,3 +1169,156 @@ hr {
   padding-top: 0.55rem;
   margin-top: 0.7rem;
 }
+
+/* Streamlit input focus fix — keep a single focus border/ring on the wrapper. */
+.stTextInput [data-baseweb="input"],
+.stNumberInput [data-baseweb="input"],
+.stTextArea [data-baseweb="textarea"] {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-md) !important;
+    background: var(--surface) !important;
+    box-shadow: var(--shadow-1) !important;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast) !important;
+}
+
+.stTextInput [data-baseweb="input"]:focus-within,
+.stNumberInput [data-baseweb="input"]:focus-within,
+.stTextArea [data-baseweb="textarea"]:focus-within {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-ring) !important;
+    outline: none !important;
+}
+
+.stTextInput [data-baseweb="input"] input,
+.stNumberInput [data-baseweb="input"] input,
+.stTextArea [data-baseweb="textarea"] textarea,
+.stTextInput [data-baseweb="input"] input:focus,
+.stNumberInput [data-baseweb="input"] input:focus,
+.stTextArea [data-baseweb="textarea"] textarea:focus {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Sidebar navigation v3 — Apple-style source-list links, not bordered radio/buttons. */
+[data-testid="stSidebar"] {
+    background:
+      linear-gradient(180deg, rgba(250,250,252,.96), rgba(245,245,247,.94)) !important;
+}
+
+.sidebar-section.sidebar-section-nav {
+    margin: 1rem 0 0.45rem;
+    padding-left: 0.35rem;
+    color: rgba(82,82,91,.72);
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+}
+
+.sidebar-nav {
+    display: grid;
+    gap: 3px;
+    padding: 0.15rem 0 0.2rem;
+}
+
+.sidebar-nav-item,
+.sidebar-nav-item:visited {
+    position: relative;
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 48px;
+    padding: 0.45rem 0.55rem 0.45rem 0.5rem;
+    border: 0;
+    border-radius: 14px;
+    color: var(--text-2);
+    text-decoration: none;
+    background: transparent;
+    box-shadow: none;
+    transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+}
+
+.sidebar-nav-item:hover,
+.sidebar-nav-item:focus {
+    color: var(--text-1);
+    text-decoration: none;
+    background: rgba(0, 0, 0, 0.045);
+    outline: none;
+}
+
+.sidebar-nav-item.active {
+    color: var(--text-1);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 10px 28px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(18px);
+}
+
+.sidebar-nav-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0.25rem;
+    top: 50%;
+    width: 3px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--accent);
+    transform: translateY(-50%);
+}
+
+.sidebar-nav-index {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-left: 0.1rem;
+    border-radius: 10px;
+    color: rgba(82, 82, 91, 0.76);
+    background: rgba(0, 0, 0, 0.035);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.sidebar-nav-item.active .sidebar-nav-index {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), #60A5FA);
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+}
+
+.sidebar-nav-copy {
+    min-width: 0;
+    display: grid;
+    gap: 1px;
+}
+
+.sidebar-nav-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.92rem;
+    font-weight: 760;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+}
+
+.sidebar-nav-desc {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-3);
+    font-size: 0.71rem;
+    font-weight: 560;
+    line-height: 1.25;
+}
+
+.sidebar-flow-hint.apple {
+    margin-top: 0.7rem;
+    border: 0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.58);
+    color: rgba(82, 82, 91, 0.82);
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+    font-size: 0.72rem;
+}
