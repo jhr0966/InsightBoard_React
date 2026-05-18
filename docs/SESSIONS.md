@@ -5,6 +5,314 @@
 
 ---
 
+## 2026-05-18 · UX 마무리 QA — 완료 상태/품질 점검
+
+**브랜치:** `work`
+**카테고리:** `docs/test`
+**상태:** in-progress
+
+**배경:**
+Phase 0~6 기능 구현과 후속 작업장/보관함 루프가 끝났으므로, 전체 시스템 개발 완료 상태를 문서화하고 테스터 관점에서 자동화 검증·앱 기동 smoke·수동 QA 체크리스트를 정리.
+
+**한 일:**
+1. `docs/UX_REDESIGN_PLAN.md` 에 Phase 0~6 구현 완료 상태, 대표 파일, 최종 QA 상태 추가.
+2. `docs/UX_QA_CHECKLIST.md` 신설 — 전체 완료 상태, 자동화 테스트 결과, 메뉴별 수동 QA 시나리오, 남은 리스크 정리.
+3. 품질 점검으로 `make check`, `pytest -q`, Streamlit health smoke 실행.
+4. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- 운영/브라우저 환경에서 실제 스크린샷 QA 수행.
+- 실데이터 수집과 LLM 실호출 기반 결과 품질 검수.
+
+**블로커:** 없음.
+
+## 2026-05-18 · UX Phase 6 후속 — 제안서 작업장/보관함 연결
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 6 에서 SOLA 작업실과 산출물 보관함의 큰 흐름을 정리했지만, 보관된 제안서를 다시 작업장으로 열어 수정하고 원본 북마크에 반영하는 폐쇄 루프가 약했음. 제안서 생성 → 보관 → 수정 → 상태 결정 → 다운로드 흐름을 더 명확히 연결.
+
+**한 일:**
+1. `ui/bookmarks_tab.py` 제안서 카드에 `작업장` 버튼 추가 — 선택한 북마크를 SOLA 작업실 제안서 작업장 수정 모드로 라우팅.
+2. `ui/proposal_workbench.py` 북마크 출처 제안서에 상태/결정 메모 저장 UI 를 명시 버튼 방식으로 정리.
+3. 작업장에서 수정된 현재 본문을 원본 북마크에 바로 덮어쓰는 `원본 업데이트` 버튼 추가.
+4. `store.bookmarks.update_content` 추가 — 제목/본문/태그를 in-place 업데이트.
+5. `tests/test_bookmarks.py`, `tests/test_sola_workspace.py` 에 북마크 업데이트와 작업장 라우팅 테스트 추가.
+6. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- 전체 UX 개편 마무리 점검: `docs/UX_REDESIGN_PLAN.md` Phase 0~6 완료 상태 반영.
+- 스크린샷 기반 QA 또는 수동 점검 체크리스트 작성.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-18 · UX Phase 6 — SOLA 작업실/산출물 보관함 정리
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 5 에서 인사이트 분석의 자동화 기회가 SOLA 제안서 생성으로 연결되었으므로, 마지막 단계는 SOLA 작업실을 산출물 생성 엔진으로 정리하고 보관함을 결과 관리 장소로 강화하는 것.
+
+**한 일:**
+1. `ui/sola_tab.py` 에 뉴스 요약, 자동화 과제 제안서, 컨텍스트 채팅, 산출물 보관함 작업 유형 카드를 추가.
+2. SOLA 실행 전 뉴스/로드맵/LLM 준비 상태를 `status_card` 로 표시.
+3. 뉴스 요약 결과를 마크다운 다운로드하거나 산출물 보관함에 저장하는 버튼 추가.
+4. `store.bookmarks.summary_counts` 추가 — 타입별 산출물 수와 제안서 의사결정 상태를 집계.
+5. `ui/bookmarks_tab.py` 상단에 전체 산출물/제안서/채택 과제/검토 중 KPI 추가.
+6. `tests/test_sola_workspace.py`, `tests/test_bookmarks.py` 에 Phase 6 회귀 테스트 추가.
+7. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 6 후속: 제안서 작업장(`proposal_workbench`)과 보관함 사이의 채택/다운로드/수정 이력을 더 명확히 연결.
+- 전체 UX 개편 마무리 점검: 문서의 Phase 0~6 완료 여부 표시와 스크린샷 기반 QA.
+
+**블로커:** 없음.
+
+## 2026-05-18 · UX Phase 5 — 인사이트 분석 실행 흐름
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 4 에서 데이터 관리 준비 상태를 상단 대시보드로 통합했으므로, 다음 단계는 인사이트 분석 화면을 `트렌드 → 로드맵 연결 → 자동화 기회 → SOLA 제안서` 실행 흐름으로 재배치하는 것. 사용자가 매트릭스 결과를 보고 바로 산출물 생성으로 넘어갈 수 있어야 함.
+
+**한 일:**
+1. `ui/board_tab.py` 에 Phase 5 분석 실행 흐름 StepGuide 추가.
+2. 자동화 기회 매트릭스 섹션명을 `로드맵 연결 · 자동화 기회` 로 조정하고, 같은 score 계산 결과를 흐름/카드/context 에 재사용.
+3. 자동화 기회 카드에 `SOLA 제안` 버튼 추가 — 선택한 부서·공정 값을 `SOLA 작업실 > 자동화 과제 제안서` 필터로 전달하고 해당 메뉴로 이동.
+4. 사이드 SOLA 컨텍스트에 실행 전환 대상 자동화 기회 후보를 포함.
+5. `tests/test_board_flow.py` 추가 — StepGuide active 상태, SOLA 라우팅 상태, 기회 context 회귀 테스트.
+6. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 6: SOLA 작업실을 작업 유형 카드 중심으로 재구성하고 산출물 보관함과 저장/채택 흐름을 연결.
+- Phase 6 후속: 북마크/제안서/채택 과제 통합 보기에서 제안서 상태 전환과 다운로드 동선을 정리.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 4 — 데이터 관리 준비 상태 대시보드
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 3 에서 오늘의 보드가 다음 행동을 추천하도록 개선했으므로, 다음 단계는 `데이터 관리` 화면을 단순 수집/업로드 탭 묶음이 아니라 분석 준비 상태판으로 통합하는 것. 사용자가 뉴스·본문·로드맵·LLM 중 무엇이 부족한지 탭 진입 전에 알아야 함.
+
+**한 일:**
+1. `ui/data_health.py` 신설 — 뉴스 DB, 본문 Enrich, 로드맵 DB, LLM 설정 상태를 계산하는 순수 헬퍼와 HTML 렌더러 추가.
+2. `app.py` 의 `데이터 관리` 메뉴 상단에 데이터 준비 상태 KPI와 품질 점검 카드 표시.
+3. `assets/styles.css` 에 데이터 품질 카드 그리드 스타일 추가.
+4. `tests/test_data_health.py` 추가 — Enrich 비율, 준비 상태 메시지, HTML escape, context 요약 테스트.
+5. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 5: 인사이트 분석을 `트렌드 → 로드맵 연결 → 자동화 기회 → SOLA 제안서` 흐름으로 재배치.
+- Phase 6: SOLA 작업실을 작업 유형 카드 중심으로 재구성하고 산출물 보관함과 저장/채택 흐름을 연결.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 3 — 오늘의 보드 추천 행동/기회 Top 5
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 2 에서 앱 쉘과 공통 카드 문법을 정리했으므로, 다음 단계인 Phase 3 의 핵심 목표(첫 화면에서 다음 행동 결정)를 구현. 오늘의 보드는 단순 현황판이 아니라 데이터 준비 → 분석 → SOLA 산출물 생성으로 이어지는 첫 의사결정 화면이어야 함.
+
+**한 일:**
+1. `ui/home_tab.py` 에 뉴스/로드맵/본문 확보/페르소나/자동화 기회 상태를 보고 우선순위를 정하는 `추천 다음 행동` 섹션 추가.
+2. `sola.opportunity.score_cells()` 결과를 재사용해 오늘의 보드 하단에 `자동화 기회 Top 5` 카드 추가. 페르소나 부서와 일치하는 기회는 `내 부서`로 강조.
+3. 사이드 SOLA 컨텍스트에 추천 다음 행동과 자동화 기회 Top 목록을 포함해 홈 화면 기반 대화가 다음 액션을 설명할 수 있게 개선.
+4. `assets/styles.css` 에 추천 행동/기회 펄스 카드 스타일 추가.
+5. `tests/test_home_trend_widget.py` 에 추천 행동 우선순위, escape, 내 부서 강조, context 포함 회귀 테스트 추가.
+6. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 4: 데이터 관리 화면을 뉴스 DB/로드맵 DB/Enrich/LLM 상태가 한눈에 보이는 데이터 품질 대시보드로 통합.
+- Phase 5: 인사이트 분석을 `트렌드 → 로드맵 연결 → 자동화 기회 → SOLA 제안서` 흐름으로 재배치.
+- Phase 6: SOLA 작업실을 작업 유형 카드 중심으로 재구성하고 산출물 보관함과 저장/채택 흐름을 연결.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 2 후속 — 로드맵 업로드 단계 안내
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+뉴스 수집 화면에 StepGuide 를 적용한 뒤, 같은 `데이터 관리` 영역의 로드맵 업로드 탭도 동일한 단계 안내 문법으로 맞춰야 함. 로드맵 업로드는 인사이트 분석의 전제 조건이므로 업로드 후 무엇이 가능해지는지 명확히 보여줄 필요가 있음.
+
+**한 일:**
+1. `ui/roadmap_tab.py` 상단에 `엑셀 선택 → 시트 확인 → 검증·저장 → 매칭 준비` 4단계 안내 추가.
+2. 로드맵 작업/부서 수/Lv3 공정 수를 공통 `metric_card` 로 표시.
+3. 기존 로드맵 없음 `status_card` 는 유지하되, 상태 카드 위에 0건 KPI 를 함께 보여 데이터 준비 상태를 더 명확히 표시.
+4. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 3: 오늘의 보드에 추천 행동/자동화 기회 Top 카드 추가.
+- SOLA 작업실을 작업 유형 카드 중심으로 재구성.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 2 후속 — 데이터 관리 단계 안내
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+사용자가 기능 실행 순서를 알기 어렵다는 문제를 해결하기 위해, 데이터 관리의 뉴스 수집 화면부터 단계 안내형 UI 를 적용. 수집 화면은 키워드/소스 선택, 수집·저장, 본문 Enrich, 인사이트 분석 이동 순서가 명확해야 함.
+
+**한 일:**
+1. `ui.components.step_item`, `step_guide` 추가 — escape 처리된 단계 안내 HTML 빌더.
+2. `assets/styles.css` 에 Step Guide 스타일 추가.
+3. `ui/ingest_tab.py` 상단에 4단계 안내를 추가하고, 오늘 저장/본문 확보/소스 수 현황을 `metric_card` 로 표시.
+4. 뉴스가 없는 상태를 `status_card` 로 표시해 바로 다음 행동(키워드와 소스 선택 후 수집·저장)을 안내.
+5. `tests/test_ui_components.py` 에 StepGuide escape/active 테스트 추가.
+6. `docs/ARCHITECTURE.md`, `CHANGELOG.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 3: 오늘의 보드에 추천 행동/자동화 기회 Top 카드 추가.
+- 데이터 관리 화면에서 로드맵 업로드 탭도 StepGuide 패턴으로 맞추기.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 2 후속 — 빈 상태/상태 카드 통일
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+Phase 2 에서 공통 `MetricCard`/`StatusCard`/`ActionCard` 컴포넌트를 만들었지만, 여러 화면의 빈 상태는 여전히 `card-flat`, `st.info`, `st.warning` 등으로 들쭉날쭉하게 남아 있었음. 다음 개편 전 사용자 안내 문법을 우선 통일.
+
+**한 일:**
+1. `ui/roadmap_tab.py` — 로드맵 미업로드 상태를 `status_card` 로 교체.
+2. `ui/board_tab.py` — 상단 KPI 를 `metric_card` 로 교체하고, 분석 데이터 부족/매칭 없음/필터 결과 없음 상태를 `status_card` 로 교체.
+3. `ui/news_tab.py`, `ui/bookmarks_tab.py`, `ui/task_tree.py` — 뉴스 없음, 산출물 없음, 로드맵 없음 안내를 `status_card` 로 교체.
+4. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2 계속: `ingest_tab` 수집 상태/폼을 상태 카드 + 단계 안내로 재배치.
+- Phase 3: 오늘의 보드 추천 행동/자동화 기회 Top 카드 추가.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 2 — 공통 UI 컴포넌트 기반 정리
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+UX Phase 1 로 5개 업무 메뉴 앱 쉘을 만들었고, 다음 단계로 화면마다 반복되는 KPI/상태/빠른 행동 카드의 디자인 문법을 통일할 필요가 있음. `docs/UX_REDESIGN_PLAN.md` Phase 2 의 `MetricCard`/`StatusCard`/`ActionCard` 후보를 우선 구현.
+
+**한 일:**
+1. `ui/components.py` 신설 — `metric_card`, `metric_grid`, `status_card`, `action_card`, `action_grid` HTML 빌더 추가. 외부/사용자 문자열은 모두 `html.escape()` 처리하고 tone 은 allowlist 로 제한.
+2. `assets/styles.css` 에 Navy/Teal 제품 토큰과 metric/status/action 공통 카드 스타일 추가.
+3. `ui/home_tab.py` 의 기본 `st.metric` 3개, 데이터 준비 안내 card-flat, 빠른 행동 inline HTML 을 공통 컴포넌트로 교체.
+4. `tests/test_ui_components.py` 추가 — escape, tone sanitizing, grid wrapper 검증.
+5. `docs/ARCHITECTURE.md`, `CHANGELOG.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2 계속: `ingest_tab`, `roadmap_tab`, `board_tab` 의 빈 상태/상태 카드를 `status_card` 로 점진 교체.
+- Phase 3: 오늘의 보드에 추천 행동/자동화 기회 Top 카드 추가.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX Phase 1 — 앱 쉘/네비게이션 개편
+
+**브랜치:** `work`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+`docs/UX_REDESIGN_PLAN.md` 의 Phase 1 시작. 기존 `홈 · 탐색 · 작업실` 3영역은 기능 묶음에 가까워 사용자가 업무 순서를 이해하기 어려웠음. 첨부 구조도의 흐름을 따라 데이터 준비, 분석, SOLA 산출물 생성, 보관함으로 메뉴를 분리.
+
+**한 일:**
+1. `app.py` 라우팅을 `오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함` 5개 업무 메뉴로 변경.
+2. `ui/sidebar.py` 메뉴와 브랜드 문구를 업무 흐름형으로 변경하고, 기존 세션의 `app_area` 값이 새 메뉴에 없으면 오늘의 보드로 안전하게 보정.
+3. `ui/home_tab.py`, `ui/news_tab.py` 안내 문구와 빠른 행동 카드를 새 메뉴명에 맞게 갱신.
+4. `assets/styles.css` 에 사이드바 업무 흐름 힌트 스타일 추가.
+5. `README.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` 갱신.
+
+**다음 세션 TODO:**
+- Phase 2: 공통 `MetricCard`/`StatusCard`/`ActionCard`/`EmptyState` 컴포넌트와 디자인 토큰 정리.
+- Phase 3: 오늘의 보드를 추천 행동 중심 대시보드로 재설계.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · UX 전면 개편 계획 문서화
+
+**브랜치:** `work`
+**카테고리:** `docs`
+**상태:** in-progress
+
+**배경:**
+사용자가 첨부한 제조기술 로드맵 인사이트보드 구조도를 기준으로, 현재 GitHub 레포 UI/UX가 복잡하고 흐름이 불명확하다는 피드백을 제공. Codex가 이후 개편 작업을 진행할 때 참고할 수 있도록 분석과 개편 계획을 레포 문서로 고정할 필요가 있음.
+
+**한 일:**
+1. `docs/UX_REDESIGN_PLAN.md` 신설 — 문제 진단, 목표 제품 이미지, 새 IA, 화면별 개편안, 디자인 방향, 사용자 시나리오, 단계별 구현 로드맵 정리.
+2. `README.md` 개발 문서 표에 UX 개편 계획 링크 추가.
+3. `CHANGELOG.md` [Unreleased] 에 문서 추가 내역 기록.
+
+**다음 세션 TODO:**
+- Phase 1: `app.py`/`ui/sidebar.py` 앱 쉘을 `오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함` 구조로 개편.
+- Phase 2: `assets/styles.css` 와 공통 UI 컴포넌트 정리.
+
+**블로커:** 없음.
+
+---
+
+## 2026-05-14 · 검증/보안 정리 — env 예시와 Makefile 정렬
+
+**브랜치:** `work`
+**카테고리:** `fix`
+**상태:** in-progress
+
+**배경:**
+전체 상태 점검 중 `.env.example` 에 실제 API 키 형태의 값이 남아 있고, `Makefile` 이 삭제된 과거 파일명을 참조해 `make check` 가 즉시 실패하는 문제를 확인.
+
+**한 일:**
+1. `.env.example` 의 `LLM_API_KEY` 를 placeholder 로 교체하고, 실제 키는 `.env` 에만 입력하라는 주석 추가.
+2. `Makefile` 을 현재 레포 구조에 맞춰 `git ls-files '*.py'` 기반 compile, `rg` 금지 패턴 검사, 전체 `pytest -q` 실행으로 정렬.
+3. `make check` 에 `.env.example` API 키 패턴 검사를 추가해 예시 파일에 실제 키가 다시 들어오는 것을 차단.
+
+**다음 세션 TODO:**
+- 노출됐던 API 키는 공급자 콘솔에서 폐기/재발급.
+- 필요하면 secret scanning/pre-commit 도입.
+
+**블로커:** 없음.
+
+---
+
 ## 2026-05-13 · Phase 6-A 후속 — 트렌드 위젯 roadmap 의존성 제거
 
 **브랜치:** `fix-home-trend-roadmap-gate`
