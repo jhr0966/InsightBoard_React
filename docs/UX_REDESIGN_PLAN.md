@@ -558,3 +558,22 @@ SOLA는 채팅창이 아니라 산출물 생성 엔진으로 보여야 한다.
 6. **인사이트 분석 PR**: 트렌드→매칭→기회→제안 흐름으로 재배치.
 7. **SOLA/보관함 PR**: 작업 유형 카드와 결과물 관리 흐름 정리.
 
+
+
+## 12. 구현 완료 상태 (2026-05-18)
+
+| Phase | 상태 | 구현 요약 | 대표 파일 |
+|---|---:|---|---|
+| Phase 0. UX 기준 확정 | ✅ 완료 | 새 IA, 화면 역할, 디자인 방향, 단계별 로드맵 문서화 | `docs/UX_REDESIGN_PLAN.md` |
+| Phase 1. 앱 쉘/네비게이션 개편 | ✅ 완료 | 5개 업무 메뉴와 라우팅 적용 | `app.py`, `ui/sidebar.py` |
+| Phase 2. 디자인 시스템 정리 | ✅ 완료 | Metric/Status/Action/StepGuide 컴포넌트와 제품 색상 토큰 추가 | `ui/components.py`, `assets/styles.css` |
+| Phase 3. 오늘의 보드 재설계 | ✅ 완료 | 추천 다음 행동, 트렌드 위젯, 자동화 기회 Top 5, 페이지 컨텍스트 개선 | `ui/home_tab.py` |
+| Phase 4. 데이터 관리 통합 | ✅ 완료 | 뉴스/본문/로드맵/LLM readiness 대시보드와 단계 안내 적용 | `ui/data_health.py`, `ui/ingest_tab.py`, `ui/roadmap_tab.py` |
+| Phase 5. 인사이트 분석 재설계 | ✅ 완료 | 분석 실행 흐름 StepGuide, 자동화 기회→SOLA 제안 CTA 연결 | `ui/board_tab.py` |
+| Phase 6. SOLA 작업실/산출물 보관함 정리 | ✅ 완료 + 후속 완료 | 작업 유형 카드, readiness, 저장/다운로드, 보관함 KPI, 작업장 원본 업데이트 루프 연결 | `ui/sola_tab.py`, `ui/bookmarks_tab.py`, `ui/proposal_workbench.py`, `store/bookmarks.py` |
+
+### 최종 QA 상태
+
+- 자동화 검증: `make check`, `pytest -q`, Streamlit health smoke 통과.
+- 수동/스크린샷 QA 체크리스트: `docs/UX_QA_CHECKLIST.md`에 별도 정리.
+- 남은 후속은 신규 Phase 개발이 아니라 운영 환경 기반 브라우저 렌더링/실데이터/LLM 실호출 검수다.

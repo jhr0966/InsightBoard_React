@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-05-18 · UX 마무리 QA — 완료 상태/품질 점검
+
+**브랜치:** `work`
+**카테고리:** `docs/test`
+**상태:** in-progress
+
+**배경:**
+Phase 0~6 기능 구현과 후속 작업장/보관함 루프가 끝났으므로, 전체 시스템 개발 완료 상태를 문서화하고 테스터 관점에서 자동화 검증·앱 기동 smoke·수동 QA 체크리스트를 정리.
+
+**한 일:**
+1. `docs/UX_REDESIGN_PLAN.md` 에 Phase 0~6 구현 완료 상태, 대표 파일, 최종 QA 상태 추가.
+2. `docs/UX_QA_CHECKLIST.md` 신설 — 전체 완료 상태, 자동화 테스트 결과, 메뉴별 수동 QA 시나리오, 남은 리스크 정리.
+3. 품질 점검으로 `make check`, `pytest -q`, Streamlit health smoke 실행.
+4. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- 운영/브라우저 환경에서 실제 스크린샷 QA 수행.
+- 실데이터 수집과 LLM 실호출 기반 결과 품질 검수.
+
+**블로커:** 없음.
+
 ## 2026-05-18 · UX Phase 6 후속 — 제안서 작업장/보관함 연결
 
 **브랜치:** `work`

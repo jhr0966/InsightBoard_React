@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added (UX 마무리 QA)
+- `docs/UX_QA_CHECKLIST.md` 추가 — Phase 0~6 완료 상태, 자동화 테스트 결과, 메뉴별 수동 QA 시나리오, 남은 운영 검수 리스크 정리.
+- `docs/UX_REDESIGN_PLAN.md` 에 2026-05-18 기준 Phase 0~6 구현 완료 상태와 대표 파일, 최종 QA 상태를 추가.
+
 ### Added (UX Phase 6 후속 — 제안서 작업장/보관함 연결)
 - `ui/bookmarks_tab.py` 제안서 카드에 `작업장` CTA 를 추가해 보관된 제안서를 바로 SOLA 제안서 작업장 수정 모드로 열 수 있게 개선.
 - `ui/proposal_workbench.py` 에 원본 북마크 업데이트, 상태/결정 메모 명시 저장, 다운로드 동선을 정리해 수정 결과가 보관함 기록으로 이어지도록 개선.
