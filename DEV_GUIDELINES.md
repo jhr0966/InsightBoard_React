@@ -71,7 +71,9 @@
 ## 5. 브랜치 전략
 
 - **`main`**: 안정 코드만. 직접 push 금지. 머지만 허용.
-- **작업 브랜치**: 수정 요청마다 별도 브랜치. Streamlit Cloud 테스트 후 main 머지.
+- **작업 브랜치**: 수정 요청마다 최신 `main`에서 별도 브랜치를 만든다. 이미 PR을 만든 브랜치를 다음 작업에 재사용하지 않는다.
+- **PR 올리기 전**: 가능한 환경에서는 `git fetch` 후 최신 `main`에 rebase/merge해 충돌을 먼저 확인한다.
+- **고충돌 파일**: `CHANGELOG.md`, `docs/SESSIONS.md`는 여러 PR이 상단을 동시에 수정하므로 `.gitattributes`에서 `merge=union`을 적용한다. 충돌은 줄어들지만 머지 후 중복/순서는 리뷰어가 확인한다.
 - **네이밍**: `<카테고리>-<설명>` (슬래시 금지, 하이픈 구분)
   - `fix-scraper-selector`
   - `feat-insight-trend`
