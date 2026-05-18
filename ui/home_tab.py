@@ -1,4 +1,4 @@
-"""홈: 페르소나 기반 오늘의 인사이트 + 빠른 행동 + 사이드 채팅."""
+"""오늘의 보드: 페르소나 기반 인사이트 + 빠른 행동 + 사이드 채팅."""
 from __future__ import annotations
 
 import html
@@ -9,12 +9,13 @@ import streamlit as st
 
 from persona.schema import Persona
 from roadmap.query import load_latest as load_roadmap
-from sola import trend_brief
+from sola import opportunity, trend_brief
 from sola.client import is_configured as llm_ready
 from sola.insight import insight_for_dept
 from store import trends
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
+from ui.components import action_card, action_grid, metric_card, metric_grid, status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -51,6 +52,145 @@ def _compute_home_trend_payload(
     else:
         emergence = _empty_emergence()
     return {"period_df": period_df, "vol_df": vol_df, "emergence": emergence}
+
+
+
+
+def _content_ready_count(news: pd.DataFrame) -> int:
+    """Return the number of news rows with enough body text for downstream analysis."""
+    if news.empty or "content" not in news.columns:
+        return 0
+    return int((news["content"].astype(str).str.len() >= 50).sum())
+
+
+def _recommended_actions(
+    *,
+    news_count: int,
+    roadmap_count: int,
+    enriched_count: int,
+    persona: Persona,
+    top_opportunities: pd.DataFrame,
+) -> list[dict[str, str]]:
+    """Build prioritized next actions for the home board.
+
+    The order intentionally follows the product workflow: prepare data first,
+    then inspect opportunities, then produce/manage SOLA outputs.
+    """
+    actions: list[dict[str, str]] = []
+
+    if news_count == 0:
+        actions.append({
+            "icon": "📰",
+            "title": "뉴스를 먼저 수집하세요",
+            "body": "데이터 관리에서 키워드와 소스를 선택해 오늘 분석할 기사를 저장합니다.",
+            "target": "데이터 관리",
+            "tone": "warn",
+        })
+    elif enriched_count == 0:
+        actions.append({
+            "icon": "✨",
+            "title": "본문 Enrich를 진행하세요",
+            "body": "본문이 확보되면 요약, 키워드, 부서 매칭 품질이 좋아집니다.",
+            "target": "데이터 관리",
+            "tone": "warn",
+        })
+
+    if roadmap_count == 0:
+        actions.append({
+            "icon": "🗂",
+            "title": "로드맵을 업로드하세요",
+            "body": "작업 정의가 있어야 뉴스가 부서·공정·과제 후보로 연결됩니다.",
+            "target": "데이터 관리",
+            "tone": "teal",
+        })
+
+    if not persona.is_set():
+        actions.append({
+            "icon": "🎯",
+            "title": "페르소나를 설정하세요",
+            "body": "부서와 직무를 입력하면 오늘의 보드가 내 업무 기준으로 정렬됩니다.",
+            "target": "사이드바",
+            "tone": "info",
+        })
+
+    if news_count > 0 and roadmap_count > 0 and not top_opportunities.empty:
+        first = top_opportunities.iloc[0]
+        actions.append({
+            "icon": "⚙️",
+            "title": "상위 자동화 기회를 검토하세요",
+            "body": f"{first['dept']} · {first['lv3']} 셀이 가장 높은 매칭 점수를 보입니다.",
+            "target": "인사이트 분석",
+            "tone": "ok",
+        })
+        actions.append({
+            "icon": "💬",
+            "title": "SOLA 제안서 초안을 만드세요",
+            "body": "상위 기회를 선택해 요약·기대효과·실행안을 산출물로 전환합니다.",
+            "target": "SOLA 작업실",
+            "tone": "teal",
+        })
+
+    if not actions:
+        actions.append({
+            "icon": "📝",
+            "title": "산출물을 정리하세요",
+            "body": "북마크와 채택 과제를 확인하고 다음 회의 자료로 재사용하세요.",
+            "target": "산출물 보관함",
+            "tone": "info",
+        })
+
+    return actions[:4]
+
+
+def _recommended_actions_html(actions: list[dict[str, str]]) -> str:
+    """Render recommended next actions with escaped content."""
+    cards: list[str] = []
+    for idx, item in enumerate(actions, start=1):
+        tone = item.get("tone", "")
+        tone_cls = tone if tone in {"info", "ok", "warn", "danger", "teal"} else ""
+        cards.append(f"""
+        <div class="next-action-card {html.escape(tone_cls)}">
+          <div class="next-action-rank">{idx}</div>
+          <div class="next-action-content">
+            <div class="next-action-meta">
+              <span>{html.escape(item.get('icon', '•'))}</span>
+              <span>{html.escape(item.get('target', ''))}</span>
+            </div>
+            <div class="next-action-title">{html.escape(item.get('title', ''))}</div>
+            <div class="next-action-body">{html.escape(item.get('body', ''))}</div>
+          </div>
+        </div>
+        """)
+    return '<div class="next-action-grid">' + "".join(cards) + "</div>"
+
+
+def _top_opportunities_html(cells: pd.DataFrame, *, persona: Persona, limit: int = 5) -> str:
+    """Render the top automation opportunity cells for the home board."""
+    if cells.empty:
+        return status_card(
+            "자동화 기회가 아직 계산되지 않았습니다",
+            "뉴스와 로드맵을 준비하면 부서×공정 기준 상위 기회가 표시됩니다.",
+            status="warn",
+            icon="⚙️",
+        )
+
+    cards: list[str] = []
+    for rank, (_, row) in enumerate(cells.head(limit).iterrows(), start=1):
+        is_mine = bool(persona.dept and str(row["dept"]) == persona.dept)
+        mine_cls = " mine" if is_mine else ""
+        badge = "🎯 내 부서" if is_mine else f"TOP {rank}"
+        cards.append(f"""
+        <div class="opportunity-pulse-card{mine_cls}">
+          <div class="opportunity-pulse-top">
+            <span class="opportunity-pulse-badge">{html.escape(badge)}</span>
+            <span class="opportunity-pulse-score">score {float(row['cell_score']):.1f}</span>
+          </div>
+          <div class="opportunity-pulse-title">{html.escape(str(row['dept']))} · {html.escape(str(row['lv3']))}</div>
+          <div class="opportunity-pulse-body">작업: {html.escape(str(row['sample_tasks'])[:150])}</div>
+          <div class="opportunity-pulse-body muted">뉴스: {html.escape(str(row['sample_news'])[:180])}</div>
+        </div>
+        """)
+    return '<div class="opportunity-pulse-grid">' + "".join(cards) + "</div>"
 
 
 def _empty_emergence() -> dict[str, pd.DataFrame]:
@@ -238,6 +378,8 @@ def _build_page_context(
     news_items: list[dict],
     insight_text: str,
     trend_ctx: str = "",
+    recommended_actions: list[dict[str, str]] | None = None,
+    top_opportunities: pd.DataFrame | None = None,
 ) -> str:
     """사이드 채팅에 주입할 페이지 컨텍스트."""
     lines = []
@@ -245,6 +387,17 @@ def _build_page_context(
         lines.append(f"사용자 부서: {persona.dept or '미설정'}, 직무: {persona.job or '미설정'}")
     if trend_ctx:
         lines.append(trend_ctx)
+    if recommended_actions:
+        lines.append("\n추천 다음 행동:")
+        for item in recommended_actions[:4]:
+            lines.append(f"- {item.get('target', '')}: {item.get('title', '')} — {item.get('body', '')}")
+    if top_opportunities is not None and not top_opportunities.empty:
+        lines.append("\n자동화 기회 Top:")
+        for _, row in top_opportunities.head(5).iterrows():
+            lines.append(
+                f"- {row['dept']} / {row['lv3']} score={row['cell_score']:.1f}; "
+                f"tasks={row['sample_tasks']}"
+            )
     if insight_text:
         lines.append(f"\n부서 AI 인사이트:\n{insight_text}")
     if news_items:
@@ -263,8 +416,8 @@ def render() -> None:
 
     # 페이지 헤더 (채팅 토글 포함)
     chat_open = page_header(
-        "홈",
-        "오늘의 페르소나 기반 인사이트",
+        "오늘의 보드",
+        "핵심 변화 · 부서 맞춤 인사이트 · 추천 다음 행동",
         chat_toggle_key="home",
     )
 
@@ -275,28 +428,53 @@ def render() -> None:
         news_html, news_ctx = _dept_news_cards(persona, roadmap, news)
         insight_html, insight_text = _dept_insight_card(persona, news)
 
-    # 홈 트렌드 위젯 페이로드 (메인·컨텍스트 양쪽 재사용)
+    # 홈 트렌드/추천 행동 페이로드 (메인·컨텍스트 양쪽 재사용)
     trend_payload = _compute_home_trend_payload(news)
     brief_text = st.session_state.get("_home_brief_text", "")
     trend_ctx = _build_trend_context(brief_text, trend_payload)
-    page_ctx = _build_page_context(persona, news_ctx, insight_text, trend_ctx=trend_ctx)
+    enriched_count = _content_ready_count(news)
+    if not roadmap.empty and not news.empty:
+        top_opportunities = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
+    else:
+        top_opportunities = pd.DataFrame()
+    recommended_actions = _recommended_actions(
+        news_count=len(news),
+        roadmap_count=len(roadmap),
+        enriched_count=enriched_count,
+        persona=persona,
+        top_opportunities=top_opportunities,
+    )
+    page_ctx = _build_page_context(
+        persona,
+        news_ctx,
+        insight_text,
+        trend_ctx=trend_ctx,
+        recommended_actions=recommended_actions,
+        top_opportunities=top_opportunities,
+    )
 
     with main_and_chat(
         "home",
         page_context_fn=lambda: page_ctx,
         persona=persona,
-        hint="현재 홈 화면(페르소나 · 매칭 뉴스 · AI 인사이트)을 컨텍스트로 대화합니다.",
+        hint="현재 오늘의 보드(페르소나 · 매칭 뉴스 · AI 인사이트)를 컨텍스트로 대화합니다.",
     ) as main:
         with main:
             # 페르소나 welcome
             st.markdown(_persona_welcome(persona), unsafe_allow_html=True)
 
-            # 메트릭 3개
-            m1, m2, m3 = st.columns(3)
-            m1.metric("오늘 뉴스", f"{len(news):,}건")
-            m2.metric("로드맵 작업", f"{len(roadmap):,}건")
-            enr = int((news["content"].astype(str).str.len() >= 50).sum()) if not news.empty and "content" in news.columns else 0
-            m3.metric("본문 확보", f"{enr:,}건")
+            # 핵심 상태 카드
+            st.markdown(
+                metric_grid([
+                    metric_card("오늘 뉴스", f"{len(news):,}건", caption="수집된 최신 기사", icon="📰", tone="info"),
+                    metric_card("로드맵 작업", f"{len(roadmap):,}건", caption="매칭 가능한 작업 정의", icon="🗂", tone="teal"),
+                    metric_card("본문 확보", f"{enriched_count:,}건", caption="요약·키워드 분석 준비", icon="✨", tone="ok" if enriched_count else "warn"),
+                ]),
+                unsafe_allow_html=True,
+            )
+
+            section_label("추천 다음 행동")
+            st.markdown(_recommended_actions_html(recommended_actions), unsafe_allow_html=True)
 
             if not news.empty:
                 # 🧠 SOLA 한 줄 + emergence 칩 위젯 — news 만 있으면 표시 (roadmap 무관)
@@ -329,9 +507,12 @@ def render() -> None:
             # 부서 뉴스 + 인사이트 — roadmap + news 둘 다 필요
             if roadmap.empty or news.empty:
                 st.markdown(
-                    '<div class="card-flat" style="margin-top:1.5rem;">'
-                    '로드맵 업로드와 뉴스 수집을 먼저 진행하세요. '
-                    '<b>🔍 탐색</b> 영역으로 이동.</div>',
+                    status_card(
+                        "데이터 준비가 필요합니다",
+                        "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 메뉴의 🧱 데이터 관리에서 시작할 수 있습니다.",
+                        status="warn",
+                        icon="🧱",
+                    ),
                     unsafe_allow_html=True,
                 )
             else:
@@ -352,33 +533,19 @@ def render() -> None:
                         section_label("우리 부서 AI 인사이트")
                         st.markdown(insight_html, unsafe_allow_html=True)
 
+                st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
+                section_label("자동화 기회 Top 5")
+                st.markdown(_top_opportunities_html(top_opportunities, persona=persona), unsafe_allow_html=True)
+
             # 빠른 행동
             st.markdown("<div style='margin-top:1.8rem;'></div>", unsafe_allow_html=True)
             section_label("빠른 행동")
             st.markdown(
-                """
-                <div class="quick-grid">
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">🔍</div>
-                    <div class="quick-tile-title">뉴스 수집·Enrich</div>
-                    <div class="quick-tile-desc">탐색 → 뉴스 수집. 새 키워드로 기사 추가.</div>
-                  </div>
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">📊</div>
-                    <div class="quick-tile-title">인사이트보드</div>
-                    <div class="quick-tile-desc">탐색 → 트렌드·자동화 기회 매트릭스.</div>
-                  </div>
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">💬</div>
-                    <div class="quick-tile-title">SOLA 채팅</div>
-                    <div class="quick-tile-desc">작업실 → 페르소나 컨텍스트로 질문.</div>
-                  </div>
-                  <div class="quick-tile">
-                    <div class="quick-tile-icon">📝</div>
-                    <div class="quick-tile-title">제안서 작업장</div>
-                    <div class="quick-tile-desc">작업실 → 살아있는 제안서 수정·요약.</div>
-                  </div>
-                </div>
-                """,
+                action_grid([
+                    action_card("🔍", "데이터 관리", "뉴스 수집·Enrich와 로드맵 업로드를 준비.", tone="teal"),
+                    action_card("📊", "인사이트 분석", "트렌드·매칭·자동화 기회를 한 흐름으로 확인."),
+                    action_card("💬", "SOLA 작업실", "요약·과제 후보·제안서 초안을 생성."),
+                    action_card("📝", "산출물 보관함", "북마크·채택 과제·뉴스 콘텐츠를 재사용."),
+                ]),
                 unsafe_allow_html=True,
             )

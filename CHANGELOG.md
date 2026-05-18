@@ -5,6 +5,82 @@
 
 ## [Unreleased]
 
+### Changed (UX — 사이드바 프로필 개선)
+- `ui/sidebar.py` 의 페르소나 입력 폼을 사이드바에서 제거하고, 최상단 사용자 프로필 카드(큰 상반신 아바타 + 설정 정보 요약)로 교체.
+- `ui/persona_page.py` 추가 — 아바타 프로필 카드 클릭 시 메인 영역에서 페르소나 편집 페이지를 열어 사이드바가 길어지지 않도록 개선.
+- `assets/styles.css` 에 큰 프로필 아바타/상반신 카드 스타일 추가.
+- `tests/test_sidebar_profile.py` 추가 — 프로필 카드 escape, 미설정 기본값, 페르소나 편집 옵션 헬퍼 회귀 테스트.
+
+### Fixed (PR merge conflict 방지)
+- `.gitattributes` 추가 — `CHANGELOG.md`, `docs/SESSIONS.md` 에 Git built-in `merge=union` 을 적용해 여러 PR이 같은 상단 로그를 수정할 때 발생하는 반복 merge conflict를 완화.
+- `CLAUDE.md`, `DEV_GUIDELINES.md` 에 PR 충돌 방지 규칙 추가 — 최신 main 기반 새 브랜치 사용, PR 전 rebase/merge 확인, 고충돌 문서의 union merge 정책 명시.
+
+### Added (UX 마무리 QA)
+- `docs/UX_QA_CHECKLIST.md` 추가 — Phase 0~6 완료 상태, 자동화 테스트 결과, 메뉴별 수동 QA 시나리오, 남은 운영 검수 리스크 정리.
+- `docs/UX_REDESIGN_PLAN.md` 에 2026-05-18 기준 Phase 0~6 구현 완료 상태와 대표 파일, 최종 QA 상태를 추가.
+
+### Added (UX Phase 6 후속 — 제안서 작업장/보관함 연결)
+- `ui/bookmarks_tab.py` 제안서 카드에 `작업장` CTA 를 추가해 보관된 제안서를 바로 SOLA 제안서 작업장 수정 모드로 열 수 있게 개선.
+- `ui/proposal_workbench.py` 에 원본 북마크 업데이트, 상태/결정 메모 명시 저장, 다운로드 동선을 정리해 수정 결과가 보관함 기록으로 이어지도록 개선.
+- `store.bookmarks.update_content` 추가 — 작업장에서 수정한 제안서 본문/태그/제목을 기존 북마크에 in-place 반영.
+- `tests/test_bookmarks.py`, `tests/test_sola_workspace.py` 에 작업장 라우팅과 북마크 업데이트 회귀 테스트 추가.
+
+### Added (UX Phase 6 — SOLA 작업실/산출물 보관함 정리)
+- `ui/sola_tab.py` 에 작업 유형 카드와 SOLA 준비 상태 카드를 추가해 요약·제안서·채팅·보관함 흐름을 작업 단위로 안내.
+- SOLA 뉴스 요약 결과를 다운로드하거나 산출물 보관함에 저장할 수 있는 동선을 추가.
+- `store.bookmarks.summary_counts` 와 보관함 KPI 를 추가해 전체 산출물, 제안서, 채택 과제, 검토 중 상태를 한눈에 표시.
+- `tests/test_sola_workspace.py` 와 `tests/test_bookmarks.py` 회귀 테스트를 추가해 작업 카드/준비 상태/보관함 집계를 검증.
+
+### Added (UX Phase 5 — 인사이트 분석 실행 흐름)
+- `ui/board_tab.py` 에 `트렌드 확인 → 로드맵 연결 → 기회 선별 → SOLA 제안` 단계 가이드를 추가해 분석 화면의 실행 흐름을 명확히 표시.
+- 자동화 기회 카드에 `SOLA 제안` CTA 를 추가해 선택한 부서×공정 기회를 SOLA 제안서 생성 필터로 바로 전달.
+- 인사이트 분석 사이드 컨텍스트에 실행 전환 대상 자동화 기회 Top 후보를 포함하도록 개선.
+- `tests/test_board_flow.py` 추가 — 분석 흐름 StepGuide, SOLA 라우팅 상태, 기회 후보 context 회귀 테스트.
+
+### Added (UX Phase 4 — 데이터 관리 준비 상태 대시보드)
+- `ui/data_health.py` 추가 — 뉴스 DB, 본문 Enrich, 로드맵 DB, LLM 설정 상태를 한눈에 보는 데이터 준비 상태 대시보드.
+- `app.py` 의 `데이터 관리` 메뉴 상단에 준비 상태 KPI와 품질 점검 카드를 표시해 상세 탭 진입 전 필요한 조치를 안내.
+- `assets/styles.css` 에 데이터 품질 카드 그리드 스타일 추가.
+- `tests/test_data_health.py` 추가 — 준비 상태 판정, Enrich 비율, HTML escape, context 요약 회귀 테스트.
+
+### Added (UX Phase 3 — 오늘의 보드 추천 행동)
+- `ui/home_tab.py` 에 데이터 준비 상태·페르소나·자동화 기회 점수를 기반으로 우선순위를 정하는 `추천 다음 행동` 카드 섹션을 추가.
+- 오늘의 보드에 `자동화 기회 Top 5` 펄스 카드를 추가해 첫 화면에서 부서×공정 기준 실행 후보를 바로 확인하도록 개선.
+- `assets/styles.css` 에 추천 행동 카드와 자동화 기회 펄스 카드 스타일을 추가하고, 홈 컨텍스트에 추천 행동/Top 기회를 포함해 사이드 SOLA 대화 품질을 개선.
+- `tests/test_home_trend_widget.py` 에 추천 행동 우선순위, HTML escape, 내 부서 하이라이트, page context 회귀 테스트 추가.
+
+### Added (UX Phase 2 후속 — 로드맵 업로드 단계 안내)
+- `ui/roadmap_tab.py` 에 `엑셀 선택 → 시트 확인 → 검증·저장 → 매칭 준비` StepGuide 를 추가하고, 로드맵 작업/부서 수/Lv3 공정 현황을 공통 `metric_card` 로 표시.
+
+### Added (UX Phase 2 후속 — 데이터 관리 단계 안내)
+- `ui.components.step_item` / `step_guide` 추가 — 데이터 준비처럼 순서가 중요한 화면에 쓰는 단계 안내 컴포넌트.
+- `ui/ingest_tab.py` 상단에 `키워드·소스 선택 → 수집·저장 → 본문 Enrich → 분석으로 이동` 4단계 가이드를 추가하고, 수집 현황을 공통 `metric_card`/`status_card` 로 정리.
+- `tests/test_ui_components.py` 에 StepGuide escape/active 상태 회귀 테스트 추가.
+
+### Changed (UX Phase 2 후속 — 빈 상태 통일)
+- `roadmap_tab`, `board_tab`, `news_tab`, `bookmarks_tab`, `task_tree` 의 주요 빈 상태/준비 필요 안내를 공통 `status_card` 로 교체해 데이터 준비·분석·보관함 화면의 안내 문법 통일.
+- `board_tab` 상단 KPI 를 공통 `metric_card` 기반으로 교체해 오늘의 보드와 인사이트 분석의 핵심 지표 카드 스타일 정렬.
+
+### Added (UX Phase 2 — 공통 UI 컴포넌트)
+- `ui/components.py` 추가 — `MetricCard`, `StatusCard`, `ActionCard` 계열 HTML 빌더를 공통화하고 모든 문자열을 escape 처리.
+- `assets/styles.css` 에 Navy/Teal 제품 토큰과 metric/status/action 공통 카드 스타일 추가.
+- `ui/home_tab.py` 의 오늘의 보드 KPI, 데이터 준비 안내, 빠른 행동 카드를 공통 컴포넌트로 교체.
+- `tests/test_ui_components.py` 추가 — HTML escape, tone class allowlist, grid wrapper 회귀 테스트.
+
+### Changed (UX Phase 1 — 앱 쉘)
+- `app.py` 와 `ui/sidebar.py` 를 UX 개편 계획의 5개 업무 메뉴(`오늘의 보드`, `데이터 관리`, `인사이트 분석`, `SOLA 작업실`, `산출물 보관함`)로 1차 재구성. 기존 `탐색`/`작업실` 하위 탭에 섞여 있던 기능을 업무 목적별 메뉴로 분리.
+- 홈 화면 문구와 빠른 행동 카드를 새 메뉴명에 맞게 갱신하고, 사이드바에 `데이터 준비 → 인사이트 분석 → SOLA 산출물 생성` 흐름 힌트 추가.
+- `README.md` 와 `docs/ARCHITECTURE.md` 의 UI 구조 설명을 5개 업무 메뉴 기준으로 갱신.
+
+### Added (UX 개편 계획)
+- `docs/UX_REDESIGN_PLAN.md` 추가 — 첨부 구조도의 5단계 흐름(데이터 입력 → 저장·정제 → SOLA 분석 → 서비스 UI → 최종 산출물)을 기준으로 새 IA, 화면별 재배치, 디자인 방향, 사용자 시나리오, 단계별 구현 로드맵 정리.
+- `README.md` 개발 문서 표에 UX 개편 계획 문서 링크 추가.
+
+### Fixed (검증/보안 정리)
+- `.env.example` 에 커밋되어 있던 실제 Groq API 키 형태의 값을 placeholder 로 교체하고, 실제 키는 gitignore 된 `.env` 에만 입력하도록 주석 추가.
+- `Makefile` 의 오래된 파일명(`scraper.py`, `insights.py`, `cardnews.py`, `tests/test_app_pages_smoke.py`) 참조를 제거하고, 현재 CI/README 기준과 같은 전체 Python compile, 금지 패턴 검사, 전체 pytest 실행으로 정렬.
+- `make check` 에 `.env.example` 내 API 키 패턴 검사를 추가해 예시 파일에 실제 키가 재유입되는 것을 방지.
+
 ### Fixed (Phase 6-A 후속 — roadmap 의존성 제거)
 - `ui/home_tab.render` 의 트렌드 위젯이 `if roadmap.empty or news.empty` 분기 안에 갇혀 있어 로드맵 미업로드 onboarding 상태(뉴스만 수집된 상태)에서 위젯이 보이지 않던 버그 수정 (Codex review #21). 트렌드 위젯은 roadmap 의존성이 없으므로 `news` 만 있어도 렌더되도록 분기 분리. 부서 매칭 카드/안내는 기존대로 roadmap+news 모두 필요.
 

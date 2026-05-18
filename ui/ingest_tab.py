@@ -13,6 +13,7 @@ from scraping import naver as naver_news
 from scraping import tech_sites
 from sola.client import is_configured as llm_ready
 from store.news_db import load_all_today, save_articles, upsert_articles
+from ui.components import metric_card, metric_grid, status_card, step_guide, step_item
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -54,7 +55,13 @@ def _run_enrich(use_llm: bool, n: int) -> None:
         st.session_state["ins_status"] = ("warn", "오늘 수집된 기사가 없습니다.")
         return
 
-    need = df[df["content"].astype(str).str.len() < 50] if "content" in df.columns else df
+    if "content" not in df.columns:
+        need = df
+    else:
+        content = df["content"].fillna("").astype(str)
+        missing_or_dirty = content.map(enrich_mod.content_needs_refresh)
+        missing_image = df.get("image_url", pd.Series([""] * len(df))).fillna("").astype(str).str.len() == 0
+        need = df[missing_or_dirty | missing_image]
     target = need.head(n).to_dict(orient="records")
     if not target:
         st.session_state["ins_status"] = ("ok", "이미 모두 enrich 됨.")
@@ -115,6 +122,16 @@ def render() -> None:
         hint="방금 수집한 뉴스 통계·헤드라인을 컨텍스트로 대화합니다.",
     ) as main:
         with main:
+            st.markdown(
+                step_guide([
+                    step_item(1, "키워드·소스 선택", "네이버/구글은 키워드, 테크 사이트는 최신 목록 기반", active=True),
+                    step_item(2, "수집·저장", "소스별 기사를 Parquet DB에 저장"),
+                    step_item(3, "본문 Enrich", "본문 확보 후 LLM 키워드·요약 생성"),
+                    step_item(4, "분석으로 이동", "인사이트 분석에서 트렌드·매칭 확인"),
+                ]),
+                unsafe_allow_html=True,
+            )
+
             col1, col2 = st.columns([3, 2])
             with col1:
                 st.text_input("검색 키워드 (테크 사이트 수집엔 미사용)", key="ins_keyword",
@@ -157,12 +174,30 @@ def render() -> None:
 
             st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             df = load_all_today()
-            st.caption(
-                f"오늘 저장된 전체 기사: {len(df)}건 · enrich 완료: "
-                f"{int((df['content'].astype(str).str.len() >= 50).sum()) if not df.empty else 0}건"
+            enriched_count = (
+                int((df["content"].astype(str).str.len() >= 50).sum())
+                if not df.empty and "content" in df.columns else 0
+            )
+            source_count = df["source"].nunique() if not df.empty and "source" in df.columns else 0
+            st.markdown(
+                metric_grid([
+                    metric_card("오늘 저장", f"{len(df):,}건", caption="전체 수집 기사", icon="📰", tone="info"),
+                    metric_card("본문 확보", f"{enriched_count:,}건", caption="Enrich 완료/본문 보유", icon="✨", tone="ok" if enriched_count else "warn"),
+                    metric_card("소스 수", f"{source_count:,}", caption="오늘 저장된 출처 종류", icon="🧭", tone="teal"),
+                ]),
+                unsafe_allow_html=True,
             )
 
             if df.empty:
+                st.markdown(
+                    status_card(
+                        "아직 수집된 뉴스가 없습니다",
+                        "키워드와 소스를 선택한 뒤 📥 수집·저장을 실행하세요. 네이버/구글 수집에는 키워드가 필요합니다.",
+                        status="warn",
+                        icon="📰",
+                    ),
+                    unsafe_allow_html=True,
+                )
                 return
 
             by_source = (
@@ -172,10 +207,16 @@ def render() -> None:
             section_label("소스별 분포")
             st.dataframe(by_source, use_container_width=True, hide_index=True)
 
-            section_label("최근 10건 (enrich 결과 우선)")
+            section_label("최근 10건 (정제 본문·이미지 우선)")
             for _, row in df.head(10).iterrows():
-                summary_show = str(row.get("summary_llm") or row.get("summary") or "")
+                body_show = str(row.get("content") or row.get("summary_llm") or row.get("summary") or "")
+                body_show = enrich_mod._clean_article_text(body_show)[:520]
                 kw_show = str(row.get("keywords_llm") or row.get("keywords") or "")
+                img_url = str(row.get("image_url") or "").strip()
+                img_html = (
+                    f'<img class="news-card-image" src="{html.escape(img_url)}" alt="뉴스 대표 이미지" loading="lazy">'
+                    if img_url else '<div class="news-card-image placeholder">No Image</div>'
+                )
                 kw_html = (
                     "".join(
                         f'<span class="keyword-badge">{html.escape(k.strip())}</span>'
@@ -185,16 +226,19 @@ def render() -> None:
                 )
                 st.markdown(
                     f"""
-                    <div class="news-card">
-                        <div class="card-meta">
-                            <span class="card-press">{html.escape(str(row.get('press', '')))}</span>
-                            <span class="card-date">{html.escape(str(row.get('date', '')))}</span>
-                            <span class="card-num">{html.escape(str(row.get('source', '')))}</span>
+                    <div class="news-card news-card-media">
+                        {img_html}
+                        <div class="news-card-content">
+                            <div class="card-meta">
+                                <span class="card-press">{html.escape(str(row.get('press', '')))}</span>
+                                <span class="card-date">{html.escape(str(row.get('date', '')))}</span>
+                                <span class="card-num">{html.escape(str(row.get('source', '')))}</span>
+                            </div>
+                            <div class="card-title">{html.escape(str(row.get('title', '')))}</div>
+                            <div class="card-keywords">{kw_html}</div>
+                            <div class="card-body">{html.escape(body_show)}</div>
+                            <div class="card-link"><a href="{html.escape(str(row.get('link', '')))}" target="_blank">원문 보기 →</a></div>
                         </div>
-                        <div class="card-title">{html.escape(str(row.get('title', '')))}</div>
-                        <div class="card-keywords">{kw_html}</div>
-                        <div class="card-body">{html.escape(summary_show)}</div>
-                        <div class="card-link"><a href="{html.escape(str(row.get('link', '')))}" target="_blank">원문 보기 →</a></div>
                     </div>
                     """,
                     unsafe_allow_html=True,

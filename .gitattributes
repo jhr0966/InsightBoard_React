@@ -1,0 +1,6 @@
+# High-churn release/session logs are intentionally append/prepend-only.
+# Use Git's built-in union merge driver so concurrent PR notes do not
+# become manual merge conflicts when multiple branches touch the same top
+# of the file. Reviewers should still sanity-check ordering after merge.
+CHANGELOG.md merge=union
+docs/SESSIONS.md merge=union

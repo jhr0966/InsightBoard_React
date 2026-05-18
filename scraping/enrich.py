@@ -12,8 +12,10 @@ import random
 import re
 import time
 from typing import Callable
+from urllib.parse import urljoin
 
 import requests
+from bs4 import Comment
 
 from scraping.extract import soup_of
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
@@ -30,20 +32,144 @@ _CONTENT_SELECTORS = [
     "article#articleBody", "div.article_body", "div.article-body",
     "div#news_body_id", "div.news_body", "div#content-body",
     "div.news_content", "div.txt_article", "div.atc_body", "div.article_view",
+    "main article", "article", "main",
 ]
 
 _NOISE_SELECTORS = (
-    "script, style, .ad, .advertisement, figure, figcaption, "
-    "header, footer, nav, .header, .footer"
+    "script, style, noscript, template, svg, canvas, iframe, "
+    "pre, code, samp, kbd, form, button, input, textarea, select, "
+    "header, footer, nav, aside, figure, figcaption, "
+    ".ad, .ads, .advertisement, .banner, .sponsor, .sponsored, "
+    ".share, .sns, .social, .related, .recommend, .copyright, "
+    ".reply, .comment, .comments, .byline, .tag, .tags"
 )
 
 _MIN_CONTENT_LEN = 80
 
+_CODE_LINE_PATTERNS = (
+    re.compile(r"^\s*(var|let|const|function|return|if|else|for|while|import|export)\b"),
+    re.compile(r"^\s*[.#]?[A-Za-z0-9_-]+\s*\{[^}]*\}\s*$"),
+    re.compile(r"^\s*[{\[]\s*[\"'][A-Za-z0-9_-]+[\"']\s*:"),
+    re.compile(r"\b(window|document|navigator|jQuery|dataLayer|googletag|webpack)\."),
+    re.compile(r"[{};]{3,}"),
+)
 
-def fetch_content(url: str, *, session=None) -> str:
-    """기사 URL → 본문 텍스트. 실패 시 빈 문자열."""
-    if not url or not url.startswith("http"):
+_BOILERPLATE_PATTERNS = (
+    re.compile(r"무단전재\s*(및)?\s*재배포\s*금지"),
+    re.compile(r"저작권자\s*©"),
+    re.compile(r"Copyright\s*\(c\)", re.IGNORECASE),
+    re.compile(r"기자\s*=?\s*[\w.+-]+@[\w.-]+"),
+    re.compile(r"^\s*(관련기사|추천기사|인기기사|ADVERTISEMENT|광고)\s*$", re.IGNORECASE),
+)
+
+_IMAGE_SELECTORS = (
+    "meta[property='og:image']",
+    "meta[property='og:image:url']",
+    "meta[name='twitter:image']",
+    "meta[name='thumbnail']",
+)
+
+
+def _strip_noise(soup) -> None:
+    """Remove non-article nodes before text extraction."""
+    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
+        comment.extract()
+    for noise in soup.select(_NOISE_SELECTORS):
+        noise.decompose()
+    for tag in soup.select("[hidden], [aria-hidden='true']"):
+        tag.decompose()
+    for tag in soup.find_all(style=True):
+        style = str(tag.get("style", "")).replace(" ", "").lower()
+        if "display:none" in style or "visibility:hidden" in style:
+            tag.decompose()
+
+
+def _looks_like_code(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return True
+    if any(pattern.search(stripped) for pattern in _CODE_LINE_PATTERNS):
+        return True
+    if len(stripped) >= 40:
+        symbol_count = sum(stripped.count(ch) for ch in "{}[]();=<>|\\")
+        if symbol_count / len(stripped) > 0.16 and not re.search(r"[가-힣]", stripped):
+            return True
+    return False
+
+
+def _looks_like_boilerplate(line: str) -> bool:
+    return any(pattern.search(line) for pattern in _BOILERPLATE_PATTERNS)
+
+
+def _clean_article_text(raw_text: str) -> str:
+    """Normalize article text and drop code/boilerplate fragments."""
+    if not raw_text:
         return ""
+    text = raw_text.replace("\xa0", " ").replace("\u200b", " ")
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    lines: list[str] = []
+    seen: set[str] = set()
+    for line in re.split(r"\n+", text):
+        cleaned = re.sub(r"\s{2,}", " ", line).strip(" \t-–—")
+        if len(cleaned) < 2:
+            continue
+        if _looks_like_code(cleaned) or _looks_like_boilerplate(cleaned):
+            continue
+        # Keep only the first copy of repeated captions/share snippets.
+        dedupe_key = cleaned[:120]
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        lines.append(cleaned)
+    return re.sub(r"\s{2,}", " ", "\n".join(lines)).strip()
+
+
+def _text_from_tag(tag) -> str:
+    return _clean_article_text(tag.get_text(separator="\n", strip=True))
+
+
+def _extract_image_url(soup, base_url: str) -> str:
+    """Return the likely representative article image URL."""
+    for sel in _IMAGE_SELECTORS:
+        tag = soup.select_one(sel)
+        val = tag.get("content", "").strip() if tag else ""
+        if val:
+            return urljoin(base_url, val)
+
+    for img in soup.select("article img, main img, div[itemprop='articleBody'] img, img"):
+        src = (img.get("data-src") or img.get("data-original") or img.get("src") or "").strip()
+        if not src:
+            continue
+        lower = src.lower()
+        if any(bad in lower for bad in ("spacer", "blank", "logo", "icon", "ad_", "/ad/")):
+            continue
+        return urljoin(base_url, src)
+    return ""
+
+
+def content_needs_refresh(content: str) -> bool:
+    """Detect saved article bodies that are mostly code/UI noise and should be fetched again."""
+    if not content or len(str(content).strip()) < _MIN_CONTENT_LEN:
+        return True
+    lines = [line.strip() for line in re.split(r"\n+", str(content)) if line.strip()]
+    if not lines:
+        return True
+    noisy = sum(1 for line in lines if _looks_like_code(line) or _looks_like_boilerplate(line))
+    if noisy >= 2 and noisy / len(lines) >= 0.25:
+        return True
+    lowered = str(content).lower()
+    code_markers = ("<script", "</script", "function(", "window.", "document.", "datalayer", "googletag", "webpack")
+    marker_hits = sum(1 for marker in code_markers if marker in lowered)
+    if marker_hits >= 2:
+        return True
+    symbol_count = sum(str(content).count(ch) for ch in "{}[]();=<>|\\")
+    return symbol_count / max(len(str(content)), 1) > 0.18 and not re.search(r"[가-힣]", str(content)[:500])
+
+
+def fetch_article(url: str, *, session=None) -> dict[str, str]:
+    """기사 URL → 정제된 본문과 대표 이미지 URL."""
+    if not url or not url.startswith("http"):
+        return {"content": "", "image_url": ""}
     sess = session or build_session()
     try:
         time.sleep(random.uniform(0.2, 0.5))
@@ -52,26 +178,32 @@ def fetch_content(url: str, *, session=None) -> str:
         if resp.encoding is None or resp.encoding.lower() == "iso-8859-1":
             resp.encoding = resp.apparent_encoding
     except requests.RequestException:
-        return ""
+        return {"content": "", "image_url": ""}
 
     soup = soup_of(resp.text)
-    for noise in soup.select(_NOISE_SELECTORS):
-        noise.decompose()
+    image_url = _extract_image_url(soup, url)
+    _strip_noise(soup)
 
+    candidates: list[str] = []
     for sel in _CONTENT_SELECTORS:
         tag = soup.select_one(sel)
         if tag:
-            text = re.sub(r"\s{2,}", " ", tag.get_text(separator=" ", strip=True))
+            text = _text_from_tag(tag)
             if len(text) >= _MIN_CONTENT_LEN:
-                return text
+                candidates.append(text)
 
-    paragraphs = [p.get_text(strip=True) for p in soup.select("p") if len(p.get_text(strip=True)) > 30]
+    paragraphs = [_clean_article_text(p.get_text(separator="\n", strip=True)) for p in soup.select("p")]
+    paragraphs = [p for p in paragraphs if len(p) > 30]
     if paragraphs:
-        text = " ".join(paragraphs)
-        if len(text) >= _MIN_CONTENT_LEN:
-            return text
+        candidates.append("\n".join(paragraphs))
 
-    return ""
+    content = max(candidates, key=len) if candidates else ""
+    return {"content": content, "image_url": image_url}
+
+
+def fetch_content(url: str, *, session=None) -> str:
+    """기사 URL → 정제된 전체 본문 텍스트. 실패 시 빈 문자열."""
+    return fetch_article(url, session=session)["content"]
 
 
 def _llm_keywords(content: str) -> str:
@@ -107,10 +239,14 @@ def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
     from datetime import datetime, timezone
 
     link = article.get("link", "")
-    content = article.get("content") or ""
-    if not content and link:
-        content = fetch_content(link)
-        article["content"] = content
+    content = _clean_article_text(article.get("content") or "")
+    image_url = str(article.get("image_url") or "")
+    if link and (content_needs_refresh(content) or not image_url):
+        fetched = fetch_article(link)
+        content = fetched.get("content") or content
+        image_url = fetched.get("image_url") or image_url
+    article["content"] = content
+    article["image_url"] = image_url
 
     if with_llm and content:
         from sola.client import LLMNotConfigured

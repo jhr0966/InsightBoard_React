@@ -32,6 +32,7 @@ def test_save_and_load_articles():
     df = load_latest(source="naver")
     assert len(df) == 2
     assert "title" in df.columns
+    assert "image_url" in df.columns
 
     all_df = load_all_today()
     assert len(all_df) == 2

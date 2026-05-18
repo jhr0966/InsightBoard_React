@@ -62,6 +62,17 @@ def _is_article_link(href: str, site_host: str) -> bool:
     return len(path) >= 2
 
 
+def _image_from_link(a, site_url: str) -> str:
+    img = a.select_one("img")
+    if not img:
+        parent = a.parent
+        img = parent.select_one("img") if parent else None
+    if not img:
+        return ""
+    src = (img.get("data-src") or img.get("data-original") or img.get("src") or "").strip()
+    return urljoin(site_url, src) if src else ""
+
+
 def search_site(site_name: str, site_url: str, max_results: int = 10) -> list[dict]:
     """단일 사이트 메인 페이지 → 최근 기사 리스트."""
     session = build_session()
@@ -98,6 +109,7 @@ def search_site(site_name: str, site_url: str, max_results: int = 10) -> list[di
             "published_at": now_iso,
             "link": full_link,
             "summary": "",
+            "image_url": _image_from_link(a, site_url),
             "keywords": "",
             "source": "tech",
             "query": site_name,
