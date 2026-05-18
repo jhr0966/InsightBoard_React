@@ -55,7 +55,13 @@ def _run_enrich(use_llm: bool, n: int) -> None:
         st.session_state["ins_status"] = ("warn", "오늘 수집된 기사가 없습니다.")
         return
 
-    need = df[df["content"].astype(str).str.len() < 50] if "content" in df.columns else df
+    if "content" not in df.columns:
+        need = df
+    else:
+        content = df["content"].fillna("").astype(str)
+        missing_or_dirty = content.map(enrich_mod.content_needs_refresh)
+        missing_image = df.get("image_url", pd.Series([""] * len(df))).fillna("").astype(str).str.len() == 0
+        need = df[missing_or_dirty | missing_image]
     target = need.head(n).to_dict(orient="records")
     if not target:
         st.session_state["ins_status"] = ("ok", "이미 모두 enrich 됨.")
@@ -201,10 +207,16 @@ def render() -> None:
             section_label("소스별 분포")
             st.dataframe(by_source, use_container_width=True, hide_index=True)
 
-            section_label("최근 10건 (enrich 결과 우선)")
+            section_label("최근 10건 (정제 본문·이미지 우선)")
             for _, row in df.head(10).iterrows():
-                summary_show = str(row.get("summary_llm") or row.get("summary") or "")
+                body_show = str(row.get("content") or row.get("summary_llm") or row.get("summary") or "")
+                body_show = enrich_mod._clean_article_text(body_show)[:520]
                 kw_show = str(row.get("keywords_llm") or row.get("keywords") or "")
+                img_url = str(row.get("image_url") or "").strip()
+                img_html = (
+                    f'<img class="news-card-image" src="{html.escape(img_url)}" alt="뉴스 대표 이미지" loading="lazy">'
+                    if img_url else '<div class="news-card-image placeholder">No Image</div>'
+                )
                 kw_html = (
                     "".join(
                         f'<span class="keyword-badge">{html.escape(k.strip())}</span>'
@@ -214,16 +226,19 @@ def render() -> None:
                 )
                 st.markdown(
                     f"""
-                    <div class="news-card">
-                        <div class="card-meta">
-                            <span class="card-press">{html.escape(str(row.get('press', '')))}</span>
-                            <span class="card-date">{html.escape(str(row.get('date', '')))}</span>
-                            <span class="card-num">{html.escape(str(row.get('source', '')))}</span>
+                    <div class="news-card news-card-media">
+                        {img_html}
+                        <div class="news-card-content">
+                            <div class="card-meta">
+                                <span class="card-press">{html.escape(str(row.get('press', '')))}</span>
+                                <span class="card-date">{html.escape(str(row.get('date', '')))}</span>
+                                <span class="card-num">{html.escape(str(row.get('source', '')))}</span>
+                            </div>
+                            <div class="card-title">{html.escape(str(row.get('title', '')))}</div>
+                            <div class="card-keywords">{kw_html}</div>
+                            <div class="card-body">{html.escape(body_show)}</div>
+                            <div class="card-link"><a href="{html.escape(str(row.get('link', '')))}" target="_blank">원문 보기 →</a></div>
                         </div>
-                        <div class="card-title">{html.escape(str(row.get('title', '')))}</div>
-                        <div class="card-keywords">{kw_html}</div>
-                        <div class="card-body">{html.escape(summary_show)}</div>
-                        <div class="card-link"><a href="{html.escape(str(row.get('link', '')))}" target="_blank">원문 보기 →</a></div>
                     </div>
                     """,
                     unsafe_allow_html=True,

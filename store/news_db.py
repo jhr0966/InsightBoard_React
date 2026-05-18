@@ -13,8 +13,8 @@ from store.paths import latest_parquet, news_dir_for
 _ARTICLE_COLS = (
     "title", "press", "date", "published_at", "link",
     "summary", "keywords", "source", "query",
-    # M4-α enrich 컬럼 — 본문/LLM 키워드·요약/타임스탬프
-    "content", "keywords_llm", "summary_llm", "enriched_at",
+    # M4-α enrich 컬럼 — 본문/대표 이미지/LLM 키워드·요약/타임스탬프
+    "content", "image_url", "keywords_llm", "summary_llm", "enriched_at",
 )
 
 

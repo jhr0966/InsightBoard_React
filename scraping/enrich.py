@@ -12,6 +12,7 @@ import random
 import re
 import time
 from typing import Callable
+from urllib.parse import urljoin
 
 import requests
 from bs4 import Comment
@@ -59,6 +60,13 @@ _BOILERPLATE_PATTERNS = (
     re.compile(r"Copyright\s*\(c\)", re.IGNORECASE),
     re.compile(r"기자\s*=?\s*[\w.+-]+@[\w.-]+"),
     re.compile(r"^\s*(관련기사|추천기사|인기기사|ADVERTISEMENT|광고)\s*$", re.IGNORECASE),
+)
+
+_IMAGE_SELECTORS = (
+    "meta[property='og:image']",
+    "meta[property='og:image:url']",
+    "meta[name='twitter:image']",
+    "meta[name='thumbnail']",
 )
 
 
@@ -120,10 +128,48 @@ def _text_from_tag(tag) -> str:
     return _clean_article_text(tag.get_text(separator="\n", strip=True))
 
 
-def fetch_content(url: str, *, session=None) -> str:
-    """기사 URL → 정제된 전체 본문 텍스트. 실패 시 빈 문자열."""
+def _extract_image_url(soup, base_url: str) -> str:
+    """Return the likely representative article image URL."""
+    for sel in _IMAGE_SELECTORS:
+        tag = soup.select_one(sel)
+        val = tag.get("content", "").strip() if tag else ""
+        if val:
+            return urljoin(base_url, val)
+
+    for img in soup.select("article img, main img, div[itemprop='articleBody'] img, img"):
+        src = (img.get("data-src") or img.get("data-original") or img.get("src") or "").strip()
+        if not src:
+            continue
+        lower = src.lower()
+        if any(bad in lower for bad in ("spacer", "blank", "logo", "icon", "ad_", "/ad/")):
+            continue
+        return urljoin(base_url, src)
+    return ""
+
+
+def content_needs_refresh(content: str) -> bool:
+    """Detect saved article bodies that are mostly code/UI noise and should be fetched again."""
+    if not content or len(str(content).strip()) < _MIN_CONTENT_LEN:
+        return True
+    lines = [line.strip() for line in re.split(r"\n+", str(content)) if line.strip()]
+    if not lines:
+        return True
+    noisy = sum(1 for line in lines if _looks_like_code(line) or _looks_like_boilerplate(line))
+    if noisy >= 2 and noisy / len(lines) >= 0.25:
+        return True
+    lowered = str(content).lower()
+    code_markers = ("<script", "</script", "function(", "window.", "document.", "datalayer", "googletag", "webpack")
+    marker_hits = sum(1 for marker in code_markers if marker in lowered)
+    if marker_hits >= 2:
+        return True
+    symbol_count = sum(str(content).count(ch) for ch in "{}[]();=<>|\\")
+    return symbol_count / max(len(str(content)), 1) > 0.18 and not re.search(r"[가-힣]", str(content)[:500])
+
+
+def fetch_article(url: str, *, session=None) -> dict[str, str]:
+    """기사 URL → 정제된 본문과 대표 이미지 URL."""
     if not url or not url.startswith("http"):
-        return ""
+        return {"content": "", "image_url": ""}
     sess = session or build_session()
     try:
         time.sleep(random.uniform(0.2, 0.5))
@@ -132,9 +178,10 @@ def fetch_content(url: str, *, session=None) -> str:
         if resp.encoding is None or resp.encoding.lower() == "iso-8859-1":
             resp.encoding = resp.apparent_encoding
     except requests.RequestException:
-        return ""
+        return {"content": "", "image_url": ""}
 
     soup = soup_of(resp.text)
+    image_url = _extract_image_url(soup, url)
     _strip_noise(soup)
 
     candidates: list[str] = []
@@ -150,11 +197,13 @@ def fetch_content(url: str, *, session=None) -> str:
     if paragraphs:
         candidates.append("\n".join(paragraphs))
 
-    if not candidates:
-        return ""
+    content = max(candidates, key=len) if candidates else ""
+    return {"content": content, "image_url": image_url}
 
-    # Prefer the longest clean candidate so multi-paragraph article bodies are not truncated.
-    return max(candidates, key=len)
+
+def fetch_content(url: str, *, session=None) -> str:
+    """기사 URL → 정제된 전체 본문 텍스트. 실패 시 빈 문자열."""
+    return fetch_article(url, session=session)["content"]
 
 
 def _llm_keywords(content: str) -> str:
@@ -190,10 +239,14 @@ def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
     from datetime import datetime, timezone
 
     link = article.get("link", "")
-    content = article.get("content") or ""
-    if not content and link:
-        content = fetch_content(link)
-        article["content"] = content
+    content = _clean_article_text(article.get("content") or "")
+    image_url = str(article.get("image_url") or "")
+    if link and (content_needs_refresh(content) or not image_url):
+        fetched = fetch_article(link)
+        content = fetched.get("content") or content
+        image_url = fetched.get("image_url") or image_url
+    article["content"] = content
+    article["image_url"] = image_url
 
     if with_llm and content:
         from sola.client import LLMNotConfigured

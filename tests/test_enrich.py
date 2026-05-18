@@ -8,7 +8,7 @@ from store import cache
 
 
 _HTML_WITH_BODY = """
-<html><body>
+<html><head><meta property="og:image" content="/photo.jpg"></head><body>
   <script>noise()</script>
   <header>nav</header>
   <article itemprop="articleBody">
@@ -47,6 +47,13 @@ def test_fetch_content_extracts_article_body():
     assert "비전 AI" in text
     assert "noise()" not in text  # script stripped
     assert "nav" not in text  # header stripped
+
+
+def test_fetch_article_extracts_representative_image():
+    with patch.object(enrich, "build_session", lambda: _fake_session()):
+        article = enrich.fetch_article("https://example.com/article/1")
+    assert article["content"] and "비전 AI" in article["content"]
+    assert article["image_url"] == "https://example.com/photo.jpg"
 
 
 def test_fetch_content_returns_empty_for_invalid_url():
@@ -107,8 +114,23 @@ def test_enrich_one_skips_llm_when_with_llm_false():
     with patch.object(enrich, "build_session", lambda: _fake_session()):
         out = enrich.enrich_one(article, with_llm=False)
     assert out["content"]
+    assert out["image_url"].endswith("/photo.jpg")
     assert "keywords_llm" not in out
     assert "summary_llm" not in out
+
+
+def test_enrich_one_refetches_code_filled_existing_content():
+    cache.clear()
+    article = {
+        "link": "https://example.com/a",
+        "source": "naver",
+        "content": "window.dataLayer.push({});\nfunction ad(){return document.cookie;}\nvar slot = googletag.defineSlot();",
+    }
+    with patch.object(enrich, "build_session", lambda: _fake_session()):
+        out = enrich.enrich_one(article, with_llm=False)
+    assert "비전 AI" in out["content"]
+    assert "dataLayer" not in out["content"]
+    assert out["image_url"].endswith("/photo.jpg")
 
 
 def test_enrich_articles_calls_progress_cb():

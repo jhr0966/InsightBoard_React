@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import random
 import time
-from urllib.parse import quote
+from urllib.parse import quote, urljoin
 
 import requests
 
@@ -30,6 +30,14 @@ _DESC_SELECTORS = [
     "div[class*='dsc']", "div[class*='desc']", "div[class*='summary']",
     "div.news_dsc", "div.dsc_wrap", "a.api_txt_lines",
 ]
+
+
+def _image_from_item(item) -> str:
+    img = item.select_one("img")
+    if not img:
+        return ""
+    src = (img.get("data-src") or img.get("src") or "").strip()
+    return urljoin("https://search.naver.com", src) if src else ""
 
 
 def _find_news_items(soup) -> list:
@@ -103,6 +111,7 @@ def search(keyword: str, max_results: int = 10) -> list[dict]:
             "published_at": normalize_published_at(date_str),
             "link": link,
             "summary": first_text(item, _DESC_SELECTORS),
+            "image_url": _image_from_item(item),
             "keywords": "",
             "source": "naver",
             "query": keyword,

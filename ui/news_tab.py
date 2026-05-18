@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from collections import Counter
+import html
 
 import pandas as pd
 import streamlit as st
 
 from persona.schema import Persona
+from scraping import enrich as enrich_mod
 from store.news_db import load_all_today
 from ui.components import status_card
 from ui.layout import main_and_chat
@@ -88,5 +90,32 @@ def render() -> None:
 
             st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             section_label("전체 기사")
-            cols = [c for c in ("title", "press", "date", "link", "query") if c in df.columns]
-            st.dataframe(df[cols], use_container_width=True, hide_index=True)
+            for _, row in df.head(30).iterrows():
+                body = enrich_mod._clean_article_text(str(row.get("content") or row.get("summary_llm") or row.get("summary") or ""))[:520]
+                img_url = str(row.get("image_url") or "").strip()
+                img_html = (
+                    f'<img class="news-card-image" src="{html.escape(img_url)}" alt="뉴스 대표 이미지" loading="lazy">'
+                    if img_url else '<div class="news-card-image placeholder">No Image</div>'
+                )
+                st.markdown(
+                    f"""
+                    <div class="news-card news-card-media">
+                        {img_html}
+                        <div class="news-card-content">
+                            <div class="card-meta">
+                                <span class="card-press">{html.escape(str(row.get('press', '')))}</span>
+                                <span class="card-date">{html.escape(str(row.get('date', '')))}</span>
+                                <span class="card-num">{html.escape(str(row.get('source', '')))}</span>
+                            </div>
+                            <div class="card-title">{html.escape(str(row.get('title', '')))}</div>
+                            <div class="card-body">{html.escape(body)}</div>
+                            <div class="card-link"><a href="{html.escape(str(row.get('link', '')))}" target="_blank">원문 보기 →</a></div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            cols = [c for c in ("title", "press", "date", "image_url", "link", "query") if c in df.columns]
+            with st.expander("원본 테이블 보기"):
+                st.dataframe(df[cols], use_container_width=True, hide_index=True)
