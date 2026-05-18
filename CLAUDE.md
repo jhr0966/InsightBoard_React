@@ -83,3 +83,9 @@ pytest -q
 카테고리: `fix`, `feat`, `refactor`, `style`, `docs`, `chore`.
 
 예: `feat-insight-trend`, `fix-scraper-selector`, `style-cardnews-typography`.
+
+## PR 충돌 방지
+
+- 작업마다 최신 `main`에서 새 브랜치를 만들고, 이미 PR을 올린 브랜치를 다음 작업에 재사용하지 않는다.
+- PR 생성 전 가능한 경우 최신 `main`으로 rebase/merge해서 충돌을 로컬에서 먼저 확인한다.
+- `CHANGELOG.md`와 `docs/SESSIONS.md`는 모든 PR이 상단을 수정하는 고충돌 파일이므로 `.gitattributes`의 `merge=union` 설정으로 자동 병합한다. 병합 후 중복/순서만 리뷰한다.

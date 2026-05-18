@@ -38,121 +38,47 @@ def _avatar_text(persona: Persona) -> str:
 def _persona_card_html(persona: Persona) -> str:
     avatar = _html.escape(_avatar_text(persona))
     name = _html.escape(persona.name or "사용자")
-    meta_bits = [bit for bit in (persona.dept, persona.job, persona.team) if bit]
-    meta = _html.escape(" · ".join(meta_bits) or "정보 없음")
+    dept = _html.escape(persona.dept or "부서 미설정")
+    job = _html.escape(persona.job or "직무 미설정")
+    team = _html.escape(persona.team or "팀 미설정")
+    interests = _html.escape(" · ".join(persona.interest_lv3[:3]) if persona.interest_lv3 else "관심 공정 미설정")
     return f"""
-    <div class="persona-card">
-      <div class="persona-avatar">{avatar}</div>
-      <div class="persona-info">
-        <div class="persona-name">{name}</div>
-        <div class="persona-meta">{meta}</div>
+    <a class="persona-profile-link" href="?persona_editor=1" target="_self"
+       aria-label="페르소나 편집 페이지 열기">
+      <div class="persona-profile-card">
+        <div class="persona-profile-avatar">
+          <div class="persona-profile-head">{avatar}</div>
+          <div class="persona-profile-body"></div>
+        </div>
+        <div class="persona-profile-name">{name}</div>
+        <div class="persona-profile-role">{dept} · {job}</div>
+        <div class="persona-profile-details">
+          <div><span>팀</span><b>{team}</b></div>
+          <div><span>관심</span><b>{interests}</b></div>
+        </div>
+        <div class="persona-profile-edit-hint">아바타를 눌러 프로필 편집</div>
       </div>
-    </div>
+    </a>
     """
 
 
-def _persona_form_body(persona: Persona, roadmap_df) -> None:
-    """페르소나 입력 폼 (expander 안에 들어가는 내부 위젯들)."""
-    dept_opts = (
-        [""] + sorted(roadmap_df["dept"].dropna().astype(str).unique().tolist())
-        if not roadmap_df.empty else [""]
-    )
-    team_opts = (
-        [""] + sorted(roadmap_df["team"].dropna().astype(str).unique().tolist())
-        if not roadmap_df.empty else [""]
-    )
-    lv3_opts = (
-        sorted(roadmap_df["lv3"].dropna().astype(str).unique().tolist())
-        if not roadmap_df.empty else []
-    )
-
-    st.text_input("이름(선택)", value=persona.name, key="px_name")
-    st.selectbox(
-        "팀", team_opts,
-        index=team_opts.index(persona.team) if persona.team in team_opts else 0,
-        key="px_team",
-    )
-    st.selectbox(
-        "부서", dept_opts,
-        index=dept_opts.index(persona.dept) if persona.dept in dept_opts else 0,
-        key="px_dept",
-    )
-    st.text_input(
-        "직무 (자유 입력)",
-        value=persona.job,
-        placeholder="예: 용접 담당, 절단 담당, 검사관",
-        key="px_job",
-    )
-    st.multiselect(
-        "관심 공정(Lv3)",
-        options=lv3_opts,
-        default=[v for v in persona.interest_lv3 if v in lv3_opts],
-        key="px_lv3",
-    )
-
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("저장", type="primary", key="px_save_btn", use_container_width=True):
-            st.session_state["_do_persona_save"] = True
-    with c2:
-        if st.button("초기화", key="px_reset_btn", use_container_width=True):
-            st.session_state["_do_persona_reset"] = True
+def _consume_persona_editor_query() -> None:
+    """Open the persona editor when the sidebar avatar link is clicked."""
+    if st.query_params.get("persona_editor") != "1":
+        return
+    st.session_state["show_persona_editor"] = True
+    del st.query_params["persona_editor"]
 
 
-def _handle_persona_pending(persona: Persona) -> None:
-    if st.session_state.pop("_do_persona_save", False):
-        new = Persona(
-            name=st.session_state.get("px_name", "").strip(),
-            team=st.session_state.get("px_team", "").strip(),
-            dept=st.session_state.get("px_dept", "").strip(),
-            job=st.session_state.get("px_job", "").strip(),
-            interest_lv3=list(st.session_state.get("px_lv3", []) or []),
-            interest_tasks=persona.interest_tasks,
-        )
-        persona_store.save(new)
-        st.session_state["persona"] = new
-        st.session_state["persona_msg"] = ("ok", f"저장됨: {new.label()}")
-        st.session_state["_persona_edit_open"] = False
-        st.rerun()
+def _render_persona_block(persona: Persona, _roadmap_df) -> None:
+    """Render a clickable profile summary; editing happens on the main page."""
+    _consume_persona_editor_query()
+    st.markdown(_persona_card_html(persona), unsafe_allow_html=True)
 
-    if st.session_state.pop("_do_persona_reset", False):
-        persona_store.reset()
-        st.session_state["persona"] = Persona()
-        st.session_state["persona_msg"] = ("warn", "페르소나 초기화 완료")
-        st.rerun()
-
-    msg = st.session_state.pop("persona_msg", None)
+    msg = st.session_state.pop("persona_page_msg", None)
     if msg:
         kind, text = msg
         {"ok": st.success, "warn": st.warning, "error": st.error}[kind](text)
-
-
-def _render_persona_block(persona: Persona, roadmap_df) -> None:
-    """페르소나 영역: 설정됨 → 카드 + ✏️ 편집 토글, 미설정 → CTA + 폼 열림."""
-    edit_open_key = "_persona_edit_open"
-
-    if persona.is_set():
-        st.markdown(_persona_card_html(persona), unsafe_allow_html=True)
-        is_open = st.session_state.get(edit_open_key, False)
-        if st.button(
-            "닫기" if is_open else "✏️ 편집",
-            key="persona_toggle_btn",
-            use_container_width=True,
-        ):
-            st.session_state[edit_open_key] = not is_open
-            st.rerun()
-        if st.session_state.get(edit_open_key, False):
-            _persona_form_body(persona, roadmap_df)
-    else:
-        st.markdown(
-            '<div class="persona-cta">'
-            '👤 페르소나를 설정하면 부서·직무 기반 맞춤 인사이트가 표시됩니다.'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-        _persona_form_body(persona, roadmap_df)
-
-    _handle_persona_pending(persona)
 
 
 def render() -> str:
@@ -160,10 +86,13 @@ def render() -> str:
     roadmap_df = load_roadmap()
     persona = _load_persona_into_state()
 
+    # 최상단 사용자 프로필
+    _render_persona_block(persona, roadmap_df)
+
     # 브랜드
     st.markdown(
         """
-        <div class="sidebar-brand">
+        <div class="sidebar-brand compact">
           <div class="sidebar-brand-mark">IB</div>
           <div class="sidebar-brand-text">Insight Board</div>
         </div>
@@ -182,10 +111,6 @@ def render() -> str:
         '</div>',
         unsafe_allow_html=True,
     )
-
-    # 페르소나
-    st.markdown('<div class="sidebar-section">페르소나</div>', unsafe_allow_html=True)
-    _render_persona_block(persona, roadmap_df)
 
     # 시스템 푸터 (점선 인디케이터)
     dot_cls = "ok" if llm_ready() else "warn"

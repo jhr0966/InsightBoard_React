@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Changed (UX — 사이드바 프로필 개선)
+- `ui/sidebar.py` 의 페르소나 입력 폼을 사이드바에서 제거하고, 최상단 사용자 프로필 카드(큰 상반신 아바타 + 설정 정보 요약)로 교체.
+- `ui/persona_page.py` 추가 — 아바타 프로필 카드 클릭 시 메인 영역에서 페르소나 편집 페이지를 열어 사이드바가 길어지지 않도록 개선.
+- `assets/styles.css` 에 큰 프로필 아바타/상반신 카드 스타일 추가.
+- `tests/test_sidebar_profile.py` 추가 — 프로필 카드 escape, 미설정 기본값, 페르소나 편집 옵션 헬퍼 회귀 테스트.
+
+### Fixed (PR merge conflict 방지)
+- `.gitattributes` 추가 — `CHANGELOG.md`, `docs/SESSIONS.md` 에 Git built-in `merge=union` 을 적용해 여러 PR이 같은 상단 로그를 수정할 때 발생하는 반복 merge conflict를 완화.
+- `CLAUDE.md`, `DEV_GUIDELINES.md` 에 PR 충돌 방지 규칙 추가 — 최신 main 기반 새 브랜치 사용, PR 전 rebase/merge 확인, 고충돌 문서의 union merge 정책 명시.
+
 ### Added (UX 마무리 QA)
 - `docs/UX_QA_CHECKLIST.md` 추가 — Phase 0~6 완료 상태, 자동화 테스트 결과, 메뉴별 수동 QA 시나리오, 남은 운영 검수 리스크 정리.
 - `docs/UX_REDESIGN_PLAN.md` 에 2026-05-18 기준 Phase 0~6 구현 완료 상태와 대표 파일, 최종 QA 상태를 추가.

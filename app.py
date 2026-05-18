@@ -21,6 +21,7 @@ from ui import (
     home_tab,
     ingest_tab,
     news_tab,
+    persona_page,
     proposal_workbench,
     roadmap_tab,
     sidebar,
@@ -47,7 +48,9 @@ if not st.session_state.get("_did_expire_check"):
 with st.sidebar:
     area = sidebar.render()
 
-if area == "📊 오늘의 보드":
+if st.session_state.get("show_persona_editor"):
+    persona_page.render()
+elif area == "📊 오늘의 보드":
     home_tab.render()
 elif area == "🧱 데이터 관리":
     data_health.render()

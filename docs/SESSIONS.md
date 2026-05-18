@@ -5,6 +5,50 @@
 
 ---
 
+## 2026-05-18 · UX — 사이드바 프로필/페르소나 편집 페이지
+
+**브랜치:** `work`
+**카테고리:** `style`
+**상태:** in-progress
+
+**배경:**
+사이드바에 페르소나 입력 필드가 줄줄 표시되어 네비게이션이 길어지고 프로필처럼 보이지 않는 문제가 있었음. 사용자는 최상단에 큰 아바타와 설정 요약을 보고, 아바타를 눌러 별도 편집 화면으로 이동하길 원함.
+
+**한 일:**
+1. `ui/sidebar.py` 에 큰 상반신 아바타 기반 프로필 카드 추가. 이름/부서/직무/팀/관심 공정을 요약 표시.
+2. 사이드바 inline 페르소나 입력 폼 제거. 상단 아바타 카드 클릭 시 `show_persona_editor` 플래그로 메인 편집 페이지 이동.
+3. `ui/persona_page.py` 신설 — 페르소나 편집을 메인 콘텐츠 페이지에서 처리하고 저장/초기화/돌아가기 제공.
+4. `assets/styles.css` 에 sidebar profile v2 스타일 추가.
+5. `tests/test_sidebar_profile.py` 추가 — HTML escape, 미설정 기본값, 옵션 헬퍼 테스트.
+6. `CHANGELOG.md`, `docs/SESSIONS.md` 갱신.
+
+**다음 세션 TODO:**
+- 브라우저 렌더링에서 아바타 카드 높이와 사이드바 스크롤 여부를 스크린샷으로 확인.
+- 필요 시 실제 이미지 업로드/선택형 아바타 기능 추가 검토.
+
+**블로커:** 없음.
+
+## 2026-05-18 · PR merge conflict 반복 원인/방지 설정
+
+**브랜치:** `work`
+**카테고리:** `chore`
+**상태:** in-progress
+
+**배경:**
+PR 생성 때마다 merge conflict가 반복되는 이유는 모든 작업이 `CHANGELOG.md` 와 `docs/SESSIONS.md` 상단을 동시에 수정하고, 경우에 따라 같은 작업 브랜치를 재사용해 target branch와 변경 범위가 계속 겹치기 때문. 특히 두 문서는 append/prepend-only 로그인데 Git 기본 병합은 같은 위치 삽입을 충돌로 처리한다.
+
+**한 일:**
+1. `.gitattributes` 추가 — `CHANGELOG.md`, `docs/SESSIONS.md` 에 `merge=union` 적용.
+2. `DEV_GUIDELINES.md` 브랜치 전략에 최신 main 기반 새 브랜치, PR 전 rebase/merge 확인, 고충돌 파일 union merge 정책 추가.
+3. `CLAUDE.md` 에 PR 충돌 방지 섹션 추가.
+4. `git check-attr merge -- CHANGELOG.md docs/SESSIONS.md` 로 attribute 적용 확인.
+
+**다음 세션 TODO:**
+- 이 PR이 main에 머지된 뒤부터 같은 로그 파일의 동시 상단 수정 충돌이 줄어드는지 확인.
+- 그래도 충돌이 나면 `docs/SESSIONS.md` 를 날짜별 fragment 방식으로 쪼개는 추가 구조 변경 검토.
+
+**블로커:** 없음.
+
 ## 2026-05-18 · UX 마무리 QA — 완료 상태/품질 점검
 
 **브랜치:** `work`
