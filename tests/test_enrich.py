@@ -126,3 +126,33 @@ def test_enrich_articles_calls_progress_cb():
         enrich.enrich_articles(articles, with_llm=False, progress_cb=_cb)
 
     assert progress == [(1, 2), (2, 2)]
+
+
+def test_fetch_content_cleans_code_noise_and_keeps_full_body():
+    html = """
+    <html><body>
+      <main>
+        <article>
+          <script>window.dataLayer.push({event: "ad"});</script>
+          <style>.article { color: red; }</style>
+          <pre>const token = window.document.querySelector('#x');</pre>
+          <p>첫 번째 문단에서는 조선소 용접 자동화 도입 배경을 상세히 설명한다.</p>
+          <p>두 번째 문단에서는 센서 데이터와 로봇 제어를 연계해 불량률을 낮춘 사례를 소개한다.</p>
+          <p>세 번째 문단에서는 현장 작업자의 검수 절차와 향후 확대 계획까지 함께 다룬다.</p>
+          <p>var adConfig = { slot: 'news', size: [300, 250] };</p>
+          <p>무단전재 및 재배포 금지</p>
+        </article>
+      </main>
+    </body></html>
+    """
+
+    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+        text = enrich.fetch_content("https://example.com/article/full")
+
+    assert "첫 번째 문단" in text
+    assert "두 번째 문단" in text
+    assert "세 번째 문단" in text
+    assert "dataLayer" not in text
+    assert "querySelector" not in text
+    assert "adConfig" not in text
+    assert "무단전재" not in text

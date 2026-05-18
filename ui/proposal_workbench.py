@@ -185,34 +185,44 @@ def render() -> None:
         title_cols = st.columns([3, 2])
         with title_cols[0]:
             st.markdown(f"##### 📄 {st.session_state['pw_active_title']}")
-        # 활성 제안서가 북마크 출처면 상태 셀렉터 + 즉시 저장.
+        # 활성 제안서가 북마크 출처면 상태/메모를 명시적으로 저장.
         active_source = st.session_state["pw_active_source"]
+        active_bm_id = ""
         if active_source.startswith("bookmark:"):
             from store import bookmarks
 
-            bm_id = active_source.split(":", 1)[1]
+            active_bm_id = active_source.split(":", 1)[1]
             current_bm = next(
-                (it for it in bookmarks.list_all(type_="proposal") if it.id == bm_id),
+                (it for it in bookmarks.list_all(type_="proposal") if it.id == active_bm_id),
                 None,
             )
             if current_bm is not None:
                 with title_cols[1]:
-                    new_status = st.selectbox(
-                        "상태",
-                        options=list(BOOKMARK_STATUSES),
-                        index=list(BOOKMARK_STATUSES).index(current_bm.status),
-                        format_func=lambda s: _STATUS_LABEL.get(s, s),
-                        key=f"pw_status_sel_{bm_id}",
-                        label_visibility="collapsed",
-                    )
-                if new_status != current_bm.status:
-                    bookmarks.set_status(bm_id, new_status)
-                    st.toast(f"상태를 '{_STATUS_LABEL.get(new_status, new_status)}'로 변경했습니다.")
-                    st.rerun()
+                    status_cols = st.columns([1, 2, 1])
+                    with status_cols[0]:
+                        st.selectbox(
+                            "상태",
+                            options=list(BOOKMARK_STATUSES),
+                            index=list(BOOKMARK_STATUSES).index(current_bm.status),
+                            format_func=lambda s: _STATUS_LABEL.get(s, s),
+                            key=f"pw_status_sel_{active_bm_id}",
+                            label_visibility="collapsed",
+                        )
+                    with status_cols[1]:
+                        st.text_input(
+                            "결정 메모",
+                            value=current_bm.decision_note,
+                            key=f"pw_status_note_{active_bm_id}",
+                            placeholder="결정 메모",
+                            label_visibility="collapsed",
+                        )
+                    with status_cols[2]:
+                        if st.button("상태 저장", key=f"pw_status_save_{active_bm_id}"):
+                            st.session_state["_do_pw_status_save"] = active_bm_id
         with st.container(border=True):
             st.markdown(st.session_state["pw_active_md"] or "_(비어 있음)_")
 
-        action_cols = st.columns([1, 1, 1])
+        action_cols = st.columns([1, 1, 1, 1])
         with action_cols[0]:
             undo_disabled = "pw_undo" not in st.session_state
             if st.button("↶ 되돌리기", disabled=undo_disabled, key="pw_undo_btn"):
@@ -221,6 +231,10 @@ def render() -> None:
             if st.button("★ 북마크 저장", key="pw_save_btn"):
                 st.session_state["_do_pw_save"] = True
         with action_cols[2]:
+            update_disabled = not active_bm_id or not st.session_state["pw_active_md"]
+            if st.button("💾 원본 업데이트", key="pw_update_btn", disabled=update_disabled):
+                st.session_state["_do_pw_update"] = active_bm_id
+        with action_cols[3]:
             st.download_button(
                 "⬇️ MD 다운로드",
                 data=st.session_state["pw_active_md"].encode("utf-8"),
@@ -282,6 +296,23 @@ def render() -> None:
             )
         )
         st.success("작업장 현재 버전을 북마크에 저장했습니다.")
+        st.rerun()
+
+    if (target := st.session_state.pop("_do_pw_update", None)):
+        from store import bookmarks
+
+        md = st.session_state["pw_active_md"]
+        if bookmarks.update_content(target, content=md, tags=["workbench", "updated"]):
+            st.success("원본 북마크 제안서를 현재 버전으로 업데이트했습니다.")
+        st.rerun()
+
+    if (target := st.session_state.pop("_do_pw_status_save", None)):
+        from store import bookmarks
+
+        new_status = st.session_state.get(f"pw_status_sel_{target}", "pending")
+        new_note = st.session_state.get(f"pw_status_note_{target}", "")
+        if bookmarks.set_status(target, new_status, note=new_note):
+            st.success(f"상태를 '{_STATUS_LABEL.get(new_status, new_status)}'로 저장했습니다.")
         st.rerun()
 
     pending = st.session_state.pop("_pw_pending_input", None)

@@ -202,3 +202,37 @@ def test_expire_old_preserves_when_created_at_unparseable():
     removed = bookmarks.expire_old(days=30, now=now)
     assert removed == 0
     assert len(bookmarks.list_all()) == 1
+
+
+def test_summary_counts_groups_types_and_proposal_statuses():
+    items = [
+        Bookmark(id="n", type="news", title="N"),
+        Bookmark(id="o", type="opportunity", title="O"),
+        Bookmark(id="p1", type="proposal", title="P1", status="pending"),
+        Bookmark(id="p2", type="proposal", title="P2", status="adopted"),
+    ]
+
+    out = bookmarks.summary_counts(items)
+
+    assert out["total"] == 4
+    assert out["by_type"]["news"] == 1
+    assert out["by_type"]["opportunity"] == 1
+    assert out["by_type"]["proposal"] == 2
+    assert out["proposal_status"]["pending"] == 1
+    assert out["proposal_status"]["adopted"] == 1
+
+
+def test_update_content_updates_editable_fields_in_place():
+    bookmarks.clear()
+    bookmarks.add(Bookmark(id="p", type="proposal", title="Old", content="old", tags=["a"]))
+
+    assert bookmarks.update_content("p", title="New", content="new", tags=["b", "c"]) is True
+    saved = bookmarks.list_all()[0]
+    assert saved.title == "New"
+    assert saved.content == "new"
+    assert saved.tags == ["b", "c"]
+
+
+def test_update_content_returns_false_when_missing():
+    bookmarks.clear()
+    assert bookmarks.update_content("missing", content="x") is False

@@ -110,6 +110,22 @@ def _write_all(items: list[Bookmark]) -> None:
             f.write("\n")
 
 
+def summary_counts(items: list[Bookmark] | None = None) -> dict[str, dict[str, int] | int]:
+    """Return lightweight archive counts by type and proposal decision status."""
+    use_items = list_all() if items is None else items
+    by_type = {typ: 0 for typ in BOOKMARK_TYPES}
+    by_status = {status: 0 for status in BOOKMARK_STATUSES}
+    for item in use_items:
+        by_type[item.type] = by_type.get(item.type, 0) + 1
+        if item.type == "proposal":
+            by_status[item.status] = by_status.get(item.status, 0) + 1
+    return {
+        "total": len(use_items),
+        "by_type": by_type,
+        "proposal_status": by_status,
+    }
+
+
 def add(bm: Bookmark) -> Bookmark:
     if not bm.created_at:
         bm.created_at = _utc_now_iso()
@@ -118,6 +134,31 @@ def add(bm: Bookmark) -> Bookmark:
     items.append(bm)
     _write_all(items)
     return bm
+
+
+def update_content(
+    bm_id: str,
+    *,
+    title: str | None = None,
+    content: str | None = None,
+    tags: list[str] | None = None,
+) -> bool:
+    """Update editable bookmark fields in-place. Returns True when found."""
+    items = list_all()
+    changed = False
+    for it in items:
+        if it.id == bm_id:
+            if title is not None:
+                it.title = title
+            if content is not None:
+                it.content = content
+            if tags is not None:
+                it.tags = tags
+            changed = True
+            break
+    if changed:
+        _write_all(items)
+    return changed
 
 
 def remove(bm_id: str) -> bool:

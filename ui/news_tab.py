@@ -8,6 +8,7 @@ import streamlit as st
 
 from persona.schema import Persona
 from store.news_db import load_all_today
+from ui.components import status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -61,8 +62,12 @@ def render() -> None:
         with main:
             if df.empty:
                 st.markdown(
-                    '<div class="card-flat">'
-                    '오늘 수집된 기사가 없습니다. 먼저 <b>탐색 → 뉴스 수집</b> 에서 검색하세요.</div>',
+                    status_card(
+                        "오늘 수집된 기사가 없습니다",
+                        "먼저 🧱 데이터 관리 → 뉴스 수집에서 키워드 기반 수집을 실행하세요.",
+                        status="warn",
+                        icon="📰",
+                    ),
                     unsafe_allow_html=True,
                 )
                 return
