@@ -8,6 +8,26 @@
 
 UI 는 업무 흐름형 5개 메뉴(`오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함`) + `ui/<name>_tab.py` 모듈로 분리.
 
+## 🚀 빠른 시작 (Groq 무료 API)
+
+LLM 백엔드 기본값은 [Groq](https://groq.com/) (무료 티어, `llama-3.3-70b-versatile`)이라 키 1개만 있으면 즉시 사용 가능.
+
+```bash
+# 1) 의존성 설치
+pip install -r requirements.txt
+
+# 2) Groq API 키 발급 후 .env 작성
+#    https://console.groq.com/keys → "Create API Key" → 복사
+cp .env.example .env
+# .env 파일을 열어 LLM_API_KEY=gsk_xxxxx... 한 줄만 채우면 OK
+
+# 3) 실행
+streamlit run app.py
+```
+
+사이드바 하단의 LLM 상태가 🟢로 바뀌면 키가 정상 인식된 것. 🟠면 `.env`의 `LLM_API_KEY`를 다시 확인.
+다른 백엔드(사내 OpenAI 호환 / 로컬 Ollama) 로 전환하려면 `.env.example`의 `LLM_BACKEND` / `LLM_BASE_URL` / `LLM_MODEL` 주석 참고.
+
 ## 실행
 
 ```bash

@@ -12,6 +12,11 @@
 - `_build_page_context()` 신규 — 현재 모드/필터/데이터 카운트를 사이드 패널 컨텍스트로 압축.
 - 미사용 import 정리 (`chat_ctx`, `chat_log`, `persona_ctx`, `SYSTEM_CHAT`, `chat`).
 - 회귀 가드 2건 — `tests/test_sola_workspace.py::test_build_page_context_summarizes_mode_and_counts`, `::test_sola_tab_no_longer_exposes_main_chat_helpers`.
+### Added (LLM 빠른 시작 — Groq 키 발급 CTA)
+- `README.md` 상단에 "🚀 빠른 시작 (Groq 무료 API)" 섹션 추가 — 키 발급 링크 + 3단계 설치 흐름. 기본 LLM 백엔드(`config.py` 디폴트 `groq` / `llama-3.3-70b-versatile`)를 즉시 사용 가능하도록 안내.
+- `ui/sidebar.py` 푸터의 LLM 상태 카드가 미설정 시 안내 카드로 확장 — 🔑 [Groq 키 발급](https://console.groq.com/keys) 외부 링크 + `.env` `LLM_API_KEY=gsk_…` 한 줄 안내. `_llm_footer_html()` 헬퍼로 분리해 단위 테스트 가능.
+- `assets/styles.css` 에 `.sidebar-footer-empty`, `.sidebar-llm-empty-hint` 스타일 추가 (앰버 톤 안내 카드).
+- 회귀 가드 2건 — `tests/test_sidebar_profile.py` 에서 ready/empty 두 상태의 푸터 HTML 검증.
 
 ### Changed (UX Phase 3 — IA 정리 + 인사이트 탭화 + 부서 인사이트 자동 표시)
 - `app.py` 메뉴 재구성: `news_tab` 을 산출물 보관함 → 데이터 관리로 이동. 데이터 관리는 `[1. 뉴스 수집, 2. 뉴스 둘러보기, 3. 로드맵 업로드]` 3-탭, 산출물 보관함은 단일 페이지 (북마크만).

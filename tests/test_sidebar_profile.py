@@ -53,3 +53,24 @@ def test_sidebar_nav_html_uses_link_list_not_radio_buttons():
     assert "%F0%9F%94%8E%20%EC%9D%B8%EC%82%AC%EC%9D%B4%ED%8A%B8%20%EB%B6%84%EC%84%9D" in html
     assert "radio" not in html.lower()
     assert "button" not in html.lower()
+
+
+def test_llm_footer_ready_shows_model_only():
+    """LLM 설정 완료 시 푸터에 백엔드·모델만 표시 (Groq 안내 없음)."""
+    html_out = sidebar._llm_footer_html(
+        ready=True, backend="groq", model="llama-3.3-70b-versatile",
+    )
+    assert "sidebar-dot ok" in html_out
+    assert "llama-3.3-70b-versatile" in html_out
+    assert "Groq 키 발급" not in html_out
+    assert "console.groq.com" not in html_out
+
+
+def test_llm_footer_empty_shows_groq_cta_with_key_setup_hint():
+    """LLM 미설정 시 푸터가 키 발급 링크 + .env 가이드 포함."""
+    html_out = sidebar._llm_footer_html(ready=False, backend="groq", model="")
+    assert "sidebar-dot warn" in html_out
+    assert "sidebar-footer-empty" in html_out
+    assert "console.groq.com/keys" in html_out
+    assert "LLM_API_KEY" in html_out
+    assert "키 미설정" in html_out
