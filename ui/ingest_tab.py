@@ -21,28 +21,56 @@ from ui.styles import page_header, section_label
 _SOURCES = ("네이버 뉴스", "구글 뉴스", "AI Times / 오토메이션월드")
 
 
+def _hydrate_articles(articles: list[dict], src_label: str, prog) -> int:
+    """LLM 없이 본문·대표 이미지를 fetch 해 article dict in-place 갱신.
+
+    Returns: 본문이 채워진 항목 수.
+    """
+    total = len(articles)
+    if total == 0:
+        return 0
+
+    def _cb(done: int, _total: int, _art: dict) -> None:
+        prog.progress(done / total, text=f"{src_label} 본문·이미지 fetch [{done}/{total}]")
+
+    enrich_mod.enrich_articles(articles, with_llm=False, progress_cb=_cb)
+    return sum(1 for a in articles if a.get("content"))
+
+
 def _run_collect(selected: list[str], keyword: str, max_results: int) -> None:
     saved: list[str] = []
     errors: list[str] = []
+    prog = st.progress(0.0, text="수집 시작…")
+
     if "네이버 뉴스" in selected:
         try:
             articles = naver_news.search(keyword, max_results=max_results)
+            hydrated = _hydrate_articles(articles, "네이버", prog)
             path = save_articles(articles, source="naver")
-            saved.append(f"네이버 {len(articles)}건 → {path.name if path else '-'}")
+            saved.append(
+                f"네이버 {len(articles)}건(본문 {hydrated}) → {path.name if path else '-'}"
+            )
         except RuntimeError as e:
             errors.append(f"네이버: {e}")
     if "구글 뉴스" in selected:
         try:
             articles = google_news.search(keyword, max_results=max_results)
+            hydrated = _hydrate_articles(articles, "구글", prog)
             path = save_articles(articles, source="google")
-            saved.append(f"구글 {len(articles)}건 → {path.name if path else '-'}")
+            saved.append(
+                f"구글 {len(articles)}건(본문 {hydrated}) → {path.name if path else '-'}"
+            )
         except RuntimeError as e:
             errors.append(f"구글: {e}")
     if "AI Times / 오토메이션월드" in selected:
         articles = tech_sites.search_all(max_results_per_site=max_results)
+        hydrated = _hydrate_articles(articles, "테크 사이트", prog)
         path = save_articles(articles, source="tech")
-        saved.append(f"테크 사이트 {len(articles)}건 → {path.name if path else '-'}")
+        saved.append(
+            f"테크 사이트 {len(articles)}건(본문 {hydrated}) → {path.name if path else '-'}"
+        )
 
+    prog.empty()
     st.session_state["ins_status"] = (
         "error" if errors and not saved else "ok",
         " · ".join(saved + errors) or "수집된 기사가 없습니다.",

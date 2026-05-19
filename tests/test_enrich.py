@@ -150,6 +150,49 @@ def test_enrich_articles_calls_progress_cb():
     assert progress == [(1, 2), (2, 2)]
 
 
+def test_clean_article_text_decodes_html_entities_and_collapses_nbsp():
+    """RSS description 처럼 escape 된 HTML 이 들어와도 `&nbsp;` / `&amp;` 등이 제거돼야 한다."""
+    raw = "조선소&nbsp;자동화&nbsp;뉴스&amp;정보 — 본문&lt;br&gt;세부 내용 입니다."
+    cleaned = enrich._clean_article_text(raw)
+    assert "&nbsp;" not in cleaned
+    assert "&amp;" not in cleaned
+    assert "&lt;" not in cleaned
+    assert "조선소 자동화 뉴스&정보" in cleaned or "조선소 자동화 뉴스 정보" in cleaned
+
+
+def test_extract_image_url_picks_picture_source_srcset():
+    """본문 picture > source[srcset] 이 og:image 가 없을 때 fallback 으로 잡혀야 한다."""
+    html = """
+    <html><body>
+      <article>
+        <picture>
+          <source srcset="https://cdn.example.com/a-1x.webp 1x, https://cdn.example.com/a-2x.webp 2x" type="image/webp">
+          <img src="" alt="">
+        </picture>
+        <p>본문</p>
+      </article>
+    </body></html>
+    """
+    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+        article = enrich.fetch_article("https://example.com/p")
+    assert article["image_url"] == "https://cdn.example.com/a-1x.webp"
+
+
+def test_extract_image_url_uses_lazy_data_src():
+    """src 가 비고 data-src 만 채워진 lazy-load img 도 잡혀야 한다."""
+    html = """
+    <html><body>
+      <article>
+        <img src="" data-src="https://cdn.example.com/photo.jpg" alt="">
+        <p>본문</p>
+      </article>
+    </body></html>
+    """
+    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+        article = enrich.fetch_article("https://example.com/p")
+    assert article["image_url"] == "https://cdn.example.com/photo.jpg"
+
+
 def test_fetch_content_cleans_code_noise_and_keeps_full_body():
     html = """
     <html><body>
