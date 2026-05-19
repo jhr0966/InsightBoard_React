@@ -51,3 +51,13 @@ def test_unsafe_chat_key_chars_slugified():
     assert p.parent.name == "chat"
     assert ".." not in p.name
     assert "/" not in p.name
+
+
+def test_main_and_chat_defaults_to_open():
+    """채팅 패널이 첫 진입 시 펼쳐진 상태가 디폴트인지 시그니처로 확인."""
+    import inspect
+
+    from ui import layout
+
+    sig = inspect.signature(layout.main_and_chat)
+    assert sig.parameters["default_open"].default is True

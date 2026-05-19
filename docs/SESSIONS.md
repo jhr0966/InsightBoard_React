@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-05-19 · UX — 사이드 채팅 패널 기본 펼침 (옵션 A)
+
+**브랜치:** `feat-chat-panel-default-open`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+사용자가 "어느 화면을 가도 우측 LLM 채팅창이 항상 떠있어야 한다" 고 요청. 5-Phase 종료 후 정리:
+- ✅ 7개 탭(home/board/news/ingest/roadmap/bookmarks/sola) 모두 사이드 채팅 패널 지원
+- ✅ 화면 데이터 자동 컨텍스트 주입 (`page_context_fn`)
+- ✅ chat_key 별 영구화 (PR #43)
+- ❌ "항상 떠있음" — 토글 디폴트가 닫힘이라 첫 진입 시 사용자가 클릭해야 활성화됨
+
+→ 옵션 A 선택. 디폴트를 펼침으로 전환.
+
+**한 일:**
+1. `ui/layout.py::main_and_chat` 에 `default_open: bool = True` 인자 추가. `is_open = st.session_state.get(open_key, default_open)` 로 변경.
+2. `ui/styles.py::page_header` 의 토글 디폴트도 `True` 로 정렬해 라벨이 첫 진입부터 "💬 채팅 닫기" 로 표시.
+3. 사용자가 닫으면 `session_state[_chat_open_{key}] = False` 가 저장되어 다음 진입에서도 그 선호 보존 (페이지마다 독립).
+4. 회귀 가드: `tests/test_chat_log.py::test_main_and_chat_defaults_to_open` — `inspect.signature` 로 `default_open=True` 잠금.
+
+**검증:**
+- `python -m py_compile ui/layout.py ui/styles.py` OK
+- `pytest -q` 180 passed (179 → 180, +1 가드)
+
+**다음 세션 TODO:**
+- 종합 수동 QA — 신규 사용자 진입 시 우측 패널이 즉시 펼쳐지고 헤더 토글로 접기/펼치기 가능한지.
+- (옵션 B/C 검토 보류) 전역 단일 히스토리 통합, `proposal_workbench` 사이드 패널 흡수는 추후 사용자 피드백에 따라.
+
+---
+
 ## 2026-05-19 · UX Phase 5 (+ 선택) — 제안서 워크벤치 강화 + 사이드 채팅 영구화
 
 **브랜치:** `feat-ux-phase5-workbench-and-chat-persist`

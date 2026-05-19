@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UX — 채팅 패널 기본 펼침)
+- `ui/layout.py::main_and_chat` 에 `default_open=True` 인자 추가 — 첫 진입에서 우측 사이드 채팅 패널이 펼쳐진 상태로 시작. 사용자가 헤더 토글로 닫으면 `_chat_open_{key}` session_state 가 저장되어 다음 진입에서도 그 선호 보존.
+- `ui/styles.py::page_header` 의 토글 디폴트도 `True` 로 정렬해 라벨이 첫 진입부터 "💬 채팅 닫기" 로 표시.
+- 모든 main_and_chat 호출 탭(home/board/news/ingest/roadmap/bookmarks/sola)이 자동으로 펼친 상태로 시작.
+- 회귀 가드: `tests/test_chat_log.py::test_main_and_chat_defaults_to_open` — `inspect.signature` 로 `default_open=True` 잠금.
+
 ### Changed (UX Phase 5 — 제안서 워크벤치 모드 배너 + 버튼 카피 통일)
 - `ui/proposal_workbench.py` 의 "💬 대화" / "✏️ 수정" 라디오 아래에 모드 시각 배너 추가 — 대화 모드는 파란 톤(컨텍스트로만 사용), 수정 모드는 앰버 톤(좌측 본문이 LLM 으로 교체됨)으로 즉시 인식 가능.
 - 버튼 카피 명확화: "★ 북마크 저장" → "📌 새 버전으로 저장" (새 북마크 추가), "💾 원본 업데이트" → "💾 원본 덮어쓰기" (선택된 원본 in-place 교체). 모든 버튼에 `help` 보강.

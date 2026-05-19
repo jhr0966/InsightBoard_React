@@ -66,15 +66,16 @@ def page_header(
         return False
 
     # 채팅 토글 버튼 — Streamlit 위젯이라 HTML 헤더와 분리.
+    # 디폴트는 펼친 상태 (main_and_chat 의 default_open=True 와 일치).
     open_key = f"_chat_open_{chat_toggle_key}"
-    is_open = st.session_state.get(open_key, False)
+    is_open = st.session_state.get(open_key, True)
     label = "💬 채팅 닫기" if is_open else "💬 이 화면에 대해 채팅"
     cols = st.columns([1, 1, 1, 1, 1])
     with cols[-1]:
         if st.button(label, key=f"_btn_chat_{chat_toggle_key}", use_container_width=True):
             st.session_state[open_key] = not is_open
             st.rerun()
-    return st.session_state.get(open_key, False)
+    return st.session_state.get(open_key, True)
 
 
 def section_label(text: str) -> None:
