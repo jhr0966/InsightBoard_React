@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (UX Phase 4 — SOLA 채팅 UI 단일화)
+- `ui/sola_tab.py` 의 메인 영역 채팅 모드(`_render_chat`)와 `_build_proposal_context()` 헬퍼 제거 — `render_chat_panel` 이 이미 `include_session_proposal=True`, `include_adopted=True` 로 동일 컨텍스트를 자동 첨부.
+- SOLA 작업실에 `main_and_chat("sola", ...)` 추가 — 우측 사이드 채팅 패널이 다른 탭과 동일 패턴으로 표시. `chat_toggle_key="sola"` 로 헤더 토글 노출.
+- `sola_mode` 라디오에서 "채팅" 옵션 제거. 작업실은 [뉴스 요약, 자동화 과제 제안서] 2개 모드로 좁힘. `board_tab` 의 SOLA 라우팅(`prop_dept`, `prop_lv3`) 영향 없음.
+- `_build_page_context()` 신규 — 현재 모드/필터/데이터 카운트를 사이드 패널 컨텍스트로 압축.
+- 미사용 import 정리 (`chat_ctx`, `chat_log`, `persona_ctx`, `SYSTEM_CHAT`, `chat`).
+- 회귀 가드 2건 — `tests/test_sola_workspace.py::test_build_page_context_summarizes_mode_and_counts`, `::test_sola_tab_no_longer_exposes_main_chat_helpers`.
+
 ### Added (LLM 빠른 시작 — Groq 키 발급 CTA)
 - `README.md` 상단에 "🚀 빠른 시작 (Groq 무료 API)" 섹션 추가 — 키 발급 링크 + 3단계 설치 흐름. 기본 LLM 백엔드(`config.py` 디폴트 `groq` / `llama-3.3-70b-versatile`)를 즉시 사용 가능하도록 안내.
 - `ui/sidebar.py` 푸터의 LLM 상태 카드가 미설정 시 안내 카드로 확장 — 🔑 [Groq 키 발급](https://console.groq.com/keys) 외부 링크 + `.env` `LLM_API_KEY=gsk_…` 한 줄 안내. `_llm_footer_html()` 헬퍼로 분리해 단위 테스트 가능.
