@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-05-19 · UX Phase 2 — 온보딩 가이드 + 페르소나 로드맵 의존성 해결
+
+**브랜치:** `feat-ux-phase2-onboarding-persona`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+Phase 1 후속. UI/UX 점검에서 H 우선순위 마찰 2건을 해소:
+1. **온보딩 부재** — 페르소나 미설정 상태의 홈 페이지가 "⬅️ 사이드바에서 페르소나 설정하세요" 카피만 표시. 첫 사용자가 "다음 무엇을?" 추론해야 함.
+2. **페르소나 selectbox 가 로드맵 의존** — 로드맵 미업로드 시 부서/팀 selectbox 옵션이 빈 리스트 → 사용자가 어떤 값도 선택할 수 없는 dead-end.
+
+**한 일:**
+1. `ui/home_tab.py::_onboarding_steps_html()` 신규 — 페르소나·로드맵·뉴스 상태에 따라 3단계(프로필 → 로드맵 → 뉴스)를 step_guide 로 표시. 하나라도 미완료면 홈 상단에 자동 노출, 각 step 의 active(녹색) 토글로 진행률 시각화.
+2. `_persona_welcome` 의 미설정 카피를 "처음 시작하시나요? / 아래 3단계를 차례대로 마치면..." 환영 카드로 교체.
+3. `ui/persona_page.py` 가드 — 로드맵 비어있을 때:
+   - `_has_roadmap_options()` 헬퍼로 옵션 존재 여부 판단
+   - 부서·팀 → selectbox 대신 `text_input` fallback (placeholder + help 안내)
+   - 관심 공정 → caption + 기존 값 유지 (`st.session_state["px_lv3"]` 보존)
+   - 페이지 상단에 "🗂 로드맵이 아직 업로드되지 않아 추천 목록이 비어있습니다" 안내.
+4. `ui/sidebar.py` 의 `_persona_card_html()` — 페르소나 미설정 시 `persona-profile-card-empty` 클래스 + hint "👋 클릭해서 프로필 설정 시작" 로 시각·카피 강화.
+5. `assets/styles.css` 에 `.persona-profile-card-empty` 점선 테두리 + edit-hint 펄스 애니메이션 추가.
+6. 회귀 가드 1건 — `_onboarding_steps_html` 의 active 카운트 토글 검증.
+
+**검증:**
+- `python -m py_compile` OK
+- 금지 패턴 (`on_click`, `requests.*`, `st.markdown(..., unsafe_allow_html=True)`) 0건
+- `pytest -q` 171 passed (이전 170 → 171, +1 가드)
+
+**다음 세션 TODO (Phase 3 후보):**
+- 뉴스 콘텐츠 위치 단일화 (현재 `데이터 관리` 와 `산출물 보관함` 두 곳에서 진입 가능 → 한 곳으로).
+- `ui/board_tab.py` 인사이트 분석 페이지의 6섹션을 `st.tabs(["트렌드", "자동화 기회", "부서 인사이트", "매칭"])` 로 분할해 스크롤 피로 해소.
+- 인사이트 분석의 부서별 AI 인사이트 "생성·갱신" 버튼을 제거하고 자동 표시 (이미 캐싱되어 비용 부담 적음).
+
+---
+
 ## 2026-05-19 · UX Phase 1 — Next-Best-Action 카피 통일 + 라벨 단순화
 
 **브랜치:** `feat-ux-phase1-next-best-action`
