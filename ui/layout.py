@@ -53,6 +53,7 @@ def render_chat_panel(
     include_adopted: bool = True,
     include_session_proposal: bool = True,
     adopted_limit: int = 5,
+    persist: bool = True,
 ) -> None:
     """우측 사이드 채팅 패널. 페이지 + 페르소나 + 채택 제안서 + 직전 제안서를 시스템에 자동 주입.
 
@@ -70,12 +71,15 @@ def render_chat_panel(
     """
     from sola.prompts import SYSTEM_CHAT
     from store import bookmarks as _bm
+    from store import chat_log
 
     history_key = f"_sidechat_{chat_key}"
     pending_key = f"_sidechat_pending_{chat_key}"
     reset_key = f"_sidechat_reset_{chat_key}"
 
-    st.session_state.setdefault(history_key, [])
+    # `persist=True` 시 디스크에서 히스토리 복원 (첫 진입 시 1회).
+    if history_key not in st.session_state:
+        st.session_state[history_key] = chat_log.load_history(chat_key) if persist else []
     history: list[dict] = st.session_state[history_key]
 
     # 자동 첨부 컨텍스트 수집 (헤더 칩 표시 + LLM 호출 모두 동일 데이터 사용)
@@ -122,6 +126,8 @@ def render_chat_panel(
 
     if st.session_state.pop(reset_key, False):
         st.session_state[history_key] = []
+        if persist:
+            chat_log.reset(chat_key)
         st.rerun()
 
     # 히스토리 렌더
@@ -133,6 +139,8 @@ def render_chat_panel(
     user_input = st.chat_input(placeholder, key=f"_sidechat_input_{chat_key}")
     if user_input:
         history.append({"role": "user", "content": user_input})
+        if persist:
+            chat_log.save_history(history, chat_key)
         st.session_state[pending_key] = True
         st.rerun()
 
@@ -157,6 +165,8 @@ def render_chat_panel(
         except Exception as e:  # noqa: BLE001
             reply = f"⚠️ 호출 실패: {e}"
         history.append({"role": "assistant", "content": reply})
+        if persist:
+            chat_log.save_history(history, chat_key)
         st.rerun()
 
 

@@ -1435,3 +1435,29 @@ hr {
         height: 170px;
     }
 }
+
+/* 제안서 워크벤치 — 모드 시각 배너 (Phase 5) */
+.wb-mode-banner {
+    margin: 0.4rem 0 0.8rem 0;
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--r-md);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text-2);
+    border: 1px solid var(--border-soft);
+}
+.wb-mode-banner b { color: var(--text-1); }
+.wb-mode-banner code {
+    background: rgba(0,0,0,0.05);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.74rem;
+}
+.wb-mode-talk {
+    background: var(--accent-soft);
+    border-color: rgba(37, 99, 235, 0.25);
+}
+.wb-mode-edit {
+    background: var(--amber-soft);
+    border-color: rgba(217, 119, 6, 0.35);
+}
