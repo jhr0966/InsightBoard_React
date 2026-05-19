@@ -15,7 +15,16 @@ from sola.insight import insight_for_dept
 from store import trends
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
-from ui.components import render_html, action_card, action_grid, metric_card, metric_grid, status_card
+from ui.components import (
+    action_card,
+    action_grid,
+    metric_card,
+    metric_grid,
+    render_html,
+    status_card,
+    step_guide,
+    step_item,
+)
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -269,12 +278,44 @@ def _build_trend_context(brief_text: str, payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _onboarding_steps_html(
+    persona: Persona, *, roadmap_count: int, news_count: int,
+) -> str:
+    """초기 사용자용 3단계 시작 가이드.
+
+    페르소나·로드맵·뉴스가 차례대로 준비되면 각 step 이 active(녹색) 처리된다.
+    이미 모든 단계가 완료된 사용자에게는 호출 측에서 표시 자체를 생략한다.
+    """
+    return step_guide([
+        step_item(
+            1, "프로필 설정",
+            "좌측 ⬅️ 아바타를 눌러 부서·직무·관심 공정을 입력하세요.",
+            active=persona.is_set(),
+        ),
+        step_item(
+            2, "로드맵 업로드",
+            "🧱 데이터 관리 → '로드맵 업로드' 탭에서 작업 정의(CSV/Excel)를 올리세요.",
+            active=roadmap_count > 0,
+        ),
+        step_item(
+            3, "뉴스 수집",
+            "🧱 데이터 관리 → '뉴스 수집' 탭에서 키워드 입력 후 📥 수집·저장을 누르세요. 본문·이미지가 함께 저장됩니다.",
+            active=news_count > 0,
+        ),
+    ])
+
+
 def _persona_welcome(persona: Persona) -> str:
     """페르소나 카드 HTML 반환 (메인에 출력)."""
     if not persona.is_set():
         return (
-            '<div class="card-flat">'
-            '⬅️ <b>사이드바</b>에서 페르소나를 설정하면 맞춤 인사이트가 표시됩니다.'
+            '<div class="card">'
+            '<div style="font-size:1.4rem;font-weight:700;color:var(--text-1);'
+            'letter-spacing:-0.02em;margin-bottom:6px;">처음 시작하시나요?</div>'
+            '<div style="color:var(--text-2);font-size:0.95rem;">'
+            '아래 <b>3단계</b>를 차례대로 마치면 부서별 맞춤 뉴스·자동화 기회·AI 인사이트가 '
+            '자동으로 정렬됩니다. 완료된 단계는 <b>녹색</b>으로 바뀝니다.'
+            '</div>'
             '</div>'
         )
     chips_html = ""
@@ -462,6 +503,17 @@ def render() -> None:
         with main:
             # 페르소나 welcome
             render_html(_persona_welcome(persona), unsafe_allow_html=True)
+
+            # 초기 사용자 — 페르소나·로드맵·뉴스 중 하나라도 비어있으면 3단계 시작 가이드
+            if not persona.is_set() or roadmap.empty or news.empty:
+                render_html(
+                    _onboarding_steps_html(
+                        persona,
+                        roadmap_count=len(roadmap),
+                        news_count=len(news),
+                    ),
+                    unsafe_allow_html=True,
+                )
 
             # 핵심 상태 카드
             render_html(

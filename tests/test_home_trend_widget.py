@@ -297,3 +297,31 @@ def test_build_page_context_includes_recommendations_and_top_opportunities():
     assert "인사이트 분석: 검토" in ctx
     assert "자동화 기회 Top" in ctx
     assert "생산기술 / 용접 score=9.0" in ctx
+
+
+def test_onboarding_steps_marks_active_per_state():
+    """페르소나·로드맵·뉴스 상태에 따라 step_item active 토글."""
+    from persona.schema import Persona
+
+    # 모두 비어있음 → 0개 active
+    html_empty = home_tab._onboarding_steps_html(
+        Persona(), roadmap_count=0, news_count=0,
+    )
+    assert html_empty.count('class="step-item active"') == 0
+    assert "프로필 설정" in html_empty
+    assert "로드맵 업로드" in html_empty
+    assert "뉴스 수집" in html_empty
+
+    # 페르소나만 설정 → 1개 active
+    html_persona = home_tab._onboarding_steps_html(
+        Persona(dept="생산기술", job="자동화 엔지니어"),
+        roadmap_count=0, news_count=0,
+    )
+    assert html_persona.count('class="step-item active"') == 1
+
+    # 모두 준비 → 3개 active
+    html_all = home_tab._onboarding_steps_html(
+        Persona(dept="생산기술", job="자동화 엔지니어"),
+        roadmap_count=120, news_count=30,
+    )
+    assert html_all.count('class="step-item active"') == 3

@@ -19,6 +19,11 @@ def _options(df, col: str) -> list[str]:
     return [""] + sorted(df[col].dropna().astype(str).unique().tolist())
 
 
+def _has_roadmap_options(opts: list[str]) -> bool:
+    """`_options()` 결과에서 실제 선택지가 있는지 (빈 값 외에 1개라도 있는지)."""
+    return len(opts) > 1
+
+
 def _lv3_options(df) -> list[str]:
     if df.empty or "lv3" not in df.columns:
         return []
@@ -74,25 +79,55 @@ def render() -> None:
     _handle_pending(persona)
 
     section_label("기본 정보")
+    dept_opts = _options(roadmap, "dept")
+    team_opts = _options(roadmap, "team")
+    lv3_opts = _lv3_options(roadmap)
+    no_roadmap = (
+        not _has_roadmap_options(dept_opts)
+        and not _has_roadmap_options(team_opts)
+        and not lv3_opts
+    )
+    if no_roadmap:
+        st.info(
+            "🗂 로드맵이 아직 업로드되지 않아 부서·팀·관심 공정 추천 목록이 비어있습니다. "
+            "일단 자유 입력으로 설정해도 OK — 로드맵을 올린 뒤 다시 들어오면 드롭다운으로 바뀝니다."
+        )
+
     with st.container(border=True):
         c1, c2 = st.columns(2)
         with c1:
             st.text_input("이름", value=persona.name, key="px_name", placeholder="예: 홍길동")
-            dept_opts = _options(roadmap, "dept")
-            st.selectbox(
-                "부서",
-                dept_opts,
-                index=dept_opts.index(persona.dept) if persona.dept in dept_opts else 0,
-                key="px_dept",
-            )
+            if _has_roadmap_options(dept_opts):
+                st.selectbox(
+                    "부서",
+                    dept_opts,
+                    index=dept_opts.index(persona.dept) if persona.dept in dept_opts else 0,
+                    key="px_dept",
+                )
+            else:
+                st.text_input(
+                    "부서",
+                    value=persona.dept,
+                    key="px_dept",
+                    placeholder="예: 생산기술팀, 자동화기술팀",
+                    help="로드맵을 업로드하면 이 자리에 부서 추천 목록이 나타납니다.",
+                )
         with c2:
-            team_opts = _options(roadmap, "team")
-            st.selectbox(
-                "팀",
-                team_opts,
-                index=team_opts.index(persona.team) if persona.team in team_opts else 0,
-                key="px_team",
-            )
+            if _has_roadmap_options(team_opts):
+                st.selectbox(
+                    "팀",
+                    team_opts,
+                    index=team_opts.index(persona.team) if persona.team in team_opts else 0,
+                    key="px_team",
+                )
+            else:
+                st.text_input(
+                    "팀",
+                    value=persona.team,
+                    key="px_team",
+                    placeholder="예: 자동화 1팀",
+                    help="로드맵을 업로드하면 이 자리에 팀 추천 목록이 나타납니다.",
+                )
             st.text_input(
                 "직무",
                 value=persona.job,
@@ -100,13 +135,21 @@ def render() -> None:
                 placeholder="예: 용접 담당, 자동화 엔지니어, 검사관",
             )
 
-        st.multiselect(
-            "관심 공정",
-            options=_lv3_options(roadmap),
-            default=[v for v in persona.interest_lv3 if v in _lv3_options(roadmap)],
-            key="px_lv3",
-            help="관심 공정을 선택하면 오늘의 보드와 인사이트 분석이 그 공정 중심으로 정렬됩니다. (로드맵의 Lv3 항목 기준)",
-        )
+        if lv3_opts:
+            st.multiselect(
+                "관심 공정",
+                options=lv3_opts,
+                default=[v for v in persona.interest_lv3 if v in lv3_opts],
+                key="px_lv3",
+                help="관심 공정을 선택하면 오늘의 보드와 인사이트 분석이 그 공정 중심으로 정렬됩니다. (로드맵의 Lv3 항목 기준)",
+            )
+        else:
+            st.caption(
+                "관심 공정 선택은 로드맵 업로드 후 활성화됩니다. "
+                "현재 저장된 관심 공정: " + (" · ".join(persona.interest_lv3) if persona.interest_lv3 else "없음")
+            )
+            # 입력 누락 시에도 _save_from_state 에서 빈 리스트가 들어가지 않도록 기존 값 유지.
+            st.session_state["px_lv3"] = list(persona.interest_lv3)
 
     b1, b2, b3 = st.columns([1, 1, 2])
     with b1:

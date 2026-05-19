@@ -1165,6 +1165,23 @@ hr {
   font-weight: 850;
 }
 
+/* 페르소나 미설정 상태 — 첫 사용자에게 시각적으로 카드 강조 */
+.persona-profile-card-empty {
+  border: 2px dashed var(--accent);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.06), transparent 60%);
+}
+
+.persona-profile-card-empty .persona-profile-edit-hint {
+  background: var(--accent);
+  color: #fff;
+  animation: persona-empty-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes persona-empty-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
 .sidebar-brand.compact {
   padding-top: 0.55rem;
   margin-top: 0.7rem;

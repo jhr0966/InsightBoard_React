@@ -52,11 +52,19 @@ def _persona_card_html(persona: Persona) -> str:
     dept = _html.escape(persona.dept or "부서 미설정")
     job = _html.escape(persona.job or "직무 미설정")
     team = _html.escape(persona.team or "팀 미설정")
-    interests = _html.escape(" · ".join(persona.interest_lv3[:3]) if persona.interest_lv3 else "관심 공정 미설정")
+    interests = _html.escape(
+        " · ".join(persona.interest_lv3[:3]) if persona.interest_lv3 else "관심 공정 미설정"
+    )
+    if persona.is_set():
+        hint = "아바타를 눌러 프로필 편집"
+        card_extra_class = ""
+    else:
+        hint = "👋 클릭해서 프로필 설정 시작"
+        card_extra_class = " persona-profile-card-empty"
     return f"""
     <a class="persona-profile-link" href="?persona_editor=1" target="_self"
        aria-label="페르소나 편집 페이지 열기">
-      <div class="persona-profile-card">
+      <div class="persona-profile-card{card_extra_class}">
         <div class="persona-profile-avatar">
           <div class="persona-profile-head">{avatar}</div>
           <div class="persona-profile-body"></div>
@@ -67,7 +75,7 @@ def _persona_card_html(persona: Persona) -> str:
           <div><span>팀</span><b>{team}</b></div>
           <div><span>관심</span><b>{interests}</b></div>
         </div>
-        <div class="persona-profile-edit-hint">아바타를 눌러 프로필 편집</div>
+        <div class="persona-profile-edit-hint">{hint}</div>
       </div>
     </a>
     """

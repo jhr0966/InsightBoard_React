@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UX Phase 2 — 온보딩 + 페르소나 로드맵 의존성 해결)
+- `ui/home_tab.py` 에 `_onboarding_steps_html()` 추가 — 페르소나·로드맵·뉴스 중 하나라도 비어있으면 홈 상단에 3단계 시작 가이드(step_guide)가 자동 표시되고 각 단계가 완료되면 active(녹색) 토글. `_persona_welcome` 의 미설정 카피를 "처음 시작하시나요?" 환영 카드로 강화.
+- `ui/persona_page.py` 가 로드맵이 비어있을 때 selectbox 대신 `text_input` 으로 자동 fallback (부서·팀). 관심 공정도 옵션이 없을 때 안내 caption + 기존 값 유지. 상단에는 "로드맵 업로드 시 드롭다운으로 바뀝니다" 안내.
+- `ui/sidebar.py` 의 프로필 카드가 페르소나 미설정 시 `persona-profile-card-empty` 클래스 적용 + hint 문구 "👋 클릭해서 프로필 설정 시작" 로 강화. `assets/styles.css` 에 점선 테두리 + 펄스 애니메이션 추가.
+- 회귀 가드: `tests/test_home_trend_widget.py::test_onboarding_steps_marks_active_per_state` — 3가지 상태에서 step_item active 카운트가 0/1/3 으로 토글되는지 검증.
+
 ### Changed (UX Phase 1 — Next-Best-Action 카피 통일)
 - 빈 상태 안내(`status_card`)를 "다음 → [메뉴] → [액션]" 패턴으로 통일 — `home_tab` (자동화 기회 / 데이터 부족), `board_tab` (기회 / 필터 / 매칭 / 데이터 부족 4곳), `news_tab`, `bookmarks_tab`, `sola_tab` (실행 전 준비), `ingest_tab` (수집 전).
 - 사용자 시각 라벨로 카피 정리: `ui/ingest_tab.py` 페이지 제목 "뉴스 수집 + 본문 Enrich" → "뉴스 수집" (서브타이틀에 "본문·이미지 자동 fetch" 명시), 버튼 "✨ 본문 Enrich (LLM 키워드/요약)" → "✨ LLM 키워드·요약 추가", `step_item` 3단계 라벨 "본문 Enrich" → "LLM 키워드·요약 (선택)", 슬라이더/체크박스에 `help` 추가.
