@@ -22,6 +22,7 @@ from persona import context as persona_ctx
 from persona.schema import Persona
 from sola import refine
 from sola.client import LLMNotConfigured, chat
+from sola.preview import format_messages_preview
 from sola.prompts import SYSTEM_CHAT
 from store.bookmarks import BOOKMARK_STATUSES
 from ui.components import render_html
@@ -86,7 +87,15 @@ def _do_refine(instruction: str, persona: Persona) -> None:
         with st.spinner("LLM 호출 중…"):
             new_md = refine.refine_proposal(current, instruction, persona=persona)
     except LLMNotConfigured as e:
-        st.session_state["pw_chat"].append({"role": "assistant", "content": f"⚠️ LLM 미설정: {e}"})
+        # 좌측 본문을 덮어쓰지 않고, 동일 컨텍스트로 채팅에 미리보기만 노출.
+        preview_messages = refine.build_refine_messages(current, instruction, persona=persona)
+        st.session_state["pw_chat"].append({
+            "role": "assistant",
+            "content": format_messages_preview(
+                preview_messages,
+                header=f"⚠️ LLM 미설정 ({e}) — 제안서 수정 시 전달될 입력 컨텍스트 (좌측 본문은 유지됨)",
+            ),
+        })
         return
     except Exception as e:  # noqa: BLE001
         st.session_state["pw_chat"].append({"role": "assistant", "content": f"⚠️ 호출 실패: {e}"})
@@ -128,7 +137,10 @@ def _do_discuss(question: str, persona: Persona) -> None:
         with st.spinner("LLM 호출 중…"):
             reply = chat(messages=messages, temperature=0.3)
     except LLMNotConfigured as e:
-        reply = f"⚠️ LLM 미설정: {e}"
+        reply = format_messages_preview(
+            messages,
+            header=f"⚠️ LLM 미설정 ({e}) — 제안서 작업장 대화 입력 컨텍스트",
+        )
     except Exception as e:  # noqa: BLE001
         reply = f"⚠️ 호출 실패: {e}"
     history.append({"role": "assistant", "content": reply})

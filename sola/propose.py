@@ -5,7 +5,8 @@ import pandas as pd
 
 from persona import context as persona_ctx
 from persona.schema import Persona
-from sola.client import chat
+from sola.client import LLMNotConfigured, chat
+from sola.preview import format_messages_preview
 from sola.prompts import SYSTEM_PROPOSE
 
 
@@ -41,10 +42,14 @@ def propose_for_task(
         f"{_format_news(news_df, max_items=max_news)}"
     )
     persona_block = persona_ctx.system_block(persona) if persona else ""
-    return chat(
-        messages=[
-            {"role": "system", "content": SYSTEM_PROPOSE + persona_block},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.3,
-    )
+    messages = [
+        {"role": "system", "content": SYSTEM_PROPOSE + persona_block},
+        {"role": "user", "content": user},
+    ]
+    try:
+        return chat(messages=messages, temperature=0.3)
+    except LLMNotConfigured as e:
+        return format_messages_preview(
+            messages,
+            header=f"⚠️ LLM 미설정 ({e}) — 제안서 생성 시 전달될 입력 컨텍스트",
+        )

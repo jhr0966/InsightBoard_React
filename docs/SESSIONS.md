@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-05-19 · LLM 미설정 시 입력 컨텍스트 미리보기
+
+**브랜치:** `claude/review-insight-board-Ej5EO`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+LLM 키가 비어 있을 때 "⚠️ LLM 미설정: ..." 한 줄만 표시되어 사용자가 실제로 어떤
+컨텍스트가 LLM 에 전달될지 확인할 길이 없었음. 운영자가 키를 발급/세팅하기 전에
+"이 화면에서 무엇이 LLM 에 들어가는지" 미리 검증 가능하도록 미리보기 모드 추가.
+
+**한 일:**
+1. `sola/preview.py` — `format_messages_preview(messages, *, header, footer_hint)` 추가.
+   - 역할(system/user/assistant) 라벨 + `text` 코드블록 본문 + `.env` 안내 footer.
+2. LLM 호출 지점에서 `LLMNotConfigured` 캐치 → 미리보기 반환으로 일관 처리:
+   - `sola/summarize.py`, `sola/propose.py`, `sola/insight.py` (캐시에는 저장 X)
+   - `ui/layout.py::render_chat_panel` (사이드 채팅)
+   - `ui/proposal_workbench.py::_do_discuss` (작업장 대화)
+3. `_do_refine` 예외 케이스 — refine 은 좌측 본문을 덮어쓰므로 미리보기로 대체하면 안 됨.
+   `sola/refine.py::build_refine_messages` 분리 + `_do_refine` 이 LLMNotConfigured 캐치
+   시 동일 messages 로 채팅에만 미리보기 노출, 좌측 본문은 유지.
+4. 회귀 가드 8건 — `tests/test_preview.py`.
+
+**검증:**
+- `pytest -q` 197 passed
+- 금지 패턴 (on_click, requests.*) 0건
+- py_compile OK
+
+**다음 세션 TODO:**
+- 사용자 수동 QA: 키 없는 상태 / 키 있는 상태 모두 정상.
+- 입력 컨텍스트가 길어질 경우 미리보기 줄임 처리 검토 (현재는 그대로 출력).
+
+---
+
 ## 2026-05-19 · 뉴스 수집 AttributeError 회귀 수정
 
 **브랜치:** `claude/review-insight-board-Ej5EO`

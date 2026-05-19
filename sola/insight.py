@@ -5,6 +5,7 @@ import pandas as pd
 
 from config import llm_model
 from sola.client import LLMNotConfigured, chat
+from sola.preview import format_messages_preview
 from sola.prompts import SYSTEM_INSIGHT
 from store import cache
 
@@ -33,17 +34,18 @@ def insight_for_dept(dept: str, news_df: pd.DataFrame, *, force: bool = False) -
         f"[부서] {dept}\n\n"
         f"[관련 뉴스]\n{_format_news(news_df)}"
     )
+    messages = [
+        {"role": "system", "content": SYSTEM_INSIGHT},
+        {"role": "user", "content": user},
+    ]
     try:
-        reply = chat(
-            messages=[
-                {"role": "system", "content": SYSTEM_INSIGHT},
-                {"role": "user", "content": user},
-            ],
-            temperature=0.2,
-            max_tokens=200,
-        )
+        reply = chat(messages=messages, temperature=0.2, max_tokens=200)
     except LLMNotConfigured as e:
-        return f"⚠️ LLM 미설정: {e}"
+        # 미리보기는 캐싱하지 않는다 — 키 설정 후 재호출하면 실제 응답으로 대체되어야.
+        return format_messages_preview(
+            messages,
+            header=f"⚠️ LLM 미설정 ({e}) — {dept} 부서 인사이트 입력 컨텍스트",
+        )
     except Exception as e:  # noqa: BLE001
         return f"⚠️ 호출 실패: {e}"
 
