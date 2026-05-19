@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### Changed (components — 빌더 출력 정리, markdown code-block 회귀 방어)
+- `ui/components.py` 의 `metric_card`, `status_card`, `action_card`, `step_item` 가 4-space 들여쓰기로 시작하는 multi-line f-string을 반환해 실수로 `st.markdown` 경로로 보내면 code block으로 해석되던 회귀 원인을 제거. 각 빌더가 컬럼 0부터 시작하는 single-line concatenated f-string을 반환하도록 정리. `metric_grid` / `action_grid` / `step_guide` 시그니처와 출력 클래스/속성은 그대로.
+
+### Fixed (home — 자동화 기회 Top 5 raw HTML 노출)
+- `ui/home_tab.py` 538줄 뒤에 같은 "자동화 기회 Top 5" 섹션이 `st.markdown(..., unsafe_allow_html=True)` 로 중복 렌더되던 코드 제거. `metric_card` / `_top_opportunities_html` 의 출력은 4-space 들여쓰기로 시작해 markdown이 code block으로 처리해 화면에 `<div class="metric-card …">` 텍스트가 그대로 노출되던 회귀 해결. `tests/test_html_rendering.py` PASS.
+
+### Changed (refactor — 인사이트보드 평탄화 / 재계산 제거)
+- `ui/board_tab.py` 리팩토링: `_TrendsPayload` dataclass 도입, 카드 HTML 헬퍼 (`_dept_insight_card_html`, `_opportunity_card_html`, `_match_card_html`) 분리, 페르소나 강조 (`_persona_emphasis`) 와 부서 정렬 (`_ordered_depts`) 통합.
+- 트렌드 섹션을 `_render_trend_brief` / `_render_trend_charts` / `_render_emergence` 로 분리, 오포튜니티 카드 그리드는 `_render_opportunity_cards`, 보드 진입부는 `_render_overview` 로 분리.
+- `render()` 에서 `payload` / `cells` 를 한 번만 계산해 `_build_page_context` 에 전달 — 채팅 토글 시 동일 데이터 재계산 제거.
+- 시그니처 보존 (테스트로 잠긴 `_insight_flow_html`, `_opportunity_to_sola_state`, `_opportunity_flow_context`), 동작 등가성 유지.
+
 ### Changed (UX — 사이드바 프로필 개선)
 - `ui/sidebar.py` 의 페르소나 입력 폼을 사이드바에서 제거하고, 최상단 사용자 프로필 카드(큰 상반신 아바타 + 설정 정보 요약)로 교체.
 - `ui/persona_page.py` 추가 — 아바타 프로필 카드 클릭 시 메인 영역에서 페르소나 편집 페이지를 열어 사이드바가 길어지지 않도록 개선.

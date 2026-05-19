@@ -5,6 +5,84 @@
 
 ---
 
+## 2026-05-19 · refactor — components 빌더 출력 정리 + 카드 헬퍼 승격 판단
+
+**브랜치:** `claude/review-insight-board-Ej5EO`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+직전 회귀(`ui/home_tab.py:540~542` 의 `st.markdown(..., unsafe_allow_html=True)` 잔재 → raw HTML 노출)의 근본 원인은 `ui/components.py` 의 빌더들이 4-space 들여쓰기로 시작하는 multi-line f-string을 반환했기 때문. 향후 같은 회귀를 막기 위해 빌더 출력 자체를 column 0 부터 시작하도록 정리.
+
+**한 일:**
+1. `ui/components.py` 의 `metric_card`, `status_card`, `action_card`, `step_item` 4개 빌더를 single-line concatenated f-string 방식으로 재작성. 조건부 fragment (`icon_html`, `caption_html`) 는 변수로 빼서 가독성 유지.
+2. CSS class / 속성 / 시그니처 / 동작은 모두 보존. `tests/test_ui_components.py` 회귀 없음.
+3. 카드 헬퍼 승격(`_dept_insight_card_html` 등 board_tab의 3종 → components) 은 검토 결과 **보류**. `news-card` class는 board/news/ingest/bookmarks 4곳에서 사용되지만 각 탭의 콘텐츠 구조(이미지+본문 / 메타+title+body / 단순 body)가 모두 달라 generic helper로 묶기엔 인자만 늘어남(YAGNI). 다른 탭에서 같은 디자인이 필요해질 때 일반화 검토.
+
+**검증:**
+- `python -m py_compile ui/components.py` OK
+- `pytest -q` 167 passed
+- 직접 영향 테스트 (`test_ui_components`, `test_html_rendering`, `test_home_trend_widget`, `test_board_flow`) 28/28 통과
+
+**다음 세션 TODO:**
+- 사이드 채팅 열림/닫힘 두 모드에서 홈 화면 카드 표시 수동 회귀 확인 (자동 가드는 `test_html_rendering` 이 차단 중).
+- (선택) 다른 탭에서 `news-card` 인라인 HTML을 패턴화해 board 카드 헬퍼와 함께 일반화할 만한 공통 슬롯 도출.
+
+---
+
+## 2026-05-19 · fix — 홈 "자동화 기회 Top 5" raw HTML 노출 제거
+
+**브랜치:** `claude/review-insight-board-Ej5EO`
+**카테고리:** `fix`
+**상태:** in-progress
+
+**배경:**
+홈 화면 스크린샷에서 메트릭 카드 옆에 `<div class="metric-card teal">…` 같은 HTML 소스가 그대로 텍스트로 노출됨. `ui/home_tab.py:537~538` 에서 `render_html(...)` (= `st.html`) 로 정상 렌더한 같은 섹션을 540~542 에서 `st.markdown(..., unsafe_allow_html=True)` 로 다시 그리고 있었는데, `metric_card()` / `_top_opportunities_html()` 가 4-space 들여쓰기로 시작하는 multi-line f-string을 반환하기 때문에 markdown이 이를 **code block** 으로 해석해 raw HTML 텍스트가 그대로 보이는 회귀가 있었음.
+
+**한 일:**
+1. `ui/home_tab.py` 의 중복 540~542 블록 제거 (`st.markdown(…, unsafe_allow_html=True)` 사용 부분).
+2. `tests/test_html_rendering.py` 가 `ui/*.py` 의 `st.markdown(..., unsafe_allow_html=True)` 호출을 모두 금지하는데 (`ui/components.py` 만 예외), 이로써 통과 복구.
+
+**검증:**
+- `python -m py_compile ui/home_tab.py` OK
+- `grep -nE 'st\.markdown\([^)]*unsafe_allow_html' ui/` — 0건 (docstring 외)
+- `pytest -q` 167 passed (이전 1 failed → 0 failed)
+
+**다음 세션 TODO:**
+- 사이드 채팅 패널이 열렸을 때 / 일반 모드 모두 회귀 없는지 수동 확인.
+- `ui/components.py` 의 카드 빌더들이 multi-line f-string으로 4-space 들여쓰기를 반환하는데, 향후 markdown 경로 실수를 막기 위해 빌더 출력을 single-line 으로 정리하거나, `render_html()` 사용을 강제하는 lint 강화 검토.
+
+---
+
+## 2026-05-19 · refactor — 인사이트보드 평탄화 및 page_context 재계산 제거
+
+**브랜치:** `claude/review-insight-board-Ej5EO`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+`ui/board_tab.py` 가 521줄 단일 파일에 트렌드/기회/부서/매칭 4개 섹션 + page_context 빌더가 들어가 있었음. 카드 HTML이 인라인 멀티라인 f-string으로 산재해 가독성이 낮았고, `_compute_trends_payload()` / `opportunity.score_cells()` 가 메인 렌더와 채팅 page_context 양쪽에서 별도 호출되어 채팅 토글 시 매 frame 재계산되는 비효율이 있었음.
+
+**한 일:**
+1. `_TrendsPayload` dataclass 도입 — 5-튜플 반환을 명시 필드로 교체. `_empty_emergence()` 헬퍼로 빈 dict 중복 제거.
+2. 카드 HTML을 `_dept_insight_card_html`, `_opportunity_card_html`, `_match_card_html` 로 분리. 페르소나 강조 로직은 `_persona_emphasis(persona, dept)` 헬퍼로 통합 (3곳 중복 제거).
+3. 트렌드 렌더 분리: `_render_trend_brief`, `_render_trend_charts`, `_render_emergence`. 부서 정렬은 `_ordered_depts()`, 오포튜니티 카드 그리드는 `_render_opportunity_cards()` 로 분리.
+4. `render()` 시작점에서 `payload`, `cells` 를 한 번만 계산하여 `_render_trends`, `_render_opportunity`, `_build_page_context` 에 인자로 전달 — 채팅 page_context 평가 시 중복 계산 제거.
+5. `_render_overview()` 분리 — 메트릭 그리드 + 흐름 가이드 + 데이터 부족 안내를 한 함수로 묶고 `render()` 본문 단순화.
+6. 테스트로 시그니처가 잠긴 `_insight_flow_html`, `_opportunity_to_sola_state`, `_opportunity_flow_context` 는 그대로 유지.
+
+**검증:**
+- `python -m py_compile ui/board_tab.py` OK
+- 금지 패턴 (`on_click`, `requests.{get,post,Session}`) 검사 0건
+- `pytest -q` 166 passed, 1 failed (`tests/test_html_rendering.py` — `ui/home_tab.py:540,542`의 pre-existing 위반, 이번 변경과 무관)
+- board 직접 관련 6개 파일 (`test_board_flow`, `test_opportunity`, `test_sola_insight`, `test_trend_brief`, `test_trends_multi_day`, `test_html_rendering` 의 board scope 부분) 31/31 통과
+
+**다음 세션 TODO:**
+- (선택) `ui/home_tab.py:540,542` 의 `st.markdown(..., unsafe_allow_html=True)` 를 `render_html()` 로 마이그레이션해 `test_html_rendering` 회복.
+- 카드 HTML 헬퍼들을 `ui/components.py` 로 승격해 다른 탭(news_tab, home_tab)도 재사용할지 검토.
+
+---
+
 ## 2026-05-18 · UX — 사이드바 프로필/페르소나 편집 페이지
 
 **브랜치:** `work`
