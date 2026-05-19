@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Changed (UX Phase 5 — 제안서 워크벤치 모드 배너 + 버튼 카피 통일)
+- `ui/proposal_workbench.py` 의 "💬 대화" / "✏️ 수정" 라디오 아래에 모드 시각 배너 추가 — 대화 모드는 파란 톤(컨텍스트로만 사용), 수정 모드는 앰버 톤(좌측 본문이 LLM 으로 교체됨)으로 즉시 인식 가능.
+- 버튼 카피 명확화: "★ 북마크 저장" → "📌 새 버전으로 저장" (새 북마크 추가), "💾 원본 업데이트" → "💾 원본 덮어쓰기" (선택된 원본 in-place 교체). 모든 버튼에 `help` 보강.
+- `assets/styles.css` 에 `.wb-mode-banner`, `.wb-mode-talk`, `.wb-mode-edit` 추가.
+
+### Added (chat_log — 사이드 채팅 영구화 + chat_key 분리)
+- `store/chat_log.py` 를 `chat_key` 별 파일 분리 지원으로 확장. 기존 인자 없는 호출은 `chat_key="default"` 로 매핑되어 `data/sola/chat_history.jsonl` 경로 유지 (후방 호환). 그 외 키는 `data/sola/chat/{slug}.jsonl` 에 저장, 파일명은 안전한 슬러그로 정규화 (디렉토리 traversal 차단).
+- `ui/layout.py::render_chat_panel` 에 `persist=True` 옵션(디폴트) 추가 — 첫 진입 시 `chat_log.load_history(chat_key)` 로 복원, 사용자 입력/응답 시 `chat_log.save_history(history, chat_key)` 로 영구화, "초기화" 클릭 시 `chat_log.reset(chat_key)`. SOLA 사이드 채팅이 새로고침 후에도 보존됨.
+- 회귀 가드 4건: `tests/test_chat_log.py` — 기본 키 후방 호환, chat_key 격리, reset 범위, 슬러그 검증.
+
 ### Changed (UX Phase 4 — SOLA 채팅 UI 단일화)
 - `ui/sola_tab.py` 의 메인 영역 채팅 모드(`_render_chat`)와 `_build_proposal_context()` 헬퍼 제거 — `render_chat_panel` 이 이미 `include_session_proposal=True`, `include_adopted=True` 로 동일 컨텍스트를 자동 첨부.
 - SOLA 작업실에 `main_and_chat("sola", ...)` 추가 — 우측 사이드 채팅 패널이 다른 탭과 동일 패턴으로 표시. `chat_toggle_key="sola"` 로 헤더 토글 노출.

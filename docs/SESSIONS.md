@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-05-19 · UX Phase 5 (+ 선택) — 제안서 워크벤치 강화 + 사이드 채팅 영구화
+
+**브랜치:** `feat-ux-phase5-workbench-and-chat-persist`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+UX 5-Phase 개편 마지막 단계 + Phase 4 의 trade-off("chat_log 영구화 사라짐") 해소를 한 PR 로.
+
+**한 일 (Phase 5):**
+1. `ui/proposal_workbench.py` 의 "💬 대화" / "✏️ 수정" 라디오 아래에 모드 시각 배너 추가. 대화 = 파란 톤(읽기 전용 컨텍스트), 수정 = 앰버 톤(좌측 본문 LLM 교체). 즉시 인식 가능.
+2. 버튼 카피 명확화 — "★ 북마크 저장" → "📌 새 버전으로 저장" (새 북마크 추가), "💾 원본 업데이트" → "💾 원본 덮어쓰기" (in-place 교체). 모든 버튼에 의도와 가역성을 알리는 `help` 추가.
+3. `assets/styles.css` 에 `.wb-mode-banner` + `.wb-mode-talk` / `.wb-mode-edit` 추가.
+
+**한 일 (선택 — chat_log 영구화):**
+1. `store/chat_log.py` 를 `chat_key` 별 파일 분리로 확장. 기존 인자 없는 호출은 `chat_key="default"` 매핑 → `data/sola/chat_history.jsonl` 단일 파일 유지 (후방 호환). 그 외 키는 `data/sola/chat/{slug}.jsonl`, `_safe_key()` 정규식으로 파일명 슬러그 (디렉토리 traversal 차단).
+2. `ui/layout.py::render_chat_panel` 에 `persist=True` 옵션 (디폴트) 추가:
+   - 첫 진입 시 `chat_log.load_history(chat_key)` 로 디스크 복원.
+   - 사용자 입력·LLM 응답 시 `chat_log.save_history(history, chat_key)` 덮어쓰기.
+   - "초기화" 클릭 시 `chat_log.reset(chat_key)` 함께 제거.
+3. Phase 4 trade-off 해소 — SOLA 사이드 채팅이 새로고침 후에도 복원됨. 다른 6개 탭(home/board/news/ingest/roadmap/bookmarks) 사이드 채팅도 모두 영구화 혜택.
+4. 회귀 가드 4건 — `tests/test_chat_log.py` 신규: 기본 키 후방 호환, chat_key 격리, reset 범위, 슬러그 검증.
+
+**검증:**
+- `python -m py_compile store/chat_log.py ui/layout.py ui/proposal_workbench.py` OK
+- 금지 패턴 0건
+- `pytest -q` 179 passed (이전 175 → 179, +4 가드)
+
+**다음 세션 TODO:**
+- 5-Phase 머지 후 종합 수동 QA — 페르소나 미설정 / 로드맵 미업로드 / 뉴스 0건 시나리오 3가지에서 흐름 검증.
+- `docs/UX_REDESIGN_PLAN.md` 에 5-Phase 완료 기록 추가 (별도 PR 또는 후속).
+
+---
+
 ## 2026-05-19 · UX Phase 4 — SOLA 채팅 UI 단일화
 
 **브랜치:** `feat-ux-phase4-chat-unification`

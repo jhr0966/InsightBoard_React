@@ -24,6 +24,7 @@ from sola import refine
 from sola.client import LLMNotConfigured, chat
 from sola.prompts import SYSTEM_CHAT
 from store.bookmarks import BOOKMARK_STATUSES
+from ui.components import render_html
 from ui.styles import page_header
 
 
@@ -225,14 +226,23 @@ def render() -> None:
         action_cols = st.columns([1, 1, 1, 1])
         with action_cols[0]:
             undo_disabled = "pw_undo" not in st.session_state
-            if st.button("↶ 되돌리기", disabled=undo_disabled, key="pw_undo_btn"):
+            if st.button(
+                "↶ 되돌리기", disabled=undo_disabled, key="pw_undo_btn",
+                help="✏️ 수정 직전 버전으로 복구합니다 (1단계).",
+            ):
                 st.session_state["_do_pw_undo"] = True
         with action_cols[1]:
-            if st.button("★ 북마크 저장", key="pw_save_btn"):
+            if st.button(
+                "📌 새 버전으로 저장", key="pw_save_btn",
+                help="현재 좌측 본문을 새 북마크로 추가합니다 (원본은 그대로).",
+            ):
                 st.session_state["_do_pw_save"] = True
         with action_cols[2]:
             update_disabled = not active_bm_id or not st.session_state["pw_active_md"]
-            if st.button("💾 원본 업데이트", key="pw_update_btn", disabled=update_disabled):
+            if st.button(
+                "💾 원본 덮어쓰기", key="pw_update_btn", disabled=update_disabled,
+                help="선택된 원본 북마크 본문을 현재 좌측 내용으로 교체합니다 (되돌릴 수 없음).",
+            ):
                 st.session_state["_do_pw_update"] = active_bm_id
         with action_cols[3]:
             st.download_button(
@@ -253,6 +263,24 @@ def render() -> None:
             key="pw_mode",
             help="대화 모드는 활성 제안서를 컨텍스트로 일반 채팅. 수정 모드는 사용자 지시로 좌측 패널을 in-place 교체합니다.",
         )
+
+        # 모드 시각 배너 — "지금 어떤 모드인지" 즉시 인식
+        if st.session_state["pw_mode"].startswith("✏️"):
+            render_html(
+                '<div class="wb-mode-banner wb-mode-edit">'
+                '<b>✏️ 수정 모드</b> — 입력한 지시로 좌측 제안서를 LLM 이 새 버전으로 교체합니다. '
+                '실수했으면 <code>↶ 되돌리기</code> 로 직전 버전 복구.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            render_html(
+                '<div class="wb-mode-banner wb-mode-talk">'
+                '<b>💬 대화 모드</b> — 좌측 제안서를 시스템 컨텍스트로 잡고 질문/검토만. '
+                '제안서 본문은 그대로 유지됩니다.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
 
         for msg in st.session_state["pw_chat"]:
             with st.chat_message(msg["role"]):
