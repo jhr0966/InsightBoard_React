@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-05-19 · LLM 빠른 시작 — Groq 키 발급 CTA + README 가이드
+
+**브랜치:** `feat-groq-setup-and-llm-cta`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+사용자가 "Groq API 적용해서 실제 사용 가능하게" 라고 요청. 코드는 이미 OpenAI 호환 클라이언트로 Groq 를 지원하고 있었지만, **키 발급 → .env 설정 → 동작 확인** 흐름이 README/UI 에서 1번에 보이지 않아 첫 사용자가 "어디서 키를 받지?", "정상 동작하는지?" 를 추론해야 했음. UX 관점에서 이 dead-end 를 제거.
+
+**한 일:**
+1. `README.md` 상단에 "🚀 빠른 시작 (Groq 무료 API)" 섹션 추가. 3-step (의존성 설치 → 키 발급 → 실행) 으로 압축. 🟢/🟠 상태 점 의미 안내, 다른 백엔드 전환은 `.env.example` 참고로 위임.
+2. `ui/sidebar.py::_llm_footer_html()` 헬퍼 신규 — 기존 인라인 푸터 빌더를 분리. LLM 설정 완료 시는 기존 형태 그대로, 미설정 시는 안내 카드로 확장 (Groq 외부 링크 + `.env` 변수 안내).
+3. `assets/styles.css` 에 `.sidebar-footer-empty` (앰버 테두리 + 배경) + `.sidebar-llm-empty-hint` (인라인 anchor/code 스타일) 추가.
+4. 회귀 가드 2건 — `tests/test_sidebar_profile.py::test_llm_footer_ready_shows_model_only`, `::test_llm_footer_empty_shows_groq_cta_with_key_setup_hint`.
+
+**검증:**
+- `python -m py_compile ui/sidebar.py` OK
+- `pytest -q` 173 passed (이전 171 → 173, +2 가드)
+
+**다음 세션 TODO (Phase 4 — 위험도 🔴):**
+- `ui/sola_tab.py` 의 별도 채팅 모드를 사이드 패널(`main_and_chat`)로 통합해 SOLA 작업실은 산출물 생성 전용으로 좁힘.
+- 채팅 히스토리 store 키 정합성 검토 (`store/chat_log.py`).
+
+---
+
 ## 2026-05-19 · UX Phase 3 — IA 정리 + 인사이트 분석 탭화 + 부서 인사이트 자동 표시
 
 **브랜치:** `feat-ux-phase3-ia-tabs`
