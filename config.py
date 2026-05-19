@@ -1,6 +1,10 @@
 """전역 설정. 환경변수와 경로 상수를 한 곳에 모은다.
 
 읽는 위치는 import 시점이 아니라 함수 호출 시점이라 테스트에서 monkeypatch 가능.
+
+LLM 설정 우선순위:
+  1. 프로세스 환경변수 (`.env` 파일 포함, `python-dotenv` 가 자동 로드)
+  2. Streamlit Cloud `st.secrets` (`share.streamlit.io` 의 App settings → Secrets)
 """
 from __future__ import annotations
 
@@ -41,13 +45,33 @@ def ensure_data_dirs() -> None:
         p.mkdir(parents=True, exist_ok=True)
 
 
+def _env_or_secret(name: str, default: str = "") -> str:
+    """환경변수 우선 → 없으면 Streamlit `st.secrets` fallback.
+
+    Streamlit Cloud(share.streamlit.io) 배포 시 App settings → Secrets 에
+    TOML 로 입력한 값이 여기로 들어온다. 로컬 실행에서는 streamlit context 가
+    없거나 secrets.toml 이 없을 수 있으므로 모든 예외를 흡수해 빈 문자열 반환.
+    """
+    val = os.getenv(name, "").strip()
+    if val:
+        return val
+    try:
+        import streamlit as st
+
+        if not hasattr(st, "secrets"):
+            return default
+        return str(st.secrets.get(name, default) or default).strip()
+    except Exception:  # noqa: BLE001 — streamlit 미설치/secrets 미설정 등 모두 fallback.
+        return default
+
+
 def llm_backend() -> str:
-    return os.getenv("LLM_BACKEND", "groq").strip().lower()
+    return _env_or_secret("LLM_BACKEND", "groq").strip().lower()
 
 
 def llm_base_url() -> str:
     backend = llm_backend()
-    explicit = os.getenv("LLM_BASE_URL", "").strip()
+    explicit = _env_or_secret("LLM_BASE_URL", "").strip()
     if explicit:
         return explicit
     return {
@@ -58,12 +82,12 @@ def llm_base_url() -> str:
 
 
 def llm_api_key() -> str:
-    return os.getenv("LLM_API_KEY", "").strip()
+    return _env_or_secret("LLM_API_KEY", "").strip()
 
 
 def llm_model() -> str:
     backend = llm_backend()
-    explicit = os.getenv("LLM_MODEL", "").strip()
+    explicit = _env_or_secret("LLM_MODEL", "").strip()
     if explicit:
         return explicit
     return {
