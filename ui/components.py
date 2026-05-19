@@ -37,17 +37,27 @@ def metric_card(
     icon: str = "",
     tone: str = "",
 ) -> str:
-    """Build a compact KPI card with a large value and optional caption."""
-    return f"""
-    <div class="metric-card{_tone_class(tone)}">
-      <div class="metric-card-top">
-        {f'<span class="metric-card-icon">{_html.escape(icon)}</span>' if icon else ''}
-        <span class="metric-card-label">{_html.escape(label)}</span>
-      </div>
-      <div class="metric-card-value">{_html.escape(str(value))}</div>
-      {f'<div class="metric-card-caption">{_html.escape(caption)}</div>' if caption else ''}
-    </div>
+    """Build a compact KPI card with a large value and optional caption.
+
+    Output starts at column 0 so that Markdown won't mistakenly treat the
+    HTML as an indented code block if it ever reaches `st.markdown`.
     """
+    icon_html = (
+        f'<span class="metric-card-icon">{_html.escape(icon)}</span>' if icon else ""
+    )
+    caption_html = (
+        f'<div class="metric-card-caption">{_html.escape(caption)}</div>'
+        if caption else ""
+    )
+    return (
+        f'<div class="metric-card{_tone_class(tone)}">'
+        f'<div class="metric-card-top">{icon_html}'
+        f'<span class="metric-card-label">{_html.escape(label)}</span>'
+        f'</div>'
+        f'<div class="metric-card-value">{_html.escape(str(value))}</div>'
+        f'{caption_html}'
+        f'</div>'
+    )
 
 
 def metric_grid(cards: Iterable[str]) -> str:
@@ -63,44 +73,45 @@ def status_card(
     icon: str = "",
 ) -> str:
     """Build a status/empty-state card with a colored leading rail."""
-    return f"""
-    <div class="status-card{_tone_class(status)}">
-      <div class="status-card-icon">{_html.escape(icon or '•')}</div>
-      <div>
-        <div class="status-card-title">{_html.escape(title)}</div>
-        <div class="status-card-body">{_html.escape(body)}</div>
-      </div>
-    </div>
-    """
+    return (
+        f'<div class="status-card{_tone_class(status)}">'
+        f'<div class="status-card-icon">{_html.escape(icon or "•")}</div>'
+        f'<div>'
+        f'<div class="status-card-title">{_html.escape(title)}</div>'
+        f'<div class="status-card-body">{_html.escape(body)}</div>'
+        f'</div>'
+        f'</div>'
+    )
 
 
 def action_card(icon: str, title: str, body: str, *, tone: str = "") -> str:
     """Build one quick-action card."""
-    return f"""
-    <div class="action-card{_tone_class(tone)}">
-      <div class="action-card-icon">{_html.escape(icon)}</div>
-      <div class="action-card-title">{_html.escape(title)}</div>
-      <div class="action-card-body">{_html.escape(body)}</div>
-    </div>
-    """
+    return (
+        f'<div class="action-card{_tone_class(tone)}">'
+        f'<div class="action-card-icon">{_html.escape(icon)}</div>'
+        f'<div class="action-card-title">{_html.escape(title)}</div>'
+        f'<div class="action-card-body">{_html.escape(body)}</div>'
+        f'</div>'
+    )
 
 
 def action_grid(cards: Iterable[str]) -> str:
     """Wrap prebuilt action cards in the standard responsive action grid."""
     return '<div class="action-grid">' + "".join(cards) + "</div>"
 
+
 def step_item(number: str | int, title: str, body: str, *, active: bool = False) -> str:
     """Build one process step for guided workflows."""
     cls = "step-item active" if active else "step-item"
-    return f"""
-    <div class="{cls}">
-      <div class="step-number">{_html.escape(str(number))}</div>
-      <div>
-        <div class="step-title">{_html.escape(title)}</div>
-        <div class="step-body">{_html.escape(body)}</div>
-      </div>
-    </div>
-    """
+    return (
+        f'<div class="{cls}">'
+        f'<div class="step-number">{_html.escape(str(number))}</div>'
+        f'<div>'
+        f'<div class="step-title">{_html.escape(title)}</div>'
+        f'<div class="step-body">{_html.escape(body)}</div>'
+        f'</div>'
+        f'</div>'
+    )
 
 
 def step_guide(items: Iterable[str]) -> str:

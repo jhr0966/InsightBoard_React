@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-05-19 · refactor — components 빌더 출력 정리 + 카드 헬퍼 승격 판단
+
+**브랜치:** `claude/review-insight-board-Ej5EO`
+**카테고리:** `refactor`
+**상태:** in-progress
+
+**배경:**
+직전 회귀(`ui/home_tab.py:540~542` 의 `st.markdown(..., unsafe_allow_html=True)` 잔재 → raw HTML 노출)의 근본 원인은 `ui/components.py` 의 빌더들이 4-space 들여쓰기로 시작하는 multi-line f-string을 반환했기 때문. 향후 같은 회귀를 막기 위해 빌더 출력 자체를 column 0 부터 시작하도록 정리.
+
+**한 일:**
+1. `ui/components.py` 의 `metric_card`, `status_card`, `action_card`, `step_item` 4개 빌더를 single-line concatenated f-string 방식으로 재작성. 조건부 fragment (`icon_html`, `caption_html`) 는 변수로 빼서 가독성 유지.
+2. CSS class / 속성 / 시그니처 / 동작은 모두 보존. `tests/test_ui_components.py` 회귀 없음.
+3. 카드 헬퍼 승격(`_dept_insight_card_html` 등 board_tab의 3종 → components) 은 검토 결과 **보류**. `news-card` class는 board/news/ingest/bookmarks 4곳에서 사용되지만 각 탭의 콘텐츠 구조(이미지+본문 / 메타+title+body / 단순 body)가 모두 달라 generic helper로 묶기엔 인자만 늘어남(YAGNI). 다른 탭에서 같은 디자인이 필요해질 때 일반화 검토.
+
+**검증:**
+- `python -m py_compile ui/components.py` OK
+- `pytest -q` 167 passed
+- 직접 영향 테스트 (`test_ui_components`, `test_html_rendering`, `test_home_trend_widget`, `test_board_flow`) 28/28 통과
+
+**다음 세션 TODO:**
+- 사이드 채팅 열림/닫힘 두 모드에서 홈 화면 카드 표시 수동 회귀 확인 (자동 가드는 `test_html_rendering` 이 차단 중).
+- (선택) 다른 탭에서 `news-card` 인라인 HTML을 패턴화해 board 카드 헬퍼와 함께 일반화할 만한 공통 슬롯 도출.
+
+---
+
 ## 2026-05-19 · fix — 홈 "자동화 기회 Top 5" raw HTML 노출 제거
 
 **브랜치:** `claude/review-insight-board-Ej5EO`
