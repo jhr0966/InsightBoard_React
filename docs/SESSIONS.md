@@ -5,7 +5,39 @@
 
 ---
 
-## 2026-05-19 · UX — 사이드 채팅 패널 기본 펼침 (옵션 A)
+## 2026-05-19 · 종합 마무리 — docs 업데이트 + invariants 보강
+
+**브랜치:** `chore-docs-and-final-tidyup`
+**카테고리:** `chore`
+**상태:** in-progress
+
+**배경:**
+이 세션에서 진행된 10개 PR(#36~#45) 의 결과를 `docs/UX_REDESIGN_PLAN.md` 와 `docs/INVARIANTS.md` 에 반영해 후속 작업자가 단일 문서에서 현재 상태를 파악 가능하게.
+
+**한 일:**
+1. `docs/UX_REDESIGN_PLAN.md` 에 §13 "2026-05-19 — UX 2차 개편 (Next-Best-Action / 채팅 통합 / 배포 지원)" 섹션 추가 — PR 표, 7단계 사용자 여정 마무리 상태, LLM 백엔드 우선순위, 누적 회귀 가드 수.
+2. `docs/INVARIANTS.md` 에 새 invariant 3건 추가:
+   - **I-13** — 사이드 채팅 패널은 `main_and_chat` 단일 진입점 (메인에 별도 chat_input 금지)
+   - **I-14** — LLM 설정은 `config._env_or_secret()` 경유 (env > st.secrets > 디폴트)
+   - **I-15** — `chat_log` 는 `chat_key` 별 파일, `_safe_key()` 로 traversal 차단
+3. 코드 미사용 import 감사 — `sola_tab.py` 등 정리 잔재 없음 확인.
+
+**검증:**
+- `pytest -q` 186 passed (회귀 없음, 코드 변경 없는 docs 위주)
+
+**다음 세션 TODO:**
+- 사용자 브라우저 수동 QA 7-시나리오
+- Streamlit Cloud 배포 후 실제 LLM 호출 확인
+
+---
+
+## 2026-05-19 · 배포 지원 — Streamlit Cloud Secrets fallback ✅ merged (#45)
+
+`config.py::_env_or_secret()` 헬퍼로 env 우선, `st.secrets` fallback. README "☁️ Streamlit Community Cloud 배포" 섹션. `.env` 추적 제거. 회귀 가드 6건.
+
+---
+
+## 2026-05-19 · UX — 사이드 채팅 패널 기본 펼침 (옵션 A) ✅ merged (#44)
 
 **브랜치:** `feat-chat-panel-default-open`
 **카테고리:** `feat`
