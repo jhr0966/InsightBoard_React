@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (scraping/enrich — `_strip_noise` AttributeError + 단일 페이지 실패 흡수)
+- `scraping/enrich.py::_strip_noise` 의 `tag.get("style", "")` 가 bs4 4.14+/py3.14 (Streamlit Cloud) 일부 환경에서 `AttributeError` 를 던지는 회귀 수정 — `getattr(tag, "attrs", None)` + `isinstance(dict)` 가드로 비-Tag 노드를 안전하게 스킵.
+- `fetch_article` 의 HTML 파싱 블록을 `try/except` 로 감싸 단일 페이지의 파싱 예외가 수집 batch 전체를 중단시키지 않도록 안전망 추가 (실패 시 `{"content": "", "image_url": ""}` 반환).
+- 회귀 가드 3건 — `tests/test_enrich.py`: `_strip_noise` 가 `attrs=None` Tag 를 건너뛰며 살아남는지, `fetch_article` 가 파싱 예외 시 빈 dict 를 반환하는지, `enrich_articles` 가 일부 기사 실패에도 나머지를 처리하는지.
+
 ### Added (Streamlit Cloud — Secrets fallback + 배포 가이드)
 - `config.py` 에 `_env_or_secret(name, default)` 헬퍼 추가 — 환경변수 우선, 없으면 `st.secrets` fallback. `llm_backend()` / `llm_base_url()` / `llm_api_key()` / `llm_model()` 모두 적용. Streamlit Community Cloud(`share.streamlit.io`) 배포 시 App settings → Secrets 의 TOML 값을 자동 인식.
 - `README.md` 에 "☁️ Streamlit Community Cloud 배포" 섹션 추가 — 키 발급 → Secrets TOML 입력 → Deploy 3-step. 이미 `.env` 가 history 에 있을 때 키 revoke + filter-repo 안내.

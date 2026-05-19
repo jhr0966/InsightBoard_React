@@ -221,3 +221,81 @@ def test_fetch_content_cleans_code_noise_and_keeps_full_body():
     assert "querySelector" not in text
     assert "adConfig" not in text
     assert "무단전재" not in text
+
+
+def test_strip_noise_survives_tag_without_attrs_dict():
+    """bs4 4.14+/py3.14 환경에서 find_all(style=True) 가 attrs dict 가 깨진 tag 를 내놓아도 죽지 않는다.
+
+    실제 bs4 soup 를 미리 깨면 앞단의 `soup.select(...)` 가 먼저 터지므로,
+    `_strip_noise` 가 의존하는 인터페이스(find_all/select/decompose)만 흉내내는
+    fake soup 로 방어 가드 자체를 검증한다.
+    """
+    class _BrokenTag:
+        attrs = None  # bs4 가 어떤 이유로 dict 가 아닌 값을 넣었다고 가정.
+        decomposed = False
+
+        def decompose(self):
+            self.decomposed = True
+
+    class _GoodHidden:
+        attrs = {"style": "display:none"}
+        decomposed = False
+
+        def decompose(self):
+            self.decomposed = True
+
+    broken = _BrokenTag()
+    hidden = _GoodHidden()
+
+    class _FakeSoup:
+        def find_all(self, *args, **kwargs):
+            if kwargs.get("style") is True:
+                return [broken, hidden]
+            return []  # comment 검색 케이스.
+
+        def select(self, *args, **kwargs):
+            return []
+
+    enrich._strip_noise(_FakeSoup())
+    # 깨진 tag 는 건드리지 않고 스킵, 정상 hidden tag 는 decompose 호출됨.
+    assert broken.decomposed is False
+    assert hidden.decomposed is True
+
+
+def test_fetch_article_returns_empty_on_parse_exception():
+    """파싱 단계가 예외를 던져도 fetch_article 은 빈 dict 를 반환해 batch 를 보호해야 한다."""
+    def _boom(*_a, **_kw):
+        raise AttributeError("boom")
+
+    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+         patch.object(enrich, "_strip_noise", _boom):
+        result = enrich.fetch_article("https://example.com/p")
+    assert result == {"content": "", "image_url": ""}
+
+
+def test_enrich_articles_skips_failing_article(monkeypatch):
+    """한 기사 파싱이 실패해도 나머지는 정상 수집되어야 한다 (수집 batch 전체 멈춤 방지)."""
+    cache.clear()
+    articles = [
+        {"link": "https://example.com/ok", "source": "naver"},
+        {"link": "https://example.com/bad", "source": "naver"},
+    ]
+    progress: list[int] = []
+
+    def _cb(done, total, _art):
+        progress.append(done)
+
+    real_fetch = enrich.fetch_article
+
+    def _maybe_fail(url, *, session=None):
+        if "bad" in url:
+            return {"content": "", "image_url": ""}
+        return real_fetch(url, session=session)
+
+    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+         patch.object(enrich, "fetch_article", _maybe_fail):
+        out = enrich.enrich_articles(articles, with_llm=False, progress_cb=_cb)
+
+    assert progress == [1, 2]
+    assert "비전 AI" in out[0]["content"]
+    assert out[1]["content"] == ""

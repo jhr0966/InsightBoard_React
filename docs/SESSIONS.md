@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-05-19 · 뉴스 수집 AttributeError 회귀 수정
+
+**브랜치:** `claude/review-insight-board-Ej5EO`
+**카테고리:** `fix`
+**상태:** in-progress
+
+**배경:**
+Streamlit Cloud(`share.streamlit.io`, Python 3.14 + bs4 4.14+) 에서 "데이터 관리 → 뉴스 수집" 실행 시
+`scraping/enrich.py:107 _strip_noise` 의 `tag.get("style", "")` 호출이 `AttributeError`
+(`self.attrs.get(key, default)` 단계) 로 떨어져 전체 수집 batch 가 중단됨.
+
+**한 일:**
+1. `_strip_noise` 를 `getattr(tag, "attrs", None)` + `isinstance(dict)` 가드로 방어 — bs4 환경 편차에 안전.
+2. `fetch_article` HTML 파싱 블록을 `try/except` 로 감싸 단일 페이지 실패 → 빈 dict 반환. batch 보호.
+3. 회귀 가드 3건 — `tests/test_enrich.py`:
+   - `test_strip_noise_survives_tag_without_attrs_dict`
+   - `test_fetch_article_returns_empty_on_parse_exception`
+   - `test_enrich_articles_skips_failing_article`
+
+**검증:**
+- `pytest -q tests/test_enrich.py` 통과
+- `pytest -q` 전체 통과
+- `grep on_click=` / `requests.get` 가드 0
+
+---
+
 ## 2026-05-19 · 종합 마무리 — docs 업데이트 + invariants 보강
 
 **브랜치:** `chore-docs-and-final-tidyup`
