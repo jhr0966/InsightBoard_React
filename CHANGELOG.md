@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Fixed (scraping — `&nbsp;` 잔재 / "No Image" 다발 회귀)
+- `scraping/enrich.py::_clean_article_text` 가 `html.unescape()` 를 두 번 호출해 RSS description 처럼 escape 된 HTML(예: `&amp;nbsp;`, `&lt;br&gt;`) 이 본문에 그대로 남던 회귀 해결.
+- `_extract_image_url` selector 강화 — `og:image:secure_url`, `twitter:image:src`, `link[rel=image_src]`, `meta[itemprop=image]` 추가. `picture > source[srcset]` 와 `srcset` / `data-lazy-src` / `data-thumb` 등 lazy-loading 속성도 우선 탐색하도록 `_img_src_from_attrs` 도입. 광고/스페이서 필터 키워드(`1x1`, `transparent`) 보강.
+
+### Changed (ingest — 수집 시 본문·이미지 자동 fetch)
+- `ui/ingest_tab.py::_run_collect` 가 수집 직후 `_hydrate_articles()` 로 `enrich_articles(with_llm=False)` 를 호출해 본문·대표 이미지를 함께 저장. 진행 바는 소스별 갱신, 결과 메시지에 본문 확보 건수 노출. LLM 키워드/요약은 기존 "Enrich" 버튼에 그대로 분리.
+- 회귀 가드: `tests/test_enrich.py` 에 `_clean_article_text` 의 entity decode + picture/srcset + lazy data-src 케이스 3건 추가.
+
 ### Changed (components — 빌더 출력 정리, markdown code-block 회귀 방어)
 - `ui/components.py` 의 `metric_card`, `status_card`, `action_card`, `step_item` 가 4-space 들여쓰기로 시작하는 multi-line f-string을 반환해 실수로 `st.markdown` 경로로 보내면 code block으로 해석되던 회귀 원인을 제거. 각 빌더가 컬럼 0부터 시작하는 single-line concatenated f-string을 반환하도록 정리. `metric_grid` / `action_grid` / `step_guide` 시그니처와 출력 클래스/속성은 그대로.
 

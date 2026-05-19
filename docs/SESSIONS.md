@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-05-19 · fix — 뉴스 수집 본문 `&nbsp;` 잔재 / 이미지 No Image 다발
+
+**브랜치:** `fix-news-cleanup-and-image`
+**카테고리:** `fix`
+**상태:** in-progress
+
+**배경:**
+뉴스 수집 직후 카드를 보면 (1) 본문 사이에 `&nbsp;` 등 HTML 엔티티가 그대로 노출되고 (2) 거의 모든 카드가 "No Image" 플레이스홀더로 표시됨. 원인 분석:
+
+1. `_clean_article_text` 가 `\xa0` (실제 non-breaking space character) 만 공백으로 치환할 뿐 `&nbsp;` 같은 entity literal 은 decode 하지 않음. RSS description 처럼 escape 된 HTML 이 들어오면 BeautifulSoup `get_text` 한 번으로는 `&nbsp;` 가 살아남음.
+2. `_run_collect` 가 RSS/검색 결과를 그대로 저장만 하고 본문 fetch (= `fetch_article`) 를 호출하지 않음. og:image / lazy-loading img 는 fetch 후에야 잡히므로 수집 직후 `image_url` 은 RSS description 안의 명시적 `<img>` 가 있을 때만 채워짐 → 대부분의 카드에서 누락.
+3. 추가로 `_extract_image_url` 이 `data-src`, `data-original`, `src` 3가지만 검사해 `data-lazy-src`, `srcset`, `<picture><source srcset>` 등 최신 lazy-load 패턴을 놓침.
+
+**한 일:**
+1. `scraping/enrich.py::_clean_article_text` 에 `html.unescape()` 2회 호출 추가 — `&amp;nbsp;` 같이 이중 escape 된 케이스까지 안전하게 풀림. nbsp/zero-width 처리는 그대로.
+2. `_IMAGE_SELECTORS` 에 `og:image:secure_url`, `twitter:image:src`, `link[rel=image_src]`, `meta[itemprop=image]` 추가. `_img_src_from_attrs()` 헬퍼 도입 — `data-src` → `data-original` → `data-lazy-src` → `data-lazy` → `data-image` → `data-thumb` → `data-url` → `src` 순으로 lazy 속성 탐색, `srcset` / `data-srcset` 의 첫 후보도 처리.
+3. `_extract_image_url` selector 에 `picture source` 추가, 광고/스페이서 필터에 `1x1`, `transparent` 추가.
+4. `ui/ingest_tab.py::_run_collect` 가 각 source 검색 직후 `_hydrate_articles()` 헬퍼로 `enrich_articles(with_llm=False)` 호출 → 본문·이미지를 같이 fetch 후 `save_articles`. 진행 바 텍스트가 소스별 `[done/total]` 로 갱신, 결과 메시지에 "본문 N건 확보" 노출. LLM 키워드/요약은 기존 "Enrich" 버튼에 그대로 분리.
+5. `tests/test_enrich.py` 에 회귀 가드 3건 추가 — `_clean_article_text` 의 entity decode, `picture source srcset` 인식, `data-src` lazy-load 인식.
+
+**검증:**
+- `python -m py_compile scraping/enrich.py ui/ingest_tab.py` OK
+- 금지 패턴 (`on_click`, `requests.{get,post,Session}`) 검사 0건
+- `pytest -q` 170 passed (이전 167 → 170, 회귀 가드 3건 추가)
+
+**다음 세션 TODO:**
+- (선택) `scripts/daily_scrape.py` / `scraping/run_daily.py` 의 cron 흐름에도 본문 fetch 자동 포함 여부 검토. 현재는 UI 수집만 보강됨.
+- 수집 시간이 늘었으니 max_results 디폴트(10) 조정 필요한지 사용 후 판단.
+- naver/google 스크래퍼 자체의 image_url 추출도 lazy 속성 패턴으로 일반화하면 fetch 실패 시 대안 확보 가능.
+
+---
+
 ## 2026-05-19 · refactor — components 빌더 출력 정리 + 카드 헬퍼 승격 판단
 
 **브랜치:** `claude/review-insight-board-Ej5EO`

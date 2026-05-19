@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import html as _html
 import random
 import re
 import time
@@ -65,9 +66,33 @@ _BOILERPLATE_PATTERNS = (
 _IMAGE_SELECTORS = (
     "meta[property='og:image']",
     "meta[property='og:image:url']",
+    "meta[property='og:image:secure_url']",
     "meta[name='twitter:image']",
+    "meta[name='twitter:image:src']",
     "meta[name='thumbnail']",
+    "meta[itemprop='image']",
+    "link[rel='image_src']",
 )
+
+_IMAGE_ATTR_ORDER = (
+    "data-src", "data-original", "data-lazy-src", "data-lazy",
+    "data-image", "data-thumb", "data-url", "src",
+)
+
+
+def _img_src_from_attrs(tag) -> str:
+    """img/picture 태그에서 lazy-loading 속성을 우선 탐색해 src 반환."""
+    for attr in _IMAGE_ATTR_ORDER:
+        val = (tag.get(attr) or "").strip()
+        if val:
+            return val
+    # srcset 의 첫 후보 URL.
+    srcset = (tag.get("srcset") or tag.get("data-srcset") or "").strip()
+    if srcset:
+        first = srcset.split(",")[0].strip().split(" ")[0].strip()
+        if first:
+            return first
+    return ""
 
 
 def _strip_noise(soup) -> None:
@@ -105,7 +130,11 @@ def _clean_article_text(raw_text: str) -> str:
     """Normalize article text and drop code/boilerplate fragments."""
     if not raw_text:
         return ""
-    text = raw_text.replace("\xa0", " ").replace("\u200b", " ")
+    # \uc77c\ubd80 RSS/description \ubcf8\ubb38\uc740 \ud55c \ubc88 escape \ub41c HTML(\uc608: `&amp;nbsp;`, `&lt;p&gt;`)
+    # \uc774 \ub4e4\uc5b4\uc640 BeautifulSoup get_text \ub9cc\uc73c\ub85c\ub294 `&nbsp;` \uac19\uc740 \uc5d4\ud2f0\ud2f0\uac00 \uadf8\ub300\ub85c \ub0a8\ub294\ub2e4.
+    # \ub450 \ubc88\uae4c\uc9c0 unescape \ud55c \ub4a4 nbsp/zero-width \ubb38\uc790\ub97c \uacf5\ubc31\uc73c\ub85c \uce58\ud658\ud55c\ub2e4.
+    text = _html.unescape(_html.unescape(raw_text))
+    text = text.replace("\xa0", " ").replace("\u200b", " ")
     text = re.sub(r"[ \t\r\f\v]+", " ", text)
     lines: list[str] = []
     seen: set[str] = set()
@@ -129,19 +158,31 @@ def _text_from_tag(tag) -> str:
 
 
 def _extract_image_url(soup, base_url: str) -> str:
-    """Return the likely representative article image URL."""
+    """Return the likely representative article image URL.
+
+    우선순위: og:image / twitter:image / link[rel=image_src] 메타 →
+    article/main 내부 img → picture > source[srcset] → 그 외 본문 img.
+    각 후보에서 lazy-loading 속성(`data-src`, `data-lazy-src`, `srcset` 등)도 함께 검사.
+    """
     for sel in _IMAGE_SELECTORS:
         tag = soup.select_one(sel)
-        val = tag.get("content", "").strip() if tag else ""
+        if not tag:
+            continue
+        val = (tag.get("content") or tag.get("href") or "").strip()
         if val:
             return urljoin(base_url, val)
 
-    for img in soup.select("article img, main img, div[itemprop='articleBody'] img, img"):
-        src = (img.get("data-src") or img.get("data-original") or img.get("src") or "").strip()
+    bad_fragments = ("spacer", "blank", "logo", "icon", "ad_", "/ad/", "1x1", "transparent")
+    img_selectors = (
+        "article img", "main img", "div[itemprop='articleBody'] img",
+        "article picture source", "main picture source", "picture source", "img",
+    )
+    for img in soup.select(", ".join(img_selectors)):
+        src = _img_src_from_attrs(img)
         if not src:
             continue
         lower = src.lower()
-        if any(bad in lower for bad in ("spacer", "blank", "logo", "icon", "ad_", "/ad/")):
+        if any(bad in lower for bad in bad_fragments):
             continue
         return urljoin(base_url, src)
     return ""
