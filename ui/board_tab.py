@@ -288,25 +288,44 @@ def _render_trends(payload: _TrendsPayload) -> None:
 
 
 def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
-    st.caption("첫 호출만 LLM 사용, 동일 (부서·뉴스셋) 조합은 캐시에서 즉시 응답합니다.")
+    """부서별 한 줄 LLM 인사이트 — 자동 표시 (캐시 hit 시 즉시, miss 시 spinner).
 
-    if st.button("AI 인사이트 생성·갱신", key="board_insight_btn"):
-        st.session_state["_do_dept_insight"] = True
-
-    if st.session_state.pop("_do_dept_insight", False):
-        st.session_state["board_show_insight"] = True
-        st.rerun()
-
-    if not st.session_state.get("board_show_insight", False):
-        st.info("위 버튼을 누르면 부서별 한 줄 인사이트가 생성됩니다.")
+    이전엔 'AI 인사이트 생성·갱신' 수동 버튼이 필요했지만 캐시 키가
+    (dept, titles head(8), llm_model) 기준이라 같은 뉴스셋에 두 번째부터는
+    LLM 비용이 0. 자동 표시로 전환하고 새로고침은 별도 버튼만 남긴다.
+    """
+    if not llm_ready():
+        render_html(
+            status_card(
+                "LLM 미설정 — 부서 인사이트는 LLM 응답을 사용합니다",
+                "다음 → 환경변수에 LLM 키를 설정하면 이 자리에 부서별 한 줄 해석이 자동으로 표시됩니다.",
+                status="warn",
+                icon="🤖",
+            ),
+            unsafe_allow_html=True,
+        )
         return
+
+    refresh_col, caption_col = st.columns([1, 4])
+    with refresh_col:
+        refresh = st.button(
+            "🔄 다시 생성", key="board_insight_refresh",
+            help="현재 부서별 인사이트를 LLM 캐시 무시하고 다시 요청합니다.",
+            use_container_width=True,
+        )
+    with caption_col:
+        st.caption(
+            "처음 진입한 부서만 LLM 을 호출하고 이후엔 캐시에서 즉시 응답합니다. "
+            "새 뉴스가 들어오면 자동으로 새 결과가 나옵니다."
+        )
 
     persona: Persona = st.session_state.get("persona") or Persona()
     cols = st.columns(2)
     for i, dept in enumerate(_ordered_depts(roadmap, persona)):
         with cols[i % 2]:
             border, badge = _persona_emphasis(persona, dept)
-            text = insight_for_dept(dept, news)
+            with st.spinner(f"'{dept}' 인사이트 생성 중…"):
+                text = insight_for_dept(dept, news, force=refresh)
             render_html(
                 _dept_insight_card_html(dept, text, border=border, badge=badge),
                 unsafe_allow_html=True,
@@ -608,18 +627,19 @@ def render() -> None:
                 return
 
             render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
-            section_label("트렌드")
             assert payload is not None  # news 비어있지 않으므로 항상 생성됨
-            _render_trends(payload)
 
-            render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
-            section_label("로드맵 연결 · 자동화 기회")
-            _render_opportunity(news, roadmap, cells)
-
-            render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
-            section_label("부서별 AI 인사이트")
-            _render_dept_insights(news, roadmap)
-
-            render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
-            section_label("계층 필터 · 뉴스 매칭")
-            _render_matches(news, roadmap)
+            tab_trend, tab_opp, tab_insight, tab_match = st.tabs([
+                "📈 트렌드",
+                "⚙️ 자동화 기회",
+                "🤖 부서 인사이트",
+                "🔗 계층 매칭",
+            ])
+            with tab_trend:
+                _render_trends(payload)
+            with tab_opp:
+                _render_opportunity(news, roadmap, cells)
+            with tab_insight:
+                _render_dept_insights(news, roadmap)
+            with tab_match:
+                _render_matches(news, roadmap)
