@@ -7,6 +7,31 @@ from sola.client import chat
 from sola.prompts import SYSTEM_PROPOSAL_REFINE
 
 
+def build_refine_messages(
+    current_md: str,
+    instruction: str,
+    *,
+    persona: Persona | None = None,
+) -> list[dict]:
+    """`refine_proposal` 이 LLM 에 전달할 messages.
+
+    별도 함수로 분리한 이유: 호출자(`ui/proposal_workbench.py::_do_refine`)가
+    LLM 미설정 시 좌측 본문을 덮어쓰지 않고 채팅에 미리보기를 보여줄 수 있도록
+    동일 컨텍스트를 재사용해야 함.
+    """
+    persona_block = persona_ctx.system_block(persona) if persona else ""
+    user = (
+        "## [현재 제안서]\n"
+        f"{current_md.strip()}\n\n"
+        "## [수정 지시]\n"
+        f"{instruction.strip()}"
+    )
+    return [
+        {"role": "system", "content": SYSTEM_PROPOSAL_REFINE + persona_block},
+        {"role": "user", "content": user},
+    ]
+
+
 def refine_proposal(
     current_md: str,
     instruction: str,
@@ -21,19 +46,10 @@ def refine_proposal(
     - persona: 사용자 페르소나 (있으면 시스템 프롬프트에 자동 주입).
 
     프롬프트 규칙상 출력은 완성된 제안서 전체 MD 만 와야 한다. 호출자는
-    이를 그대로 작업장 활성 MD 로 교체하면 된다.
+    이를 그대로 작업장 활성 MD 로 교체하면 된다. LLM 미설정 시
+    `LLMNotConfigured` 를 그대로 전파해 호출자가 좌측 본문을 보호한다.
     """
-    persona_block = persona_ctx.system_block(persona) if persona else ""
-    user = (
-        "## [현재 제안서]\n"
-        f"{current_md.strip()}\n\n"
-        "## [수정 지시]\n"
-        f"{instruction.strip()}"
-    )
     return chat(
-        messages=[
-            {"role": "system", "content": SYSTEM_PROPOSAL_REFINE + persona_block},
-            {"role": "user", "content": user},
-        ],
+        messages=build_refine_messages(current_md, instruction, persona=persona),
         temperature=temperature,
     )

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (LLM 미설정 — 입력 컨텍스트 미리보기)
+- `sola/preview.py` 신규 — `format_messages_preview(messages, *, header, footer_hint)` 헬퍼. system/user/assistant 역할별로 코드블록(`text`)에 본문을 그대로 보존해 마크다운 렌더에 안전.
+- `sola/summarize.py::summarize_news`, `sola/propose.py::propose_for_task`, `sola/insight.py::insight_for_dept` — LLM 미설정 시 빈 에러 메시지 대신 호출에 사용될 입력 messages 를 그대로 노출. 캐시에 미리보기는 저장하지 않음 (키 세팅 후 재호출하면 실제 응답으로 대체).
+- `ui/layout.py::render_chat_panel`, `ui/proposal_workbench.py::_do_discuss`, `::_do_refine` — 채팅·작업장에서도 동일 패턴. 특히 `_do_refine` 은 좌측 본문을 덮어쓰지 않고 채팅에 미리보기만 노출 (`refine.build_refine_messages` 로 동일 컨텍스트 재사용).
+- 회귀 가드 8건 — `tests/test_preview.py`: 역할별 출력, custom header, summarize/propose/insight 미리보기, 캐시 미오염, refine 좌측 본문 보호, build_refine_messages 동등성.
+
 ### Fixed (scraping/enrich — `_strip_noise` AttributeError + 단일 페이지 실패 흡수)
 - `scraping/enrich.py::_strip_noise` 의 `tag.get("style", "")` 가 bs4 4.14+/py3.14 (Streamlit Cloud) 일부 환경에서 `AttributeError` 를 던지는 회귀 수정 — `getattr(tag, "attrs", None)` + `isinstance(dict)` 가드로 비-Tag 노드를 안전하게 스킵.
 - `fetch_article` 의 HTML 파싱 블록을 `try/except` 로 감싸 단일 페이지의 파싱 예외가 수집 batch 전체를 중단시키지 않도록 안전망 추가 (실패 시 `{"content": "", "image_url": ""}` 반환).

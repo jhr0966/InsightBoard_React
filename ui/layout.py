@@ -25,6 +25,7 @@ from ui.components import render_html
 
 from persona.schema import Persona
 from sola.client import LLMNotConfigured, chat
+from sola.preview import format_messages_preview
 from sola.side_context import build_side_system
 
 
@@ -161,7 +162,10 @@ def render_chat_panel(
             with st.spinner("LLM 호출 중…"):
                 reply = chat(messages=messages, temperature=0.3)
         except LLMNotConfigured as e:
-            reply = f"⚠️ LLM 미설정: {e}"
+            reply = format_messages_preview(
+                messages,
+                header=f"⚠️ LLM 미설정 ({e}) — 채팅 호출 시 전달될 입력 컨텍스트",
+            )
         except Exception as e:  # noqa: BLE001
             reply = f"⚠️ 호출 실패: {e}"
         history.append({"role": "assistant", "content": reply})
