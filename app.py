@@ -1,12 +1,12 @@
 """제조기술 로드맵 인사이트보드 — 업무 흐름형 Streamlit 진입점.
 
-UX_REDESIGN_PLAN Phase 1: 3영역(홈/탐색/작업실)을 아래 5개 업무 메뉴로
-재구성한다.
+5개 업무 메뉴 (UX Phase 3 에서 산출물 보관함에 섞여 있던 '뉴스 콘텐츠' 를
+데이터 관리 아래로 이동해 IA 단일화):
   1. 오늘의 보드      — 매일 확인하는 맞춤 인사이트
-  2. 데이터 관리      — 뉴스 수집·Enrich + 로드맵 업로드
-  3. 인사이트 분석    — 트렌드·매칭·자동화 기회
+  2. 데이터 관리      — 뉴스 수집 + 뉴스 둘러보기 + 로드맵 업로드
+  3. 인사이트 분석    — 트렌드·매칭·자동화 기회 (탭 분할)
   4. SOLA 작업실      — 요약·과제·제안서 초안
-  5. 산출물 보관함    — 뉴스 콘텐츠·북마크
+  5. 산출물 보관함    — 북마크·채택 의사결정 (단일 페이지)
 """
 from __future__ import annotations
 
@@ -55,9 +55,13 @@ elif area == "📊 오늘의 보드":
 elif area == "🧱 데이터 관리":
     data_health.render()
     st.markdown("<div style='height:0.8rem;'></div>", unsafe_allow_html=True)
-    tab_collect, tab_roadmap = st.tabs(["1. 뉴스 수집·Enrich", "2. 로드맵 업로드"])
+    tab_collect, tab_browse, tab_roadmap = st.tabs([
+        "1. 뉴스 수집", "2. 뉴스 둘러보기", "3. 로드맵 업로드",
+    ])
     with tab_collect:
         ingest_tab.render()
+    with tab_browse:
+        news_tab.render()
     with tab_roadmap:
         roadmap_tab.render()
 elif area == "🔎 인사이트 분석":
@@ -69,8 +73,4 @@ elif area == "🤖 SOLA 작업실":
     with tab_wb:
         proposal_workbench.render()
 else:
-    tab_bm, tab_news = st.tabs(["📌 북마크·채택", "뉴스 콘텐츠"])
-    with tab_bm:
-        bookmarks_tab.render()
-    with tab_news:
-        news_tab.render()
+    bookmarks_tab.render()

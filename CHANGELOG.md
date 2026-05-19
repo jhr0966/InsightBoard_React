@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UX Phase 3 — IA 정리 + 인사이트 탭화 + 부서 인사이트 자동 표시)
+- `app.py` 메뉴 재구성: `news_tab` 을 산출물 보관함 → 데이터 관리로 이동. 데이터 관리는 `[1. 뉴스 수집, 2. 뉴스 둘러보기, 3. 로드맵 업로드]` 3-탭, 산출물 보관함은 단일 페이지 (북마크만).
+- `ui/sidebar.py` `_AREA_DESCRIPTIONS` 업데이트 — "수집 · 본문 확보" → "수집 · 둘러보기 · 로드맵", "북마크 · 재사용" → "북마크 · 채택".
+- `ui/board_tab.py` 인사이트 분석 페이지를 `st.tabs(["📈 트렌드", "⚙️ 자동화 기회", "🤖 부서 인사이트", "🔗 계층 매칭"])` 로 분할 — 6섹션 스크롤 피로 해소. 메트릭/흐름 가이드는 탭 위에 그대로.
+- `_render_dept_insights` 자동 표시로 전환 — 수동 "AI 인사이트 생성·갱신" 버튼 제거. LLM 미설정 시 status_card 안내. "🔄 다시 생성" 버튼은 캐시 무시 강제 갱신용으로 분리. 부서별 `st.spinner` 로 진행 표시.
+
 ### Changed (UX Phase 2 — 온보딩 + 페르소나 로드맵 의존성 해결)
 - `ui/home_tab.py` 에 `_onboarding_steps_html()` 추가 — 페르소나·로드맵·뉴스 중 하나라도 비어있으면 홈 상단에 3단계 시작 가이드(step_guide)가 자동 표시되고 각 단계가 완료되면 active(녹색) 토글. `_persona_welcome` 의 미설정 카피를 "처음 시작하시나요?" 환영 카드로 강화.
 - `ui/persona_page.py` 가 로드맵이 비어있을 때 selectbox 대신 `text_input` 으로 자동 fallback (부서·팀). 관심 공정도 옵션이 없을 때 안내 caption + 기존 값 유지. 상단에는 "로드맵 업로드 시 드롭다운으로 바뀝니다" 안내.
