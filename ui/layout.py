@@ -179,6 +179,7 @@ def main_and_chat(
     placeholder: str = "이 화면에 대해 물어보세요…",
     hint: str = "",
     main_chat_ratio: tuple[int, int] = (3, 2),
+    default_open: bool = True,
 ) -> Iterator[tuple]:
     """컨텍스트 매니저 — 메인 영역 yield + 채팅 패널 자동 렌더.
 
@@ -190,9 +191,13 @@ def main_and_chat(
 
     `page_context_fn` 은 호출 시점에 평가돼 LLM 시스템 컨텍스트에 주입된다.
     토글이 꺼진 상태면 context_fn 은 호출되지 않음 (lazy).
+
+    `default_open=True` (디폴트) — 첫 진입에서 채팅 패널이 펼쳐진 상태로 시작.
+    사용자가 헤더 토글로 닫으면 `st.session_state[_chat_open_{key}] = False` 가
+    저장되어 다음 진입에서도 그 선호가 보존된다.
     """
     open_key = f"_chat_open_{chat_key}"
-    is_open = st.session_state.get(open_key, False)
+    is_open = st.session_state.get(open_key, default_open)
     main_col, chat_col = split_with_chat(is_open, main_chat_ratio=main_chat_ratio)
     try:
         yield main_col
