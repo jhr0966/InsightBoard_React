@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import html
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import pandas as pd
 import streamlit as st
@@ -15,7 +17,14 @@ from store import bookmarks, trends
 from store.bookmarks import Bookmark
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
-from ui.components import render_html, metric_card, metric_grid, status_card, step_guide, step_item
+from ui.components import (
+    metric_card,
+    metric_grid,
+    render_html,
+    status_card,
+    step_guide,
+    step_item,
+)
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -27,45 +36,66 @@ _PERIOD_OPTIONS = {
 }
 
 
-def _compute_trends_payload(news_today: pd.DataFrame):
-    """기간 라디오 선택값을 읽어 (period_label, days, period_df, vol_df, emergence) 반환.
+# ---------- Data payloads ----------
 
-    UI 와 page_context 양쪽에서 같은 계산을 재사용.
+
+@dataclass(frozen=True)
+class _TrendsPayload:
+    period_label: str
+    days: int
+    period_df: pd.DataFrame
+    vol_df: pd.DataFrame
+    emergence: dict[str, pd.DataFrame]
+
+
+def _empty_emergence() -> dict[str, pd.DataFrame]:
+    return {
+        "new": pd.DataFrame(columns=["keyword", "count"]),
+        "gone": pd.DataFrame(columns=["keyword", "count"]),
+        "rising": pd.DataFrame(columns=["keyword", "today", "base", "delta"]),
+    }
+
+
+def _compute_trends_payload(news_today: pd.DataFrame) -> _TrendsPayload:
+    """기간 라디오 선택값을 읽어 트렌드 페이로드를 반환.
+
+    UI와 page_context 양쪽에서 같은 결과를 재사용하기 위해 한 곳에서만 계산한다.
     """
     period_label = st.session_state.get("board_period", "오늘")
     days = _PERIOD_OPTIONS.get(period_label, 1)
     period_df = news_today if days == 1 else load_news_for_days(days)
     vol_df = trends.daily_volume(period_df, days=days)
-
+    emergence = _empty_emergence()
     if days > 1 and not period_df.empty:
-        from datetime import datetime, timezone
-
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         is_today = period_df.get("date", pd.Series("", index=period_df.index)).astype(str).eq(today_str)
         today_only = period_df[is_today]
         base_only = period_df[~is_today]
         if not today_only.empty and not base_only.empty:
             emergence = trends.keyword_emergence(today_only, base_only, top_n=8)
-        else:
-            emergence = {
-                "new": pd.DataFrame(columns=["keyword", "count"]),
-                "gone": pd.DataFrame(columns=["keyword", "count"]),
-                "rising": pd.DataFrame(columns=["keyword", "today", "base", "delta"]),
-            }
-    else:
-        emergence = {
-            "new": pd.DataFrame(columns=["keyword", "count"]),
-            "gone": pd.DataFrame(columns=["keyword", "count"]),
-            "rising": pd.DataFrame(columns=["keyword", "today", "base", "delta"]),
-        }
-    return period_label, days, period_df, vol_df, emergence
+    return _TrendsPayload(period_label, days, period_df, vol_df, emergence)
+
+
+# ---------- Small helpers ----------
+
+
+def _persona_emphasis(persona: Persona, dept: str) -> tuple[str, str]:
+    """페르소나 부서면 강조 border + 🎯 뱃지."""
+    is_mine = bool(persona.dept and dept == persona.dept)
+    border = "border: 2px solid var(--accent);" if is_mine else ""
+    badge = "🎯 " if is_mine else ""
+    return border, badge
+
+
+def _ordered_depts(roadmap: pd.DataFrame, persona: Persona) -> list[str]:
+    depts = sorted(roadmap["dept"].dropna().astype(str).unique().tolist())
+    if persona.dept and persona.dept in depts:
+        depts = [persona.dept] + [d for d in depts if d != persona.dept]
+    return depts
 
 
 def _insight_flow_html(*, news_ready: bool, roadmap_ready: bool, has_opportunities: bool) -> str:
-    """Render the Phase 5 analysis workflow guide.
-
-    Flow: trend scan → roadmap connection → opportunity selection → SOLA proposal.
-    """
+    """Phase 5 분석 흐름 가이드: 트렌드 → 로드맵 연결 → 기회 선별 → SOLA 제안."""
     return step_guide([
         step_item(1, "트렌드 확인", "기간별 기사량·새 키워드로 변화 신호를 확인", active=news_ready),
         step_item(2, "로드맵 연결", "부서·공정 계층 필터로 관련 작업 범위를 좁힘", active=roadmap_ready),
@@ -89,12 +119,10 @@ def _opportunity_to_sola_state(row: pd.Series | dict) -> dict[str, str]:
 
 
 def _apply_opportunity_to_sola(row: pd.Series | dict) -> None:
-    """Prime SOLA proposal filters from a selected opportunity cell."""
     st.session_state.update(_opportunity_to_sola_state(row))
 
 
 def _opportunity_flow_context(cells: pd.DataFrame) -> str:
-    """Short context block describing the execution candidates."""
     if cells.empty:
         return "자동화 기회 후보: 없음"
     lines = ["자동화 기회 후보(실행 전환 대상):"]
@@ -106,26 +134,71 @@ def _opportunity_flow_context(cells: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def _render_trends(news_today: pd.DataFrame) -> None:
-    """다중 일자 트렌드. 라디오로 기간 선택, 일자별 라인 + 키워드 emergence + LLM brief."""
-    period_label = st.radio(
-        "기간",
-        list(_PERIOD_OPTIONS.keys()),
-        horizontal=True,
-        key="board_period",
-        label_visibility="collapsed",
-    )
-    _, days, period_df, vol_df, emergence = _compute_trends_payload(news_today)
+# ---------- Card HTML ----------
 
-    # ── 🧠 SOLA 의 한 줄 (LLM 해석 카드)
-    brief_cache_key = f"_brief_text_{period_label}"
+
+def _dept_insight_card_html(dept: str, text: str, *, border: str, badge: str) -> str:
+    return (
+        f'<div class="news-card" style="min-height:auto; {border}">'
+        f'<div class="card-meta">'
+        f'<span class="card-press">{badge}{html.escape(dept)}</span>'
+        f'</div>'
+        f'<div class="card-body" style="-webkit-line-clamp: 6;">{html.escape(text)}</div>'
+        f'</div>'
+    )
+
+
+def _opportunity_card_html(
+    row: pd.Series, *, border: str, badge: str, comment_html: str
+) -> str:
+    return (
+        f'<div class="news-card" style="min-height:auto; {border}">'
+        f'<div class="card-meta">'
+        f'<span class="card-press">{badge}{html.escape(str(row["dept"]))}</span>'
+        f'<span class="card-date">{html.escape(str(row["lv3"]))}</span>'
+        f'<span class="card-num">score {row["cell_score"]:.1f}</span>'
+        f'</div>'
+        f'<div class="card-title" style="font-size:0.9rem;">'
+        f'{html.escape(str(row["sample_tasks"]))}'
+        f'</div>'
+        f'{comment_html}'
+        f'<div class="card-body" style="-webkit-line-clamp:3;">'
+        f'관련 뉴스: {html.escape(str(row["sample_news"]))}'
+        f'</div>'
+        f'</div>'
+    )
+
+
+def _match_card_html(row: pd.Series) -> str:
+    return (
+        f'<div class="news-card" style="min-height:auto;">'
+        f'<div class="card-meta">'
+        f'<span class="card-press">{html.escape(str(row["dept"]))}</span>'
+        f'<span class="card-date">'
+        f'{html.escape(str(row["lv3"]))} · {html.escape(str(row["task"]))}'
+        f'</span>'
+        f'<span class="card-num">score {row["score"]:.1f}</span>'
+        f'</div>'
+        f'<div class="card-title">{html.escape(str(row["news_title"]))}</div>'
+        f'<div class="card-link">'
+        f'<a href="{html.escape(str(row["link"]))}" target="_blank">원문 보기 →</a>'
+        f'</div>'
+        f'</div>'
+    )
+
+
+# ---------- Trend sub-renderers ----------
+
+
+def _render_trend_brief(payload: _TrendsPayload) -> None:
+    brief_cache_key = f"_brief_text_{payload.period_label}"
     cached_brief = st.session_state.get(brief_cache_key, "")
     bc1, bc2 = st.columns([5, 1])
     with bc1:
         render_html(
             f'<div class="card" style="margin-bottom:0.6rem;">'
             f'<div class="card-meta"><span class="card-press">🧠 SOLA 한 줄</span>'
-            f'<span class="card-date">{html.escape(period_label)}</span></div>'
+            f'<span class="card-date">{html.escape(payload.period_label)}</span></div>'
             f'<div class="card-body" style="-webkit-line-clamp:4;font-size:0.92rem;">'
             f'{html.escape(cached_brief or "버튼을 눌러 LLM 해석을 생성하세요.")}</div>'
             f'</div>',
@@ -136,59 +209,82 @@ def _render_trends(news_today: pd.DataFrame) -> None:
             "갱신",
             key="_board_brief_btn",
             use_container_width=True,
-            disabled=period_df.empty,
+            disabled=payload.period_df.empty,
         ):
             st.session_state["_do_board_brief"] = True
 
     if st.session_state.pop("_do_board_brief", False):
         with st.spinner("LLM 호출 중…"):
             st.session_state[brief_cache_key] = trend_brief.brief(
-                period_label=period_label, vol_df=vol_df, emergence=emergence,
+                period_label=payload.period_label,
+                vol_df=payload.vol_df,
+                emergence=payload.emergence,
             )
         st.rerun()
 
-    st.caption(f"{period_label} · 기사 {len(period_df):,}건")
 
+def _render_trend_charts(payload: _TrendsPayload) -> None:
     col1, col2 = st.columns([2, 1])
     with col1:
-        if vol_df["count"].sum() == 0:
+        if payload.vol_df["count"].sum() == 0:
             st.caption("(데이터 없음)")
-        elif days == 1:
-            st.bar_chart(vol_df.set_index("date"))
+        elif payload.days == 1:
+            st.bar_chart(payload.vol_df.set_index("date"))
         else:
-            st.line_chart(vol_df.set_index("date"))
+            st.line_chart(payload.vol_df.set_index("date"))
     with col2:
         st.caption("소스별 분포")
-        src_df = trends.by_source(period_df)
+        src_df = trends.by_source(payload.period_df)
         if src_df.empty:
             st.caption("(데이터 없음)")
         else:
             st.dataframe(src_df, use_container_width=True, hide_index=True)
 
-    # 키워드 emergence — days > 1 + 데이터 있을 때만 표시
-    if days > 1 and (not emergence["new"].empty or not emergence["rising"].empty or not emergence["gone"].empty):
-        ec1, ec2, ec3 = st.columns(3)
-        with ec1:
-            st.markdown("**🆕 새 키워드**")
-            if emergence["new"].empty:
-                st.caption("(없음)")
-            else:
-                st.dataframe(emergence["new"], use_container_width=True, hide_index=True)
-        with ec2:
-            st.markdown("**📈 상승 키워드**")
-            if emergence["rising"].empty:
-                st.caption("(없음)")
-            else:
-                st.dataframe(
-                    emergence["rising"][["keyword", "today", "delta"]],
-                    use_container_width=True, hide_index=True,
-                )
-        with ec3:
-            st.markdown("**📉 사라진 키워드**")
-            if emergence["gone"].empty:
-                st.caption("(없음)")
-            else:
-                st.dataframe(emergence["gone"], use_container_width=True, hide_index=True)
+
+def _render_emergence(emergence: dict[str, pd.DataFrame]) -> None:
+    if emergence["new"].empty and emergence["rising"].empty and emergence["gone"].empty:
+        return
+    ec1, ec2, ec3 = st.columns(3)
+    with ec1:
+        st.markdown("**🆕 새 키워드**")
+        if emergence["new"].empty:
+            st.caption("(없음)")
+        else:
+            st.dataframe(emergence["new"], use_container_width=True, hide_index=True)
+    with ec2:
+        st.markdown("**📈 상승 키워드**")
+        if emergence["rising"].empty:
+            st.caption("(없음)")
+        else:
+            st.dataframe(
+                emergence["rising"][["keyword", "today", "delta"]],
+                use_container_width=True, hide_index=True,
+            )
+    with ec3:
+        st.markdown("**📉 사라진 키워드**")
+        if emergence["gone"].empty:
+            st.caption("(없음)")
+        else:
+            st.dataframe(emergence["gone"], use_container_width=True, hide_index=True)
+
+
+def _render_trends(payload: _TrendsPayload) -> None:
+    """다중 일자 트렌드. 라디오로 기간 선택, 차트 + 키워드 emergence + LLM brief."""
+    st.radio(
+        "기간",
+        list(_PERIOD_OPTIONS.keys()),
+        horizontal=True,
+        key="board_period",
+        label_visibility="collapsed",
+    )
+    _render_trend_brief(payload)
+    st.caption(f"{payload.period_label} · 기사 {len(payload.period_df):,}건")
+    _render_trend_charts(payload)
+    if payload.days > 1:
+        _render_emergence(payload.emergence)
+
+
+# ---------- Dept insights ----------
 
 
 def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
@@ -197,45 +293,88 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
     if st.button("AI 인사이트 생성·갱신", key="board_insight_btn"):
         st.session_state["_do_dept_insight"] = True
 
-    show = st.session_state.get("board_show_insight", False)
     if st.session_state.pop("_do_dept_insight", False):
         st.session_state["board_show_insight"] = True
-        show = True
         st.rerun()
 
-    if not show:
+    if not st.session_state.get("board_show_insight", False):
         st.info("위 버튼을 누르면 부서별 한 줄 인사이트가 생성됩니다.")
         return
 
     persona: Persona = st.session_state.get("persona") or Persona()
-    depts_raw = sorted(roadmap["dept"].dropna().astype(str).unique().tolist())
-    # 사용자 부서를 맨 앞으로
-    if persona.dept and persona.dept in depts_raw:
-        depts = [persona.dept] + [d for d in depts_raw if d != persona.dept]
-    else:
-        depts = depts_raw
-
     cols = st.columns(2)
-    for i, dept in enumerate(depts):
+    for i, dept in enumerate(_ordered_depts(roadmap, persona)):
         with cols[i % 2]:
-            is_mine = persona.dept and dept == persona.dept
-            border = "border: 2px solid var(--accent);" if is_mine else ""
-            badge = "🎯 " if is_mine else ""
+            border, badge = _persona_emphasis(persona, dept)
             text = insight_for_dept(dept, news)
             render_html(
-                f"""
-                <div class="news-card" style="min-height:auto; {border}">
-                    <div class="card-meta">
-                        <span class="card-press">{badge}{html.escape(dept)}</span>
-                    </div>
-                    <div class="card-body" style="-webkit-line-clamp: 6;">{html.escape(text)}</div>
-                </div>
-                """,
+                _dept_insight_card_html(dept, text, border=border, badge=badge),
                 unsafe_allow_html=True,
             )
 
 
-def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.DataFrame | None = None) -> None:
+# ---------- Opportunity ----------
+
+
+def _render_opportunity_cards(
+    cells: pd.DataFrame, persona: Persona, use_llm_comment: bool
+) -> None:
+    existing_ids = {b.id for b in bookmarks.list_all(type_="opportunity")}
+    cols = st.columns(2)
+    for i, (_, row) in enumerate(cells.iterrows()):
+        bm_id = bookmarks.make_id("opportunity", str(row["dept"]), str(row["lv3"]))
+        with cols[i % 2]:
+            border, badge = _persona_emphasis(persona, str(row["dept"]))
+            comment_html = ""
+            if use_llm_comment:
+                c = opportunity.llm_commentary(
+                    str(row["dept"]), str(row["lv3"]),
+                    str(row["sample_news"]), str(row["sample_tasks"]),
+                )
+                if c:
+                    comment_html = (
+                        f'<div class="card-body" style="-webkit-line-clamp:5;">'
+                        f'{html.escape(c)}</div>'
+                    )
+
+            render_html(
+                _opportunity_card_html(
+                    row, border=border, badge=badge, comment_html=comment_html,
+                ),
+                unsafe_allow_html=True,
+            )
+
+            is_book = bm_id in existing_ids
+            btn_label = "★ 북마크됨" if is_book else "☆ 북마크"
+            bcol1, bcol2 = st.columns(2)
+            with bcol1:
+                if st.button(
+                    btn_label, key=f"opp_bm_{bm_id}",
+                    disabled=is_book, use_container_width=True,
+                ):
+                    bookmarks.add(Bookmark(
+                        id=bm_id,
+                        type="opportunity",
+                        title=f"{row['dept']} · {row['lv3']}",
+                        content=f"작업: {row['sample_tasks']}\n뉴스: {row['sample_news']}",
+                        tags=[str(row["dept"]), str(row["lv3"])],
+                    ))
+                    st.session_state["board_msg"] = (
+                        "ok", f"북마크 저장: {row['dept']} · {row['lv3']}",
+                    )
+                    st.rerun()
+            with bcol2:
+                if st.button(
+                    "💬 SOLA 제안", key=f"opp_sola_{bm_id}",
+                    use_container_width=True,
+                ):
+                    _apply_opportunity_to_sola(row)
+                    st.rerun()
+
+
+def _render_opportunity(
+    news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.DataFrame | None = None,
+) -> None:
     st.caption("부서×공정 셀별 매칭 점수 누적. 상위 셀이 자동화 기회가 큰 곳.")
 
     if cells is None:
@@ -260,63 +399,11 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.Dat
     )
 
     head = cells.head(top_n).copy()
-    # 표 보기
     with st.expander("매트릭스 표 보기", expanded=False):
         st.dataframe(head, use_container_width=True, hide_index=True)
 
-    # 카드 그리드 (2열)
     persona: Persona = st.session_state.get("persona") or Persona()
-    existing_ids = {b.id for b in bookmarks.list_all(type_="opportunity")}
-
-    cols = st.columns(2)
-    for i, (_, row) in enumerate(head.iterrows()):
-        bm_id = bookmarks.make_id("opportunity", str(row["dept"]), str(row["lv3"]))
-        with cols[i % 2]:
-            is_mine = persona.dept and row["dept"] == persona.dept
-            border = "border: 2px solid var(--accent);" if is_mine else ""
-            badge = "🎯 " if is_mine else ""
-            comment_html = ""
-            if use_llm_comment:
-                c = opportunity.llm_commentary(
-                    str(row["dept"]), str(row["lv3"]),
-                    str(row["sample_news"]), str(row["sample_tasks"]),
-                )
-                if c:
-                    comment_html = f'<div class="card-body" style="-webkit-line-clamp:5;">{html.escape(c)}</div>'
-
-            render_html(
-                f"""
-                <div class="news-card" style="min-height:auto; {border}">
-                    <div class="card-meta">
-                        <span class="card-press">{badge}{html.escape(str(row['dept']))}</span>
-                        <span class="card-date">{html.escape(str(row['lv3']))}</span>
-                        <span class="card-num">score {row['cell_score']:.1f}</span>
-                    </div>
-                    <div class="card-title" style="font-size:0.9rem;">{html.escape(str(row['sample_tasks']))}</div>
-                    {comment_html}
-                    <div class="card-body" style="-webkit-line-clamp:3;">관련 뉴스: {html.escape(str(row['sample_news']))}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            is_book = bm_id in existing_ids
-            btn_label = "★ 북마크됨" if is_book else "☆ 북마크"
-            bcol1, bcol2 = st.columns(2)
-            with bcol1:
-                if st.button(btn_label, key=f"opp_bm_{bm_id}", disabled=is_book, use_container_width=True):
-                    bookmarks.add(Bookmark(
-                        id=bm_id,
-                        type="opportunity",
-                        title=f"{row['dept']} · {row['lv3']}",
-                        content=f"작업: {row['sample_tasks']}\n뉴스: {row['sample_news']}",
-                        tags=[str(row["dept"]), str(row["lv3"])],
-                    ))
-                    st.session_state["board_msg"] = ("ok", f"북마크 저장: {row['dept']} · {row['lv3']}")
-                    st.rerun()
-            with bcol2:
-                if st.button("💬 SOLA 제안", key=f"opp_sola_{bm_id}", use_container_width=True):
-                    _apply_opportunity_to_sola(row)
-                    st.rerun()
+    _render_opportunity_cards(head, persona, use_llm_comment)
 
     msg = st.session_state.pop("board_msg", None)
     if msg:
@@ -324,10 +411,12 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.Dat
         {"ok": st.success, "warn": st.warning, "error": st.error}[kind](text)
 
 
+# ---------- Matches ----------
+
+
 def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
     from ui import task_tree
 
-    # 페르소나 부서를 기본 필터로 미리 적용
     persona: Persona = st.session_state.get("persona") or Persona()
     if persona.dept and "board_dept" not in st.session_state:
         st.session_state["board_dept"] = persona.dept
@@ -368,65 +457,116 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
     st.markdown("**매칭 상세 (상위 30)**")
     for _, row in matches.sort_values("score", ascending=False).head(30).iterrows():
-        render_html(
-            f"""
-            <div class="news-card" style="min-height:auto;">
-                <div class="card-meta">
-                    <span class="card-press">{html.escape(str(row['dept']))}</span>
-                    <span class="card-date">{html.escape(str(row['lv3']))} · {html.escape(str(row['task']))}</span>
-                    <span class="card-num">score {row['score']:.1f}</span>
-                </div>
-                <div class="card-title">{html.escape(str(row['news_title']))}</div>
-                <div class="card-link"><a href="{html.escape(str(row['link']))}" target="_blank">원문 보기 →</a></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        render_html(_match_card_html(row), unsafe_allow_html=True)
 
 
-def _build_page_context(news: pd.DataFrame, roadmap: pd.DataFrame, persona: Persona) -> str:
-    """인사이트보드 화면의 핵심 데이터를 LLM 컨텍스트로 압축."""
+# ---------- Page context (chat) ----------
+
+
+def _build_page_context(
+    news: pd.DataFrame,
+    roadmap: pd.DataFrame,
+    persona: Persona,
+    *,
+    payload: _TrendsPayload | None = None,
+    cells: pd.DataFrame | None = None,
+) -> str:
+    """인사이트보드 화면의 핵심 데이터를 LLM 컨텍스트로 압축.
+
+    `payload`, `cells` 가 주어지면 재계산 없이 그대로 사용한다.
+    """
     lines: list[str] = ["화면: 인사이트보드 (트렌드 · 자동화 기회 매트릭스 · 부서 인사이트 · 매칭)"]
     if persona.is_set():
         lines.append(f"사용자 부서: {persona.dept or '-'} / 직무: {persona.job or '-'}")
     if news.empty or roadmap.empty:
         return "\n".join(lines)
 
-    period_label, days, period_df, vol_df, emergence = _compute_trends_payload(news)
-    lines.append(f"선택 기간: {period_label} ({days}일)")
+    if payload is None:
+        payload = _compute_trends_payload(news)
+    lines.append(f"선택 기간: {payload.period_label} ({payload.days}일)")
 
-    if not vol_df.empty:
+    if not payload.vol_df.empty:
         lines.append("일자별 기사 수: " + ", ".join(
-            f"{r['date']}={r['count']}" for _, r in vol_df.iterrows()
+            f"{r['date']}={r['count']}" for _, r in payload.vol_df.iterrows()
         ))
-    by_src = trends.by_source(period_df)
+    by_src = trends.by_source(payload.period_df)
     if not by_src.empty:
         lines.append("소스 분포: " + ", ".join(
             f"{r['source']}={r['count']}" for r in by_src.head(5).to_dict(orient="records")
         ))
 
-    if days > 1:
-        if not emergence["new"].empty:
+    if payload.days > 1:
+        if not payload.emergence["new"].empty:
             lines.append("새 키워드(오늘만): " + ", ".join(
-                f"{r['keyword']}={r['count']}" for _, r in emergence["new"].head(5).iterrows()
+                f"{r['keyword']}={r['count']}"
+                for _, r in payload.emergence["new"].head(5).iterrows()
             ))
-        if not emergence["rising"].empty:
+        if not payload.emergence["rising"].empty:
             lines.append("상승 키워드(오늘↑base): " + ", ".join(
-                f"{r['keyword']}(+{r['delta']})" for _, r in emergence["rising"].head(5).iterrows()
+                f"{r['keyword']}(+{r['delta']})"
+                for _, r in payload.emergence["rising"].head(5).iterrows()
             ))
 
-    # SOLA 가 생성한 brief(있으면) 도 컨텍스트로
-    brief_text = st.session_state.get(f"_brief_text_{period_label}", "")
+    brief_text = st.session_state.get(f"_brief_text_{payload.period_label}", "")
     if brief_text:
         lines.append(f"SOLA 한 줄 해석: {brief_text}")
 
-    try:
-        cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
-        lines.append(_opportunity_flow_context(cells))
-    except Exception:  # noqa: BLE001
-        pass
+    if cells is None:
+        try:
+            cells = opportunity.score_cells(
+                news, roadmap, cell_level="lv3", top_k_per_task=5,
+            )
+        except Exception:  # noqa: BLE001
+            cells = pd.DataFrame()
+    lines.append(_opportunity_flow_context(cells))
 
     return "\n".join(lines)
+
+
+# ---------- Overview & entry ----------
+
+
+def _render_overview(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.DataFrame) -> None:
+    """메트릭 그리드 + (데이터 충분 시) 분석 흐름 가이드. 데이터 부족 시 안내 카드."""
+    dept_count = (
+        roadmap["dept"].nunique()
+        if not roadmap.empty and "dept" in roadmap.columns else 0
+    )
+    render_html(
+        metric_grid([
+            metric_card("로드맵 작업", f"{len(roadmap):,}건",
+                        caption="분석 가능한 작업 정의", icon="🗂", tone="teal"),
+            metric_card("오늘 뉴스", f"{len(news):,}건",
+                        caption="매칭 후보 기사", icon="📰", tone="info"),
+            metric_card("부서 수", f"{dept_count:,}",
+                        caption="로드맵 내 부서 범위", icon="🏭",
+                        tone="ok" if dept_count else "warn"),
+        ]),
+        unsafe_allow_html=True,
+    )
+
+    if roadmap.empty or news.empty:
+        render_html(
+            status_card(
+                "인사이트 분석을 위한 데이터가 부족합니다",
+                "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 🧱 데이터 관리 메뉴에서 준비할 수 있습니다.",
+                status="warn",
+                icon="🧱",
+            ),
+            unsafe_allow_html=True,
+        )
+        return
+
+    render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+    section_label("분석 실행 흐름")
+    render_html(
+        _insight_flow_html(
+            news_ready=not news.empty,
+            roadmap_ready=not roadmap.empty,
+            has_opportunities=not cells.empty,
+        ),
+        unsafe_allow_html=True,
+    )
 
 
 def render() -> None:
@@ -434,78 +574,37 @@ def render() -> None:
     roadmap = load_roadmap()
     news = load_all_today()
 
-    chat_open = page_header(
+    page_header(
         "인사이트보드",
         "트렌드 · 자동화 기회 · 부서별 AI 인사이트 · 매칭",
         chat_toggle_key="board",
     )
 
+    # 한 번만 계산해서 메인 렌더와 page_context(채팅)에 공유한다.
+    payload = _compute_trends_payload(news) if not news.empty else None
+    if not news.empty and not roadmap.empty:
+        cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
+    else:
+        cells = pd.DataFrame()
+
     with main_and_chat(
         "board",
-        page_context_fn=lambda: _build_page_context(news, roadmap, persona),
+        page_context_fn=lambda: _build_page_context(
+            news, roadmap, persona, payload=payload, cells=cells,
+        ),
         persona=persona,
         hint="현재 보드(트렌드·매트릭스·부서 인사이트·매칭)를 컨텍스트로 대화합니다.",
     ) as main:
         with main:
-            dept_count = (
-                roadmap["dept"].nunique()
-                if not roadmap.empty and "dept" in roadmap.columns else 0
-            )
-            render_html(
-                metric_grid([
-                    metric_card(
-                        "로드맵 작업",
-                        f"{len(roadmap):,}건",
-                        caption="분석 가능한 작업 정의",
-                        icon="🗂",
-                        tone="teal",
-                    ),
-                    metric_card(
-                        "오늘 뉴스",
-                        f"{len(news):,}건",
-                        caption="매칭 후보 기사",
-                        icon="📰",
-                        tone="info",
-                    ),
-                    metric_card(
-                        "부서 수",
-                        f"{dept_count:,}",
-                        caption="로드맵 내 부서 범위",
-                        icon="🏭",
-                        tone="ok" if dept_count else "warn",
-                    ),
-                ]),
-                unsafe_allow_html=True,
-            )
+            _render_overview(news, roadmap, cells)
 
-            if roadmap.empty or news.empty:
-                render_html(
-                    status_card(
-                        "인사이트 분석을 위한 데이터가 부족합니다",
-                        "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 🧱 데이터 관리 메뉴에서 준비할 수 있습니다.",
-                        status="warn",
-                        icon="🧱",
-                    ),
-                    unsafe_allow_html=True,
-                )
+            if news.empty or roadmap.empty:
                 return
-
-            cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
-
-            render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
-            section_label("분석 실행 흐름")
-            render_html(
-                _insight_flow_html(
-                    news_ready=not news.empty,
-                    roadmap_ready=not roadmap.empty,
-                    has_opportunities=not cells.empty,
-                ),
-                unsafe_allow_html=True,
-            )
 
             render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             section_label("트렌드")
-            _render_trends(news)
+            assert payload is not None  # news 비어있지 않으므로 항상 생성됨
+            _render_trends(payload)
 
             render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
             section_label("로드맵 연결 · 자동화 기회")
@@ -518,4 +617,3 @@ def render() -> None:
             render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
             section_label("계층 필터 · 뉴스 매칭")
             _render_matches(news, roadmap)
-    _ = chat_open  # 채팅 토글 결과는 main_and_chat 내부에서 처리됨
