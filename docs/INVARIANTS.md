@@ -110,3 +110,26 @@ I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 
 
 커밋 전 체크의 `grep -nE '^def render_' app.py` 는 현재 2건이 정상. 새로 추가되면 안 되므로 **증가 여부**만 감시한다.
 
+
+
+## I-13 — 사이드 채팅 패널은 `main_and_chat` 단일 진입점
+
+`ui/layout.py::main_and_chat(chat_key, ...)` 가 우측 채팅 패널의 표준 컨텍스트 매니저. 새 탭 추가 시 동일 패턴으로 호출.
+
+- **금지**: 메인 영역에 별도 `st.chat_input` / `st.chat_message` 로 LLM 채팅 UI 를 다시 만들기. (Phase 4 에서 `sola_tab._render_chat` 제거로 일관성 확보 — `ui/proposal_workbench` 의 모드 채팅은 좌측 MD 와 1:1 매칭되는 작업장 전용 패턴으로 예외)
+- **chat_key 네임스페이스**: 페이지마다 고유 문자열. session_state 키(`_chat_open_{key}`, `_sidechat_{key}`, …)와 영구화 파일(`data/sola/chat/{key}.jsonl`)이 이 키로 분리됨.
+- **default_open**: `True` 가 디폴트. 사용자 선호는 `session_state[_chat_open_{key}]` 에 저장되어 페이지마다 독립적으로 보존.
+
+## I-14 — LLM 설정은 `config._env_or_secret()` 경유
+
+`LLM_BACKEND` / `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` 4개 모두 `_env_or_secret(name, default)` 를 통해 읽는다. 우선순위:
+
+1. OS 환경변수 (`.env` 파일 포함, `python-dotenv` 자동 로드)
+2. `st.secrets` (Streamlit Cloud 배포 시 App settings → Secrets)
+3. 디폴트 (Groq 기준)
+
+`os.getenv` 를 직접 새로 추가하지 말 것. 또한 `.env` 파일은 **절대 commit 금지** (`.gitignore` 에 등록되어 있음).
+
+## I-15 — `chat_log` 는 `chat_key` 별 파일
+
+`store.chat_log.{save_history,load_history,reset}` 가 모두 `chat_key` 인자를 받는다. 인자 생략 시 `default` 로 매핑되어 기존 `data/sola/chat_history.jsonl` 경로 유지 (후방 호환). 새 `chat_key` 는 `data/sola/chat/{slug}.jsonl` 에 저장되며 `_safe_key()` 가 파일명 슬러그를 강제 (디렉토리 traversal 차단).
