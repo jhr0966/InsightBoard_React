@@ -45,3 +45,41 @@ def test_bookmark_workbench_state_routes_to_workbench():
         "pw_active_source": "",
         "pw_mode": "✏️ 수정",
     }
+
+
+def test_build_page_context_summarizes_mode_and_counts():
+    """SOLA 사이드 채팅에 주입되는 page_context 가 현재 모드/카운트/페르소나를 압축한다."""
+    import pandas as pd
+    from persona.schema import Persona
+    import streamlit as st
+
+    # 모드/필터/세션 결과를 정해놓고 호출
+    st.session_state["sola_mode"] = "자동화 과제 제안서"
+    st.session_state["prop_dept"] = "생산기술"
+    st.session_state["prop_lv3"] = "용접"
+    st.session_state["sola_prop_result"] = "## 제안서 본문\n…"
+
+    ctx = sola_tab._build_page_context(
+        news=pd.DataFrame([{"title": "n"}] * 5),
+        roadmap=pd.DataFrame([{"dept": "x"}] * 3),
+        persona=Persona(dept="생산기술", job="자동화 엔지니어"),
+    )
+
+    assert "SOLA 작업실" in ctx
+    assert "현재 모드: 자동화 과제 제안서" in ctx
+    assert "생산기술" in ctx
+    assert "자동화 엔지니어" in ctx
+    assert "오늘 뉴스: 5" in ctx
+    assert "로드맵 작업: 3" in ctx
+    assert "용접" in ctx
+    assert "자동화 과제 제안서(세션 보유)" in ctx
+
+    # cleanup
+    for k in ("sola_mode", "prop_dept", "prop_lv3", "sola_prop_result"):
+        st.session_state.pop(k, None)
+
+
+def test_sola_tab_no_longer_exposes_main_chat_helpers():
+    """채팅 UI 단일화 후 main-area 채팅 헬퍼들이 sola_tab 에서 제거되었는지 확인."""
+    assert not hasattr(sola_tab, "_render_chat")
+    assert not hasattr(sola_tab, "_build_proposal_context")

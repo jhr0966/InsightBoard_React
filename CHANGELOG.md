@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (UX Phase 4 — SOLA 채팅 UI 단일화)
+- `ui/sola_tab.py` 의 메인 영역 채팅 모드(`_render_chat`)와 `_build_proposal_context()` 헬퍼 제거 — `render_chat_panel` 이 이미 `include_session_proposal=True`, `include_adopted=True` 로 동일 컨텍스트를 자동 첨부.
+- SOLA 작업실에 `main_and_chat("sola", ...)` 추가 — 우측 사이드 채팅 패널이 다른 탭과 동일 패턴으로 표시. `chat_toggle_key="sola"` 로 헤더 토글 노출.
+- `sola_mode` 라디오에서 "채팅" 옵션 제거. 작업실은 [뉴스 요약, 자동화 과제 제안서] 2개 모드로 좁힘. `board_tab` 의 SOLA 라우팅(`prop_dept`, `prop_lv3`) 영향 없음.
+- `_build_page_context()` 신규 — 현재 모드/필터/데이터 카운트를 사이드 패널 컨텍스트로 압축.
+- 미사용 import 정리 (`chat_ctx`, `chat_log`, `persona_ctx`, `SYSTEM_CHAT`, `chat`).
+- 회귀 가드 2건 — `tests/test_sola_workspace.py::test_build_page_context_summarizes_mode_and_counts`, `::test_sola_tab_no_longer_exposes_main_chat_helpers`.
+
 ### Changed (UX Phase 3 — IA 정리 + 인사이트 탭화 + 부서 인사이트 자동 표시)
 - `app.py` 메뉴 재구성: `news_tab` 을 산출물 보관함 → 데이터 관리로 이동. 데이터 관리는 `[1. 뉴스 수집, 2. 뉴스 둘러보기, 3. 로드맵 업로드]` 3-탭, 산출물 보관함은 단일 페이지 (북마크만).
 - `ui/sidebar.py` `_AREA_DESCRIPTIONS` 업데이트 — "수집 · 본문 확보" → "수집 · 둘러보기 · 로드맵", "북마크 · 재사용" → "북마크 · 채택".

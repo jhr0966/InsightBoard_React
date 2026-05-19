@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-05-19 · UX Phase 4 — SOLA 채팅 UI 단일화
+
+**브랜치:** `feat-ux-phase4-chat-unification`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+UX 점검에서 H 우선순위 마찰 #4 — "SOLA 작업실 채팅 ≠ 사이드 패널 → 같은 기능 2가지 인터페이스". `sola_tab.py::_render_chat` 가 메인 영역에 큰 채팅 UI 를 제공하고 `render_chat_panel` 이 우측 사이드 패널에 또 다른 채팅 UI 를 제공. 히스토리/컨텍스트가 분리되어 사용자가 두 곳에서 다른 결과를 받음.
+
+**한 일:**
+1. `ui/sola_tab.py` 의 `_render_chat()`, `_build_proposal_context()` 제거.
+2. `render()` 에 `main_and_chat("sola", page_context_fn=..., persona=...)` 추가 — 우측 사이드 채팅 패널이 다른 5개 탭과 동일 패턴으로 표시.
+3. `sola_mode` 라디오에서 "채팅" 옵션 제거 → [뉴스 요약, 자동화 과제 제안서] 2개로 좁힘. 작업실은 산출물 생성 전용.
+4. `_build_page_context(news, roadmap, persona)` 신규 — 현재 모드/필터/세션 산출물/카운트를 사이드 패널 컨텍스트로 압축.
+5. `render_chat_panel` 이 이미 `include_session_proposal=True`, `include_adopted=True` 라 직전 작성 제안서 + 채택 제안서 자동 첨부됨 (`_build_proposal_context` 의 기능을 자연스럽게 흡수).
+6. 미사용 import 정리 — `chat_ctx`, `chat_log`, `persona_ctx`, `SYSTEM_CHAT`, `chat`.
+7. 회귀 가드 2건 — `test_build_page_context_summarizes_mode_and_counts`, `test_sola_tab_no_longer_exposes_main_chat_helpers`.
+
+**Trade-off / 알려진 변경:**
+- `chat_log.jsonl` 영구화는 사이드 패널이 지원하지 않아 SOLA 채팅 영구화가 일시적으로 사라짐. 새로고침 시 히스토리 리셋. 차후 `render_chat_panel` 에 chat_log 통합으로 보강 후보.
+- 메인 영역의 큰 채팅 UI 가 사라지고 사이드 패널 (`main_chat_ratio=(3, 2)`) 로 이동. 약 40% 가로폭이라 충분히 사용 가능.
+
+**검증:**
+- `python -m py_compile ui/sola_tab.py` OK
+- 금지 패턴 0건
+- `pytest -q` 173 passed (이전 171 → 173, +2 가드)
+
+**다음 세션 TODO (Phase 5 후보):**
+- 제안서 워크벤치 UX 강화 — `ui/proposal_workbench.py` 의 좌측 MD / 우측 채팅 2-열 레이아웃에서 "💬 대화" / "✏️ 수정" 모드 시각 배너, 버튼 카피 통일.
+- (선택) `render_chat_panel` 에 chat_log 영구화 옵션 추가 → SOLA 사이드 채팅 새로고침 후에도 복원.
+
+---
+
 ## 2026-05-19 · UX Phase 3 — IA 정리 + 인사이트 분석 탭화 + 부서 인사이트 자동 표시
 
 **브랜치:** `feat-ux-phase3-ia-tabs`
