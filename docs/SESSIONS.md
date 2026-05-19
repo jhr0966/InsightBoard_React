@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-05-19 · UX Phase 1 — Next-Best-Action 카피 통일 + 라벨 단순화
+
+**브랜치:** `feat-ux-phase1-next-best-action`
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+UI/UX 전체 점검(Explore agent 리포트) 결과 초반 4단계(페르소나 → 수집 → 둘러보기 → 채팅)와 6단계(제안서 작업장)에 마찰이 집중되어 있었음. Phase 1 은 동작 변경 없이 **카피·툴팁·빈 상태 안내** 만 사용자 시각으로 다듬어 "설명서 없이 직관적" 경험을 강화하는 작은 단위.
+
+**개편 계획 (Phase 1~5)**
+1. Phase 1: Next-Best-Action 카피 통일 (이 세션)
+2. Phase 2: 온보딩 + 페르소나 의존성 해결
+3. Phase 3: 정보 구조(IA) 정리 (뉴스 콘텐츠 위치 단일화, 인사이트 페이지 섹션 탭화)
+4. Phase 4: 채팅 UI 단일화 (SOLA 탭 별도 채팅 → 사이드 패널 통합)
+5. Phase 5: 제안서 워크벤치 UX 강화
+
+**한 일 (Phase 1):**
+1. 모든 `status_card` 빈 상태 안내를 "다음 → [메뉴] → [액션]" 패턴으로 통일. 9곳 (`home_tab` 2, `board_tab` 4, `news_tab` 1, `bookmarks_tab` 1, `sola_tab` 1, `ingest_tab` 1).
+2. `ui/ingest_tab.py` 카피 정리 — 페이지 제목 "뉴스 수집 + 본문 Enrich" → "뉴스 수집", 버튼 라벨 "본문 Enrich" → "LLM 키워드·요약 추가" (PR #37 로 본문/이미지 자동 fetch 가 수집에 통합되었으므로 의미 재정의). step_guide / page_context 도 동일.
+3. `ui/persona_page.py` 의 "관심 공정(Lv3)" → "관심 공정" (기술 용어 제거, help 에 Lv3 안내 위치 변경).
+4. `ui/board_tab.py` 의 score 의미 caption 추가 — "각 카드의 score = 부서·공정 셀에 누적된 뉴스↔작업 매칭 점수 합. 클수록 자동화 도입 여지 ↑". 슬라이더/체크박스에 `help` 추가.
+5. 동작·시그니처 변경 없음. 모든 위젯 key 보존.
+
+**검증:**
+- `python -m py_compile` 7개 파일 OK
+- 금지 패턴 0건
+- `pytest -q` 170 passed (회귀 없음)
+
+**다음 세션 TODO (Phase 2 후보):**
+- 페르소나 미설정 홈 페이지 강화 — "3단계 시작 가이드 (페르소나 → 로드맵 → 뉴스)" 카드 도입.
+- `ui/persona_page.py` 의 selectbox 가 로드맵 없으면 빈 옵션 → 자유 입력 fallback 또는 "로드맵 먼저 업로드하세요" 가드.
+- 사이드바 프로필 카드의 "관심 공정 미설정" 상태에 클릭 유도 (CTA) 보강.
+
+---
+
 ## 2026-05-19 · fix — 뉴스 수집 본문 `&nbsp;` 잔재 / 이미지 No Image 다발
 
 **브랜치:** `fix-news-cleanup-and-image`

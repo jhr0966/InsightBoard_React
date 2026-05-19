@@ -375,15 +375,18 @@ def _render_opportunity_cards(
 def _render_opportunity(
     news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.DataFrame | None = None,
 ) -> None:
-    st.caption("부서×공정 셀별 매칭 점수 누적. 상위 셀이 자동화 기회가 큰 곳.")
+    st.caption(
+        "각 카드의 score = (그 부서·공정 셀에 누적된 뉴스↔작업 매칭 점수의 합). "
+        "값이 클수록 해당 공정에서 다뤄지는 뉴스 양·관련성이 높아 자동화 도입 여지가 크다는 신호입니다."
+    )
 
     if cells is None:
         cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
     if cells.empty:
         render_html(
             status_card(
-                "자동화 기회로 계산할 매칭 뉴스가 없습니다",
-                "키워드 수집 또는 본문 Enrich를 진행하면 부서×공정 기회 셀이 계산됩니다.",
+                "자동화 기회를 계산할 매칭 뉴스가 없습니다",
+                "다음 → 🧱 데이터 관리 → 키워드 수집 → (필요 시) ✨ Enrich. 뉴스가 들어오면 이 자리에 부서·공정별 기회 카드가 나타납니다.",
                 status="warn",
                 icon="⚙️",
             ),
@@ -391,10 +394,13 @@ def _render_opportunity(
         )
         return
 
-    top_n = st.slider("상위 셀 개수", 3, 20, 8, key="board_opp_n")
+    top_n = st.slider(
+        "상위 셀 개수", 3, 20, 8, key="board_opp_n",
+        help="점수가 높은 부서·공정 셀을 몇 개까지 카드로 보여줄지.",
+    )
     use_llm_comment = st.checkbox(
         "셀별 LLM 코멘트 사용 (캐시됨)", value=False, disabled=not llm_ready(),
-        help="LLM 미설정 시 룰 기반 표만 표시됩니다.",
+        help="각 카드 아래에 LLM이 한 줄 해석을 붙여줍니다. LLM 미설정 시 룰 기반 표만 표시.",
         key="board_opp_llm",
     )
 
@@ -426,7 +432,7 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
         render_html(
             status_card(
                 "선택한 필터에 해당하는 작업이 없습니다",
-                "부서·공정 필터를 넓히거나 로드맵 데이터를 확인하세요.",
+                "다음 → 위 부서·공정 드롭다운을 더 넓게 선택하거나, 🧱 데이터 관리 → 로드맵 업로드 탭에서 작업 정의가 들어있는지 확인하세요.",
                 status="warn",
                 icon="🧭",
             ),
@@ -438,8 +444,8 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
     if matches.empty:
         render_html(
             status_card(
-                "매칭되는 뉴스가 없습니다",
-                "다른 키워드로 뉴스를 수집하거나 Enrich 후 다시 시도하세요.",
+                "선택한 작업과 매칭되는 뉴스가 없습니다",
+                "다음 → 🧱 데이터 관리 → 키워드를 추가/변경해 수집하거나, 위 필터를 다른 부서·공정으로 바꿔보세요.",
                 status="warn",
                 icon="📰",
             ),
@@ -549,7 +555,7 @@ def _render_overview(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.DataFr
         render_html(
             status_card(
                 "인사이트 분석을 위한 데이터가 부족합니다",
-                "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 🧱 데이터 관리 메뉴에서 준비할 수 있습니다.",
+                "다음 → 🧱 데이터 관리 (왼쪽 메뉴) → 1) 로드맵 업로드 2) 뉴스 수집. 두 가지가 준비되면 트렌드·기회·매칭 카드가 자동으로 채워집니다.",
                 status="warn",
                 icon="🧱",
             ),

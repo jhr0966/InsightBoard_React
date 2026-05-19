@@ -169,7 +169,7 @@ def _top_opportunities_html(cells: pd.DataFrame, *, persona: Persona, limit: int
     if cells.empty:
         return status_card(
             "자동화 기회가 아직 계산되지 않았습니다",
-            "뉴스와 로드맵을 준비하면 부서×공정 기준 상위 기회가 표시됩니다.",
+            "다음 → 🧱 데이터 관리 → 1) 로드맵 업로드 2) 키워드 수집. 두 가지가 준비되면 부서·공정 기준 상위 기회가 여기에 표시됩니다.",
             status="warn",
             icon="⚙️",
         )
@@ -509,7 +509,7 @@ def render() -> None:
                 render_html(
                     status_card(
                         "데이터 준비가 필요합니다",
-                        "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 메뉴의 🧱 데이터 관리에서 시작할 수 있습니다.",
+                        "다음 → 🧱 데이터 관리 (왼쪽 메뉴) → 1) 로드맵 업로드 2) 뉴스 수집. 두 가지가 준비되면 부서별 추천 뉴스·AI 인사이트·기회가 자동 표시됩니다.",
                         status="warn",
                         icon="🧱",
                     ),
