@@ -11,7 +11,7 @@ import streamlit as st
 from roadmap.query import load_latest as load_roadmap
 from sola.client import is_configured as llm_ready
 from store.news_db import load_all_today
-from ui.components import metric_card, metric_grid, status_card
+from ui.components import render_html, metric_card, metric_grid, status_card
 from ui.styles import section_label
 
 
@@ -153,7 +153,7 @@ def render() -> None:
     news = load_all_today()
     roadmap = load_roadmap()
     section_label("데이터 준비 상태")
-    st.markdown(
+    render_html(
         data_health_html(news, roadmap, llm_configured=llm_ready()),
         unsafe_allow_html=True,
     )

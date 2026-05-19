@@ -1,12 +1,25 @@
 """Reusable HTML component builders for the Streamlit UI.
 
-The helpers return escaped HTML strings so callers can render them via
-`st.markdown(..., unsafe_allow_html=True)` without duplicating markup.
+The helpers return escaped HTML strings. Use `render_html(...)` to render
+them through Streamlit's native HTML element instead of Markdown escaping.
 """
 from __future__ import annotations
 
 import html as _html
 from collections.abc import Iterable
+
+import streamlit as st
+
+
+def render_html(markup: str, **_ignored) -> None:
+    """Render trusted component HTML without Markdown escaping.
+
+    Streamlit's `st.markdown(..., unsafe_allow_html=True)` can be easy to miss
+    and then raw `<div>...</div>` appears in the app. Centralizing rendering via
+    `st.html` makes component output consistent across pages.
+    """
+    st.html(markup)
+
 
 _ALLOWED_TONES = {"", "info", "ok", "warn", "danger", "teal"}
 

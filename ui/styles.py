@@ -14,10 +14,7 @@ def inject_global_styles() -> None:
     css_path = ASSETS_DIR / "styles.css"
     if not css_path.exists():
         return
-    st.markdown(
-        f"<style>{Path(css_path).read_text(encoding='utf-8')}</style>",
-        unsafe_allow_html=True,
-    )
+    st.html(f"<style>{Path(css_path).read_text(encoding='utf-8')}</style>")
 
 
 def page_header(
@@ -53,7 +50,7 @@ def page_header(
         cls = f"app-header-chip {kind}".strip()
         chips_html += f'<span class="{cls}">{_html.escape(label)}</span>'
 
-    st.markdown(
+    st.html(
         f"""
         <div class="app-header">
           <div class="app-header-text">
@@ -62,8 +59,7 @@ def page_header(
           </div>
           <div class="app-header-actions">{chips_html}</div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     if chat_toggle_key is None:
@@ -83,7 +79,4 @@ def page_header(
 
 def section_label(text: str) -> None:
     """카드 그룹 위 작은 섹션 레이블."""
-    st.markdown(
-        f'<div class="sidebar-section">{_html.escape(text)}</div>',
-        unsafe_allow_html=True,
-    )
+    st.html(f'<div class="sidebar-section">{_html.escape(text)}</div>')

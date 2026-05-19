@@ -15,7 +15,7 @@ from sola.prompts import SYSTEM_CHAT
 from store import bookmarks, chat_log
 from store.match import score_matches
 from store.news_db import load_all_today
-from ui.components import action_card, action_grid, status_card
+from ui.components import render_html, action_card, action_grid, status_card
 from ui.styles import page_header, section_label
 
 
@@ -74,7 +74,7 @@ def _workspace_readiness_html(*, ready: bool, news_count: int, roadmap_count: in
 
 
 def _status_panel() -> None:
-    st.markdown(
+    render_html(
         f"""
         <div class="card-flat" style="display:flex;flex-wrap:wrap;gap:18px;
                  font-size:0.84rem;color:var(--text-2);margin-bottom:0.6rem;">
@@ -352,7 +352,7 @@ def render() -> None:
     roadmap = load_roadmap()
     proposal_count = len(bookmarks.list_all(type_="proposal"))
     section_label("작업 유형")
-    st.markdown(
+    render_html(
         _workspace_cards_html(
             news_count=len(news),
             roadmap_count=len(roadmap),
@@ -361,7 +361,7 @@ def render() -> None:
         ),
         unsafe_allow_html=True,
     )
-    st.markdown(
+    render_html(
         _workspace_readiness_html(ready=is_configured(), news_count=len(news), roadmap_count=len(roadmap)),
         unsafe_allow_html=True,
     )

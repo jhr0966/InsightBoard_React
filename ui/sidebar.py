@@ -6,6 +6,8 @@ from urllib.parse import quote, unquote
 
 import streamlit as st
 
+from ui.components import render_html
+
 from config import llm_backend, llm_model
 from persona import store as persona_store
 from persona.schema import Persona
@@ -116,7 +118,7 @@ def _sidebar_nav_html(current_area: str) -> str:
 def _render_persona_block(persona: Persona, _roadmap_df) -> None:
     """Render a clickable profile summary; editing happens on the main page."""
     _consume_persona_editor_query()
-    st.markdown(_persona_card_html(persona), unsafe_allow_html=True)
+    render_html(_persona_card_html(persona), unsafe_allow_html=True)
 
     msg = st.session_state.pop("persona_page_msg", None)
     if msg:
@@ -133,7 +135,7 @@ def render() -> str:
     _render_persona_block(persona, roadmap_df)
 
     # 브랜드
-    st.markdown(
+    render_html(
         """
         <div class="sidebar-brand compact">
           <div class="sidebar-brand-mark">IB</div>
@@ -148,9 +150,9 @@ def render() -> str:
     if st.session_state.get("app_area") not in AREAS:
         st.session_state["app_area"] = AREAS[0]
     area = st.session_state["app_area"]
-    st.markdown('<div class="sidebar-section sidebar-section-nav">Workflow</div>', unsafe_allow_html=True)
-    st.markdown(_sidebar_nav_html(area), unsafe_allow_html=True)
-    st.markdown(
+    render_html('<div class="sidebar-section sidebar-section-nav">Workflow</div>', unsafe_allow_html=True)
+    render_html(_sidebar_nav_html(area), unsafe_allow_html=True)
+    render_html(
         '<div class="sidebar-flow-hint apple">'
         '데이터 준비 → 분석 → SOLA 산출물 → 보관'
         '</div>',
@@ -161,7 +163,7 @@ def render() -> str:
     dot_cls = "ok" if llm_ready() else "warn"
     backend = _html.escape(llm_backend())
     model = _html.escape(llm_model() or "(미설정)")
-    st.markdown(
+    render_html(
         f"""
         <div class="sidebar-footer">
           <span class="sidebar-dot {dot_cls}"></span>

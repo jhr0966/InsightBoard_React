@@ -8,7 +8,7 @@ import streamlit as st
 from persona.schema import Persona
 from store import bookmarks
 from store.bookmarks import BOOKMARK_STATUSES, DEFAULT_EXPIRE_DAYS
-from ui.components import metric_card, metric_grid, status_card
+from ui.components import render_html, metric_card, metric_grid, status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -99,10 +99,10 @@ def render() -> None:
             )
             items = bookmarks.list_all(type_=None if chosen == "all" else chosen)
             st.caption(f"{len(items)}건")
-            st.markdown(_archive_metrics_html(items), unsafe_allow_html=True)
+            render_html(_archive_metrics_html(items), unsafe_allow_html=True)
 
             if not items:
-                st.markdown(
+                render_html(
                     status_card(
                         "아직 저장된 산출물이 없습니다",
                         "인사이트 분석의 ☆ 또는 SOLA 작업실의 제안서 저장 버튼으로 검토할 항목을 보관하세요.",
@@ -145,7 +145,7 @@ def _render_items(items) -> None:
                 + (f' · 메모: {html.escape(bm.decision_note)}' if bm.decision_note else "")
                 + '</div>'
             )
-        st.markdown(
+        render_html(
             f"""
             <div class="news-card" style="min-height:auto;">
                 <div class="card-meta">

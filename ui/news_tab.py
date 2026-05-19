@@ -10,7 +10,7 @@ import streamlit as st
 from persona.schema import Persona
 from scraping import enrich as enrich_mod
 from store.news_db import load_all_today
-from ui.components import status_card
+from ui.components import render_html, status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -63,7 +63,7 @@ def render() -> None:
     ) as main:
         with main:
             if df.empty:
-                st.markdown(
+                render_html(
                     status_card(
                         "오늘 수집된 기사가 없습니다",
                         "먼저 🧱 데이터 관리 → 뉴스 수집에서 키워드 기반 수집을 실행하세요.",
@@ -88,7 +88,7 @@ def render() -> None:
                 section_label("키워드 빈도 (top 30)")
                 st.dataframe(_keyword_counts(df), use_container_width=True, hide_index=True)
 
-            st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             section_label("전체 기사")
             for _, row in df.head(30).iterrows():
                 body = enrich_mod._clean_article_text(str(row.get("content") or row.get("summary_llm") or row.get("summary") or ""))[:520]
@@ -97,7 +97,7 @@ def render() -> None:
                     f'<img class="news-card-image" src="{html.escape(img_url)}" alt="뉴스 대표 이미지" loading="lazy">'
                     if img_url else '<div class="news-card-image placeholder">No Image</div>'
                 )
-                st.markdown(
+                render_html(
                     f"""
                     <div class="news-card news-card-media">
                         {img_html}

@@ -13,7 +13,7 @@ from scraping import naver as naver_news
 from scraping import tech_sites
 from sola.client import is_configured as llm_ready
 from store.news_db import load_all_today, save_articles, upsert_articles
-from ui.components import metric_card, metric_grid, status_card, step_guide, step_item
+from ui.components import render_html, metric_card, metric_grid, status_card, step_guide, step_item
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -122,7 +122,7 @@ def render() -> None:
         hint="방금 수집한 뉴스 통계·헤드라인을 컨텍스트로 대화합니다.",
     ) as main:
         with main:
-            st.markdown(
+            render_html(
                 step_guide([
                     step_item(1, "키워드·소스 선택", "네이버/구글은 키워드, 테크 사이트는 최신 목록 기반", active=True),
                     step_item(2, "수집·저장", "소스별 기사를 Parquet DB에 저장"),
@@ -172,14 +172,14 @@ def render() -> None:
                 kind, msg = status
                 {"ok": st.success, "warn": st.warning, "error": st.error}[kind](msg)
 
-            st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             df = load_all_today()
             enriched_count = (
                 int((df["content"].astype(str).str.len() >= 50).sum())
                 if not df.empty and "content" in df.columns else 0
             )
             source_count = df["source"].nunique() if not df.empty and "source" in df.columns else 0
-            st.markdown(
+            render_html(
                 metric_grid([
                     metric_card("오늘 저장", f"{len(df):,}건", caption="전체 수집 기사", icon="📰", tone="info"),
                     metric_card("본문 확보", f"{enriched_count:,}건", caption="Enrich 완료/본문 보유", icon="✨", tone="ok" if enriched_count else "warn"),
@@ -189,7 +189,7 @@ def render() -> None:
             )
 
             if df.empty:
-                st.markdown(
+                render_html(
                     status_card(
                         "아직 수집된 뉴스가 없습니다",
                         "키워드와 소스를 선택한 뒤 📥 수집·저장을 실행하세요. 네이버/구글 수집에는 키워드가 필요합니다.",
@@ -224,7 +224,7 @@ def render() -> None:
                     )
                     if kw_show else ""
                 )
-                st.markdown(
+                render_html(
                     f"""
                     <div class="news-card news-card-media">
                         {img_html}

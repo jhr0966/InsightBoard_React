@@ -15,7 +15,7 @@ from sola.insight import insight_for_dept
 from store import trends
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
-from ui.components import action_card, action_grid, metric_card, metric_grid, status_card
+from ui.components import render_html, action_card, action_grid, metric_card, metric_grid, status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -461,10 +461,10 @@ def render() -> None:
     ) as main:
         with main:
             # 페르소나 welcome
-            st.markdown(_persona_welcome(persona), unsafe_allow_html=True)
+            render_html(_persona_welcome(persona), unsafe_allow_html=True)
 
             # 핵심 상태 카드
-            st.markdown(
+            render_html(
                 metric_grid([
                     metric_card("오늘 뉴스", f"{len(news):,}건", caption="수집된 최신 기사", icon="📰", tone="info"),
                     metric_card("로드맵 작업", f"{len(roadmap):,}건", caption="매칭 가능한 작업 정의", icon="🗂", tone="teal"),
@@ -474,18 +474,18 @@ def render() -> None:
             )
 
             section_label("추천 다음 행동")
-            st.markdown(_recommended_actions_html(recommended_actions), unsafe_allow_html=True)
+            render_html(_recommended_actions_html(recommended_actions), unsafe_allow_html=True)
 
             if not news.empty:
                 # 🧠 SOLA 한 줄 + emergence 칩 위젯 — news 만 있으면 표시 (roadmap 무관)
                 wcol1, wcol2 = st.columns([5, 1])
                 with wcol1:
-                    st.markdown(
+                    render_html(
                         _trend_widget_html(brief_text, trend_payload["emergence"]),
                         unsafe_allow_html=True,
                     )
                 with wcol2:
-                    st.markdown("<div style='margin-top:1.6rem;'></div>", unsafe_allow_html=True)
+                    render_html("<div style='margin-top:1.6rem;'></div>", unsafe_allow_html=True)
                     if st.button(
                         "🔄 갱신",
                         key="_home_brief_btn",
@@ -506,7 +506,7 @@ def render() -> None:
 
             # 부서 뉴스 + 인사이트 — roadmap + news 둘 다 필요
             if roadmap.empty or news.empty:
-                st.markdown(
+                render_html(
                     status_card(
                         "데이터 준비가 필요합니다",
                         "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 메뉴의 🧱 데이터 관리에서 시작할 수 있습니다.",
@@ -517,30 +517,34 @@ def render() -> None:
                 )
             else:
                 # 부서 뉴스 + 인사이트 2:1
-                st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
+                render_html("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
                 if chat_open:
                     # 채팅 패널 열려있으면 메인이 좁아지니 카드 세로 배치.
                     section_label("우리 부서 관련 뉴스")
-                    st.markdown(news_html, unsafe_allow_html=True)
+                    render_html(news_html, unsafe_allow_html=True)
                     section_label("우리 부서 AI 인사이트")
-                    st.markdown(insight_html, unsafe_allow_html=True)
+                    render_html(insight_html, unsafe_allow_html=True)
                 else:
                     left, right = st.columns([2, 1], gap="large")
                     with left:
                         section_label("우리 부서 관련 뉴스")
-                        st.markdown(news_html, unsafe_allow_html=True)
+                        render_html(news_html, unsafe_allow_html=True)
                     with right:
                         section_label("우리 부서 AI 인사이트")
-                        st.markdown(insight_html, unsafe_allow_html=True)
+                        render_html(insight_html, unsafe_allow_html=True)
+
+                render_html("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
+                section_label("자동화 기회 Top 5")
+                render_html(_top_opportunities_html(top_opportunities, persona=persona), unsafe_allow_html=True)
 
                 st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
                 section_label("자동화 기회 Top 5")
                 st.markdown(_top_opportunities_html(top_opportunities, persona=persona), unsafe_allow_html=True)
 
             # 빠른 행동
-            st.markdown("<div style='margin-top:1.8rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='margin-top:1.8rem;'></div>", unsafe_allow_html=True)
             section_label("빠른 행동")
-            st.markdown(
+            render_html(
                 action_grid([
                     action_card("🔍", "데이터 관리", "뉴스 수집·Enrich와 로드맵 업로드를 준비.", tone="teal"),
                     action_card("📊", "인사이트 분석", "트렌드·매칭·자동화 기회를 한 흐름으로 확인."),

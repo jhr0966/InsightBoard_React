@@ -15,7 +15,7 @@ from store import bookmarks, trends
 from store.bookmarks import Bookmark
 from store.match import score_matches
 from store.news_db import load_all_today, load_news_for_days
-from ui.components import metric_card, metric_grid, status_card, step_guide, step_item
+from ui.components import render_html, metric_card, metric_grid, status_card, step_guide, step_item
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -122,7 +122,7 @@ def _render_trends(news_today: pd.DataFrame) -> None:
     cached_brief = st.session_state.get(brief_cache_key, "")
     bc1, bc2 = st.columns([5, 1])
     with bc1:
-        st.markdown(
+        render_html(
             f'<div class="card" style="margin-bottom:0.6rem;">'
             f'<div class="card-meta"><span class="card-press">🧠 SOLA 한 줄</span>'
             f'<span class="card-date">{html.escape(period_label)}</span></div>'
@@ -222,7 +222,7 @@ def _render_dept_insights(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
             border = "border: 2px solid var(--accent);" if is_mine else ""
             badge = "🎯 " if is_mine else ""
             text = insight_for_dept(dept, news)
-            st.markdown(
+            render_html(
                 f"""
                 <div class="news-card" style="min-height:auto; {border}">
                     <div class="card-meta">
@@ -241,7 +241,7 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.Dat
     if cells is None:
         cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
     if cells.empty:
-        st.markdown(
+        render_html(
             status_card(
                 "자동화 기회로 계산할 매칭 뉴스가 없습니다",
                 "키워드 수집 또는 본문 Enrich를 진행하면 부서×공정 기회 셀이 계산됩니다.",
@@ -284,7 +284,7 @@ def _render_opportunity(news: pd.DataFrame, roadmap: pd.DataFrame, cells: pd.Dat
                 if c:
                     comment_html = f'<div class="card-body" style="-webkit-line-clamp:5;">{html.escape(c)}</div>'
 
-            st.markdown(
+            render_html(
                 f"""
                 <div class="news-card" style="min-height:auto; {border}">
                     <div class="card-meta">
@@ -334,7 +334,7 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
     _selection, filtered = task_tree.render_drilldown(roadmap, key_prefix="board")
     if filtered.empty:
-        st.markdown(
+        render_html(
             status_card(
                 "선택한 필터에 해당하는 작업이 없습니다",
                 "부서·공정 필터를 넓히거나 로드맵 데이터를 확인하세요.",
@@ -347,7 +347,7 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
     matches = score_matches(news, filtered, top_k=3)
     if matches.empty:
-        st.markdown(
+        render_html(
             status_card(
                 "매칭되는 뉴스가 없습니다",
                 "다른 키워드로 뉴스를 수집하거나 Enrich 후 다시 시도하세요.",
@@ -368,7 +368,7 @@ def _render_matches(news: pd.DataFrame, roadmap: pd.DataFrame) -> None:
 
     st.markdown("**매칭 상세 (상위 30)**")
     for _, row in matches.sort_values("score", ascending=False).head(30).iterrows():
-        st.markdown(
+        render_html(
             f"""
             <div class="news-card" style="min-height:auto;">
                 <div class="card-meta">
@@ -451,7 +451,7 @@ def render() -> None:
                 roadmap["dept"].nunique()
                 if not roadmap.empty and "dept" in roadmap.columns else 0
             )
-            st.markdown(
+            render_html(
                 metric_grid([
                     metric_card(
                         "로드맵 작업",
@@ -479,7 +479,7 @@ def render() -> None:
             )
 
             if roadmap.empty or news.empty:
-                st.markdown(
+                render_html(
                     status_card(
                         "인사이트 분석을 위한 데이터가 부족합니다",
                         "로드맵 업로드와 뉴스 수집을 먼저 진행하세요. 왼쪽 🧱 데이터 관리 메뉴에서 준비할 수 있습니다.",
@@ -492,9 +492,9 @@ def render() -> None:
 
             cells = opportunity.score_cells(news, roadmap, cell_level="lv3", top_k_per_task=5)
 
-            st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             section_label("분석 실행 흐름")
-            st.markdown(
+            render_html(
                 _insight_flow_html(
                     news_ready=not news.empty,
                     roadmap_ready=not roadmap.empty,
@@ -503,19 +503,19 @@ def render() -> None:
                 unsafe_allow_html=True,
             )
 
-            st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
             section_label("트렌드")
             _render_trends(news)
 
-            st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
             section_label("로드맵 연결 · 자동화 기회")
             _render_opportunity(news, roadmap, cells)
 
-            st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
             section_label("부서별 AI 인사이트")
             _render_dept_insights(news, roadmap)
 
-            st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+            render_html("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
             section_label("계층 필터 · 뉴스 매칭")
             _render_matches(news, roadmap)
     _ = chat_open  # 채팅 토글 결과는 main_and_chat 내부에서 처리됨
