@@ -46,6 +46,44 @@ def _avatar_text(persona: Persona) -> str:
     return "?"
 
 
+def _llm_footer_html(*, ready: bool, backend: str, model: str) -> str:
+    """LLM 상태 + 미설정 시 Groq 키 발급 안내 카드.
+
+    헬퍼로 분리해 단위 테스트 가능.
+    """
+    dot_cls = "ok" if ready else "warn"
+    backend_safe = _html.escape(backend)
+    model_safe = _html.escape(model or "(미설정)")
+    if ready:
+        return f"""
+        <div class="sidebar-footer">
+          <span class="sidebar-dot {dot_cls}"></span>
+          <span class="sidebar-footer-text">
+            <b>LLM · {backend_safe}</b><br>
+            <span class="muted">{model_safe}</span>
+          </span>
+        </div>
+        """
+    return f"""
+    <div class="sidebar-footer sidebar-footer-empty">
+      <div class="sidebar-footer-row">
+        <span class="sidebar-dot {dot_cls}"></span>
+        <span class="sidebar-footer-text">
+          <b>LLM · {backend_safe}</b><br>
+          <span class="muted">키 미설정</span>
+        </span>
+      </div>
+      <div class="sidebar-llm-empty-hint">
+        요약·제안서·채팅 등 AI 기능을 쓰려면 키가 필요합니다.<br>
+        <a href="https://console.groq.com/keys" target="_blank" rel="noopener">
+          🔑 Groq 키 발급 (무료)
+        </a>
+        · 발급 후 <code>.env</code>의<br><code>LLM_API_KEY=gsk_…</code> 한 줄만 채우면 OK
+      </div>
+    </div>
+    """
+
+
 def _persona_card_html(persona: Persona) -> str:
     avatar = _html.escape(_avatar_text(persona))
     name = _html.escape(persona.name or "사용자")
@@ -167,20 +205,13 @@ def render() -> str:
         unsafe_allow_html=True,
     )
 
-    # 시스템 푸터 (점선 인디케이터)
-    dot_cls = "ok" if llm_ready() else "warn"
-    backend = _html.escape(llm_backend())
-    model = _html.escape(llm_model() or "(미설정)")
+    # 시스템 푸터 (점선 인디케이터 + 미설정 시 안내 카드)
     render_html(
-        f"""
-        <div class="sidebar-footer">
-          <span class="sidebar-dot {dot_cls}"></span>
-          <span class="sidebar-footer-text">
-            <b>LLM · {backend}</b><br>
-            <span class="muted">{model}</span>
-          </span>
-        </div>
-        """,
+        _llm_footer_html(
+            ready=llm_ready(),
+            backend=llm_backend(),
+            model=llm_model() or "",
+        ),
         unsafe_allow_html=True,
     )
 

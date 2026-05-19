@@ -706,6 +706,40 @@ html, body, [class*="css"], .stApp, [data-testid="stAppViewContainer"],
 .sidebar-footer-text b { color: var(--text-2); font-weight: 600; }
 .sidebar-footer-text .muted { color: var(--text-3); font-size: 0.72rem; }
 
+/* LLM 미설정 안내 (사이드바 푸터 확장) */
+.sidebar-footer.sidebar-footer-empty {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    background: rgba(217, 119, 6, 0.06);
+    border: 1px solid rgba(217, 119, 6, 0.25);
+    border-radius: var(--r-md);
+    padding: 0.7rem 0.75rem;
+    margin-top: 1rem;
+}
+.sidebar-footer.sidebar-footer-empty .sidebar-footer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sidebar-llm-empty-hint {
+    font-size: 0.72rem;
+    color: var(--text-2);
+    line-height: 1.55;
+}
+.sidebar-llm-empty-hint a {
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: none;
+}
+.sidebar-llm-empty-hint a:hover { text-decoration: underline; }
+.sidebar-llm-empty-hint code {
+    background: rgba(0,0,0,0.05);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+}
+
 /* 사이드바 라디오를 큰 네비 버튼처럼 */
 [data-testid="stSidebar"] .stRadio > div { gap: 4px !important; flex-direction: column; }
 [data-testid="stSidebar"] .stRadio > div > label {
