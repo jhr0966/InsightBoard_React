@@ -28,6 +28,27 @@ streamlit run app.py
 사이드바 하단의 LLM 상태가 🟢로 바뀌면 키가 정상 인식된 것. 🟠면 `.env`의 `LLM_API_KEY`를 다시 확인.
 다른 백엔드(사내 OpenAI 호환 / 로컬 Ollama) 로 전환하려면 `.env.example`의 `LLM_BACKEND` / `LLM_BASE_URL` / `LLM_MODEL` 주석 참고.
 
+## ☁️ Streamlit Community Cloud 배포 (`share.streamlit.io`)
+
+`.env` 파일은 **절대 GitHub 에 올리지 말 것**. 클라우드는 별도 Secrets 관리 메커니즘을 쓴다.
+
+1. GitHub 에 코드 푸시 (private 레포 가능). `.env` 가 추적되어 있으면 먼저 `git rm --cached .env && git commit && git push` 로 제거.
+2. https://share.streamlit.io → **New app** → 본인 레포 / 브랜치 / `app.py` 선택.
+3. **Advanced settings → Secrets** 에 TOML 형식으로 입력:
+
+   ```toml
+   LLM_BACKEND = "groq"
+   LLM_API_KEY = "gsk_xxxxxxxxxxxxxxxxxxxxxxxxxx"
+   # 디폴트와 다르게 쓰려면 아래도 추가
+   # LLM_BASE_URL = "https://api.groq.com/openai/v1"
+   # LLM_MODEL = "llama-3.3-70b-versatile"
+   ```
+4. **Deploy**. `config.py` 가 환경변수를 먼저 확인하고 없으면 자동으로 `st.secrets` 를 fallback 으로 사용 (`_env_or_secret()`). 별도 코드 수정 불필요.
+
+배포 후 사이드바 하단 LLM 상태가 🟢 로 바뀌면 키 인식 OK.
+
+> ⚠️ 만약 `.env` 가 이미 커밋되어 키가 git history 에 남았다면 **Groq Console → 해당 키 Delete → 새 키 발급** 후 위 Secrets 에 새 키 입력. 히스토리 정리는 `git filter-repo --path .env --invert-paths` 후 force push.
+
 ## 실행
 
 ```bash

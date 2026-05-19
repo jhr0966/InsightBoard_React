@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (Streamlit Cloud — Secrets fallback + 배포 가이드)
+- `config.py` 에 `_env_or_secret(name, default)` 헬퍼 추가 — 환경변수 우선, 없으면 `st.secrets` fallback. `llm_backend()` / `llm_base_url()` / `llm_api_key()` / `llm_model()` 모두 적용. Streamlit Community Cloud(`share.streamlit.io`) 배포 시 App settings → Secrets 의 TOML 값을 자동 인식.
+- `README.md` 에 "☁️ Streamlit Community Cloud 배포" 섹션 추가 — 키 발급 → Secrets TOML 입력 → Deploy 3-step. 이미 `.env` 가 history 에 있을 때 키 revoke + filter-repo 안내.
+- `.env` 가 main 에 잘못 커밋된 상태(commit `6998c86`) tracking 제거. 로컬 파일은 유지, `.gitignore` 의 `.env` 규칙은 이미 적용됨.
+- 회귀 가드 6건 — `tests/test_config_secrets.py`: env 우선, secrets fallback, 둘 다 비었을 때, Groq 디폴트, streamlit 미설치/secrets 속성 미존재 시 fallback 안전성.
+
 ### Changed (UX — 채팅 패널 기본 펼침)
 - `ui/layout.py::main_and_chat` 에 `default_open=True` 인자 추가 — 첫 진입에서 우측 사이드 채팅 패널이 펼쳐진 상태로 시작. 사용자가 헤더 토글로 닫으면 `_chat_open_{key}` session_state 가 저장되어 다음 진입에서도 그 선호 보존.
 - `ui/styles.py::page_header` 의 토글 디폴트도 `True` 로 정렬해 라벨이 첫 진입부터 "💬 채팅 닫기" 로 표시.
