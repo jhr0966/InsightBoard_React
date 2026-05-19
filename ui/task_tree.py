@@ -8,6 +8,8 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from ui.components import render_html, status_card
+
 
 def _select(label: str, df: pd.DataFrame, col: str, key: str) -> str | None:
     options = sorted(df[col].dropna().astype(str).unique().tolist()) if not df.empty and col in df.columns else []
@@ -29,7 +31,15 @@ def render_drilldown(
       filtered  — selection 적용된 DataFrame
     """
     if roadmap_df.empty:
-        st.info("로드맵 데이터가 없습니다. [로드맵 업로드] 에서 엑셀을 업로드하세요.")
+        render_html(
+            status_card(
+                "로드맵 데이터가 없습니다",
+                "🧱 데이터 관리 → 로드맵 업로드에서 엑셀을 업로드하세요.",
+                status="warn",
+                icon="🗂",
+            ),
+            unsafe_allow_html=True,
+        )
         return {}, roadmap_df
 
     c1, c2, c3 = st.columns(3)

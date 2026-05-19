@@ -197,3 +197,103 @@ def test_build_page_context_omits_trend_when_empty():
     persona = Persona(dept="생산기술")
     ctx = home_tab._build_page_context(persona, news_items=[], insight_text="", trend_ctx="")
     assert "최근 7일 트렌드" not in ctx
+
+# ── Phase 3 recommended actions and top opportunities ─────────────
+
+def test_recommended_actions_prioritizes_missing_data_and_persona():
+    from persona.schema import Persona
+
+    actions = home_tab._recommended_actions(
+        news_count=0,
+        roadmap_count=0,
+        enriched_count=0,
+        persona=Persona(),
+        top_opportunities=pd.DataFrame(),
+    )
+
+    titles = [a["title"] for a in actions]
+    assert titles[:3] == ["뉴스를 먼저 수집하세요", "로드맵을 업로드하세요", "페르소나를 설정하세요"]
+    assert actions[0]["target"] == "데이터 관리"
+
+
+def test_recommended_actions_promotes_opportunity_and_sola_when_ready():
+    from persona.schema import Persona
+
+    cells = pd.DataFrame([
+        {"dept": "생산기술", "lv3": "용접", "cell_score": 8.2, "sample_tasks": "용접 자동화", "sample_news": "로봇"}
+    ])
+    actions = home_tab._recommended_actions(
+        news_count=5,
+        roadmap_count=3,
+        enriched_count=4,
+        persona=Persona(dept="생산기술", job="자동화"),
+        top_opportunities=cells,
+    )
+
+    assert actions[0]["target"] == "인사이트 분석"
+    assert "생산기술 · 용접" in actions[0]["body"]
+    assert actions[1]["target"] == "SOLA 작업실"
+
+
+def test_recommended_actions_html_escapes_text_and_tone():
+    html = home_tab._recommended_actions_html([
+        {
+            "icon": "<i>",
+            "title": "<script>x</script>",
+            "body": "body<script>",
+            "target": "target",
+            "tone": 'bad" onclick="x',
+        }
+    ])
+
+    assert 'onclick' not in html
+    assert "&lt;script&gt;x&lt;/script&gt;" in html
+    assert "body&lt;script&gt;" in html
+    assert "&lt;i&gt;" in html
+
+
+def test_top_opportunities_html_marks_persona_dept_and_escapes():
+    from persona.schema import Persona
+
+    cells = pd.DataFrame([
+        {
+            "dept": "생산기술",
+            "lv3": "<용접>",
+            "cell_score": 9.25,
+            "sample_tasks": "작업<script>",
+            "sample_news": "뉴스<script>",
+        }
+    ])
+
+    html = home_tab._top_opportunities_html(cells, persona=Persona(dept="생산기술"))
+    assert 'class="opportunity-pulse-card mine"' in html
+    assert "score 9.2" in html
+    assert "&lt;용접&gt;" in html
+    assert "작업&lt;script&gt;" in html
+    assert "<script>" not in html
+
+
+def test_build_page_context_includes_recommendations_and_top_opportunities():
+    from persona.schema import Persona
+
+    cells = pd.DataFrame([
+        {
+            "dept": "생산기술",
+            "lv3": "용접",
+            "cell_score": 9.0,
+            "sample_tasks": "용접 자동화",
+            "sample_news": "로봇",
+        }
+    ])
+    ctx = home_tab._build_page_context(
+        Persona(dept="생산기술"),
+        news_items=[],
+        insight_text="",
+        recommended_actions=[{"target": "인사이트 분석", "title": "검토", "body": "기회 확인"}],
+        top_opportunities=cells,
+    )
+
+    assert "추천 다음 행동" in ctx
+    assert "인사이트 분석: 검토" in ctx
+    assert "자동화 기회 Top" in ctx
+    assert "생산기술 / 용접 score=9.0" in ctx

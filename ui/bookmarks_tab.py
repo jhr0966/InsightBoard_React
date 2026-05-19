@@ -8,6 +8,7 @@ import streamlit as st
 from persona.schema import Persona
 from store import bookmarks
 from store.bookmarks import BOOKMARK_STATUSES, DEFAULT_EXPIRE_DAYS
+from ui.components import render_html, metric_card, metric_grid, status_card
 from ui.layout import main_and_chat
 from ui.styles import page_header, section_label
 
@@ -52,6 +53,19 @@ def _build_page_context(items) -> str:
     return "\n".join(lines)
 
 
+def _archive_metrics_html(items) -> str:
+    """Render output archive metrics for all filtered items."""
+    counts = bookmarks.summary_counts(items)
+    by_type = counts["by_type"]
+    by_status = counts["proposal_status"]
+    return metric_grid([
+        metric_card("전체 산출물", f"{counts['total']:,}건", caption="현재 필터 기준", icon="📦", tone="info"),
+        metric_card("제안서", f"{by_type.get('proposal', 0):,}건", caption="저장된 SOLA 결과", icon="📝", tone="teal"),
+        metric_card("채택 과제", f"{by_status.get('adopted', 0):,}건", caption="영구 보존 결정", icon="✅", tone="ok"),
+        metric_card("검토 중", f"{by_status.get('pending', 0):,}건", caption="후속 결정 필요", icon="⏳", tone="warn" if by_status.get('pending', 0) else "info"),
+    ])
+
+
 def render() -> None:
     persona: Persona = st.session_state.get("persona") or Persona()
     page_header(
@@ -85,16 +99,31 @@ def render() -> None:
             )
             items = bookmarks.list_all(type_=None if chosen == "all" else chosen)
             st.caption(f"{len(items)}건")
+            render_html(_archive_metrics_html(items), unsafe_allow_html=True)
 
             if not items:
-                st.markdown(
-                    '<div class="card-flat">아직 북마크가 없습니다. '
-                    '인사이트보드의 ☆ 또는 제안서 화면의 ☆ 버튼으로 저장하세요.</div>',
+                render_html(
+                    status_card(
+                        "아직 저장된 산출물이 없습니다",
+                        "인사이트 분석의 ☆ 또는 SOLA 작업실의 제안서 저장 버튼으로 검토할 항목을 보관하세요.",
+                        status="teal",
+                        icon="📌",
+                    ),
                     unsafe_allow_html=True,
                 )
                 return
 
             _render_items(items)
+
+
+def _workbench_state_for_bookmark(bm_id: str) -> dict[str, str]:
+    """Return session-state updates that open a proposal bookmark in the workbench."""
+    return {
+        "app_area": "🤖 SOLA 작업실",
+        "pw_select": f"bm:{bm_id}",
+        "pw_active_source": "",
+        "pw_mode": "✏️ 수정",
+    }
 
 
 def _render_items(items) -> None:
@@ -116,7 +145,7 @@ def _render_items(items) -> None:
                 + (f' · 메모: {html.escape(bm.decision_note)}' if bm.decision_note else "")
                 + '</div>'
             )
-        st.markdown(
+        render_html(
             f"""
             <div class="news-card" style="min-height:auto;">
                 <div class="card-meta">
@@ -135,7 +164,7 @@ def _render_items(items) -> None:
         )
 
         if bm.type == "proposal":
-            c1, c2, c3 = st.columns([1, 2, 1])
+            c1, c2, c3, c4 = st.columns([1, 2, 1, 1])
             with c1:
                 st.selectbox(
                     "상태",
@@ -156,6 +185,10 @@ def _render_items(items) -> None:
             with c3:
                 if st.button("💾 상태 저장", key=f"bm_save_{bm.id}"):
                     st.session_state["_bm_save_target"] = bm.id
+            with c4:
+                if st.button("✏️ 작업장", key=f"bm_workbench_{bm.id}"):
+                    st.session_state.update(_workbench_state_for_bookmark(bm.id))
+                    st.rerun()
 
         if st.button("🗑️ 삭제", key=f"bm_del_{bm.id}"):
             st.session_state["_bm_delete"] = bm.id

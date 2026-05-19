@@ -21,6 +21,8 @@ from typing import Iterator
 
 import streamlit as st
 
+from ui.components import render_html
+
 from persona.schema import Persona
 from sola.client import LLMNotConfigured, chat
 from sola.side_context import build_side_system
@@ -92,7 +94,7 @@ def render_chat_panel(
     # 헤더 + 초기화
     head_cols = st.columns([3, 1])
     with head_cols[0]:
-        st.markdown(
+        render_html(
             f'<div class="chat-panel-title">{title}</div>',
             unsafe_allow_html=True,
         )
@@ -101,7 +103,7 @@ def render_chat_panel(
             st.session_state[reset_key] = True
 
     if hint:
-        st.markdown(
+        render_html(
             f'<div class="chat-panel-hint">{hint}</div>',
             unsafe_allow_html=True,
         )
@@ -113,7 +115,7 @@ def render_chat_panel(
             f'📎 {_html.escape(lbl)}</span>'
             for lbl in labels
         )
-        st.markdown(
+        render_html(
             f'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:0.7rem;">{chips}</div>',
             unsafe_allow_html=True,
         )

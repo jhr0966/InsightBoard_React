@@ -12,14 +12,69 @@ from roadmap.query import load_latest as load_roadmap
 from sola import chat_ctx, propose, summarize
 from sola.client import LLMNotConfigured, chat, is_configured
 from sola.prompts import SYSTEM_CHAT
-from store import chat_log
+from store import bookmarks, chat_log
 from store.match import score_matches
 from store.news_db import load_all_today
-from ui.styles import page_header
+from ui.components import render_html, action_card, action_grid, status_card
+from ui.styles import page_header, section_label
+
+
+def _workspace_cards_html(*, news_count: int, roadmap_count: int, proposal_count: int, ready: bool) -> str:
+    """Render SOLA work-type cards that explain the output creation flow."""
+    return action_grid([
+        action_card(
+            "📰",
+            "뉴스 요약",
+            f"오늘 기사 {news_count:,}건을 회의 공유용 요약으로 압축합니다.",
+            tone="teal" if news_count else "",
+        ),
+        action_card(
+            "📝",
+            "자동화 과제 제안서",
+            f"로드맵 작업 {roadmap_count:,}건과 관련 뉴스를 연결해 제안서 초안을 만듭니다.",
+            tone="teal" if roadmap_count and news_count else "",
+        ),
+        action_card(
+            "💬",
+            "컨텍스트 채팅",
+            "오늘 뉴스·로드맵·채택 제안서를 컨텍스트로 후속 질문을 이어갑니다.",
+            tone="info" if ready else "",
+        ),
+        action_card(
+            "📦",
+            "산출물 보관함",
+            f"저장된 제안서 {proposal_count:,}건의 채택·거절·다운로드 상태를 관리합니다.",
+            tone="ok" if proposal_count else "",
+        ),
+    ])
+
+
+def _workspace_readiness_html(*, ready: bool, news_count: int, roadmap_count: int) -> str:
+    """Render a compact readiness message for SOLA output generation."""
+    if ready and news_count and roadmap_count:
+        return status_card(
+            "SOLA 산출물 생성 준비 완료",
+            "뉴스와 로드맵, LLM 설정이 준비되어 요약·제안서·채팅을 바로 실행할 수 있습니다.",
+            status="ok",
+            icon="🤖",
+        )
+    missing: list[str] = []
+    if not news_count:
+        missing.append("뉴스 수집")
+    if not roadmap_count:
+        missing.append("로드맵 업로드")
+    if not ready:
+        missing.append("LLM 설정")
+    return status_card(
+        "SOLA 실행 전 준비가 필요합니다",
+        " · ".join(missing) + " 항목을 확인하면 산출물 생성 흐름이 안정적으로 동작합니다.",
+        status="warn",
+        icon="🤖",
+    )
 
 
 def _status_panel() -> None:
-    st.markdown(
+    render_html(
         f"""
         <div class="card-flat" style="display:flex;flex-wrap:wrap;gap:18px;
                  font-size:0.84rem;color:var(--text-2);margin-bottom:0.6rem;">
@@ -58,6 +113,27 @@ def _render_summary() -> None:
     result = st.session_state.get("sola_sum_result")
     if result:
         st.markdown(result)
+        col_dl, col_bm = st.columns([1, 1])
+        with col_dl:
+            st.download_button(
+                "요약 마크다운 다운로드",
+                data=result.encode("utf-8"),
+                file_name="sola_news_summary.md",
+                mime="text/markdown",
+            )
+        with col_bm:
+            bm_id = bookmarks.make_id("proposal", "summary", result[:80])
+            is_book = bookmarks.has(bm_id)
+            if st.button("★ 보관됨" if is_book else "☆ 요약 보관", disabled=is_book, key="sola_sum_bm_btn"):
+                bookmarks.add(bookmarks.Bookmark(
+                    id=bm_id,
+                    type="proposal",
+                    title="SOLA 뉴스 요약",
+                    content=result,
+                    tags=["뉴스 요약", "SOLA"],
+                ))
+                st.success("산출물 보관함에 저장됨")
+                st.rerun()
 
 
 def _render_propose() -> None:
@@ -218,7 +294,7 @@ def _render_chat() -> None:
                 options=options,
                 format_func=lambda i: labels.get(i, "(없음)"),
                 key="chat_attached_bm_id",
-                help="작업실에서 ★북마크해둔 제안서를 추가 컨텍스트로 첨부합니다.",
+                help="산출물 보관함에서 ★북마크해둔 제안서를 추가 컨텍스트로 첨부합니다.",
             )
 
     cols = st.columns([1, 4])
@@ -269,11 +345,29 @@ def _render_chat() -> None:
 
 
 def render() -> None:
-    page_header("SOLA", "LLM 기반 요약 · 제안서 · 채팅")
+    page_header("SOLA 작업실", "작업 유형 선택 · 산출물 생성 · 보관함 연결")
     _status_panel()
 
+    news = load_all_today()
+    roadmap = load_roadmap()
+    proposal_count = len(bookmarks.list_all(type_="proposal"))
+    section_label("작업 유형")
+    render_html(
+        _workspace_cards_html(
+            news_count=len(news),
+            roadmap_count=len(roadmap),
+            proposal_count=proposal_count,
+            ready=is_configured(),
+        ),
+        unsafe_allow_html=True,
+    )
+    render_html(
+        _workspace_readiness_html(ready=is_configured(), news_count=len(news), roadmap_count=len(roadmap)),
+        unsafe_allow_html=True,
+    )
+
     mode = st.radio(
-        "기능",
+        "작업 유형 선택",
         ("뉴스 요약", "자동화 과제 제안서", "채팅"),
         horizontal=True,
         key="sola_mode",

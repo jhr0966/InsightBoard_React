@@ -6,6 +6,8 @@
 from __future__ import annotations
 
 from email.utils import parsedate_to_datetime
+import re
+from html import unescape
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
@@ -32,6 +34,11 @@ def _split_title(raw: str) -> tuple[str, str]:
         return raw, ""
     head, _, tail = raw.rpartition(" - ")
     return head.strip(), tail.strip()
+
+
+def _image_from_description(description: str) -> str:
+    match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', description or "", flags=re.IGNORECASE)
+    return unescape(match.group(1)) if match else ""
 
 
 def search(
@@ -88,7 +95,8 @@ def search(
             "date": pub_raw,
             "published_at": published_at,
             "link": link,
-            "summary": description,
+            "summary": re.sub(r"<[^>]+>", " ", description).strip(),
+            "image_url": _image_from_description(description),
             "keywords": "",
             "source": "google",
             "query": keyword,
