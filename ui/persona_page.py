@@ -101,11 +101,11 @@ def render() -> None:
             )
 
         st.multiselect(
-            "관심 공정(Lv3)",
+            "관심 공정",
             options=_lv3_options(roadmap),
             default=[v for v in persona.interest_lv3 if v in _lv3_options(roadmap)],
             key="px_lv3",
-            help="관심 공정을 선택하면 오늘의 보드와 인사이트 분석이 더 좁은 업무 맥락으로 정렬됩니다.",
+            help="관심 공정을 선택하면 오늘의 보드와 인사이트 분석이 그 공정 중심으로 정렬됩니다. (로드맵의 Lv3 항목 기준)",
         )
 
     b1, b2, b3 = st.columns([1, 1, 2])

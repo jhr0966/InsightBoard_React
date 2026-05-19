@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UX Phase 1 — Next-Best-Action 카피 통일)
+- 빈 상태 안내(`status_card`)를 "다음 → [메뉴] → [액션]" 패턴으로 통일 — `home_tab` (자동화 기회 / 데이터 부족), `board_tab` (기회 / 필터 / 매칭 / 데이터 부족 4곳), `news_tab`, `bookmarks_tab`, `sola_tab` (실행 전 준비), `ingest_tab` (수집 전).
+- 사용자 시각 라벨로 카피 정리: `ui/ingest_tab.py` 페이지 제목 "뉴스 수집 + 본문 Enrich" → "뉴스 수집" (서브타이틀에 "본문·이미지 자동 fetch" 명시), 버튼 "✨ 본문 Enrich (LLM 키워드/요약)" → "✨ LLM 키워드·요약 추가", `step_item` 3단계 라벨 "본문 Enrich" → "LLM 키워드·요약 (선택)", 슬라이더/체크박스에 `help` 추가.
+- `ui/persona_page.py` 의 "관심 공정(Lv3)" → "관심 공정", help 보강 (로드맵 Lv3 기반임을 안내).
+- `ui/board_tab.py` 자동화 기회 섹션 caption 에 score 의미 설명 추가, "상위 셀 개수" 슬라이더 / "LLM 코멘트" 체크박스에 `help` 추가.
+
 ### Fixed (scraping — `&nbsp;` 잔재 / "No Image" 다발 회귀)
 - `scraping/enrich.py::_clean_article_text` 가 `html.unescape()` 를 두 번 호출해 RSS description 처럼 escape 된 HTML(예: `&amp;nbsp;`, `&lt;br&gt;`) 이 본문에 그대로 남던 회귀 해결.
 - `_extract_image_url` selector 강화 — `og:image:secure_url`, `twitter:image:src`, `link[rel=image_src]`, `meta[itemprop=image]` 추가. `picture > source[srcset]` 와 `srcset` / `data-lazy-src` / `data-thumb` 등 lazy-loading 속성도 우선 탐색하도록 `_img_src_from_attrs` 도입. 광고/스페이서 필터 키워드(`1x1`, `transparent`) 보강.

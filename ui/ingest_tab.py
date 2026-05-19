@@ -92,7 +92,7 @@ def _run_enrich(use_llm: bool, n: int) -> None:
         need = df[missing_or_dirty | missing_image]
     target = need.head(n).to_dict(orient="records")
     if not target:
-        st.session_state["ins_status"] = ("ok", "이미 모두 enrich 됨.")
+        st.session_state["ins_status"] = ("ok", "모든 기사가 이미 처리되어 추가 작업이 없습니다.")
         return
 
     prog = st.progress(0.0, text=f"본문 fetch + {'LLM' if use_llm else '룰'} 진행 중…")
@@ -118,7 +118,7 @@ def _run_enrich(use_llm: bool, n: int) -> None:
 
 
 def _build_page_context(df: pd.DataFrame) -> str:
-    lines = ["화면: 뉴스 수집 + 본문 Enrich"]
+    lines = ["화면: 뉴스 수집 (본문·이미지 자동 fetch + 선택적 LLM 키워드·요약)"]
     if df.empty:
         lines.append("오늘 수집된 기사: 없음")
         return "\n".join(lines)
@@ -137,8 +137,8 @@ def _build_page_context(df: pd.DataFrame) -> str:
 def render() -> None:
     persona: Persona = st.session_state.get("persona") or Persona()
     page_header(
-        "뉴스 수집 + 본문 Enrich",
-        "네이버 · 구글 · AI Times · 오토메이션월드",
+        "뉴스 수집",
+        "네이버 · 구글 · AI Times · 오토메이션월드 — 본문·이미지를 함께 가져옵니다",
         chat_toggle_key="ingest",
     )
 
@@ -153,9 +153,9 @@ def render() -> None:
             render_html(
                 step_guide([
                     step_item(1, "키워드·소스 선택", "네이버/구글은 키워드, 테크 사이트는 최신 목록 기반", active=True),
-                    step_item(2, "수집·저장", "소스별 기사를 Parquet DB에 저장"),
-                    step_item(3, "본문 Enrich", "본문 확보 후 LLM 키워드·요약 생성"),
-                    step_item(4, "분석으로 이동", "인사이트 분석에서 트렌드·매칭 확인"),
+                    step_item(2, "📥 수집·저장", "기사 + 본문 + 대표 이미지를 한 번에 가져와 저장"),
+                    step_item(3, "✨ LLM 키워드·요약 (선택)", "각 기사에 키워드와 2~3문장 요약을 추가 (LLM 호출)"),
+                    step_item(4, "분석으로 이동", "🔎 인사이트 분석에서 트렌드·매칭·기회 확인"),
                 ]),
                 unsafe_allow_html=True,
             )
@@ -170,15 +170,26 @@ def render() -> None:
 
             btn_col1, btn_col2 = st.columns(2)
             with btn_col1:
-                if st.button("📥 수집·저장", type="primary"):
+                if st.button(
+                    "📥 수집·저장", type="primary",
+                    help="기사 메타 + 본문 + 대표 이미지를 한 번에 가져옵니다. LLM은 호출하지 않습니다.",
+                ):
                     st.session_state["_do_collect"] = True
             with btn_col2:
-                if st.button("✨ 본문 Enrich (LLM 키워드/요약)"):
+                if st.button(
+                    "✨ LLM 키워드·요약 추가",
+                    help="이미 수집된 기사에 LLM이 키워드와 2~3문장 요약을 붙입니다. 캐시되므로 같은 본문은 한 번만 호출됩니다.",
+                ):
                     st.session_state["_do_enrich"] = True
 
-            use_llm = st.checkbox("Enrich 시 LLM 키워드·요약 사용", value=llm_ready(), disabled=not llm_ready(),
-                                  help="LLM 미설정 시 본문만 가져옵니다.")
-            enrich_n = st.slider("Enrich 대상 (최근 미처리 N건)", 1, 30, 10, key="ins_enrich_n")
+            use_llm = st.checkbox(
+                "LLM 사용", value=llm_ready(), disabled=not llm_ready(),
+                help="체크 해제 시 본문만 재추출하고 키워드·요약은 건너뜁니다.",
+            )
+            enrich_n = st.slider(
+                "처리 대상 (최근 미처리 N건)", 1, 30, 10, key="ins_enrich_n",
+                help="아직 LLM 키워드·요약이 없는 최근 기사 중 몇 건을 처리할지.",
+            )
 
             if st.session_state.pop("_do_collect", False):
                 keyword = st.session_state.get("ins_keyword", "").strip()
@@ -220,7 +231,7 @@ def render() -> None:
                 render_html(
                     status_card(
                         "아직 수집된 뉴스가 없습니다",
-                        "키워드와 소스를 선택한 뒤 📥 수집·저장을 실행하세요. 네이버/구글 수집에는 키워드가 필요합니다.",
+                        "다음 → 위에서 키워드 입력 + 소스 선택 후 📥 수집·저장. 본문·이미지는 자동으로 함께 가져옵니다. (네이버·구글은 키워드 필수)",
                         status="warn",
                         icon="📰",
                     ),

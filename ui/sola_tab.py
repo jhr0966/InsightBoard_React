@@ -67,7 +67,7 @@ def _workspace_readiness_html(*, ready: bool, news_count: int, roadmap_count: in
         missing.append("LLM 설정")
     return status_card(
         "SOLA 실행 전 준비가 필요합니다",
-        " · ".join(missing) + " 항목을 확인하면 산출물 생성 흐름이 안정적으로 동작합니다.",
+        "다음 → 🧱 데이터 관리에서 " + " · ".join(missing) + "을(를) 완료하세요. 준비가 끝나면 이 자리에 '준비 완료' 안내가 표시됩니다.",
         status="warn",
         icon="🤖",
     )
