@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-05-19 · fix — 홈 "자동화 기회 Top 5" raw HTML 노출 제거
+
+**브랜치:** `claude/review-insight-board-Ej5EO`
+**카테고리:** `fix`
+**상태:** in-progress
+
+**배경:**
+홈 화면 스크린샷에서 메트릭 카드 옆에 `<div class="metric-card teal">…` 같은 HTML 소스가 그대로 텍스트로 노출됨. `ui/home_tab.py:537~538` 에서 `render_html(...)` (= `st.html`) 로 정상 렌더한 같은 섹션을 540~542 에서 `st.markdown(..., unsafe_allow_html=True)` 로 다시 그리고 있었는데, `metric_card()` / `_top_opportunities_html()` 가 4-space 들여쓰기로 시작하는 multi-line f-string을 반환하기 때문에 markdown이 이를 **code block** 으로 해석해 raw HTML 텍스트가 그대로 보이는 회귀가 있었음.
+
+**한 일:**
+1. `ui/home_tab.py` 의 중복 540~542 블록 제거 (`st.markdown(…, unsafe_allow_html=True)` 사용 부분).
+2. `tests/test_html_rendering.py` 가 `ui/*.py` 의 `st.markdown(..., unsafe_allow_html=True)` 호출을 모두 금지하는데 (`ui/components.py` 만 예외), 이로써 통과 복구.
+
+**검증:**
+- `python -m py_compile ui/home_tab.py` OK
+- `grep -nE 'st\.markdown\([^)]*unsafe_allow_html' ui/` — 0건 (docstring 외)
+- `pytest -q` 167 passed (이전 1 failed → 0 failed)
+
+**다음 세션 TODO:**
+- 사이드 채팅 패널이 열렸을 때 / 일반 모드 모두 회귀 없는지 수동 확인.
+- `ui/components.py` 의 카드 빌더들이 multi-line f-string으로 4-space 들여쓰기를 반환하는데, 향후 markdown 경로 실수를 막기 위해 빌더 출력을 single-line 으로 정리하거나, `render_html()` 사용을 강제하는 lint 강화 검토.
+
+---
+
 ## 2026-05-19 · refactor — 인사이트보드 평탄화 및 page_context 재계산 제거
 
 **브랜치:** `claude/review-insight-board-Ej5EO`

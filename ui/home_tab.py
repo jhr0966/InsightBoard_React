@@ -537,10 +537,6 @@ def render() -> None:
                 section_label("자동화 기회 Top 5")
                 render_html(_top_opportunities_html(top_opportunities, persona=persona), unsafe_allow_html=True)
 
-                st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
-                section_label("자동화 기회 Top 5")
-                st.markdown(_top_opportunities_html(top_opportunities, persona=persona), unsafe_allow_html=True)
-
             # 빠른 행동
             render_html("<div style='margin-top:1.8rem;'></div>", unsafe_allow_html=True)
             section_label("빠른 행동")

@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Fixed (home — 자동화 기회 Top 5 raw HTML 노출)
+- `ui/home_tab.py` 538줄 뒤에 같은 "자동화 기회 Top 5" 섹션이 `st.markdown(..., unsafe_allow_html=True)` 로 중복 렌더되던 코드 제거. `metric_card` / `_top_opportunities_html` 의 출력은 4-space 들여쓰기로 시작해 markdown이 code block으로 처리해 화면에 `<div class="metric-card …">` 텍스트가 그대로 노출되던 회귀 해결. `tests/test_html_rendering.py` PASS.
+
 ### Changed (refactor — 인사이트보드 평탄화 / 재계산 제거)
 - `ui/board_tab.py` 리팩토링: `_TrendsPayload` dataclass 도입, 카드 HTML 헬퍼 (`_dept_insight_card_html`, `_opportunity_card_html`, `_match_card_html`) 분리, 페르소나 강조 (`_persona_emphasis`) 와 부서 정렬 (`_ordered_depts`) 통합.
 - 트렌드 섹션을 `_render_trend_brief` / `_render_trend_charts` / `_render_emergence` 로 분리, 오포튜니티 카드 그리드는 `_render_opportunity_cards`, 보드 진입부는 `_render_overview` 로 분리.
