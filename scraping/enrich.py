@@ -103,8 +103,14 @@ def _strip_noise(soup) -> None:
         noise.decompose()
     for tag in soup.select("[hidden], [aria-hidden='true']"):
         tag.decompose()
+    # bs4 4.14+/py3.14 환경에서 일부 Tag 의 `.attrs` 가 dict 가 아닐 수 있어
+    # `tag.get("style", "")` 가 AttributeError 를 던지는 사례가 관측됨 → getattr 로 방어.
     for tag in soup.find_all(style=True):
-        style = str(tag.get("style", "")).replace(" ", "").lower()
+        attrs = getattr(tag, "attrs", None)
+        if not isinstance(attrs, dict):
+            continue
+        raw_style = attrs.get("style", "")
+        style = str(raw_style or "").replace(" ", "").lower()
         if "display:none" in style or "visibility:hidden" in style:
             tag.decompose()
 
@@ -221,25 +227,29 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
     except requests.RequestException:
         return {"content": "", "image_url": ""}
 
-    soup = soup_of(resp.text)
-    image_url = _extract_image_url(soup, url)
-    _strip_noise(soup)
+    # HTML 파싱 단계는 외부 입력이라 bs4 내부 예외(AttributeError 등) 가능 → batch 전체를 망치지 않도록 흡수.
+    try:
+        soup = soup_of(resp.text)
+        image_url = _extract_image_url(soup, url)
+        _strip_noise(soup)
 
-    candidates: list[str] = []
-    for sel in _CONTENT_SELECTORS:
-        tag = soup.select_one(sel)
-        if tag:
-            text = _text_from_tag(tag)
-            if len(text) >= _MIN_CONTENT_LEN:
-                candidates.append(text)
+        candidates: list[str] = []
+        for sel in _CONTENT_SELECTORS:
+            tag = soup.select_one(sel)
+            if tag:
+                text = _text_from_tag(tag)
+                if len(text) >= _MIN_CONTENT_LEN:
+                    candidates.append(text)
 
-    paragraphs = [_clean_article_text(p.get_text(separator="\n", strip=True)) for p in soup.select("p")]
-    paragraphs = [p for p in paragraphs if len(p) > 30]
-    if paragraphs:
-        candidates.append("\n".join(paragraphs))
+        paragraphs = [_clean_article_text(p.get_text(separator="\n", strip=True)) for p in soup.select("p")]
+        paragraphs = [p for p in paragraphs if len(p) > 30]
+        if paragraphs:
+            candidates.append("\n".join(paragraphs))
 
-    content = max(candidates, key=len) if candidates else ""
-    return {"content": content, "image_url": image_url}
+        content = max(candidates, key=len) if candidates else ""
+        return {"content": content, "image_url": image_url}
+    except Exception:  # noqa: BLE001 — 단일 페이지 파싱 실패가 전체 수집을 막지 않도록.
+        return {"content": "", "image_url": ""}
 
 
 def fetch_content(url: str, *, session=None) -> str:
