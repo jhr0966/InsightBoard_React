@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (인사이트보드 UI — 테마 토큰 시스템 Step 1)
+- `prototypes/insight-board-ui/src/themes/` 신규 — Streamlit 본체와 분리된 React 프로토타입 영역. 글래스모피즘 + Floating Layer 컨셉의 인사이트보드 UI 디자인 초석.
+- `themes/types.ts` — `ThemeTokens` 인터페이스 단일 정의 (background / surface / text / accent / semantic / chart 6 카테고리). `TOKEN_CSS_VARS` 평탄화 맵 + `readTokenValue(theme, path)` 헬퍼.
+- `themes/index.ts` — 프리셋 레지스트리 (`THEMES` 배열 + `getThemeById` + `THEME_STORAGE_KEY` + `DEFAULT_THEME_ID`). 프리셋 추가/삭제는 import 1줄 + 배열 1줄로 끝.
+- 프리셋 4종 — `midnight` (deep navy + cyan, 기본), `forest` (dark green + amber), `plum` (deep purple + pink), `slate` (neutral gray + blue).
+- 토큰 보강 — `background.noiseOpacity`, `surface.glassHighlight` / `glassBgElevated`, `text.onAccent`, `accent.soft` (Step 1 피드백 대상).
+
 ### Added (LLM 미설정 — 입력 컨텍스트 미리보기)
 - `sola/preview.py` 신규 — `format_messages_preview(messages, *, header, footer_hint)` 헬퍼. system/user/assistant 역할별로 코드블록(`text`)에 본문을 그대로 보존해 마크다운 렌더에 안전.
 - `sola/summarize.py::summarize_news`, `sola/propose.py::propose_for_task`, `sola/insight.py::insight_for_dept` — LLM 미설정 시 빈 에러 메시지 대신 호출에 사용될 입력 messages 를 그대로 노출. 캐시에 미리보기는 저장하지 않음 (키 세팅 후 재호출하면 실제 응답으로 대체).

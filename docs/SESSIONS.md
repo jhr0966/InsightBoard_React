@@ -5,6 +5,43 @@
 
 ---
 
+## 2026-05-20 · 인사이트보드 UI 디자인 — 테마 토큰 시스템 (Step 1/7)
+
+**브랜치:** `claude/insight-board-ui-design-f5uyh`
+**카테고리:** `feat`
+**상태:** in-progress (Step 1/7 완료, 피드백 대기)
+
+**배경:**
+Claude Code UI 레퍼런스의 글래스모피즘 + Floating Layer 컨셉으로 인사이트보드를
+React + Tailwind(팔레트 미사용, CSS 변수만) + shadcn/ui 베이스로 재설계.
+프리셋 추가/삭제가 코드 한 곳에서만 이뤄지도록 토큰 시스템을 먼저 못박는다.
+
+**한 일 (Step 1):**
+1. `prototypes/insight-board-ui/` 디렉토리 신설 — Streamlit 본체와 격리된 React 프로토타입 영역.
+2. `themes/types.ts` — `ThemeTokens` 인터페이스(background/surface/text/accent/semantic/chart 6 카테고리)
+   + `TOKEN_CSS_VARS` 점표기 path → CSS 변수명 평탄화 맵 + `readTokenValue` 헬퍼.
+3. `themes/index.ts` — `THEMES` 배열(레지스트리) + `getThemeById` + `THEME_STORAGE_KEY` + `DEFAULT_THEME_ID`.
+   새 프리셋 추가는 import 1줄 + 배열 1줄.
+4. 프리셋 4종 작성:
+   - `midnight` — deep navy(#0B1430) + cyan accent(#38BDF8), 기본 야간 함교 무드.
+   - `forest` — dark green(#0C1F16) + amber accent(#FBBF24), 현장 안정감.
+   - `plum` — deep purple(#1B0E35) + pink accent(#F472B6), 야간 노을.
+   - `slate` — neutral gray(#161B23) + blue accent(#60A5FA), 무광 중립.
+5. 토큰 보강 — `noiseOpacity`, `glassHighlight`, `glassBgElevated`, `text.onAccent`, `accent.soft`
+   (피드백 대상으로 명시).
+
+**다음 단계 (Step 2~7):**
+- Step 2: ThemeProvider + `useTheme` 훅 (`:root` 에 CSS 변수 주입 + localStorage 영속화)
+- Step 3: 공통 레이아웃 (Background + GlassCard 컴포넌트)
+- Step 4: 설정 페이지 (테마 전환 + 라이브 프리뷰) — **화랑님 실제 적용·피드백 단계**
+- Step 5~7: 메인 대시보드 → RAG Q&A → 제안서 생성 시안
+
+**미해결:**
+- `package.json` / Vite 셋업 보류 — Step 2 진입 시 한 번에 정리.
+- 프로토타입 위치(`prototypes/insight-board-ui/`) · 보강 토큰 항목 · chart 시리즈 배색 등 화랑님 피드백 대기.
+
+---
+
 ## 2026-05-19 · LLM 미설정 시 입력 컨텍스트 미리보기
 
 **브랜치:** `claude/review-insight-board-Ej5EO`
