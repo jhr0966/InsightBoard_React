@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-05-28 · v2 인사이트 트렌드 차트 + 기회 매트릭스 실데이터 (B.3)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 31 커밋
+
+**변경:**
+- `ui/insights_v2.py`
+  - `_ia_chart_parts` (cached) — 보드 `_weekly_keyword_series(5)` 재사용 → 5주 × top-5 series 라인 차트 (1순위 강조 gradient fill + callout, 2-3 컬러 강조, 4-5 mute). Legend / pill 동시 생성.
+  - `_ia_matrix_svg` (cached) — `score_cells.head(8)` → 600×420 SVG. 좌상단 = PoC 후보 (쉽움 + 효과 大). dept 5색 팔레트, 1위 cell halo.
+- `assets/v2/screens/insights_main.html` — 트렌드 차트 ~75줄 + 매트릭스 ~115줄 placeholder 화
+- 빈 상태: 두 차트 모두 min-height 유지 안내 카드
+
+**검증:**
+- pytest 197/197, py_compile OK
+- 합성 데이터: chart svg 2920자 / legend 3 strong+2 mute / pill '+162%', matrix svg 3878자 / 4 버블 (9 circles + halo dasharray)
+- 금지 패턴 0
+- push 성공 PR #50
+
+**다음:**
+1. **인사이트 공정 매핑 카드** (`.ia-map` / `.ia-pc-list`) — 키워드 → 매칭 공정
+2. **인사이트 SECTION C 부서 인사이트** (있다면)
+3. **C — LLM 미설정 전역 banner**
+4. **A.3 — SOLA composer 인터랙션** (입력→pending→LLM)
+
+---
+
 ## 2026-05-28 · v2 보드 ⑦ 내 키워드 관리 실데이터
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 30 커밋

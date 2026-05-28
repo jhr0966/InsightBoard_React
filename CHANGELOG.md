@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (v2 인사이트 — 트렌드 차트 + 기회 매트릭스 실데이터)
+- `ui/insights_v2.py::_ia_chart_parts` (cached) — 5주 × top-5 키워드 라인 차트. 보드의 `_weekly_keyword_series(5)` + `_delta_pct` 재사용. 1순위는 gradient fill + 큰 marker + callout box ('비전 검사 12건 · +162%'), 2-3순위는 컬러 라인 + 점, 4-5순위는 mute. Y label 동적 nice round, X label 'W−4..이번주', vertical highlight 마지막 컬럼. Legend / pill 동시 생성.
+- `ui/insights_v2.py::_ia_matrix_svg` (cached) — 600×420 viewBox, score_cells head(8) → 좌상단 = PoC 후보 (쉽고 효과 큰). x = 40+(1−ease)·520 · y = 20+(1−effect)·360 · r = 14+score·22. dept 별 5색 팔레트 (도장/용접/의장/조립/절단), 1위 cell halo dasharray.
+- `assets/v2/screens/insights_main.html` — 트렌드 차트 SVG(~75줄) → `{{IA_CHART_SVG}}` + `{{IA_CHART_LEGEND}}` + `{{IA_CHART_PILL}}` / 매트릭스 SVG(~115줄) → `{{IA_MATRIX_SVG}}` placeholder.
+- 빈 상태: 두 차트 모두 안내 카드 (min-height 유지하여 레이아웃 흔들림 방지).
+
 ### Added (v2 보드 — ⑦ 내 키워드 관리 실데이터)
 - `ui/board_v2.py::_board_kw_mgr_html(persona)` — Group 1 (SOLA 자동 추출 top-6) + Group 2 (페르소나 `interest_tasks` + `interest_lv3` 최대 4) 동적 chip 리스트. Group 1 tier dot 은 빈도 비율(0.5↑ good / 0.2↑ mid / 그 외 low). Group 2 hits 는 title/summary/keywords 등 30d 본문 substring count. Summary = 키워드 총 개수 + 30일 평균 일별 수집량 + 출처 수.
 - `assets/v2/screens/board_main.html` — 키워드 관리 ⑦ 하드코딩 chip + summary(~85줄) → `{{BOARD_KW_MGR}}` placeholder.

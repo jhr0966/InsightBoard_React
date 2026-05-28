@@ -100,6 +100,266 @@ def _tkw_empty_html() -> str:
 _IA_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "insights_main.html"
 
 
+# ── 트렌드 차트 (5주, 5 series) ────────────────────────────
+_IA_CHART_COLORS = ["#2563EB", "#14B8A6", "#F59E0B"]  # top 3 highlighted
+_IA_CHART_MUTE = "#CBD5E1"
+
+
+@st.cache_data(ttl=60)
+def _ia_chart_parts() -> dict[str, str]:
+    """인사이트 트렌드 차트 — 5주 × top-5 키워드 (3 강조 + 2 mute).
+
+    Returns: dict with svg, legend, pill.
+    Empty: returns dict with 'empty' = HTML 카드 (svg/legend/pill 은 빈문자).
+    """
+    from ui.board_v2 import _weekly_keyword_series, _delta_pct
+
+    labels, series = _weekly_keyword_series(weeks=5)
+    if not series:
+        empty_svg = ('<div style="padding:60px 18px; text-align:center; color:var(--text-muted);'
+                     ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;'
+                     ' min-height:200px; display:flex; flex-direction:column; justify-content:center;">'
+                     '아직 트렌드를 그릴 데이터가 부족해요.<br>'
+                     '<span style="font-size:12.5px;">30일 이상 수집 후 5주 출현 빈도가 누적되면 표시됩니다.</span>'
+                     '</div>')
+        return {"svg": empty_svg, "legend": "", "pill": ""}
+
+    series = series[:5]
+    y_max = max((max(s["counts"]) for s in series), default=1) or 1
+    nice_max = max(int((y_max * 1.25) // 5 + 1) * 5, 5)
+
+    # SVG viewBox 540×230, plot x:40-525 y:20-200
+    x_left, x_right = 40, 525
+    y_top, y_bottom = 20, 200
+    n = len(labels)
+    x_step = (x_right - x_left) / max(n - 1, 1) if n > 1 else 0
+
+    def coord(i: int, v: int) -> tuple[float, float]:
+        x = x_left + i * x_step
+        y = y_bottom - (v / nice_max) * (y_bottom - y_top)
+        return x, y
+
+    # Grid + Y/X axis
+    parts = [
+        "<svg xmlns='http://www.w3.org/2000/svg' class='ia-chart-svg' viewBox='0 0 540 230'>",
+        "<g stroke='#E5E7EB' stroke-width='0.6'>",
+    ]
+    for ratio in (0, 0.25, 0.5, 0.75, 1):
+        y = y_bottom - ratio * (y_bottom - y_top)
+        parts.append(f"<line x1='40' y1='{y:.0f}' x2='540' y2='{y:.0f}'/>")
+    parts.append("</g>")
+
+    # Y labels
+    parts.append("<g font-family='JetBrains Mono, monospace' font-size='8.5' fill='#94A3B8' font-weight='700'>")
+    for ratio in (0, 0.25, 0.5, 0.75, 1):
+        y = y_bottom - ratio * (y_bottom - y_top)
+        val = round(nice_max * ratio)
+        parts.append(f"<text x='35' y='{y + 3:.0f}' text-anchor='end'>{val}</text>")
+    parts.append("</g>")
+
+    # X labels — labels list comes from board's helper (W**~금주). 인사이트는 'W-4..이번주' 라벨로 다르게.
+    parts.append("<g font-family='JetBrains Mono, monospace' font-size='8.5' fill='#94A3B8' font-weight='700'>")
+    for i in range(n):
+        x = x_left + i * x_step
+        label = "이번 주" if i == n - 1 else f"W−{n - 1 - i}"
+        anchor = "end" if i == n - 1 else "middle"
+        parts.append(f"<text x='{x:.0f}' y='215' text-anchor='{anchor}'>{label}</text>")
+    parts.append("</g>")
+
+    # Vertical highlight last column
+    if n >= 2:
+        hl_x = x_left + (n - 2) * x_step + 10
+        parts.append(f"<rect x='{hl_x:.0f}' y='20' width='{x_right - hl_x:.0f}' height='180' fill='rgba(37,99,235,0.04)'/>")
+
+    # 2 mute series (시리즈 4, 5)
+    for s in series[3:]:
+        pts = " L ".join(f"{x:.0f} {y:.0f}" for x, y in (coord(i, c) for i, c in enumerate(s["counts"])))
+        parts.append(f"<path d='M {pts}' stroke='{_IA_CHART_MUTE}' stroke-width='1.6' fill='none' opacity='0.7'/>")
+
+    # 3 highlighted series (역순 — 첫 시리즈가 가장 위)
+    for idx, s in enumerate(series[:3]):
+        color = _IA_CHART_COLORS[idx]
+        coords = [coord(i, c) for i, c in enumerate(s["counts"])]
+        path_d = "M " + " L ".join(f"{x:.0f} {y:.0f}" for x, y in coords)
+        if idx == 0:
+            # 첫 시리즈 — gradient fill + thicker stroke
+            parts.append("<defs><linearGradient id='ia-vis-fill' x1='0' y1='0' x2='0' y2='1'>"
+                         "<stop offset='0%' stop-color='#2563EB' stop-opacity='0.18'/>"
+                         "<stop offset='100%' stop-color='#2563EB' stop-opacity='0'/></linearGradient></defs>")
+            area_d = path_d + f" L {coords[-1][0]:.0f} {y_bottom} L {coords[0][0]:.0f} {y_bottom} Z"
+            parts.append(f"<path d='{area_d}' fill='url(#ia-vis-fill)'/>")
+            parts.append(f"<path d='{path_d}' stroke='{color}' stroke-width='2.6' fill='none'/>")
+            parts.append(f"<g fill='{color}' stroke='#fff' stroke-width='1.4'>")
+            for j, (x, y) in enumerate(coords):
+                r = 4.6 if j == len(coords) - 1 else 3.2
+                parts.append(f"<circle cx='{x:.0f}' cy='{y:.0f}' r='{r}'/>")
+            parts.append("</g>")
+        else:
+            parts.append(f"<path d='{path_d}' stroke='{color}' stroke-width='2' fill='none'/>")
+            parts.append(f"<g fill='{color}'>")
+            for x, y in coords:
+                parts.append(f"<circle cx='{x:.0f}' cy='{y:.0f}' r='2.5'/>")
+            parts.append("</g>")
+
+    # Callout — top series 마지막 점
+    top_name = series[0]["name"]
+    top_delta = _delta_pct(series[0]["counts"])
+    top_last = series[0]["counts"][-1]
+    cx, cy = coord(n - 1, top_last)
+    label_safe = _html.escape(top_name[:8])
+    delta_str = f"{top_last}건 · {'+' if top_delta >= 0 else ''}{top_delta}%"
+    parts.append(f"<g><rect x='{cx - 39:.0f}' y='{max(cy - 32, 0):.0f}' width='78' height='28' rx='6' fill='#0F172A'/>"
+                 f"<text x='{cx:.0f}' y='{max(cy - 32, 0) + 16:.0f}' text-anchor='middle' font-family='Pretendard' font-size='10.5' font-weight='700' fill='#fff'>{label_safe}</text>"
+                 f"<text x='{cx:.0f}' y='{max(cy - 32, 0) + 26:.0f}' text-anchor='middle' font-family='JetBrains Mono, monospace' font-size='9' fill='#94A3B8'>{delta_str}</text></g>")
+
+    parts.append("</svg>")
+    svg = "".join(parts)
+
+    # Legend
+    legend_parts = []
+    for i, s in enumerate(series[:3]):
+        legend_parts.append(
+            f'<span class="ia-lg"><span class="ia-lg-d" style="background:{_IA_CHART_COLORS[i]};"></span>{_html.escape(s["name"])}</span>'
+        )
+    for s in series[3:]:
+        legend_parts.append(
+            f'<span class="ia-lg ia-lg-mute"><span class="ia-lg-d" style="background:{_IA_CHART_MUTE};"></span>{_html.escape(s["name"])}</span>'
+        )
+    legend = "".join(legend_parts)
+
+    # Pill — top series delta
+    pill_cls = "ia-trend-up" if top_delta >= 0 else "ia-trend-down"
+    arrow = "▲" if top_delta >= 0 else "▼"
+    pill = (f'<span class="ia-trend-pill {pill_cls}">'
+            f'{arrow} {_html.escape(top_name)} {"+" if top_delta >= 0 else ""}{top_delta}% (지난 5주 비교)'
+            f'</span>')
+
+    return {"svg": svg, "legend": legend, "pill": pill}
+
+
+# ── 매트릭스 (효과×난이도) ────────────────────────────────
+_IA_MATRIX_COLORS_BY_DEPT: dict[str, str] = {
+    "도장": "#2563EB", "용접": "#14B8A6", "의장": "#F59E0B",
+    "조립": "#6366F1", "절단": "#0EA5E9",
+}
+
+
+@st.cache_data(ttl=60)
+def _ia_matrix_svg() -> str:
+    """인사이트 매트릭스 — 600×420 viewBox, 좌상단 = PoC 후보.
+
+    좌표 매핑:
+      - x (left) = 40 + (1 - ease_norm) * 520 → ease 높을수록 좌측 = 쉬움
+      - y (top)  = 20 + (1 - effect_norm) * 360 → effect 높을수록 상단
+      - 버블 r = 14 + score_norm * 22
+      - 첫 cell = ★ selected (halo)
+    """
+    try:
+        news = _news_db.load_news_for_days(days=30)
+        roadmap = _load_roadmap()
+    except Exception:
+        news = None
+        roadmap = None
+    if news is None or news.empty or roadmap is None or roadmap.empty:
+        return _ia_matrix_empty()
+
+    try:
+        cells = _score_cells(news, roadmap).head(8)
+    except Exception:
+        return _ia_matrix_empty()
+    if cells.empty:
+        return _ia_matrix_empty()
+
+    max_news = max(int(cells["matched_news"].max()), 1)
+    max_tasks = max(int(cells["matched_tasks"].max()), 1)
+    max_score = max(float(cells["cell_score"].max()), 1.0)
+
+    parts = ["<svg xmlns='http://www.w3.org/2000/svg' class='ia-mtx-svg' viewBox='0 0 600 420' preserveAspectRatio='xMidYMid meet'>"]
+
+    # quadrant bg
+    parts.extend([
+        "<rect x='40' y='20' width='280' height='190' fill='rgba(21,128,61,0.06)'/>",
+        "<rect x='320' y='20' width='240' height='190' fill='rgba(180,83,9,0.04)'/>",
+        "<rect x='40' y='210' width='280' height='170' fill='rgba(15,23,42,0.02)'/>",
+        "<rect x='320' y='210' width='240' height='170' fill='rgba(15,23,42,0.02)'/>",
+    ])
+    # PoC label
+    parts.extend([
+        "<g><rect x='50' y='32' width='118' height='22' rx='5' fill='#15803D'/>"
+        "<text x='109' y='47' text-anchor='middle' font-family='Pretendard' font-size='10.5' "
+        "font-weight='800' fill='#fff' letter-spacing='0.04em'>★ PoC 후보 영역</text></g>",
+        "<text x='172' y='46' font-family='Pretendard' font-size='10.5' fill='#15803D' "
+        "font-weight='700'>쉽고 효과 큰 — 먼저 시도</text>",
+        "<text x='330' y='46' font-family='Pretendard' font-size='10.5' fill='#B45309' "
+        "font-weight='700'>전략 과제 — 효과는 크나 난이도 ↑</text>",
+        "<text x='48' y='372' font-family='Pretendard' font-size='10.5' fill='#94A3B8' "
+        "font-weight='600'>소규모 개선 — 낮은 효과</text>",
+        "<text x='330' y='372' font-family='Pretendard' font-size='10.5' fill='#94A3B8' "
+        "font-weight='600'>유보 — 검토 보류</text>",
+    ])
+    # axes
+    parts.extend([
+        "<line x1='40' y1='380' x2='560' y2='380' stroke='#0F172A' stroke-width='1.4'/>",
+        "<line x1='40' y1='20' x2='40' y2='380' stroke='#0F172A' stroke-width='1.4'/>",
+        "<line x1='320' y1='20' x2='320' y2='380' stroke='#94A3B8' stroke-width='1' stroke-dasharray='3 3'/>",
+        "<line x1='40' y1='210' x2='560' y2='210' stroke='#94A3B8' stroke-width='1' stroke-dasharray='3 3'/>",
+    ])
+    # ticks
+    parts.append("<g font-family='JetBrains Mono, monospace' font-size='9' fill='#94A3B8' font-weight='700'>"
+                 "<text x='34' y='24' text-anchor='end'>高</text>"
+                 "<text x='34' y='213' text-anchor='end'>中</text>"
+                 "<text x='34' y='383' text-anchor='end'>低</text></g>")
+    parts.append("<g font-family='JetBrains Mono, monospace' font-size='9' fill='#94A3B8' font-weight='700'>"
+                 "<text x='40' y='398' text-anchor='middle'>쉬움</text>"
+                 "<text x='320' y='398' text-anchor='middle'>中</text>"
+                 "<text x='560' y='398' text-anchor='middle'>어려움</text></g>")
+    parts.append("<text x='300' y='416' text-anchor='middle' font-family='Pretendard' font-size='11' "
+                 "fill='#475569' font-weight='700'>적용 난이도 →  현장 통합 · 안전 인증 · 정확도 임계</text>")
+
+    # bubbles
+    selected_idx = 0
+    for i, (_, row) in enumerate(cells.iterrows()):
+        ease_norm = int(row.get("matched_tasks", 0) or 0) / max_tasks
+        eff_norm = int(row.get("matched_news", 0) or 0) / max_news
+        score_norm = float(row.get("cell_score", 0) or 0) / max_score
+
+        cx = 40 + (1 - ease_norm) * 520  # ease 높음 = 왼쪽
+        cy = 20 + (1 - eff_norm) * 360
+        r = 14 + score_norm * 22
+
+        dept = str(row.get("dept", "") or "")
+        lv3 = str(row.get("lv3", "") or "")
+        color = _IA_MATRIX_COLORS_BY_DEPT.get(dept, "#475569")
+        fill = f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.16)"
+        label = _html.escape(lv3[:14] or dept[:14] or "—")
+        meta = f"매칭 {int(row.get('matched_news', 0) or 0)}건"
+
+        if i == selected_idx:
+            # halo
+            parts.append(f"<circle cx='{cx:.0f}' cy='{cy:.0f}' r='{r + 10:.0f}' "
+                         f"fill='none' stroke='{color}' stroke-width='1.4' stroke-dasharray='3 3'/>")
+        parts.append(f"<circle cx='{cx:.0f}' cy='{cy:.0f}' r='{r:.0f}' "
+                     f"fill='{fill}' stroke='{color}' stroke-width='{2.4 if i == selected_idx else 1.8}'/>")
+        parts.append(f"<circle cx='{cx:.0f}' cy='{cy:.0f}' r='5' fill='{color}'/>")
+        parts.append(f"<text x='{cx:.0f}' y='{cy + r + 14:.0f}' text-anchor='middle' "
+                     f"font-family='Pretendard' font-size='11' font-weight='800' fill='#0F172A'>{label}</text>")
+        parts.append(f"<text x='{cx:.0f}' y='{cy + r + 26:.0f}' text-anchor='middle' "
+                     f"font-family='JetBrains Mono, monospace' font-size='9' fill='#475569' "
+                     f"font-weight='700'>{meta}</text>")
+
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _ia_matrix_empty() -> str:
+    return ('<div style="padding:80px 18px; text-align:center; color:var(--text-muted);'
+            ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;'
+            ' min-height:380px; display:flex; flex-direction:column; justify-content:center;">'
+            '아직 매트릭스에 그릴 자동화 기회가 없어요.<br>'
+            '<span style="font-size:12.5px;">뉴스 + 로드맵 매칭 후 자동으로 채워집니다.</span>'
+            '</div>')
+
+
 def _load_persona() -> Persona:
     p = st.session_state.get("persona")
     if isinstance(p, Persona):
@@ -248,6 +508,14 @@ def render() -> None:
         .replace("{{IA_MATCHED_PROCESSES}}", _html.escape(ia_stats["matched_processes"]))
         .replace("{{IA_POC_CANDIDATES}}", _html.escape(ia_stats["poc_candidates"]))
         .replace("{{IA_TKW_LIST}}", _tkw_list_html())
+    )
+    chart = _ia_chart_parts()
+    html_out = (
+        html_out
+        .replace("{{IA_CHART_SVG}}", chart["svg"])
+        .replace("{{IA_CHART_LEGEND}}", chart["legend"])
+        .replace("{{IA_CHART_PILL}}", chart["pill"])
+        .replace("{{IA_MATRIX_SVG}}", _ia_matrix_svg())
     )
     st.html(html_out)
 
