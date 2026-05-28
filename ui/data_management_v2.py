@@ -1,19 +1,14 @@
 """데이터 관리 — v2 디자인 적용.
 
-핸드오프 `data-management v2.html` 의 main 컬럼 + 헤더 4 stats (활성 출처,
-수집량, DB chunks, 마지막 갱신) + app-side 카운트를 실데이터 (store/news_db,
-store/match, sola/opportunity) 에서 계산. 수집잡 5개 / 뉴스 카드 / 키워드는
-별도 PR (ingest job tracking 필요).
-
-CLAUDE.md 규칙:
-  - on_click 금지 → 모든 인터랙션 disabled (visual handoff 단계)
-  - HTML 직접 출력 시 사용자 문자열은 html.escape() 적용
+헤더 4 stats + 뉴스 라이브러리 카드 (최근 6건) 실데이터 바인딩.
+수집잡 5행과 14일 sparkline 은 별도 PR (ingest job tracking + SVG 동적 빌드 필요).
 """
 from __future__ import annotations
 
 import html as _html
-from datetime import datetime
+from datetime import datetime, timezone
 
+import pandas as pd
 import streamlit as st
 
 from config import ASSETS_DIR
@@ -25,6 +20,22 @@ from store.match import score_matches as _score_matches
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
 from ui.styles import inject_screen_css
+
+
+# 뉴스 라이브러리에 노출할 카드 수
+_MAX_NEWS_CARDS = 6
+
+# 출처별 그라데이션 — 시안과 일관성 유지
+_SOURCE_GRADIENTS = {
+    "AI Times": "linear-gradient(135deg,#DC2626,#F87171)",
+    "오토메이션월드": "linear-gradient(135deg,#D97706,#F59E0B)",
+    "automationworld": "linear-gradient(135deg,#D97706,#F59E0B)",
+    "Google RSS": "linear-gradient(135deg,#047857,#14B8A6)",
+    "google": "linear-gradient(135deg,#047857,#14B8A6)",
+    "네이버 기술": "linear-gradient(135deg,#6D28D9,#A78BFA)",
+    "naver": "linear-gradient(135deg,#6D28D9,#A78BFA)",
+}
+_DEFAULT_GRADIENT = "linear-gradient(135deg,#475569,#94A3B8)"
 
 
 _DM_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "data_management_main.html"
@@ -104,6 +115,108 @@ def _dm_stats() -> dict[str, str | int]:
         "total_chunks": str(total_chunks),
         "last_update": last_update,
     }
+
+
+def _news_age_label(when: str) -> str:
+    """ISO 시각 → '3시간 전' / '어제' / '5월 17일'."""
+    if not when:
+        return ""
+    try:
+        ts = when.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        delta = datetime.now(timezone.utc) - dt
+        secs = int(delta.total_seconds())
+        if secs < 60:
+            return "방금"
+        if secs < 3600:
+            return f"{secs // 60}분 전"
+        if secs < 86400:
+            return f"{secs // 3600}시간 전"
+        if secs < 172800:
+            return "어제"
+        if secs < 86400 * 30:
+            return f"{secs // 86400}일 전"
+        return f"{dt.month}월 {dt.day}일"
+    except Exception:
+        return ""
+
+
+def _news_card_html(row: pd.Series, *, is_strong: bool = False) -> str:
+    """단일 뉴스 row → 카드 HTML (`<li class="dm-art">`)."""
+    title = _html.escape(str(row.get("title", "") or "(제목 없음)"))
+    body_raw = str(row.get("content", "") or "")[:140].strip()
+    if len(str(row.get("content", "") or "")) > 140:
+        body_raw += "…"
+    body = _html.escape(body_raw)
+    source = str(row.get("source", "") or "")
+    source_safe = _html.escape(source)
+    gradient = _SOURCE_GRADIENTS.get(source, _DEFAULT_GRADIENT)
+    when = str(row.get("collected_at", "") or row.get("published_at", "") or "")
+    age = _html.escape(_news_age_label(when))
+
+    li_cls = "dm-art dm-art-strong" if is_strong else "dm-art"
+    tag_html = ""
+    if is_strong:
+        tag_html = '<span class="dm-art-tag dm-art-tag-strong">★ 강한 매칭</span>'
+
+    # tags / keywords — content_keywords 컬럼이 있으면 활용
+    chips_html = ""
+    kw = row.get("keywords") if hasattr(row, "get") else None
+    if isinstance(kw, (list, tuple)):
+        for k in list(kw)[:3]:
+            chips_html += f'<span class="dm-mini">{_html.escape(str(k))}</span>'
+
+    return f"""<li class="{li_cls}">
+      <div class="dm-art-img">
+        <span class="dm-art-img-stripe"></span>
+        {tag_html}
+      </div>
+      <div class="dm-art-body">
+        <div class="dm-art-meta">
+          <span class="dm-src"><span class="dm-src-mark" style="background:{gradient};"></span>{source_safe}</span>
+          <span class="dm-time">{age}</span>
+        </div>
+        <h3 class="dm-art-h">{title}</h3>
+        {f'<p class="dm-art-p">{body}</p>' if body else ''}
+        {f'<div class="dm-art-chips">{chips_html}</div>' if chips_html else ''}
+      </div>
+    </li>"""
+
+
+def _news_empty_html() -> str:
+    return """<li class="dm-art" style="
+        grid-column: 1 / -1; padding: 32px 18px; text-align: center;
+        color: var(--text-muted); font-size: 14px;
+        border: 1px dashed var(--surface-divider); border-radius: 12px;
+        background: rgba(0,0,0,0.01);">
+      아직 수집된 뉴스가 없어요.<br>
+      <span style="font-size:12.5px;">'지금 실행' 버튼으로 수집을 시작하세요.</span>
+    </li>"""
+
+
+@st.cache_data(ttl=60)
+def _news_cards_html() -> str:
+    """최근 뉴스 6건 → 카드 HTML 결합."""
+    try:
+        news = _news_db.load_news_for_days(days=3)
+    except Exception:
+        news = None
+    if news is None or news.empty:
+        return _news_empty_html()
+
+    # collected_at 내림차순 정렬 (있으면)
+    if "collected_at" in news.columns:
+        news = news.sort_values("collected_at", ascending=False)
+    elif "published_at" in news.columns:
+        news = news.sort_values("published_at", ascending=False)
+
+    top = news.head(_MAX_NEWS_CARDS)
+    parts = []
+    for i, (_, row) in enumerate(top.iterrows()):
+        parts.append(_news_card_html(row, is_strong=(i == 0)))
+    return "\n".join(parts)
 
 
 @st.cache_data(ttl=60)
@@ -202,5 +315,6 @@ def _render_main(dm_stats: dict[str, str | int]) -> None:
         .replace("{{ACTIVE_SOURCES}}", _html.escape(str(dm_stats["active_sources"])))
         .replace("{{TODAY_COUNT}}", _html.escape(str(dm_stats["today_count"])))
         .replace("{{TOTAL_CHUNKS}}", _html.escape(str(dm_stats["total_chunks"])))
+        .replace("{{NEWS_CARDS}}", _news_cards_html())
     )
     st.html(html_out)
