@@ -14,25 +14,25 @@
         </div>
         <div class="oa-head-stats">
           <div class="oa-stat">
-            <div class="oa-stat-v">45</div>
+            <div class="oa-stat-v">{{OA_TOTAL}}</div>
             <div class="oa-stat-k">총 산출물</div>
-            <div class="oa-stat-d">이번 분기</div>
+            <div class="oa-stat-d">전체</div>
           </div>
           <div class="oa-stat-sep"></div>
           <div class="oa-stat">
-            <div class="oa-stat-v oa-good">28</div>
+            <div class="oa-stat-v oa-good">{{OA_ADOPTED}}</div>
             <div class="oa-stat-k">채택</div>
-            <div class="oa-stat-d">62.2%</div>
+            <div class="oa-stat-d">{{OA_ADOPTED_PCT}}</div>
           </div>
           <div class="oa-stat-sep"></div>
           <div class="oa-stat">
-            <div class="oa-stat-v oa-info">12</div>
+            <div class="oa-stat-v oa-info">{{OA_PENDING}}</div>
             <div class="oa-stat-k">대기</div>
-            <div class="oa-stat-d">평균 4.2일</div>
+            <div class="oa-stat-d">검토 대기</div>
           </div>
           <div class="oa-stat-sep"></div>
           <div class="oa-stat">
-            <div class="oa-stat-v oa-warn">5</div>
+            <div class="oa-stat-v oa-warn">{{OA_REJECTED}}</div>
             <div class="oa-stat-k">기각</div>
             <div class="oa-stat-d">사유 기록</div>
           </div>
@@ -94,7 +94,7 @@
             <div class="oa-col-head-l">
               <span class="oa-col-dot" style="background:#0369A1;"></span>
               <h3 class="oa-col-t">대기</h3>
-              <span class="oa-col-cnt">12</span>
+              <span class="oa-col-cnt">{{OA_PENDING}}</span>
             </div>
             <button class="oa-col-add">+ 새로 만들기</button>
           </div>
@@ -224,7 +224,7 @@
             <div class="oa-col-head-l">
               <span class="oa-col-dot" style="background:#15803D;"></span>
               <h3 class="oa-col-t">채택</h3>
-              <span class="oa-col-cnt">28</span>
+              <span class="oa-col-cnt">{{OA_ADOPTED}}</span>
             </div>
             <span class="oa-col-trend">
               <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='23 6 13.5 15.5 8.5 10.5 1 18'/><polyline points='17 6 23 6 23 12'/></svg>" width="10" height="10" alt="" />
@@ -349,7 +349,7 @@
             <div class="oa-col-head-l">
               <span class="oa-col-dot" style="background:#B45309;"></span>
               <h3 class="oa-col-t">기각</h3>
-              <span class="oa-col-cnt">5</span>
+              <span class="oa-col-cnt">{{OA_REJECTED}}</span>
             </div>
           </div>
           <div class="oa-col-meta">사유와 함께 보관 · 향후 참고</div>
