@@ -25,10 +25,11 @@ from ui import (
     insights_v2,
     news_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     persona_page,
-    proposal_workbench,
+    proposal_workbench,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     roadmap_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     sidebar,
-    sola_tab,
+    sola_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    sola_workshop_v2,
 )
 from ui.styles import inject_global_styles
 
@@ -60,10 +61,6 @@ elif area == "🧱 데이터 관리":
 elif area == "🔎 인사이트 분석":
     insights_v2.render()
 elif area == "🤖 SOLA 작업실":
-    tab_sola, tab_wb = st.tabs(["SOLA 작업", "제안서 작업장"])
-    with tab_sola:
-        sola_tab.render()
-    with tab_wb:
-        proposal_workbench.render()
+    sola_workshop_v2.render()
 else:
     bookmarks_tab.render()

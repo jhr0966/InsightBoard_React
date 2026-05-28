@@ -183,3 +183,12 @@ body:has(.db-topbar) .dm-search input {
   width: 100% !important;
   min-width: 0 !important;
 }
+
+/* ════════════════════════════════════════════════════════════
+   5) SOLA 작업실 — app-sola 없는 화면. block-container 우측 패딩 축소.
+   ws-shell 자체가 3열 (threads/chat/ctx) 이라 우측 fixed 패널 공간 불필요.
+   ════════════════════════════════════════════════════════════ */
+body:has(.ws-shell) .main .block-container,
+body:has(.ws-shell) [data-testid="stMain"] .block-container {
+  padding-right: 32px !important;
+}
