@@ -406,6 +406,102 @@ def test_command_palette_renders_5_nav_rows():
     assert 'class="v2-cmdk-modal"' in html
 
 
+def test_archive_action_href_builds_correct_url():
+    from ui import archive_v2
+
+    href = archive_v2._archive_action_href("adopt", "bm_abc123")
+    assert "app_area=" in href and "%EC%82%B0%EC%B6%9C%EB%AC%BC" in href  # quote('산출물')
+    assert "action=adopt" in href
+    assert "bm_id=bm_abc123" in href
+
+
+def test_archive_consume_action_invokes_set_status_and_strips_query():
+    from ui import archive_v2
+    from unittest.mock import patch
+    import streamlit as st
+
+    st.query_params.clear()
+    st.query_params["action"] = "adopt"
+    st.query_params["bm_id"] = "bm_x"
+
+    with patch.object(archive_v2.bookmarks_store, "set_status", return_value=True) as p:
+        result = archive_v2._consume_action_if_any()
+
+    assert result == ("adopted", "bm_x")
+    p.assert_called_once_with("bm_x", "adopted")
+    # 1회 소비 후 query strip — 새로고침으로 액션 재실행 방지
+    assert "action" not in st.query_params
+    assert "bm_id" not in st.query_params
+
+
+def test_archive_consume_action_noop_when_action_missing():
+    from ui import archive_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    assert archive_v2._consume_action_if_any() is None
+
+    st.query_params["action"] = "unknown_verb"
+    st.query_params["bm_id"] = "bm_y"
+    try:
+        assert archive_v2._consume_action_if_any() is None
+        # 알 수 없는 action 은 query 유지 (디버깅 용)
+        assert "action" in st.query_params
+    finally:
+        st.query_params.clear()
+
+
+def test_data_management_refresh_clears_caches_and_sets_toast():
+    from ui import data_management_v2
+    from unittest.mock import patch
+    import streamlit as st
+
+    st.query_params.clear()
+    st.session_state.pop("_dm_refresh_toast", None)
+    st.query_params["refresh"] = "now"
+
+    # 캐시 clear 가 호출되는지 — 일부 함수만 spy
+    targets = [
+        data_management_v2._dm_stats,
+        data_management_v2._ingest_jobs_html,
+    ]
+    with patch.object(targets[0], "clear") as c1, patch.object(targets[1], "clear") as c2:
+        assert data_management_v2._consume_refresh_if_any() is True
+        c1.assert_called_once()
+        c2.assert_called_once()
+
+    assert st.session_state.get("_dm_refresh_toast") is True
+    assert "refresh" not in st.query_params
+
+    # 재진입(쿼리 없음) 시 noop
+    assert data_management_v2._consume_refresh_if_any() is False
+
+
+def test_board_matrix_label_ellipsis_when_too_long():
+    from ui import board_v2
+
+    cells = pd.DataFrame([
+        {"dept": "도장", "lv3": "초장초장초장초장초장초장초장초장", "cell_score": 95,
+         "matched_news": 40, "matched_tasks": 18, "sample_tasks": "", "sample_news": ""},
+    ])
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_score_cells", return_value=cells):
+        board_v2._board_matrix_html.clear()
+        html = board_v2._board_matrix_html()
+    # 12자 cap + … 추가 — '초장' × 8 = 16자 → 12자 + …
+    assert "…" in html
+
+
+def test_matrix_dept_colors_shared_single_dict():
+    """board_v2.MATRIX_DEPT_COLORS 가 insights matrix 에서 사용되는지 import 경로 검증."""
+    from ui import board_v2
+    assert isinstance(board_v2.MATRIX_DEPT_COLORS, dict)
+    # 5 부서 색상
+    assert {"도장", "용접", "의장", "조립", "절단"}.issubset(set(board_v2.MATRIX_DEPT_COLORS.keys()))
+    assert board_v2.MATRIX_DEPT_FALLBACK.startswith("#")
+
+
 def test_insights_matrix_with_data_emits_halo():
     from ui import insights_v2
 

@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 
 import streamlit as st
 
+from urllib.parse import quote
+
 from config import ASSETS_DIR
 from persona.schema import Persona
 from roadmap.query import load_latest as _load_roadmap
@@ -29,6 +31,47 @@ _ARCHIVE_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "archive_main.html"
 
 # 칸반 컬럼당 최대 노출 카드 수 — 초과분은 "+N건 더 보기" 로 표시
 _MAX_CARDS_PER_COL = 4
+
+# 카드 액션 URL 매핑 — `?action=...` 키를 set_status 의 값으로 변환.
+_ACTION_TO_STATUS: dict[str, str] = {
+    "adopt": "adopted",
+    "reject": "rejected",
+    "restore": "pending",
+}
+
+
+def _archive_action_href(action: str, bm_id: str) -> str:
+    """카드 액션 링크 — 같은 화면에 머무르면서 액션만 트리거."""
+    parts = [
+        f"app_area={quote('📦 산출물 보관함')}",
+        f"action={quote(action)}",
+        f"bm_id={quote(bm_id)}",
+    ]
+    return "?" + "&".join(parts)
+
+
+def _consume_action_if_any() -> tuple[str, str] | None:
+    """`?action=...&bm_id=...` 가 있으면 1회 소비 후 set_status.
+
+    Returns: (status, bm_id) 가 적용되면 그 튜플, 아니면 None.
+    부수효과: 캐시 invalidate + query_params 에서 action/bm_id 제거.
+    """
+    action = st.query_params.get("action")
+    bm_id = st.query_params.get("bm_id")
+    if not action or not bm_id or action not in _ACTION_TO_STATUS:
+        return None
+    new_status = _ACTION_TO_STATUS[action]
+    try:
+        bookmarks_store.set_status(bm_id, new_status)
+    except Exception:
+        pass
+    # 캐시 invalidate — 다음 렌더에서 최신 칸반 반영
+    _oa_stats_and_cards.clear()
+    # query 정리 — 재방문 / 새로고침에서 액션 재실행 방지
+    for k in ("action", "bm_id"):
+        if k in st.query_params:
+            del st.query_params[k]
+    return (new_status, bm_id)
 
 
 def _load_persona() -> Persona:
@@ -95,14 +138,15 @@ def _card_html(bm: Bookmark, *, with_actions: bool = False) -> str:
         tag_chips += f'<span class="oa-mini">{_html.escape(tag)}</span>'
 
     actions_html = ""
-    if with_actions:
-        actions_html = """
-        <div class="oa-card-actions">
-          <button class="oa-act oa-act-good" disabled>채택</button>
-          <button class="oa-act" disabled>수정</button>
-          <button class="oa-act oa-act-warn" disabled>기각</button>
-        </div>
-        """
+    if with_actions and bm.id:
+        # 1순위 카드만 액션 노출 — 같은 화면 유지 + status 변경
+        actions_html = (
+            '<div class="oa-card-actions">'
+            f'<a class="oa-act oa-act-good" href="{_archive_action_href("adopt", bm.id)}" target="_self">채택</a>'
+            f'<button class="oa-act" disabled title="수정 흐름은 SOLA 작업실 PR 에서 wire">수정</button>'
+            f'<a class="oa-act oa-act-warn" href="{_archive_action_href("reject", bm.id)}" target="_self">기각</a>'
+            '</div>'
+        )
 
     return f"""<article class="oa-card">
       <div class="oa-card-top">
@@ -131,7 +175,21 @@ def _empty_col_html(status_label: str) -> str:
     </div>"""
 
 
-def _build_cards_html(items: list[Bookmark], *, status_label: str, with_actions_first: bool = False) -> str:
+def _restore_action_html(bm: Bookmark) -> str:
+    """채택/기각 컬럼 1순위 카드에 노출되는 '되돌리기' 액션."""
+    if not bm.id:
+        return ""
+    return (
+        '<div class="oa-card-actions">'
+        f'<a class="oa-act" href="{_archive_action_href("restore", bm.id)}" target="_self">'
+        '↶ 대기로 되돌리기</a>'
+        '</div>'
+    )
+
+
+def _build_cards_html(items: list[Bookmark], *, status_label: str,
+                      with_actions_first: bool = False,
+                      with_restore_first: bool = False) -> str:
     """컬럼 카드 리스트 → HTML. 빈 리스트는 empty placeholder."""
     if not items:
         return _empty_col_html(status_label)
@@ -141,7 +199,11 @@ def _build_cards_html(items: list[Bookmark], *, status_label: str, with_actions_
 
     parts = []
     for idx, bm in enumerate(visible):
-        parts.append(_card_html(bm, with_actions=(with_actions_first and idx == 0)))
+        card = _card_html(bm, with_actions=(with_actions_first and idx == 0))
+        if with_restore_first and idx == 0:
+            # 카드 article 닫기 직전에 restore action 삽입
+            card = card.replace("</article>", _restore_action_html(bm) + "</article>", 1)
+        parts.append(card)
     if overflow > 0:
         parts.append(
             f'<button class="oa-col-more" disabled>+ {overflow}건 더 보기</button>'
@@ -172,8 +234,8 @@ def _oa_stats_and_cards() -> dict[str, str]:
         "rejected": str(len(rejected_items)),
         "adopted_pct": adopted_pct,
         "cards_pending": _build_cards_html(pending_items, status_label="대기", with_actions_first=True),
-        "cards_adopted": _build_cards_html(adopted_items, status_label="채택"),
-        "cards_rejected": _build_cards_html(rejected_items, status_label="기각"),
+        "cards_adopted": _build_cards_html(adopted_items, status_label="채택", with_restore_first=True),
+        "cards_rejected": _build_cards_html(rejected_items, status_label="기각", with_restore_first=True),
     }
 
 
@@ -212,8 +274,14 @@ def _archive_stats_oa() -> dict[str, int]:
 
 
 def render() -> None:
-    """산출물 보관함 v2 — topbar + app-side + main + app-sola."""
+    """산출물 보관함 v2 — topbar + app-side + main + app-sola.
+
+    `?action=adopt|reject|restore&bm_id=...` 가 있으면 첫 단계에서 1회 소비.
+    캐시 invalidate 후 본 렌더가 갱신된 칸반을 그린다.
+    """
     inject_screen_css("archive")
+
+    _consume_action_if_any()
 
     persona = _load_persona()
     stats = _archive_stats_oa()

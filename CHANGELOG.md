@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (v2 — 중간 작업: archive 카드 액션 + 데이터 관리 refresh + 회귀 테스트)
+- `ui/archive_v2.py::_archive_action_href`, `_consume_action_if_any` 신규 — 칸반 카드 위 "채택"/"기각"/"되돌리기" 버튼이 `<button disabled>` → `<a href="?action=adopt|reject|restore&bm_id=...">` 로 wire. `render()` 첫 단계에서 query 1회 소비 → `bookmarks_store.set_status` 호출 + 캐시 invalidate + query strip (재실행 방지). 채택/기각 컬럼 1순위 카드에도 "↶ 대기로 되돌리기" CTA 추가.
+- `ui/data_management_v2.py::_refresh_cta_html`, `_consume_refresh_if_any`, `_render_refresh_toast_if_needed` 신규 — "지금 실행" 정적 버튼 → `<a href="?refresh=now">지금 새로고침</a>`. 클릭 시 모든 dm 캐시(`_dm_stats`/`_ingest_jobs_html`/`_hist_html`/`_news_cards_html`/`_archive_stats_dm`) invalidate + 녹색 inline toast "✓ 캐시를 새로 그렸어요 (실제 수집은 06:00 KST 스케줄러)". `body:has(.db-topbar)` scoped. 또한 `render_setup_banner_if_needed` 호출 누락 보완.
+- `assets/v2/screens/data_management_main.html` — 정적 "지금 실행" 버튼 → `{{INGEST_REFRESH_CTA}}` placeholder, "스케줄" 버튼 `disabled` + title "다음 PR".
+- `assets/v2/screens/archive.css`, `data_management.css` — `.oa-act{,-good,-warn}` / `.dm-btn-primary` 의 `<a>` 변형용 text-decoration · :visited 회복 (I-19 패턴 적용).
+- `tests/test_v2_screens.py` (+6) — `_archive_action_href` URL 빌더, `_consume_action_if_any` happy/noop/unknown, `_consume_refresh_if_any` 캐시 clear + toast, board matrix 라벨 ellipsis, MATRIX_DEPT_COLORS 공유 dict 검증.
+
 ### Changed (v2 — 마무리: 차트 callout clamp · dept 색 공유 · v1 4모듈 -1366줄)
 - `ui/insights_v2.py::_ia_chart_parts` — callout box 좌표를 viewBox 540×230 안으로 clamp: x = `max(0, min(cx - 39, 540 - 78))`, y = 점 위 우선 (`cy - 32`) 또는 점이 너무 높으면 점 아래 (`cy + 10`). 마지막 점이 우측 끝일 때 box 가 잘리던 회귀 해결.
 - `ui/board_v2.py` + `ui/insights_v2.py` — 매트릭스 라벨 cap 14 → 12자 + ellipsis(`…`). `_IA_MATRIX_COLORS_BY_DEPT` 제거하고 `board_v2.MATRIX_DEPT_COLORS` / `MATRIX_DEPT_FALLBACK` 공유. 두 매트릭스의 dept 색상 단일 진실.

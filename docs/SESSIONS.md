@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-05-28 · 중간 작업 — archive 카드 액션 + 데이터관리 refresh + 회귀 테스트
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 39 커밋
+
+**변경:**
+- archive_v2: 채택/기각/되돌리기 wire — `_archive_action_href` + `_consume_action_if_any`. 1순위 카드만 action 노출, 채택/기각 컬럼 1순위에 "↶ 되돌리기" 추가
+- data_management_v2: "지금 실행" 정적 → "지금 새로고침" 동적 — 캐시 invalidate + 녹색 toast
+- archive.css / data_management.css — `<a>` CTA CSS 회복 (I-19)
+- +6 tests : archive action URL/소비/noop, dm refresh caches+toast, 라벨 ellipsis, MATRIX_DEPT_COLORS 공유
+
+**검증:** pytest **193/193 passed** · 금지패턴 0 · py_compile OK
+
+**남은 큰 작업 (별도 PR 추천):**
+- A.3 SOLA composer 실 LLM 호출 wire
+- B.4 SOLA thread 영구화 (chat_log 확장)
+- persona_page v2 마이그
+- 데이터관리 실 수집 트리거 (현재는 캐시 갱신만)
+
+---
+
 ## 2026-05-28 · 마무리 — 차트 clamp · dept 색 공유 · v1 -1366줄 · INVARIANTS 4건
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 38 커밋

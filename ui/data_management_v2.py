@@ -397,8 +397,13 @@ def _archive_stats_dm() -> dict[str, int]:
 
 
 def render() -> None:
-    """데이터 관리 v2 — topbar + app-side + main + app-sola 풀 셸 렌더."""
+    """데이터 관리 v2 — topbar + app-side + main + app-sola 풀 셸 렌더.
+
+    `?refresh=now` 가 들어오면 첫 단계에서 1회 소비 → 캐시 invalidate + 토스트.
+    """
     inject_screen_css("data_management")
+
+    _consume_refresh_if_any()
 
     persona = _load_persona()
     stats = _archive_stats_dm()
@@ -419,6 +424,9 @@ def render() -> None:
         persona=persona,
         stats=stats,
     )
+
+    app_shell.render_setup_banner_if_needed()
+    _render_refresh_toast_if_needed()
 
     # ── 3) 본문 main 템플릿 ──
     _render_main(dm_stats)
@@ -444,6 +452,61 @@ def render() -> None:
     )
 
 
+def _refresh_cta_html() -> str:
+    """수집잡 헤더의 "지금 실행" CTA — 캐시 무효화 + 안내 배너 트리거 링크."""
+    from urllib.parse import quote
+
+    href = (
+        "?app_area=" + quote("🧱 데이터 관리")
+        + "&refresh=now"
+    )
+    return (
+        f'<a class="dm-btn-primary" href="{href}" target="_self" '
+        f'title="캐시를 즉시 무효화해 새 데이터로 다시 그립니다 (실제 수집은 스케줄러가 06:00 에 실행)">'
+        '<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'11\' '
+        'height=\'11\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#fff\' stroke-width=\'2.4\' '
+        'stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'23 4 23 10 17 10\'/>'
+        '<path d=\'M3.51 9a9 9 0 0114.85-3.36L23 10\'/></svg>" width="11" height="11" alt="" />'
+        '지금 새로고침'
+        '</a>'
+    )
+
+
+def _consume_refresh_if_any() -> bool:
+    """`?refresh=now` 1회 소비 — 데이터 관리 캐시 무효화 + 토스트 플래그 set."""
+    if st.query_params.get("refresh") != "now":
+        return False
+    # 모든 dm 관련 캐시 무효화
+    for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm):
+        if hasattr(fn, "clear"):
+            fn.clear()
+    st.session_state["_dm_refresh_toast"] = True
+    if "refresh" in st.query_params:
+        del st.query_params["refresh"]
+    return True
+
+
+def _render_refresh_toast_if_needed() -> None:
+    """직전 새로고침 직후 한 번만 노출되는 inline toast (sticky 안 함)."""
+    if not st.session_state.pop("_dm_refresh_toast", False):
+        return
+    st.html(
+        """
+        <style>
+          body:has(.db-topbar) .dm-refresh-toast {
+            margin: 0 24px 14px; padding: 10px 14px;
+            background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px;
+            font-size: 13px; color: #064E3B; font-weight: 600;
+          }
+        </style>
+        <div class="dm-refresh-toast">
+          ✓ 캐시를 새로 그렸어요 — 카운터/뉴스 카드/14일 sparkline 이 갱신됐습니다.
+          <span style="font-weight:500;color:#065F46;">(실제 수집은 매일 06:00 KST 스케줄러가 실행)</span>
+        </div>
+        """
+    )
+
+
 def _render_main(dm_stats: dict[str, str | int]) -> None:
     """data_management_main.html 템플릿 로드 + placeholder 치환."""
     template = _DM_TEMPLATE.read_text(encoding="utf-8")
@@ -456,6 +519,7 @@ def _render_main(dm_stats: dict[str, str | int]) -> None:
         .replace("{{TOTAL_CHUNKS}}", _html.escape(str(dm_stats["total_chunks"])))
         .replace("{{NEWS_CARDS}}", _news_cards_html())
         .replace("{{INGEST_JOBS}}", _ingest_jobs_html())
+        .replace("{{INGEST_REFRESH_CTA}}", _refresh_cta_html())
         .replace("{{HIST_HEAD}}", hist["head"])
         .replace("{{HIST_SVG}}", hist["svg"])
         .replace("{{HIST_X}}", hist["foot"])

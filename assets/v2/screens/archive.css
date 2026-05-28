@@ -490,6 +490,12 @@
   color: var(--semantic-warning);
 }
 .oa-act-warn:hover { border-color: var(--semantic-warning); color: var(--semantic-warning); }
+/* <a> 로 전환된 .oa-act — text-decoration · :visited 색 회복 */
+.oa-act { text-decoration: none; }
+.oa-act:hover { text-decoration: none; }
+a.oa-act, a.oa-act:visited { color: var(--text-primary); }
+a.oa-act-good, a.oa-act-good:visited { color: #fff; }
+a.oa-act-warn, a.oa-act-warn:visited { color: var(--semantic-warning); }
 
 .oa-col-more {
   display: block;

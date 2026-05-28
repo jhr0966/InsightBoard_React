@@ -212,6 +212,9 @@
   box-shadow: 0 2px 6px rgba(37,99,235,0.20);
 }
 .dm-btn-primary:hover { background: var(--accent-hover); }
+.dm-btn-primary { text-decoration: none; }
+.dm-btn-primary:hover { text-decoration: none; }
+a.dm-btn-primary, a.dm-btn-primary:visited { color: #fff; }
 
 .dm-job-list {
   list-style: none;
