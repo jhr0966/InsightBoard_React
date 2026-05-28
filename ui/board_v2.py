@@ -559,6 +559,137 @@ def _board_matrix_html() -> str:
       </div>"""
 
 
+def _board_kw_mgr_html(persona: Persona) -> str:
+    """⑦ 내 키워드 관리 — SOLA 자동 추출 + 페르소나 관심사 그룹.
+
+    Group 1: top_keywords(news_30d) 상위 6개 (히트 = count, tier dot)
+    Group 2: persona.interest_lv3 + interest_tasks (최대 4) — 30d 본문 substring
+             count 로 히트 산출
+    Summary: 키워드 수 / 예상 일별 수집량(전체 30d/30) / 출처 수
+    """
+    try:
+        news_30 = _news_db.load_news_for_days(days=30)
+    except Exception:
+        news_30 = None
+    if news_30 is None or news_30.empty:
+        return _kw_mgr_empty_html()
+
+    # Group 1
+    try:
+        top_df = _trends.top_keywords(news_30, top_n=6)
+    except Exception:
+        top_df = None
+    auto_chips: list[str] = []
+    if top_df is not None and not top_df.empty:
+        max_c = max(int(top_df["count"].max()), 1)
+        for _, r in top_df.iterrows():
+            kw = str(r["keyword"])
+            c = int(r["count"])
+            ratio = c / max_c
+            dot_cls = (
+                "db-good-dot" if ratio >= 0.5
+                else "db-mid-dot" if ratio >= 0.2
+                else "db-low-dot"
+            )
+            auto_chips.append(
+                f'<span class="db-kchip">'
+                f'<span class="db-kchip-dot {dot_cls}"></span>'
+                f'{_html.escape(kw)}'
+                f'<span class="db-kchip-hits">{c}</span>'
+                f'<button class="db-kchip-x" disabled>×</button>'
+                f'</span>'
+            )
+
+    # Group 2 — persona 관심사
+    user_terms = list(persona.interest_tasks) + list(persona.interest_lv3)
+    # 중복 제거 유지순서
+    seen = set()
+    user_terms = [t for t in user_terms if t and not (t in seen or seen.add(t))][:4]
+
+    user_chips: list[str] = []
+    if user_terms:
+        hay_cols = [c for c in ("title", "summary", "summary_llm", "keywords",
+                                 "keywords_llm", "content") if c in news_30.columns]
+        for term in user_terms:
+            hits = 0
+            if hay_cols:
+                mask = pd.Series(False, index=news_30.index)
+                for col in hay_cols:
+                    mask |= news_30[col].fillna("").astype(str).str.contains(
+                        term, regex=False, case=False
+                    )
+                hits = int(mask.sum())
+            user_chips.append(
+                f'<span class="db-kchip db-kchip-user">'
+                f'{_html.escape(term)}'
+                f'<span class="db-kchip-hits">{hits}</span>'
+                f'<button class="db-kchip-x" disabled>×</button>'
+                f'</span>'
+            )
+
+    add_inline = (
+        '<span class="db-kw-add-inline">'
+        '+ 키워드 추가 + 즉시 수집'
+        '</span>'
+    )
+
+    # Summary
+    total_kw = len(auto_chips) + len(user_chips)
+    daily_avg = round(len(news_30) / 30) if len(news_30) > 0 else 0
+    n_sources = int(news_30["source"].nunique()) if "source" in news_30.columns else 0
+
+    g1_head = (
+        f'<div class="db-kwg-head">'
+        f'<span class="db-kwg-mark">★ SOLA 자동 추출 {len(auto_chips)}</span>'
+        f'<span class="db-kwg-meta">최근 30일 빈도 상위</span>'
+        f'</div>'
+    )
+    g1_chips = (
+        f'<div class="db-kwg-chips">{"".join(auto_chips)}</div>'
+        if auto_chips
+        else '<div class="db-kwg-chips"><span class="db-kwg-meta">아직 추출된 키워드가 없어요.</span></div>'
+    )
+
+    g2_head = (
+        f'<div class="db-kwg-head">'
+        f'<span class="db-kwg-mark db-kwg-mark-user">◉ 내가 추가 {len(user_chips)}</span>'
+        f'<span class="db-kwg-meta">페르소나 관심사 기반 · 우선 가중치</span>'
+        f'</div>'
+    )
+    g2_chips_inner = "".join(user_chips) + add_inline
+    if not user_chips:
+        g2_chips_inner = (
+            '<span class="db-kwg-meta">페르소나에서 관심 작업을 선택하면 여기에 표시됩니다.</span>'
+            + add_inline
+        )
+
+    summary = (
+        f'<div class="db-kw-summary">'
+        f'<div class="db-kw-sum-num"><span>{total_kw}</span><small>개</small></div>'
+        f'<div class="db-kw-sum-sep"></div>'
+        f'<div class="db-kw-sum-info">'
+        f'<div class="db-kw-sum-t">최근 30일 평균 <b>~ {daily_avg}건/일</b> 수집 · 출처 {n_sources}개</div>'
+        f'<div class="db-kw-sum-s">희소(주황) 키워드는 시그널이 옅을 수 있어요 — 30일 모니터링 후 재평가됩니다.</div>'
+        f'</div>'
+        f'<button class="db-kw-sum-cta" disabled>지금 즉시 수집 실행</button>'
+        f'</div>'
+    )
+
+    return f"""<div class="db-kw-mgr">
+        <div class="db-kwg">{g1_head}{g1_chips}</div>
+        <div class="db-kwg">{g2_head}<div class="db-kwg-chips">{g2_chips_inner}</div></div>
+        {summary}
+      </div>"""
+
+
+def _kw_mgr_empty_html() -> str:
+    return ('<div style="padding: 32px 18px; text-align: center; color: var(--text-muted);'
+            ' font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 12px;">'
+            '아직 키워드를 분석할 데이터가 없어요.<br>'
+            '<span style="font-size:12.5px;">데이터 관리에서 수집을 시작하세요.</span>'
+            '</div>')
+
+
 def _matrix_empty_html() -> str:
     return ('<div style="padding: 32px 18px; text-align: center; color: var(--text-muted);'
             ' font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 12px;">'
@@ -882,6 +1013,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BOARD_OPPORTUNITIES}}", _opportunities_html())
         .replace("{{BOARD_TREND}}", _board_trend_block_html())
         .replace("{{BOARD_MATRIX}}", _board_matrix_html())
+        .replace("{{BOARD_KW_MGR}}", _board_kw_mgr_html(persona))
     )
     brief = _brief_html()
     html_out = (

@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added (v2 보드 — ⑦ 내 키워드 관리 실데이터)
+- `ui/board_v2.py::_board_kw_mgr_html(persona)` — Group 1 (SOLA 자동 추출 top-6) + Group 2 (페르소나 `interest_tasks` + `interest_lv3` 최대 4) 동적 chip 리스트. Group 1 tier dot 은 빈도 비율(0.5↑ good / 0.2↑ mid / 그 외 low). Group 2 hits 는 title/summary/keywords 등 30d 본문 substring count. Summary = 키워드 총 개수 + 30일 평균 일별 수집량 + 출처 수.
+- `assets/v2/screens/board_main.html` — 키워드 관리 ⑦ 하드코딩 chip + summary(~85줄) → `{{BOARD_KW_MGR}}` placeholder.
+
 ### Added (v2 보드 — 기회 매트릭스 ROI×난이도 산점도 실데이터)
 - `ui/board_v2.py::_board_matrix_html` 신규 — `sola.opportunity.score_cells` 상위 6개를 ROI(matched_news) × 난이도(matched_tasks) 평면에 매핑. top% = 90 − roi_norm·78, left% = 10 + ease_norm·80, 버블 크기 14~32px. 우상단 quadrant(쉬움+ROI높음) → `db-mx-strong` 토글, 좌하단 → `db-mx-soft`. detail panel 은 1위 cell (종합점수·매칭뉴스·매칭작업 + 1줄 why).
 - `assets/v2/screens/board_main.html` — 매트릭스 섹션 ⑥ 의 하드코딩 버블 6개 + detail aside(~65줄) → `{{BOARD_MATRIX}}` placeholder.
