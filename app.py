@@ -17,16 +17,12 @@ from store import bookmarks as _bookmarks_store
 from ui import (
     app_shell,
     archive_v2,
-    board_tab,  # noqa: F401 — 테스트 의존: tests/test_board_flow.py.
     board_v2,
-    bookmarks_tab,  # noqa: F401 — 테스트 의존: tests/test_sola_workspace.py.
     data_health,  # noqa: F401 — 테스트 의존: tests/test_data_health.py.
     data_management_v2,
-    home_tab,  # noqa: F401 — 테스트 의존: tests/test_home_trend_widget.py.
     insights_v2,
     persona_page,
     sidebar,
-    sola_tab,  # noqa: F401 — 테스트 의존: tests/test_sola_workspace.py.
     sola_workshop_v2,
 )
 from ui.styles import inject_global_styles

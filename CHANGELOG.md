@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (v2 — 마무리: 차트 callout clamp · dept 색 공유 · v1 4모듈 -1366줄)
+- `ui/insights_v2.py::_ia_chart_parts` — callout box 좌표를 viewBox 540×230 안으로 clamp: x = `max(0, min(cx - 39, 540 - 78))`, y = 점 위 우선 (`cy - 32`) 또는 점이 너무 높으면 점 아래 (`cy + 10`). 마지막 점이 우측 끝일 때 box 가 잘리던 회귀 해결.
+- `ui/board_v2.py` + `ui/insights_v2.py` — 매트릭스 라벨 cap 14 → 12자 + ellipsis(`…`). `_IA_MATRIX_COLORS_BY_DEPT` 제거하고 `board_v2.MATRIX_DEPT_COLORS` / `MATRIX_DEPT_FALLBACK` 공유. 두 매트릭스의 dept 색상 단일 진실.
+- `assets/v2/screens/board_main.html` — "음성으로 듣기 · 3:42" → "음성으로 듣기 · 준비 중" + `disabled` + title "TTS 미구현 — 다음 PR". 정적 가짜 시간 라벨 제거.
+- `docs/INVARIANTS.md` — I-16 (handoff URL `?from=...` 단일 진입점), I-17 (sticky banner stacking 규칙), I-18 (MATRIX_DEPT_COLORS 공유), I-19 (`<a>` CTA CSS 회복 3-rule) 4건 추가.
+- **v1 데드코드 1366줄 제거** — `ui/board_tab.py` (-645), `ui/home_tab.py` (-603), `ui/sola_tab.py` (-312), `ui/bookmarks_tab.py` (-206) + 대응 테스트 3개 (`test_board_flow.py`, `test_home_trend_widget.py`, `test_sola_workspace.py`) 제거. v2 에 동등 기능이 모두 있고 외부 참조 0건 확인. `data_health` 만 보존 (테스트 + 유틸로 미래 활용 가능).
+- `app.py` — 4개 noqa 임포트 제거. 남은 v1 모듈은 `data_health` 1개.
+
 ### Added (v2 — A.7 후속 + A.4 ⌘K 모달 wire + CTA 스타일 회복)
 - `ui/sola_workshop_v2.py::_composer_prefill()` 신규 — `?from=brief/opp/matrix/ia_map` 에 따라 textarea 자동 prefill + placeholder + pins 마크업 생성. brief 는 session_state 3건 제목, 나머지는 URL dept · lv3 로 작성된 한국어 초안 (제안서 / 비교 분석).
 - `assets/v2/screens/sola_main.html` — composer 정적 `<textarea rows="1">` + 가짜 pins → `{{COMPOSER_PINS}}` / `{{COMPOSER_PLACEHOLDER}}` / `{{COMPOSER_PREFILL}}` 3 placeholder. rows=3 으로 prefill 표시 영역 확장.

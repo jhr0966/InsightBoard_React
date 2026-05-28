@@ -133,3 +133,39 @@ I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 
 ## I-15 — `chat_log` 는 `chat_key` 별 파일
 
 `store.chat_log.{save_history,load_history,reset}` 가 모두 `chat_key` 인자를 받는다. 인자 생략 시 `default` 로 매핑되어 기존 `data/sola/chat_history.jsonl` 경로 유지 (후방 호환). 새 `chat_key` 는 `data/sola/chat/{slug}.jsonl` 에 저장되며 `_safe_key()` 가 파일명 슬러그를 강제 (디렉토리 traversal 차단).
+
+## I-16 — v2 화면 인계 URL 패턴 `?app_area=...&from=<kind>&dept=&lv3=`
+
+보드/인사이트의 카드 CTA 는 모두 `ui/board_v2._sola_handoff_href(from_kind, **payload)` 한 줄로 만든다. SOLA 작업실은 `?from` 값을 보고 composer prefill 과 handoff banner 를 동시 결정.
+
+- **단일 진입점**: `_sola_handoff_href` 외 직접 `?app_area=...` 문자열 조립 금지. payload 자동 quote.
+- **지원 from kind**: `brief` (보드 ② SOLA 브리핑), `opp` (보드 ④ 자동화 기회), `matrix` (보드 ⑥ 매트릭스 detail), `ia_map` (인사이트 공정 매핑).
+- **brief 만 session_state**: 3건 뉴스 제목 리스트는 `st.session_state["_board_brief_items"]` 에 저장 (URL 길이 제한 회피). 보드 진입마다 갱신/삭제.
+- **opp/matrix/ia_map**: 모두 stateless — URL 만으로 prefill 재현 가능.
+
+## I-17 — v2 sticky banner stacking 규칙
+
+`.app-llm-banner` (LLM 미설정 안내) 와 `.ws-brief-handoff` (SOLA 인계) 가 동시 노출되면 둘 다 `position: sticky` 라 stacking 됨. 다음 분기 규칙으로 위치 결정:
+
+- 단독 LLM: `top: 76px`
+- 단독 handoff: `top: 76px`
+- 둘 다 노출: handoff 가 `top: 132px` (LLM 56px + margin)
+  - CSS 분기: `body:has(.app-llm-banner) .ws-brief-handoff { top: 132px; }`
+
+새 sticky 안내 배너 추가 시 동일 패턴으로 `body:has(...)` 조건부 offset 누적.
+
+## I-18 — v2 매트릭스 dept 색상은 `board_v2.MATRIX_DEPT_COLORS` 공유
+
+보드 ⑥ + 인사이트 SECTION B 매트릭스가 같은 dept 색을 쓰도록 단일 dict (`MATRIX_DEPT_COLORS` + `MATRIX_DEPT_FALLBACK`) 공유. 새 dept 추가는 한 곳만 갱신. 두 매트릭스의 시각 일관성 보장.
+
+## I-19 — v2 CTA `<button disabled>` → `<a href>` 전환 시 CSS 회복 필수
+
+`<a>` 는 기본 `text-decoration: underline` + `color: blue/purple (visited)`. `.db-prop-discuss` / `.db-mx-cta` / `.db-act{-primary}` / `.ia-pc-detail` 처럼 button 전제 CSS 를 a 에도 적용할 때:
+
+```css
+.foo { text-decoration: none; }
+.foo:hover { text-decoration: none; }
+a.foo, a.foo:visited { color: <원래색>; }
+```
+
+세 가지 모두 빠지면 미세한 시각 회귀 (밑줄/자주색 visited) 발생.

@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-05-28 · 마무리 — 차트 clamp · dept 색 공유 · v1 -1366줄 · INVARIANTS 4건
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 38 커밋
+
+**변경:**
+- **Polish:**
+  - 인사이트 차트 callout box 좌표 viewBox 안으로 clamp (우측 끝 잘림 해결)
+  - 두 매트릭스 라벨 cap 14→12자 + ellipsis
+  - 매트릭스 dept 색상 단일 진실 → `board_v2.MATRIX_DEPT_COLORS` 공유
+  - 보드 ② "음성으로 듣기 · 3:42" → "준비 중" disabled (정적 가짜 라벨 제거)
+- **INVARIANTS +4**: I-16 handoff URL 패턴 · I-17 sticky banner stacking · I-18 MATRIX_DEPT_COLORS · I-19 `<a>` CTA CSS 회복 규칙
+- **v1 데드코드 -1366줄** : board_tab/home_tab/sola_tab/bookmarks_tab 4 모듈 + 3 v1 테스트 제거 (data_health 만 보존). app.py noqa 도 4개 제거.
+
+**검증:**
+- pytest **187/187 passed** (217 - 30 v1 tests 제거 = 187)
+- 금지 패턴 0, py_compile OK
+- 외부 참조 grep 결과 0
+
+**현 PR 상태:** 마무리 완료. 추가 작업은 별도 PR (A.3 LLM 호출 wire / B.4 thread 영구화 / persona_page v2 / archive 카드 액션).
+
+---
+
 ## 2026-05-28 · A.7 후속 (composer prefill) + A.4 ⌘K wire + CTA 스타일 회복
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 36 커밋

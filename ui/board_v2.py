@@ -35,6 +35,17 @@ _LEAD_STORY_COUNT = 1
 _SIDE_STORY_COUNT = 4
 
 
+# 부서 색상 팔레트 — 보드 매트릭스 + 인사이트 매트릭스 공유 (단일 진실).
+MATRIX_DEPT_COLORS: dict[str, str] = {
+    "도장": "#2563EB",
+    "용접": "#14B8A6",
+    "의장": "#F59E0B",
+    "조립": "#6366F1",
+    "절단": "#0EA5E9",
+}
+MATRIX_DEPT_FALLBACK = "#475569"
+
+
 def _sola_handoff_href(from_kind: str, **payload: str) -> str:
     """SOLA 작업실 인계 URL. from_kind 와 payload 모두 quote 처리.
 
@@ -538,7 +549,7 @@ def _board_matrix_html() -> str:
             f'style="left:{left_pct:.0f}%; top:{top_pct:.0f}%;" '
             f'title="{_html.escape(title)}" disabled>'
             f'<span class="db-mx-bsize" style="--s: {size_px}px;"></span>'
-            f'<span class="db-mx-blabel">{_html.escape(label[:14])}</span>'
+            f'<span class="db-mx-blabel">{_html.escape(label[:12] + ("…" if len(label) > 12 else ""))}</span>'
             f'</button>'
         )
 

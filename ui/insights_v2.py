@@ -208,9 +208,18 @@ def _ia_chart_parts() -> dict[str, str]:
     cx, cy = coord(n - 1, top_last)
     label_safe = _html.escape(top_name[:8])
     delta_str = f"{top_last}건 · {'+' if top_delta >= 0 else ''}{top_delta}%"
-    parts.append(f"<g><rect x='{cx - 39:.0f}' y='{max(cy - 32, 0):.0f}' width='78' height='28' rx='6' fill='#0F172A'/>"
-                 f"<text x='{cx:.0f}' y='{max(cy - 32, 0) + 16:.0f}' text-anchor='middle' font-family='Pretendard' font-size='10.5' font-weight='700' fill='#fff'>{label_safe}</text>"
-                 f"<text x='{cx:.0f}' y='{max(cy - 32, 0) + 26:.0f}' text-anchor='middle' font-family='JetBrains Mono, monospace' font-size='9' fill='#94A3B8'>{delta_str}</text></g>")
+    # callout box 좌표 clamp — viewBox 540 × 230 안에 78×28 박스가 들어가도록.
+    box_w, box_h = 78, 28
+    box_x = max(0, min(cx - box_w / 2, 540 - box_w))
+    # y: 점 위 우선 (cy - box_h - 4), 위쪽이 잘리면 점 아래 (cy + 10)
+    box_y_above = cy - box_h - 4
+    box_y = box_y_above if box_y_above >= 0 else cy + 10
+    text_cx = box_x + box_w / 2
+    parts.append(
+        f"<g><rect x='{box_x:.0f}' y='{box_y:.0f}' width='{box_w}' height='{box_h}' rx='6' fill='#0F172A'/>"
+        f"<text x='{text_cx:.0f}' y='{box_y + 12:.0f}' text-anchor='middle' font-family='Pretendard' font-size='10.5' font-weight='700' fill='#fff'>{label_safe}</text>"
+        f"<text x='{text_cx:.0f}' y='{box_y + 22:.0f}' text-anchor='middle' font-family='JetBrains Mono, monospace' font-size='9' fill='#94A3B8'>{delta_str}</text></g>"
+    )
 
     parts.append("</svg>")
     svg = "".join(parts)
@@ -238,10 +247,7 @@ def _ia_chart_parts() -> dict[str, str]:
 
 
 # ── 매트릭스 (효과×난이도) ────────────────────────────────
-_IA_MATRIX_COLORS_BY_DEPT: dict[str, str] = {
-    "도장": "#2563EB", "용접": "#14B8A6", "의장": "#F59E0B",
-    "조립": "#6366F1", "절단": "#0EA5E9",
-}
+# 색상 팔레트는 board_v2.MATRIX_DEPT_COLORS 공유 (단일 진실).
 
 
 @st.cache_data(ttl=60)
@@ -329,9 +335,11 @@ def _ia_matrix_svg() -> str:
 
         dept = str(row.get("dept", "") or "")
         lv3 = str(row.get("lv3", "") or "")
-        color = _IA_MATRIX_COLORS_BY_DEPT.get(dept, "#475569")
+        from ui.board_v2 import MATRIX_DEPT_COLORS, MATRIX_DEPT_FALLBACK
+        color = MATRIX_DEPT_COLORS.get(dept, MATRIX_DEPT_FALLBACK)
         fill = f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.16)"
-        label = _html.escape(lv3[:14] or dept[:14] or "—")
+        _raw_lbl = lv3 or dept or "—"
+        label = _html.escape(_raw_lbl[:12] + ("…" if len(_raw_lbl) > 12 else ""))
         meta = f"매칭 {int(row.get('matched_news', 0) or 0)}건"
 
         if i == selected_idx:
