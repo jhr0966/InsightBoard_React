@@ -37,6 +37,19 @@ def inject_global_styles() -> None:
     st.html("<style>" + "\n".join(parts) + "</style>")
 
 
+def inject_screen_css(name: str) -> None:
+    """화면별 CSS 로드 — `assets/v2/screens/<name>.css` 가 있으면 inject.
+
+    글로벌이 아닌 화면 전용 스타일(예: 보드 화면의 .db-greet/.db-stories 등)
+    을 화면 진입 시 한 번 주입한다. 같은 화면에 머무는 동안 매 rerun 마다
+    재주입되지만 브라우저가 같은 텍스트를 중복 적용해도 시각적 변화는 없음.
+    """
+    path = ASSETS_DIR / "v2" / "screens" / f"{name}.css"
+    if not path.exists():
+        return
+    st.html(f"<style>{path.read_text(encoding='utf-8')}</style>")
+
+
 def page_header(
     title: str,
     sub: str = "",

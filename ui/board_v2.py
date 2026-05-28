@@ -20,6 +20,7 @@ from config import ASSETS_DIR
 from persona.schema import Persona
 from store import bookmarks as bookmarks_store
 from ui import app_shell
+from ui.styles import inject_screen_css
 
 
 _BOARD_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "board_main.html"
@@ -69,6 +70,9 @@ def _archive_stats() -> dict[str, int]:
 
 def render() -> None:
     """오늘의 보드 v2 — topbar + app-side + main + app-sola 풀 셸 렌더."""
+    # 보드 화면 전용 스타일 (.db-greet, .db-kpi, .db-stories, .db-trend 등)
+    inject_screen_css("board")
+
     persona = _load_persona()
     stats = _archive_stats()
     refresh = app_shell.refresh_label_now()
