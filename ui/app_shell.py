@@ -123,11 +123,11 @@ def render_topbar(
 
           <div class="db-topbar-c">
             <div class="db-hdr-search">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                   style="color:var(--text-muted);">
-                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-              </svg>
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                   stroke-width='2' stroke-linecap='round' stroke-linejoin='round'
+                   style='color:var(--text-muted);'>
+                <circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/>
+              </svg>" width="15" height="15" alt="" />
               <input placeholder="뉴스 · 작업 · 키워드 검색" disabled>
               <div class="db-hdr-kbd"><span class="db-kbd">Ctrl</span><span class="db-kbd">K</span></div>
             </div>
@@ -135,18 +135,18 @@ def render_topbar(
 
           <div class="db-topbar-r">
             <button class="db-hdr-btn" title="알림" disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
-              </svg>
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                   stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+                <path d='M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0'/>
+              </svg>" width="16" height="16" alt="" />
               <span class="db-hdr-dot"></span>
             </button>
             <button class="db-hdr-btn" title="설정" disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15 1.65 1.65 0 003.09 14H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 4.6 1.65 1.65 0 009 3.09V3a2 2 0 014 0v.09A1.65 1.65 0 0014 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.16.5.66.91 1.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-              </svg>
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                   stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+                <circle cx='12' cy='12' r='3'/>
+                <path d='M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15 1.65 1.65 0 003.09 14H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 4.6 1.65 1.65 0 009 3.09V3a2 2 0 014 0v.09A1.65 1.65 0 0014 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.16.5.66.91 1.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z'/>
+              </svg>" width="16" height="16" alt="" />
             </button>
             <div class="db-topbar-divider"></div>
             <button class="db-topbar-avatar" title="프로필" disabled>{_avatar_letter(_get_persona())}</button>
@@ -202,9 +202,9 @@ def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]
         nav_html.append(
             f"""<a class="{cls}" href="{href}" target="_self">
               <span class="app-side-nav-i">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round">{svg_d}</svg>
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none'
+                     stroke='#475569' stroke-width='2'
+                     stroke-linecap='round' stroke-linejoin='round'>{svg_d}</svg>" width="14" height="14" alt="" />
               </span>
               <div>
                 <div class="app-side-nav-t">{_html.escape(title)}</div>
@@ -223,11 +223,11 @@ def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]
         <aside class="app-side">
           <div class="app-side-brand">
             <div class="app-side-mark">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="2.2"
-                   stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 22h16M5 2h14a1 1 0 011 1v18H4V3a1 1 0 011-1zM9 7h10M9 11h10M9 15h7"/>
-              </svg>
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none'
+                   stroke='#475569' stroke-width='2.2'
+                   stroke-linecap='round' stroke-linejoin='round'>
+                <path d='M4 22h16M5 2h14a1 1 0 011 1v18H4V3a1 1 0 011-1zM9 7h10M9 11h10M9 15h7'/>
+              </svg>" width="14" height="14" alt="" />
             </div>
             <span class="app-side-brand-t">인사이트<b>보드</b></span>
           </div>
@@ -309,10 +309,10 @@ def render_app_sola(
           <div class="app-sola-quick-eye">
             <span>빠른 질문</span>
             <button class="app-sola-quick-refresh" title="다시 추천" disabled>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 12a9 9 0 0115-6.7L21 8M21 3v5h-5M21 12a9 9 0 01-15 6.7L3 16M3 21v-5h5"/>
-              </svg>
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                   stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'>
+                <path d='M3 12a9 9 0 0115-6.7L21 8M21 3v5h-5M21 12a9 9 0 01-15 6.7L3 16M3 21v-5h5'/>
+              </svg>" width="11" height="11" alt="" />
             </button>
           </div>
           <div class="app-sola-quick-list">
@@ -328,11 +328,11 @@ def render_app_sola(
           <div class="app-sola-ctx-eye">컨텍스트 핀</div>
           <div class="app-sola-ctx-card">
             <div class="app-sola-ctx-icon">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                   stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+                <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/>
+                <polyline points='14 2 14 8 20 8'/>
+              </svg>" width="13" height="13" alt="" />
             </div>
             <div class="app-sola-ctx-body">
               <div class="app-sola-ctx-name">{_html.escape(context_label)}</div>
@@ -361,10 +361,10 @@ def render_app_sola(
           <div class="app-sola-hdr">
             <div class="app-sola-hdr-l">
               <div class="app-sola-mark">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2L9.5 8.5 3 11l6.5 2.5L12 20l2.5-6.5L21 11l-6.5-2.5z"/>
-                </svg>
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                     stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+                  <path d='M12 2L9.5 8.5 3 11l6.5 2.5L12 20l2.5-6.5L21 11l-6.5-2.5z'/>
+                </svg>" width="14" height="14" alt="" />
               </div>
               <div class="app-sola-hdr-t">
                 <div class="app-sola-hdr-name">SOLA<span class="app-sola-pulse-dot"></span></div>
@@ -372,10 +372,10 @@ def render_app_sola(
               </div>
             </div>
             <button class="app-sola-hdr-x" title="접기" disabled>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                   stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+                <polyline points='9 18 15 12 9 6'/>
+              </svg>" width="13" height="13" alt="" />
             </button>
           </div>
 
@@ -386,10 +386,10 @@ def render_app_sola(
           <div class="app-sola-comp">
             <span class="app-sola-comp-pin">
               <span class="app-sola-comp-pin-i">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2v20M2 12h20"/>
-                </svg>
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                     stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>
+                  <path d='M12 2v20M2 12h20'/>
+                </svg>" width="9" height="9" alt="" />
               </span>
               현재 화면 자동 포함
             </span>
@@ -400,11 +400,11 @@ def render_app_sola(
                 <div class="app-sola-comp-tools"></div>
                 <button class="app-sola-comp-send" disabled>
                   보내기
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                    <polyline points="12 5 19 12 12 19"/>
-                  </svg>
+                  <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569'
+                       stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>
+                    <line x1='5' y1='12' x2='19' y2='12'/>
+                    <polyline points='12 5 19 12 12 19'/>
+                  </svg>" width="11" height="11" alt="" />
                 </button>
               </div>
             </div>
