@@ -186,6 +186,69 @@ def test_insights_chart_with_data_emits_legend_and_pill():
         assert "▲" in chart["pill"] or "▼" in chart["pill"]
 
 
+def test_sola_handoff_href_encodes_payload():
+    from ui.board_v2 import _sola_handoff_href
+
+    href = _sola_handoff_href("opp", dept="도장 1팀", lv3="비전 검사")
+    # 5-nav area + from kind + payload 모두 포함
+    assert "app_area=" in href
+    assert "SOLA" in href  # 한글이 URL 인코딩된 형태로
+    assert "from=opp" in href
+    assert "dept=" in href and "lv3=" in href
+    # 빈 payload 는 생략
+    assert _sola_handoff_href("brief").count("&") == 1  # app_area + from
+
+
+def test_opp_card_discuss_links_to_sola_with_from_opp():
+    from ui import board_v2
+
+    row = pd.Series({
+        "dept": "도장", "lv3": "비전 검사", "cell_score": 95,
+        "matched_news": 40, "matched_tasks": 18,
+        "sample_tasks": "AI 도막 검사", "sample_news": "",
+    })
+    html = board_v2._opp_card_html(row)
+    assert 'class="db-prop-discuss"' in html
+    assert "from=opp" in html
+    assert "dept=" in html and "lv3=" in html
+    # 기존 disabled <button> 자취 없음
+    assert "<button class=\"db-prop-discuss\"" not in html
+
+
+def test_matrix_detail_cta_links_to_sola_with_from_matrix():
+    from ui import board_v2
+
+    cells = _synthetic_cells()
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_score_cells", return_value=cells):
+        board_v2._board_matrix_html.clear()
+        html = board_v2._board_matrix_html()
+    assert 'class="db-mx-cta"' in html
+    assert "from=matrix" in html
+    # disabled button 자취 없음
+    assert "<button class=\"db-mx-cta\"" not in html
+
+
+def test_ia_process_map_detail_links_to_sola_with_from_ia_map():
+    from ui import insights_v2
+
+    cells = _synthetic_cells()
+    with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_score_cells", return_value=cells), \
+         patch(
+             "ui.board_v2._weekly_keyword_series",
+             return_value=(["W1", "W2", "W3", "W4", "이번주"],
+                           [{"name": "비전 검사", "counts": [5, 8, 10, 15, 20]}]),
+         ):
+        insights_v2._ia_process_map_html.clear()
+        html = insights_v2._ia_process_map_html()
+    assert 'class="ia-pc-detail"' in html
+    assert html.count("from=ia_map") >= 3
+    assert "<button class=\"ia-pc-detail\"" not in html
+
+
 def test_board_brief_cta_routes_to_sola_with_from_brief():
     """A.7: brief CTA 가 SOLA 작업실 area + from=brief 로 라우팅."""
     from ui import board_v2

@@ -65,21 +65,49 @@ def render() -> None:
     # 의도적으로 app-sola 미렌더 — ws-ctx 가 그 역할 대체
 
 
-def _render_brief_handoff_banner_if_needed() -> None:
-    """보드 SOLA 브리핑 CTA 에서 넘어온 컨텍스트 배너.
+_HANDOFF_LABELS: dict[str, tuple[str, str]] = {
+    "brief": ("📊 보드 브리핑에서 인계됨", "3건의 뉴스를 컨텍스트로 사용"),
+    "opp": ("🎯 자동화 기회 카드에서 인계됨", "이 부서·공정으로 제안서 초안 시작"),
+    "matrix": ("🧭 기회 매트릭스 1위에서 인계됨", "이 부서·공정으로 제안서 초안 시작"),
+    "ia_map": ("🔎 인사이트 공정 매핑 카드에서 인계됨", "이 공정 상세 — 매칭 뉴스·작업 컨텍스트"),
+}
 
-    `?from=brief` 일 때만 렌더. session_state["_board_brief_items"] 에 보관된
-    3건의 제목을 노출. (실 LLM 입력은 후속 PR — 여기는 시각 인계만)
+
+def _render_brief_handoff_banner_if_needed() -> None:
+    """`?from=...` 에 따라 인계 컨텍스트 배너 렌더 (LLM 입력 wire 는 후속 PR).
+
+    지원 from: brief / opp / matrix / ia_map.
+      - brief : session_state["_board_brief_items"] 3건 제목 노출
+      - opp / matrix / ia_map : URL query 의 dept · lv3 노출
     """
-    if st.query_params.get("from") != "brief":
+    from_kind = st.query_params.get("from")
+    if from_kind not in _HANDOFF_LABELS:
         return
-    items = st.session_state.get("_board_brief_items") or []
-    if not items:
-        return
-    title_lis = "".join(
-        f'<li><span class="ws-brief-num">{i + 1}</span>{_html.escape(it.get("title", "")[:80])}</li>'
-        for i, it in enumerate(items[:3])
-    )
+
+    title, sub = _HANDOFF_LABELS[from_kind]
+    body_html = ""
+
+    if from_kind == "brief":
+        items = st.session_state.get("_board_brief_items") or []
+        if not items:
+            return
+        body_html = "<ol>" + "".join(
+            f'<li><span class="ws-brief-num">{i + 1}</span>{_html.escape(it.get("title", "")[:80])}</li>'
+            for i, it in enumerate(items[:3])
+        ) + "</ol>"
+    else:
+        dept = st.query_params.get("dept", "")
+        lv3 = st.query_params.get("lv3", "")
+        if not dept and not lv3:
+            return
+        target = " · ".join(p for p in (dept, lv3) if p) or "—"
+        body_html = (
+            f'<div class="ws-brief-target">'
+            f'<span class="ws-brief-target-eye">대상</span>'
+            f'<span class="ws-brief-target-v">{_html.escape(target)}</span>'
+            f'</div>'
+        )
+
     st.html(
         f"""
         <style>
@@ -93,6 +121,9 @@ def _render_brief_handoff_banner_if_needed() -> None:
             font-weight: 800; margin-bottom: 6px;
             display: flex; align-items: center; gap: 6px;
           }}
+          body:has(.db-topbar) .ws-brief-handoff-sub {{
+            font-weight: 500; color: #1E40AF; margin-left: 6px;
+          }}
           body:has(.db-topbar) .ws-brief-handoff ol {{ margin: 0; padding-left: 0; list-style: none; }}
           body:has(.db-topbar) .ws-brief-handoff li {{
             padding: 3px 0; display: flex; gap: 8px; align-items: baseline;
@@ -102,10 +133,19 @@ def _render_brief_handoff_banner_if_needed() -> None:
             min-width: 18px; height: 18px; padding: 0 5px; border-radius: 4px;
             background: #2563EB; color: #fff; font-size: 11px; font-weight: 800;
           }}
+          body:has(.db-topbar) .ws-brief-target {{
+            display: flex; gap: 8px; align-items: center;
+          }}
+          body:has(.db-topbar) .ws-brief-target-eye {{
+            font-size: 11px; color: #1E40AF; opacity: 0.7; letter-spacing: 0.04em;
+          }}
+          body:has(.db-topbar) .ws-brief-target-v {{ font-weight: 700; }}
         </style>
         <div class="ws-brief-handoff">
-          <div class="ws-brief-handoff-h">📊 보드 브리핑에서 인계됨 — {len(items)}건의 뉴스를 컨텍스트로 사용</div>
-          <ol>{title_lis}</ol>
+          <div class="ws-brief-handoff-h">
+            {title}<span class="ws-brief-handoff-sub">— {sub}</span>
+          </div>
+          {body_html}
         </div>
         """
     )

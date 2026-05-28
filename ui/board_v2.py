@@ -34,6 +34,19 @@ from ui.styles import inject_screen_css
 _LEAD_STORY_COUNT = 1
 _SIDE_STORY_COUNT = 4
 
+
+def _sola_handoff_href(from_kind: str, **payload: str) -> str:
+    """SOLA 작업실 인계 URL. from_kind 와 payload 모두 quote 처리.
+
+    예) `_sola_handoff_href("opp", dept="도장", lv3="비전 검사")`
+        → "?app_area=🤖+SOLA+작업실&from=opp&dept=도장&lv3=비전 검사"
+    """
+    parts = [f"app_area={quote('🤖 SOLA 작업실')}", f"from={quote(from_kind)}"]
+    for k, v in payload.items():
+        if v:
+            parts.append(f"{k}={quote(str(v))}")
+    return "?" + "&".join(parts)
+
 _SOURCE_GRADIENTS = {
     "AI Times": "linear-gradient(135deg,#DC2626,#F87171)",
     "오토메이션월드": "linear-gradient(135deg,#D97706,#F59E0B)",
@@ -233,7 +246,7 @@ def _brief_html() -> dict[str, str]:
     cites_html = "".join(cite_parts)
 
     # CTA — SOLA 작업실로 이 3건 인계
-    cta_href = f"?app_area={quote('🤖 SOLA 작업실')}&from=brief"
+    cta_href = _sola_handoff_href("brief")
     cta_html = (
         f'<a class="db-act db-act-primary" href="{cta_href}" target="_self">'
         f'이 {len(items)}건으로 제안서 만들기 →'
@@ -530,12 +543,15 @@ def _board_matrix_html() -> str:
         )
 
     # detail panel — 1위 cell
-    detail_label = _html.escape(str(detail_row.get("lv3", "") or "—"))
-    detail_dept = _html.escape(str(detail_row.get("dept", "") or ""))
+    detail_lv3_raw = str(detail_row.get("lv3", "") or "—")
+    detail_dept_raw = str(detail_row.get("dept", "") or "")
+    detail_label = _html.escape(detail_lv3_raw)
+    detail_dept = _html.escape(detail_dept_raw)
     roi_val = int(detail_row.get("matched_news", 0) or 0)
     ease_val = int(detail_row.get("matched_tasks", 0) or 0)
     score_val = round(float(detail_row.get("cell_score", 0) or 0))
     sample_tasks = str(detail_row.get("sample_tasks", "") or "").split(" · ")[:1]
+    detail_href = _sola_handoff_href("matrix", dept=detail_dept_raw, lv3=detail_lv3_raw)
     why_text = (
         f"{detail_dept} 영역의 {detail_label} 작업과 매칭 뉴스 {roi_val}건이 누적, "
         f"관련 작업 {ease_val}건이 잠재 적용 대상."
@@ -566,9 +582,9 @@ def _board_matrix_html() -> str:
             <div><b>{ease_val}</b><span>매칭 작업</span></div>
           </div>
           <p class="db-mx-why">{why_text}</p>
-          <button class="db-mx-cta" disabled>
-            제안서 작업장에서 보기
-          </button>
+          <a class="db-mx-cta" href="{detail_href}" target="_self">
+            제안서 작업장에서 보기 →
+          </a>
         </aside>
       </div>"""
 
@@ -759,8 +775,10 @@ def _opp_empty_html() -> str:
 
 
 def _opp_card_html(row: pd.Series) -> str:
-    dept = _html.escape(str(row.get("dept", "") or "—"))
-    lv3 = _html.escape(str(row.get("lv3", "") or "—"))
+    dept_raw = str(row.get("dept", "") or "—")
+    lv3_raw = str(row.get("lv3", "") or "—")
+    dept = _html.escape(dept_raw)
+    lv3 = _html.escape(lv3_raw)
     cell_score = float(row.get("cell_score", 0) or 0)
     matched_news = int(row.get("matched_news", 0) or 0)
     matched_tasks = int(row.get("matched_tasks", 0) or 0)
@@ -770,6 +788,8 @@ def _opp_card_html(row: pd.Series) -> str:
 
     # 점수 표시 — score 자체가 추상적이라 0-100 범위로 매핑 (cell_score 는 누적)
     roi_score = min(int(cell_score), 99)
+
+    discuss_href = _sola_handoff_href("opp", dept=dept_raw, lv3=lv3_raw)
 
     return f"""<article class="db-prop">
       <div class="db-prop-top">
@@ -788,7 +808,7 @@ def _opp_card_html(row: pd.Series) -> str:
 
       <div class="db-prop-actions">
         <button class="db-prop-hold" disabled>보류</button>
-        <button class="db-prop-discuss" disabled>SOLA와 검토</button>
+        <a class="db-prop-discuss" href="{discuss_href}" target="_self">SOLA와 검토 →</a>
         <button class="db-prop-accept" disabled>채택</button>
       </div>
     </article>"""

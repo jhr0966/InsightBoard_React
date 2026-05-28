@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-05-28 · A.7 확장 — 4 CTA 모두 SOLA 작업실로 라우팅 통일
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 35 커밋
+
+**변경:**
+- `_sola_handoff_href(from_kind, **payload)` 신규 헬퍼 (board_v2)
+- 자동화 기회 4 카드 "SOLA와 검토" → `?from=opp&dept&lv3`
+- 매트릭스 detail "제안서 작업장에서 보기" → `?from=matrix&dept&lv3`
+- 인사이트 공정 매핑 3 카드 "상세 →" → `?from=ia_map&dept&lv3`
+- SOLA 작업실 handoff banner 일반화 (`_HANDOFF_LABELS` 테이블 + 4 from kind)
+- +4 tests: handoff URL 빌더, opp/matrix/ia_map CTA 패턴 검증
+
+**검증:**
+- pytest **210/210 passed** (206 + 4 신규)
+- 금지 패턴 0, py_compile OK
+- 4 CTA 패턴 동일 — 차후 다른 카드 추가도 `_sola_handoff_href` 한 줄로 wire 가능
+
+**다음:**
+1. **A.7 후속 — SOLA 채팅 composer 에 brief/opp/matrix/ia_map 컨텍스트 자동 prefill** (LLM 입력 wire)
+2. **A.4 — Ctrl+K 검색 모달** (전역 검색)
+3. **남은 v1 5 모듈 테스트 v2 마이그**
+
+---
+
 ## 2026-05-28 · A.7 — 보드 ② SOLA 브리핑 CTA → SOLA 작업실 라우팅
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 34 커밋

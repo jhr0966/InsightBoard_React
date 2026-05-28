@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (v2 — A.7 확장: 4 CTA 모두 SOLA 작업실로 라우팅 통일)
+- `ui/board_v2.py::_sola_handoff_href(from_kind, **payload)` 신규 헬퍼 — `?app_area=🤖+SOLA+작업실&from=<kind>&dept=X&lv3=Y` URL 빌더. payload 자동 quote, 빈값 생략. `_brief_html` 도 헬퍼 사용으로 통일.
+- `ui/board_v2.py::_opp_card_html` — `<button class="db-prop-discuss" disabled>SOLA와 검토</button>` → `<a href="?...from=opp&dept=X&lv3=Y">SOLA와 검토 →</a>`. 카드 4개 모두 dept/lv3 인계.
+- `ui/board_v2.py::_board_matrix_html` — detail aside `<button class="db-mx-cta" disabled>` → `<a href="?...from=matrix&dept=X&lv3=Y">`. 1위 cell 자동 인계.
+- `ui/insights_v2.py::_ia_process_map_html` — 3 카드 `<button class="ia-pc-detail" disabled>상세 →</button>` → `<a href="?...from=ia_map&dept=X&lv3=Y">`. 각 cell 별 별도 인계.
+- `ui/sola_workshop_v2.py::_render_brief_handoff_banner_if_needed` 일반화 — 4 from kind (brief/opp/matrix/ia_map) 모두 처리. brief 는 session_state 3건 제목, 나머지는 URL query 의 dept · lv3. `_HANDOFF_LABELS` 테이블로 라벨/sub 관리.
+- `tests/test_v2_screens.py` — +4 tests (handoff URL 빌더, opp/matrix/ia_map CTA 검증). 총 13 v2 tests / 210 total.
+
 ### Added (v2 — A.7: 보드 ② SOLA 브리핑 → SOLA 작업실 라우팅)
 - `assets/v2/screens/board_main.html` — "이 3건으로 제안서 만들기" `<button>` (정적) → `{{BRIEF_CTA}}` placeholder. `_brief_html()` 이 `<a href="?app_area=🤖+SOLA+작업실&from=brief">` 동적 생성. 빈 데이터 시 CTA 도 빈 문자열.
 - `ui/board_v2.py::_brief_html` — items 를 `st.session_state["_board_brief_items"]` 에 저장(다음 area 에서 소비). 빈 데이터 시 키 삭제로 stale 인계 방지.

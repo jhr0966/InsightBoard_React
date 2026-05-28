@@ -406,13 +406,18 @@ def _ia_process_map_html() -> str:
     avg_fit = int(round(cells["cell_score"].mean() / max_score * 36 + 60))
     total_news = int(cells["matched_news"].sum())
 
+    from ui.board_v2 import _sola_handoff_href
+
     cards = []
     for i, (_, row) in enumerate(cells.iterrows()):
         color, bg = _IA_PC_PALETTE[i % len(_IA_PC_PALETTE)]
-        dept = _html.escape(str(row.get("dept", "") or "—"))
-        lv3 = _html.escape(str(row.get("lv3", "") or "—"))
+        dept_raw = str(row.get("dept", "") or "—")
+        lv3_raw = str(row.get("lv3", "") or "—")
+        dept = _html.escape(dept_raw)
+        lv3 = _html.escape(lv3_raw)
         score = float(row.get("cell_score", 0) or 0)
         fit_pct = int(round(score / max_score * 36 + 60))
+        detail_href = _sola_handoff_href("ia_map", dept=dept_raw, lv3=lv3_raw)
 
         sample_tasks = str(row.get("sample_tasks", "") or "").split(" · ")
         first_task = _html.escape(sample_tasks[0][:48]) if sample_tasks and sample_tasks[0] else ""
@@ -450,7 +455,7 @@ def _ia_process_map_html() -> str:
           <div class="ia-pc-foot">
             <span class="ia-pc-tag {tag_cls}">{tag_label}</span>
             <span class="ia-pc-tag">매칭 뉴스 {matched_news}건</span>
-            <button class="ia-pc-detail" disabled>상세 →</button>
+            <a class="ia-pc-detail" href="{detail_href}" target="_self">상세 →</a>
           </div>
         </li>""")
 
