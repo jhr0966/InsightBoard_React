@@ -119,6 +119,88 @@ def _side_story_html(row: pd.Series) -> str:
 
 
 @st.cache_data(ttl=60)
+def _opportunities_html() -> str:
+    """자동화 기회 4-grid — opportunity.score_cells → 카드.
+
+    각 cell: dept × lv3 + sample_tasks/sample_news 보유. 시안의 ROI/TRL/기간/
+    예산 메트릭은 score 기반 휴리스틱 (실제 cost/timeline 수집 후속 PR).
+    """
+    try:
+        news_df = _news_db.load_news_for_days(days=14)
+    except Exception:
+        news_df = None
+    try:
+        roadmap_df = _load_roadmap()
+    except Exception:
+        roadmap_df = None
+
+    if (
+        news_df is None or news_df.empty
+        or roadmap_df is None or roadmap_df.empty
+    ):
+        return _opp_empty_html()
+
+    try:
+        cells = _score_cells(news_df, roadmap_df)
+    except Exception:
+        return _opp_empty_html()
+    if cells.empty:
+        return _opp_empty_html()
+
+    cards = []
+    for _, row in cells.head(4).iterrows():
+        cards.append(_opp_card_html(row))
+    return "\n".join(cards)
+
+
+def _opp_empty_html() -> str:
+    return """<div style="
+        grid-column: 1 / -1; padding: 32px 18px; text-align: center;
+        color: var(--text-muted); font-size: 14px;
+        border: 1px dashed var(--surface-divider); border-radius: 12px;
+        background: rgba(0,0,0,0.01);">
+      아직 도출된 자동화 기회가 없어요.<br>
+      <span style="font-size:12.5px;">뉴스 수집 + 로드맵 업로드 후 자동으로 매칭됩니다.</span>
+    </div>"""
+
+
+def _opp_card_html(row: pd.Series) -> str:
+    dept = _html.escape(str(row.get("dept", "") or "—"))
+    lv3 = _html.escape(str(row.get("lv3", "") or "—"))
+    cell_score = float(row.get("cell_score", 0) or 0)
+    matched_news = int(row.get("matched_news", 0) or 0)
+    matched_tasks = int(row.get("matched_tasks", 0) or 0)
+    sample_tasks = str(row.get("sample_tasks", "") or "").split(" · ")[:2]
+    tagline = " · ".join(sample_tasks) if sample_tasks else f"매칭 뉴스 {matched_news}건"
+    tagline_safe = _html.escape(tagline[:60])
+
+    # 점수 표시 — score 자체가 추상적이라 0-100 범위로 매핑 (cell_score 는 누적)
+    roi_score = min(int(cell_score), 99)
+
+    return f"""<article class="db-prop">
+      <div class="db-prop-top">
+        <span class="db-prop-status">초안 0초</span>
+        <span class="db-prop-tag db-prop-tag-tech">{lv3}</span>
+      </div>
+      <h3 class="db-prop-h">{dept} · {lv3} 자동화 기회</h3>
+      <div class="db-prop-tagline">{tagline_safe}</div>
+
+      <div class="db-prop-metrics">
+        <div><b class="db-good">{roi_score}</b><span>점수</span></div>
+        <div><b>{matched_news}</b><span>매칭 뉴스</span></div>
+        <div><b>{matched_tasks}</b><span>매칭 작업</span></div>
+        <div><b>—</b><span>예산</span></div>
+      </div>
+
+      <div class="db-prop-actions">
+        <button class="db-prop-hold" disabled>보류</button>
+        <button class="db-prop-discuss" disabled>SOLA와 검토</button>
+        <button class="db-prop-accept" disabled>채택</button>
+      </div>
+    </article>"""
+
+
+@st.cache_data(ttl=60)
 def _board_stories_html() -> str:
     """탑 스토리 섹션 (lead + 4 side) HTML 빌드."""
     try:
@@ -313,5 +395,6 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{KPI_OPP_CLS}}", "db-delta-flat")
         .replace("{{KPI_PENDING_CLS}}", "db-delta-flat")
         .replace("{{BOARD_STORIES}}", _board_stories_html())
+        .replace("{{BOARD_OPPORTUNITIES}}", _opportunities_html())
     )
     st.html(html_out)
