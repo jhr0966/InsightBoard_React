@@ -145,3 +145,42 @@ body:has(.ws-shell) .ws-callout-s {
 body:has(.ws-shell) .ws-th-name {
   letter-spacing: -0.020em;
 }
+
+/* ════════════════════════════════════════════════════════════
+   9) 정밀 분석 결과 layout 보정 (2026-05-28 4차)
+   ════════════════════════════════════════════════════════════ */
+
+/* B1 — 보드 greet: KPI 그리드가 우측 모서리에 몰리며 좌측 greet 와 큰 갭
+   원인: .db-greet 가 1.4fr / 1fr 인데 align-items: start 라 KPI grid (h:194)
+         가 greet content (h:310) 보다 짧아 아래쪽 빈 공간 생김
+   해결: align-items: center 로 KPI grid 를 세로 중앙 정렬 */
+body:has(.db-greet) .db-greet {
+  align-items: center !important;
+}
+
+/* B2 — 보드 탑 스토리: lead 1.4fr vs sidebar 1fr → 우측 너무 좁아 보임
+   1.2fr / 1fr 로 완화. 시안의 신문 레이아웃 의도는 유지하되 균형 개선 */
+body:has(.db-stories) .db-stories {
+  grid-template-columns: 1.2fr 1fr !important;
+}
+
+/* D1 — 데이터 관리 jobs vs news 컬럼 비율 1:1.69 → 1:1.35
+   jobs 380px 고정 → 1fr (가변, news 와 비슷한 폭)
+   결과: 수집잡 박스의 정보 표시 여유 + 뉴스 카드 그리드 유지 */
+body:has(.dm-split) .dm-split {
+  grid-template-columns: 1fr 1.35fr !important;
+}
+
+/* S1 — SOLA 작업실 ws-threads 가로 overflow
+   원인: 스레드 제목이 320px 컬럼보다 길 때 본문이 그대로 흘러 X 스크롤 발생
+   해결: 컬럼 자체에 overflow-x: hidden + 안쪽 텍스트에 text-overflow ellipsis */
+body:has(.ws-shell) .ws-threads {
+  overflow-x: hidden !important;
+}
+body:has(.ws-shell) .ws-th-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
