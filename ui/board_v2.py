@@ -13,6 +13,7 @@ from __future__ import annotations
 import html as _html
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
@@ -174,6 +175,7 @@ def _brief_html() -> dict[str, str]:
 
     if not items:
         # 빈 상태
+        st.session_state.pop("_board_brief_items", None)
         return {
             "summary": '<div class="db-brief-greet">'
                        '<span class="db-brief-greet-tag">요약</span>'
@@ -181,7 +183,11 @@ def _brief_html() -> dict[str, str]:
                        '</div>',
             "list": "",
             "cites": "",
+            "cta": "",
         }
+
+    # SOLA workshop 컨텍스트 인계용 — 다음 rerun 에서 from=brief 가 들어오면 소비
+    st.session_state["_board_brief_items"] = items
 
     # 한 줄 요약 — 키워드 추출 없이 토픽 추정
     summary_text = (
@@ -226,7 +232,15 @@ def _brief_html() -> dict[str, str]:
     cite_parts.append('</div>')
     cites_html = "".join(cite_parts)
 
-    return {"summary": summary_html, "list": list_html, "cites": cites_html}
+    # CTA — SOLA 작업실로 이 3건 인계
+    cta_href = f"?app_area={quote('🤖 SOLA 작업실')}&from=brief"
+    cta_html = (
+        f'<a class="db-act db-act-primary" href="{cta_href}" target="_self">'
+        f'이 {len(items)}건으로 제안서 만들기 →'
+        f'</a>'
+    )
+
+    return {"summary": summary_html, "list": list_html, "cites": cites_html, "cta": cta_html}
 
 
 # 트렌드 차트 4 series 색상 (Azure/Teal/Amber/Indigo)
@@ -1024,6 +1038,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BRIEF_SUMMARY}}", brief["summary"])
         .replace("{{BRIEF_LIST}}", brief["list"])
         .replace("{{BRIEF_CITES}}", brief["cites"])
+        .replace("{{BRIEF_CTA}}", brief["cta"])
     )
     st.html(html_out)
 

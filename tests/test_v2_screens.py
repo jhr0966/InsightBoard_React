@@ -37,7 +37,8 @@ def test_board_empty_state_helpers_dont_raise():
         assert "기회" in board_v2._opportunities_html() or "data" in board_v2._opportunities_html().lower()
         assert "뉴스" in board_v2._board_stories_html()
         brief = board_v2._brief_html()
-        assert set(brief.keys()) == {"summary", "list", "cites"}
+        assert set(brief.keys()) == {"summary", "list", "cites", "cta"}
+        assert brief["cta"] == ""  # 빈 데이터에선 CTA 도 비어있음
         trend = board_v2._board_trend()
         assert trend["empty"] and not trend["svg_paths"]
         assert "매트릭스" in board_v2._board_matrix_html() or "기회" in board_v2._board_matrix_html()
@@ -183,6 +184,28 @@ def test_insights_chart_with_data_emits_legend_and_pill():
         assert chart["legend"].count("ia-lg-mute") == 2
         assert "비전 검사" in chart["legend"]
         assert "▲" in chart["pill"] or "▼" in chart["pill"]
+
+
+def test_board_brief_cta_routes_to_sola_with_from_brief():
+    """A.7: brief CTA 가 SOLA 작업실 area + from=brief 로 라우팅."""
+    from ui import board_v2
+    import streamlit as st
+
+    news = _synthetic_news_30d()
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=news), \
+         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_score_matches", return_value=pd.DataFrame()):
+        board_v2._brief_html.clear() if hasattr(board_v2._brief_html, "clear") else None
+        brief = board_v2._brief_html()
+
+    assert brief["cta"]
+    # SOLA 작업실 area + from=brief 가 URL 에 포함
+    assert "SOLA" in brief["cta"]
+    assert "from=brief" in brief["cta"]
+    # session_state 에 인계 아이템 보관 (다음 area 에서 소비)
+    items = st.session_state.get("_board_brief_items") or []
+    assert len(items) >= 1
+    assert all("title" in it for it in items)
 
 
 def test_insights_matrix_with_data_emits_halo():

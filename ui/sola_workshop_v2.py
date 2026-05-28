@@ -59,8 +59,56 @@ def render() -> None:
         persona=persona,
         stats=stats,
     )
+    app_shell.render_setup_banner_if_needed()
+    _render_brief_handoff_banner_if_needed()
     _render_main(persona)
     # 의도적으로 app-sola 미렌더 — ws-ctx 가 그 역할 대체
+
+
+def _render_brief_handoff_banner_if_needed() -> None:
+    """보드 SOLA 브리핑 CTA 에서 넘어온 컨텍스트 배너.
+
+    `?from=brief` 일 때만 렌더. session_state["_board_brief_items"] 에 보관된
+    3건의 제목을 노출. (실 LLM 입력은 후속 PR — 여기는 시각 인계만)
+    """
+    if st.query_params.get("from") != "brief":
+        return
+    items = st.session_state.get("_board_brief_items") or []
+    if not items:
+        return
+    title_lis = "".join(
+        f'<li><span class="ws-brief-num">{i + 1}</span>{_html.escape(it.get("title", "")[:80])}</li>'
+        for i, it in enumerate(items[:3])
+    )
+    st.html(
+        f"""
+        <style>
+          body:has(.db-topbar) .ws-brief-handoff {{
+            position: sticky; top: 76px; z-index: 8;
+            margin: 0 24px 14px; padding: 12px 16px;
+            background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;
+            font-size: 13px; color: #1E3A8A;
+          }}
+          body:has(.db-topbar) .ws-brief-handoff-h {{
+            font-weight: 800; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 6px;
+          }}
+          body:has(.db-topbar) .ws-brief-handoff ol {{ margin: 0; padding-left: 0; list-style: none; }}
+          body:has(.db-topbar) .ws-brief-handoff li {{
+            padding: 3px 0; display: flex; gap: 8px; align-items: baseline;
+          }}
+          body:has(.db-topbar) .ws-brief-num {{
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 18px; height: 18px; padding: 0 5px; border-radius: 4px;
+            background: #2563EB; color: #fff; font-size: 11px; font-weight: 800;
+          }}
+        </style>
+        <div class="ws-brief-handoff">
+          <div class="ws-brief-handoff-h">📊 보드 브리핑에서 인계됨 — {len(items)}건의 뉴스를 컨텍스트로 사용</div>
+          <ol>{title_lis}</ol>
+        </div>
+        """
+    )
 
 
 def _render_main(persona: Persona) -> None:

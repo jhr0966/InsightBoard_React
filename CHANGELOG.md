@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (v2 — A.7: 보드 ② SOLA 브리핑 → SOLA 작업실 라우팅)
+- `assets/v2/screens/board_main.html` — "이 3건으로 제안서 만들기" `<button>` (정적) → `{{BRIEF_CTA}}` placeholder. `_brief_html()` 이 `<a href="?app_area=🤖+SOLA+작업실&from=brief">` 동적 생성. 빈 데이터 시 CTA 도 빈 문자열.
+- `ui/board_v2.py::_brief_html` — items 를 `st.session_state["_board_brief_items"]` 에 저장(다음 area 에서 소비). 빈 데이터 시 키 삭제로 stale 인계 방지.
+- `ui/sola_workshop_v2.py::_render_brief_handoff_banner_if_needed` 신규 — `?from=brief` 일 때만 sticky 파란 banner 렌더 ("📊 보드 브리핑에서 인계됨 — N건의 뉴스를 컨텍스트로 사용") + 3 제목 ol 노출. 실제 LLM 입력 와이어는 후속 PR.
+- `ui/sola_workshop_v2.py::render` — `render_setup_banner_if_needed()` + `_render_brief_handoff_banner_if_needed()` 호출.
+- `tests/test_v2_screens.py` — A.7 라우팅 테스트 1건 추가 (cta href / session_state 인계 검증).
+
 ### Added (v2 — 회귀 베이크 + v1 데드코드 925줄 제거)
 - `tests/test_v2_screens.py` 신규 (+8 tests) — 보드/인사이트 9개 placeholder helper 의 ① 빈 데이터 friendly empty 검증 + ② 합성 데이터 시안 클래스 보존 검증 (`db-mx-bubble`, `ia-pcard-top`, `★ 최적 매칭`, callout pill `▲/▼` 등). Streamlit runtime 의존 없이 helper 단위 회귀 방어.
 - `ui/ingest_tab.py` (-284), `ui/news_tab.py` (-121), `ui/proposal_workbench.py` (-364), `ui/roadmap_tab.py` (-156) 삭제 — 총 -925줄. 외부 참조 0건 (app.py 의 noqa 임포트 외) 확인 후 제거.

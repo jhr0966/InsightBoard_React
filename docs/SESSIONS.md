@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-05-28 · A.7 — 보드 ② SOLA 브리핑 CTA → SOLA 작업실 라우팅
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 34 커밋
+**상태:** 첫 인터랙션 wire — 보드 → SOLA 컨텍스트 인계
+
+**변경:**
+- `_brief_html()` — 빈/유효 두 분기에서 `st.session_state["_board_brief_items"]` 갱신/삭제. CTA 는 `<a href="?app_area=🤖+SOLA+작업실&from=brief">`.
+- 보드 템플릿 `<button>` → `{{BRIEF_CTA}}` placeholder.
+- `sola_workshop_v2._render_brief_handoff_banner_if_needed` — `?from=brief` 일 때만 sticky 파란 banner + 3건 제목 ol.
+- `sola_workshop_v2.render` 에 setup banner + brief banner 호출 wire.
+- 신규 테스트 `test_board_brief_cta_routes_to_sola_with_from_brief`: cta href / session_state 인계 검증.
+
+**검증:**
+- pytest **206/206 passed** (205 + 1 신규)
+- 금지 패턴 0
+- py_compile OK
+- A.7 라우팅 단위 테스트로 회귀 방어
+
+**다음:**
+1. **A.7 후속** — SOLA 작업실 templates 의 채팅 composer 와 brief items 를 실제 wire (LLM 호출은 별도 PR)
+2. **A.4 — Ctrl+K 검색 모달** (전역 검색)
+3. **레거시 테스트 v2 마이그** — 남은 v1 5 모듈 정리
+
+---
+
 ## 2026-05-28 · 회귀 베이크 + v1 데드코드 925줄 제거 (I + H)
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 33 커밋
