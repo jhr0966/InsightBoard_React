@@ -19,10 +19,10 @@ body:has(.db-topbar) [data-testid="stSidebarCollapsedControl"] {
   display: none !important;
 }
 
-/* 본문 컨테이너 — fixed 헤더(60px) + 좌(264px) + 우(360px) 패널 확보 */
+/* 본문 컨테이너 — topbar 80.4px + 16px gap = 96px 부터 콘텐츠 시작 */
 body:has(.db-topbar) [data-testid="stAppViewContainer"] > .main,
 body:has(.db-topbar) [data-testid="stMain"] {
-  padding-top: 80px !important;     /* 패널 top: 80px 와 일치 */
+  padding-top: 96px !important;     /* 패널 top: 96px 와 일치 */
 }
 
 /* Streamlit element wrapper 들이 자체 margin / gap 으로 첫 콘텐츠를 아래로

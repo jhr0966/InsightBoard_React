@@ -67,7 +67,7 @@ body:has(.ws-shell) [data-testid="stMain"] .block-container {
    ════════════════════════════════════════════════════════════ */
 body:has(.db-topbar) .app-side,
 body:has(.db-topbar) .app-sola {
-  top: 80px !important;
+  top: 96px !important;
 }
 
 /* 모든 화면별 셸의 padding-top 제거 — block-container 의 80px 패딩만으로 정렬 */
@@ -79,14 +79,8 @@ body:has(.db-topbar) .oa-shell {
 }
 
 /* ════════════════════════════════════════════════════════════
-   5) Ctrl 키 배지 — Cmd 단일 글자 → Windows Ctrl 다중 글자
+   5) (removed) Ctrl 키 배지 — 와이어업 안 된 데코였음, 마크업에서 제거
    ════════════════════════════════════════════════════════════ */
-body:has(.db-topbar) .db-kbd,
-body:has(.db-topbar) .dm-kbd,
-body:has(.db-topbar) .oa-kbd {
-  font-size: 13px !important; padding: 0 8px; min-width: 30px; height: 22px;
-}
-body:has(.db-topbar) .app-sola-comp-kbd { font-size: 12px !important; padding: 2px 7px; }
 
 /* ════════════════════════════════════════════════════════════
    6) 보드 — WORKFLOW eyebrow 복원 (board.css 가 display:none 강제)
@@ -127,7 +121,7 @@ body:has(.db-topbar) .dm-sel {
    8) SOLA 작업실 — ws-threads 폭 늘리고 ws-callout word-break 안전
    ════════════════════════════════════════════════════════════ */
 body:has(.ws-shell) .ws-shell {
-  grid-template-columns: 320px minmax(0, 1fr) 360px !important;
+  grid-template-columns: 380px minmax(0, 1fr) 360px !important;
   /* padding-top 은 Section 4 에서 0 으로 통일 — 여기서는 좌·우·하단만 */
   padding-right: 16px !important;
   padding-bottom: 24px !important;

@@ -129,7 +129,6 @@ def render_topbar(
                 <circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/>
               </svg>" width="15" height="15" alt="" />
               <input placeholder="뉴스 · 작업 · 키워드 검색" disabled>
-              <div class="db-hdr-kbd"><span class="db-kbd">Ctrl</span><span class="db-kbd">K</span></div>
             </div>
           </div>
 
@@ -409,8 +408,7 @@ def render_app_sola(
               </div>
             </div>
             <div class="app-sola-comp-tips">
-              <span class="app-sola-comp-kbd">Ctrl</span><span class="app-sola-comp-kbd">↵</span> 전송 ·
-              <span class="app-sola-comp-kbd">↑</span> 직전 질문
+              현재 페이지 컨텍스트가 자동 첨부됩니다
             </div>
           </div>
         </aside>
