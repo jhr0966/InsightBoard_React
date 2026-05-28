@@ -22,7 +22,22 @@ body:has(.db-topbar) [data-testid="stSidebarCollapsedControl"] {
 /* 본문 컨테이너 — fixed 헤더(60px) + 좌(264px) + 우(360px) 패널 확보 */
 body:has(.db-topbar) [data-testid="stAppViewContainer"] > .main,
 body:has(.db-topbar) [data-testid="stMain"] {
-  padding-top: 72px !important;
+  padding-top: 80px !important;     /* 패널 top: 80px 와 일치 */
+}
+
+/* Streamlit element wrapper 들이 자체 margin / gap 으로 첫 콘텐츠를 아래로
+   밀어내는 문제. v2 화면은 셸이 자체 레이아웃을 그리므로 Streamlit 의 default
+   gap (1rem) 과 element margin 을 모두 0 으로 강제. */
+body:has(.db-topbar) [data-testid="stMain"] [data-testid="stVerticalBlock"] {
+  gap: 0 !important;
+}
+body:has(.db-topbar) [data-testid="stMain"] [data-testid="stElementContainer"],
+body:has(.db-topbar) [data-testid="stMain"] [data-testid="stMarkdownContainer"],
+body:has(.db-topbar) [data-testid="stMain"] [data-testid="stHtml"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* block-container 가 본문 폭을 잡음. v2 패널 폭 + 16px outer + 24px gap 확보 */

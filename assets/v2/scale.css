@@ -59,10 +59,23 @@ body:has(.ws-shell) [data-testid="stMain"] .block-container {
 /* ════════════════════════════════════════════════════════════
    4) 사이드바 + SOLA 패널 상단/하단 여유 — top 80px (시안 72px → 8px 더)
    사용자 피드백: 상단이 토픽바와 너무 가까워 짤린 느낌.
+
+   ★ 일관성 규칙 ★: 좌측 사이드바, 우측 SOLA, 본문 첫 요소의 Y 좌표가
+   모든 화면에서 동일해야 한다 (= 80px).
+   - .app-side / .app-sola: position fixed; top: 80px
+   - 본문: stMain padding-top: 80 (streamlit-overrides.css) + 셸 padding-top: 0
    ════════════════════════════════════════════════════════════ */
 body:has(.db-topbar) .app-side,
 body:has(.db-topbar) .app-sola {
   top: 80px !important;
+}
+
+/* 모든 화면별 셸의 padding-top 제거 — block-container 의 80px 패딩만으로 정렬 */
+body:has(.db-topbar) .dm-shell,
+body:has(.db-topbar) .ia-shell,
+body:has(.db-topbar) .ws-shell,
+body:has(.db-topbar) .oa-shell {
+  padding-top: 0 !important;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -115,7 +128,10 @@ body:has(.db-topbar) .dm-sel {
    ════════════════════════════════════════════════════════════ */
 body:has(.ws-shell) .ws-shell {
   grid-template-columns: 320px minmax(0, 1fr) 360px !important;
-  padding: 18px 16px 24px !important;  /* 좌측 여백 22 → 16 */
+  /* padding-top 은 Section 4 에서 0 으로 통일 — 여기서는 좌·우·하단만 */
+  padding-right: 16px !important;
+  padding-bottom: 24px !important;
+  padding-left: 16px !important;
 }
 
 body:has(.ws-shell) .ws-callout,
