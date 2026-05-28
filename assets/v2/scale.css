@@ -128,6 +128,54 @@ body:has(.ws-shell) .ws-shell {
   padding-left: 16px !important;
 }
 
+/* SOLA workshop — 우측 ctx 컬럼만 padding-top 으로 첫 카드 표제가 14px 아래로 밀림
+   (threads.title=111 / chat.title=111 / ctx.title=125 → 14px 차이)
+   해결: .ws-ctx 자체 padding-top 0, ctx-card 의 내부 padding 만 살림 */
+body:has(.ws-shell) .ws-ctx {
+  padding-top: 0 !important;
+}
+
+/* Archive — .oa-src-list li 의 grid 22px 1fr 를 .oa-src-more 가 상속받아
+   텍스트 "+ 4건 더 보기" 가 22px 컬럼에 갇혀 글자 단위 줄바꿈 (ws-callout 동일 패턴)
+   해결: more 항목만 grid-column 전체 span + 자체 텍스트 정렬 */
+body:has(.db-topbar) .oa-src-more {
+  grid-template-columns: none !important;
+  grid-column: 1 / -1 !important;
+  display: block !important;
+}
+
+/* 폰트 시스템 통일 (사용자 UI/UX 검토 요청 — 화면별 미세 차이 정리) */
+/* page.desc — board 19.5 / 나머지 18.5 → 19 로 통일 */
+body:has(.db-topbar) .db-greet-sum,
+body:has(.db-topbar) .dm-desc,
+body:has(.db-topbar) .ia-desc,
+body:has(.db-topbar) .oa-desc {
+  font-size: 19px !important;
+}
+
+/* sec.eye — archive 15 vs 나머지 14 → 14 로 통일 */
+body:has(.db-topbar) .db-sec-eye,
+body:has(.db-topbar) .dm-sec-eye,
+body:has(.db-topbar) .ia-sec-eye,
+body:has(.db-topbar) .oa-col-meta {
+  font-size: 14px !important;
+}
+
+/* meta.tag / time — 13/13.5/14.5 산재 → 13.5 통일 */
+body:has(.db-topbar) .dm-art-tag,
+body:has(.db-topbar) .dm-art-tag-strong,
+body:has(.db-topbar) .db-tag,
+body:has(.db-topbar) .db-tag-strong,
+body:has(.db-topbar) .oa-tag,
+body:has(.db-topbar) .oa-tag-prop,
+body:has(.db-topbar) .db-time,
+body:has(.db-topbar) .db-story-time,
+body:has(.db-topbar) .db-news-time,
+body:has(.db-topbar) .dm-time,
+body:has(.db-topbar) .oa-card-age {
+  font-size: 13.5px !important;
+}
+
 body:has(.ws-shell) .ws-callout,
 body:has(.ws-shell) .ws-callout-t,
 body:has(.ws-shell) .ws-callout-s {
