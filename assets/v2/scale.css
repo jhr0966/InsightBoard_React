@@ -184,3 +184,57 @@ body:has(.ws-shell) .ws-th-name {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ════════════════════════════════════════════════════════════
+   10) 2026-05-28 5차 — Topbar 높이 통일 + Sidebar/SOLA 폰트 정상화
+   ════════════════════════════════════════════════════════════
+   문제:
+     - board.css 의 .db-topbar-title = 28px (bulk bump 됨) 만 우세,
+       다른 screen CSS 에는 이 룰 없어 shell.css 의 22px 가 적용
+       → board 만 topbar 83px, 나머지 70px (13px 차이)
+     - card.css (사이드바/SOLA 컴포넌트 CSS) 가 bulk bump 대상이 아니라
+       원본 px 값 그대로 — 사이드바 nav 12px / SOLA quick 11.5px 등
+       본문 (18-22px) 대비 절반 수준
+   해결: 모든 화면 강제 통일 */
+
+/* Topbar — 모든 화면에서 동일한 높이/타이포 */
+body:has(.db-topbar) .db-topbar-title {
+  font-size: 28px !important;
+  line-height: 1.1 !important;
+}
+body:has(.db-topbar) .db-topbar-date  { font-size: 14px !important; }
+body:has(.db-topbar) .db-topbar-fresh { font-size: 12px !important; }
+body:has(.db-topbar) .db-topbar-eye   { font-size: 12px !important; }
+
+/* Sidebar (.app-side) — 본문 18-20px 에 맞춰 한 단계 위로 */
+body:has(.db-topbar) .app-side-brand-t  { font-size: 18px !important; }
+body:has(.db-topbar) .app-side-tag      { font-size: 12px !important; }
+body:has(.db-topbar) .app-side-pname    { font-size: 17px !important; }
+body:has(.db-topbar) .app-side-prole    { font-size: 14px !important; }
+body:has(.db-topbar) .app-side-chip     { font-size: 13px !important; padding: 3px 10px; }
+body:has(.db-topbar) .app-side-stats b  { font-size: 22px !important; }
+body:has(.db-topbar) .app-side-stats span { font-size: 12px !important; }
+body:has(.db-topbar) .app-side-seclbl   { font-size: 12px !important; }
+body:has(.db-topbar) .app-side-nav-t    { font-size: 16px !important; }
+body:has(.db-topbar) .app-side-nav-s    { font-size: 13px !important; }
+body:has(.db-topbar) .app-side-nav-cnt  { font-size: 13px !important; padding: 2px 8px; }
+body:has(.db-topbar) .app-side-foot-t   { font-size: 13px !important; }
+body:has(.db-topbar) .app-side-foot-s   { font-size: 12px !important; }
+
+/* SOLA right panel (.app-sola) — 본문 18-22px 에 맞춰 한 단계 위로 */
+body:has(.db-topbar) .app-sola-hdr-name   { font-size: 17px !important; }
+body:has(.db-topbar) .app-sola-hdr-meta   { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-ctx-eye    { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-ctx-name   { font-size: 16px !important; }
+body:has(.db-topbar) .app-sola-ctx-sub    { font-size: 14px !important; }
+body:has(.db-topbar) .app-sola-quick-eye  { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-quick-q    { font-size: 16px !important; line-height: 1.5; padding: 11px 13px; }
+body:has(.db-topbar) .app-sola-quick-i    { font-size: 13px !important; }
+body:has(.db-topbar) .app-sola-recent-eye { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-recent-q   { font-size: 16px !important; }
+body:has(.db-topbar) .app-sola-recent-a   { font-size: 17px !important; line-height: 1.65; }
+body:has(.db-topbar) .app-sola-recent-time { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-comp-input { font-size: 16px !important; line-height: 1.5; }
+body:has(.db-topbar) .app-sola-comp-pin   { font-size: 12px !important; padding: 4px 9px; }
+body:has(.db-topbar) .app-sola-comp-send  { font-size: 14px !important; padding: 9px 14px; }
+body:has(.db-topbar) .app-sola-comp-tips  { font-size: 12px !important; }
