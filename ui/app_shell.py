@@ -101,14 +101,18 @@ def _avatar_letter(persona: Persona) -> str:
     return _html.escape(src.strip()[:1] or "?")
 
 
-def render_setup_banner_if_needed() -> None:
+def render_setup_banner_if_needed() -> bool:
     """LLM 키 미설정 시 본문 상단에 안내 배너 1줄.
 
     설정 완료(`llm_ready()`) 면 아무것도 그리지 않는다. 배너는 본문 안쪽에 inline
     sticky 로 들어가서 .app-side / .app-sola 사이 영역만 차지한다 (fixed 가 아님).
+
+    Returns:
+        배너를 실제로 렌더했으면 True. 뒤따르는 sticky 배너(예: SOLA handoff)가
+        겹치지 않도록 stack offset 을 줄 때 사용.
     """
     if llm_ready():
-        return
+        return False
     backend_safe = _html.escape(llm_backend())
     st.html(
         f"""
@@ -135,6 +139,110 @@ def render_setup_banner_if_needed() -> None:
           <span class="app-llm-banner-sub">
             현재 백엔드 <b>{backend_safe}</b> · API 키가 없어 요약·제안서·채팅 응답이 미리보기로만 표시됩니다. ⚙ 설정에서 키를 입력하세요.
           </span>
+        </div>
+        """
+    )
+    return True
+
+
+def render_command_palette() -> None:
+    """⌘K / Ctrl+K 커맨드 팔레트 (CSS-only, JS 없음).
+
+    Streamlit 의 `st.html` 은 인라인 `<script>` 를 실행하지 않으므로, 키보드
+    단축키 대신 checkbox 해킹으로 토글한다:
+      - topbar 검색창(`<label for="v2-cmdk">`) 클릭 → 모달 open
+      - 백드롭 클릭 → close
+    모달 항목은 모두 `<a href="?app_area=...">` 라 선택 시 실제 네비게이션이
+    동작한다 (query-param 단일 진실 패턴과 일치).
+
+    `?app_area` 인코딩은 `_NAV_ITEMS` 와 동일 규칙(quote)을 사용. 호출은 페이지당
+    1회 (app.py), `.db-topbar` 가 있는 v2 셸에서만 노출.
+    """
+    rows = []
+    for area_key, title, subtitle, svg_d in _NAV_ITEMS:
+        href = f"?app_area={quote(area_key)}"
+        rows.append(
+            f'<a class="v2-cmdk-row" href="{href}" target="_self">'
+            f'<span class="v2-cmdk-ic">'
+            f"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' "
+            f"fill='none' stroke='#475569' stroke-width='2' stroke-linecap='round' "
+            f"stroke-linejoin='round'>{svg_d}</svg></span>"
+            f'<span class="v2-cmdk-txt"><b>{_html.escape(title)}</b>'
+            f'<small>{_html.escape(subtitle)}</small></span>'
+            f'<span class="v2-cmdk-go">↵</span>'
+            f'</a>'
+        )
+    # 페르소나 편집 바로가기
+    rows.append(
+        '<a class="v2-cmdk-row" href="?persona_editor=1" target="_self">'
+        '<span class="v2-cmdk-ic">'
+        "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' "
+        "fill='none' stroke='#475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+        "<path d='M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2'/><circle cx='12' cy='7' r='4'/></svg></span>"
+        '<span class="v2-cmdk-txt"><b>프로필 / 페르소나 편집</b><small>관심 공정 · 부서 설정</small></span>'
+        '<span class="v2-cmdk-go">↵</span>'
+        '</a>'
+    )
+    rows_html = "\n".join(rows)
+
+    st.html(
+        f"""
+        <style>
+          body:has(.db-topbar) .v2-cmdk-toggle {{ display: none; }}
+          body:has(.db-topbar) .v2-cmdk-backdrop {{
+            display: none; position: fixed; inset: 0; z-index: 90;
+            background: rgba(15,23,42,0.40); backdrop-filter: blur(2px);
+          }}
+          body:has(.db-topbar) .v2-cmdk-modal {{
+            display: none; position: fixed; z-index: 91;
+            top: 84px; left: 50%; transform: translateX(-50%);
+            width: min(560px, calc(100vw - 48px));
+            background: #fff; border: 1px solid var(--surface-divider, #E5E7EB);
+            border-radius: 14px; box-shadow: 0 24px 60px rgba(15,23,42,0.28);
+            overflow: hidden;
+          }}
+          body:has(.db-topbar) .v2-cmdk-toggle:checked ~ .v2-cmdk-backdrop {{ display: block; }}
+          body:has(.db-topbar) .v2-cmdk-toggle:checked ~ .v2-cmdk-modal {{ display: block; }}
+          body:has(.db-topbar) .v2-cmdk-head {{
+            display: flex; align-items: center; gap: 8px;
+            padding: 12px 16px; border-bottom: 1px solid var(--surface-divider, #E5E7EB);
+            font-size: 13px; color: var(--text-muted, #6B7280);
+          }}
+          body:has(.db-topbar) .v2-cmdk-head b {{ color: var(--text-primary, #0F172A); }}
+          body:has(.db-topbar) .v2-cmdk-kbd {{
+            margin-left: auto; font-size: 11px; color: var(--text-muted, #9CA3AF);
+            border: 1px solid var(--surface-divider, #E5E7EB); border-radius: 5px;
+            padding: 1px 6px; font-family: var(--font-mono, monospace);
+          }}
+          body:has(.db-topbar) .v2-cmdk-list {{ padding: 6px; max-height: 60vh; overflow-y: auto; }}
+          body:has(.db-topbar) .v2-cmdk-row {{
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: 9px; text-decoration: none;
+            color: var(--text-primary, #0F172A);
+          }}
+          body:has(.db-topbar) .v2-cmdk-row:hover {{ background: var(--surface-soft, #F3F5F8); }}
+          body:has(.db-topbar) .v2-cmdk-ic {{
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; border-radius: 7px;
+            background: var(--surface-soft, #F3F5F8); flex-shrink: 0;
+          }}
+          body:has(.db-topbar) .v2-cmdk-txt {{ display: flex; flex-direction: column; line-height: 1.3; }}
+          body:has(.db-topbar) .v2-cmdk-txt b {{ font-size: 14px; font-weight: 700; }}
+          body:has(.db-topbar) .v2-cmdk-txt small {{ font-size: 12px; color: var(--text-muted, #6B7280); }}
+          body:has(.db-topbar) .v2-cmdk-go {{
+            margin-left: auto; font-size: 13px; color: var(--text-muted, #9CA3AF);
+          }}
+        </style>
+        <input type="checkbox" id="v2-cmdk" class="v2-cmdk-toggle" aria-hidden="true">
+        <label class="v2-cmdk-backdrop" for="v2-cmdk" aria-label="팔레트 닫기"></label>
+        <div class="v2-cmdk-modal" role="dialog" aria-label="빠른 이동">
+          <div class="v2-cmdk-head">
+            🔎 <b>빠른 이동</b> — 작업 화면으로 점프
+            <label class="v2-cmdk-kbd" for="v2-cmdk" style="cursor:pointer;">닫기  esc</label>
+          </div>
+          <div class="v2-cmdk-list">
+            {rows_html}
+          </div>
         </div>
         """
     )
@@ -195,14 +303,15 @@ def render_topbar(
           </div>
 
           <div class="db-topbar-c">
-            <div class="db-hdr-search">
-              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#475569'
+            <label class="db-hdr-search" for="v2-cmdk" style="cursor:pointer;" title="빠른 이동 (⌘K)">
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#475475'
                    stroke-width='2' stroke-linecap='round' stroke-linejoin='round'
                    style='color:var(--text-muted);'>
                 <circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/>
               </svg>" width="15" height="15" alt="" />
-              <input placeholder="뉴스 · 작업 · 키워드 검색" disabled>
-            </div>
+              <span class="db-hdr-search-ph">뉴스 · 작업 · 키워드 검색</span>
+              <span class="db-hdr-search-kbd">⌘K</span>
+            </label>
           </div>
 
           <div class="db-topbar-r">

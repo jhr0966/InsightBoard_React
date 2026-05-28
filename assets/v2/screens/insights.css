@@ -691,7 +691,9 @@
   cursor: pointer;
   border-radius: 5px;
 }
-.ia-pc-detail:hover { background: rgba(37,99,235,0.08); }
+.ia-pc-detail:hover { background: rgba(37,99,235,0.08); text-decoration: none; }
+.ia-pc-detail { text-decoration: none; }
+a.ia-pc-detail, a.ia-pc-detail:visited { color: var(--accent-primary); }
 
 /* ════════════════════════════════════════════════════════════
     SECTION B · MATRIX

@@ -271,6 +271,136 @@ def test_board_brief_cta_routes_to_sola_with_from_brief():
     assert all("title" in it for it in items)
 
 
+def test_sola_composer_prefill_default_when_no_query():
+    """from 쿼리 없으면 빈 prefill + 기본 placeholder + 미첨부 pins."""
+    from ui import sola_workshop_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    prefill, placeholder, pins = sola_workshop_v2._composer_prefill()
+    assert prefill == ""
+    assert "무엇을 도와드릴까요" in placeholder
+    assert "컨텍스트 미첨부" in pins
+
+
+def test_sola_composer_prefill_from_opp():
+    """?from=opp&dept&lv3 → 자동화 기회 초안 텍스트 + 컨텍스트 pins."""
+    from ui import sola_workshop_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    st.query_params["from"] = "opp"
+    st.query_params["dept"] = "도장1팀"
+    st.query_params["lv3"] = "비전 검사"
+    try:
+        prefill, placeholder, pins = sola_workshop_v2._composer_prefill()
+        assert "도장1팀 · 비전 검사" in prefill
+        assert "자동화 기회" in prefill
+        assert "🎯" in pins
+        assert "도장1팀" in pins
+    finally:
+        st.query_params.clear()
+
+
+def test_sola_composer_prefill_from_matrix():
+    from ui import sola_workshop_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    st.query_params["from"] = "matrix"
+    st.query_params["dept"] = "용접"
+    st.query_params["lv3"] = "비드 검사"
+    try:
+        prefill, _placeholder, pins = sola_workshop_v2._composer_prefill()
+        assert "용접 · 비드 검사" in prefill
+        assert "매트릭스 1위" in prefill
+        assert "🧭" in pins
+    finally:
+        st.query_params.clear()
+
+
+def test_sola_composer_prefill_from_ia_map():
+    from ui import sola_workshop_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    st.query_params["from"] = "ia_map"
+    st.query_params["dept"] = "의장"
+    st.query_params["lv3"] = "부품 인식"
+    try:
+        prefill, _placeholder, pins = sola_workshop_v2._composer_prefill()
+        assert "의장 · 부품 인식" in prefill
+        assert "공정의 현재 상황" in prefill
+        assert "🔎" in pins
+    finally:
+        st.query_params.clear()
+
+
+def test_sola_composer_prefill_from_brief_uses_session_items():
+    from ui import sola_workshop_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    st.query_params["from"] = "brief"
+    st.session_state["_board_brief_items"] = [
+        {"title": "도장 비전 PoC 38% 절감"},
+        {"title": "VOC 예측 디지털 트윈"},
+        {"title": "협동 로봇 안전 인증"},
+    ]
+    try:
+        prefill, _placeholder, pins = sola_workshop_v2._composer_prefill()
+        assert "오늘 보드의 다음 3건" in prefill
+        assert "도장 비전 PoC" in prefill
+        assert "VOC 예측" in prefill
+        assert "📊" in pins
+        assert "뉴스 3" in pins
+    finally:
+        st.query_params.clear()
+        st.session_state.pop("_board_brief_items", None)
+
+
+def test_sola_composer_prefill_brief_empty_session_falls_back():
+    """from=brief 인데 session 비어있으면 default 미첨부 pins."""
+    from ui import sola_workshop_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    st.query_params["from"] = "brief"
+    st.session_state.pop("_board_brief_items", None)
+    try:
+        prefill, _placeholder, pins = sola_workshop_v2._composer_prefill()
+        assert prefill == ""
+        assert "컨텍스트 미첨부" in pins
+    finally:
+        st.query_params.clear()
+
+
+def test_command_palette_renders_5_nav_rows():
+    """⌘K 팔레트가 5-nav + 페르소나 편집 = 6개 row 렌더."""
+    from ui import app_shell
+    from unittest.mock import patch
+
+    captured = []
+
+    def fake_html(s, *args, **kwargs):
+        captured.append(s)
+
+    with patch("streamlit.html", side_effect=fake_html):
+        app_shell.render_command_palette()
+
+    assert len(captured) == 1
+    html = captured[0]
+    # 5 nav rows + 1 persona row
+    assert html.count('class="v2-cmdk-row"') == 6
+    assert "📊 오늘의 보드" in html
+    assert "🤖 SOLA 작업실" in html
+    assert "페르소나 편집" in html
+    # checkbox + backdrop + modal 마크업
+    assert 'id="v2-cmdk"' in html
+    assert 'class="v2-cmdk-backdrop"' in html
+    assert 'class="v2-cmdk-modal"' in html
+
+
 def test_insights_matrix_with_data_emits_halo():
     from ui import insights_v2
 

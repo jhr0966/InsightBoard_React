@@ -112,10 +112,17 @@ def _render_brief_handoff_banner_if_needed() -> None:
         f"""
         <style>
           body:has(.db-topbar) .ws-brief-handoff {{
-            position: sticky; top: 76px; z-index: 8;
+            position: sticky; z-index: 7;
             margin: 0 24px 14px; padding: 12px 16px;
             background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;
             font-size: 13px; color: #1E3A8A;
+          }}
+          /* LLM banner 없을 때만 sticky top:76 — banner 가 sticky 면 stacking 아래로 */
+          body:has(.db-topbar) .ws-brief-handoff {{
+            top: 76px;
+          }}
+          body:has(.db-topbar):has(.app-llm-banner) .ws-brief-handoff {{
+            top: 132px;
           }}
           body:has(.db-topbar) .ws-brief-handoff-h {{
             font-weight: 800; margin-bottom: 6px;
@@ -151,8 +158,78 @@ def _render_brief_handoff_banner_if_needed() -> None:
     )
 
 
+def _composer_prefill() -> tuple[str, str, str]:
+    """`?from=...` 기반 composer prefill 텍스트 + placeholder + pins HTML.
+
+    Returns: (prefill, placeholder, pins_html).
+    """
+    from_kind = st.query_params.get("from")
+    dept = st.query_params.get("dept", "")
+    lv3 = st.query_params.get("lv3", "")
+    target = " · ".join(p for p in (dept, lv3) if p)
+
+    if from_kind == "brief":
+        items = st.session_state.get("_board_brief_items") or []
+        if items:
+            titles = "\n".join(f"- {it.get('title', '')[:80]}" for it in items[:3])
+            prefill = (
+                f"오늘 보드의 다음 {len(items)}건 뉴스를 컨텍스트로,\n"
+                f"{titles}\n\n"
+                f"부서장에게 보낼 1쪽 제안서 초안을 만들어줘."
+            )
+            pins = (
+                '<span class="ws-cmp-pin">📎 컨텍스트 첨부됨</span>'
+                f'<span class="ws-cmp-pin-list">'
+                f'<span class="ws-pin-mini">📊 보드 브리핑</span>'
+                f'<span class="ws-pin-mini">뉴스 {len(items)}</span>'
+                f'<span class="ws-pin-mini">페르소나</span>'
+                f'</span>'
+            )
+            return prefill, "추가로 조정할 점이 있다면 알려주세요 — 일정·예산·KPI 등", pins
+
+    if from_kind in ("opp", "matrix") and target:
+        verb = "자동화 기회" if from_kind == "opp" else "매트릭스 1위"
+        prefill = (
+            f"{target} {verb}에 대한 제안서 초안을 만들어줘.\n"
+            f"우리 페르소나 컨텍스트로 ROI · 일정 · 위험요인 포함."
+        )
+        pins = (
+            '<span class="ws-cmp-pin">📎 컨텍스트 첨부됨</span>'
+            f'<span class="ws-cmp-pin-list">'
+            f'<span class="ws-pin-mini">{"🎯 자동화 기회" if from_kind == "opp" else "🧭 매트릭스"}</span>'
+            f'<span class="ws-pin-mini">{_html.escape(target)[:30]}</span>'
+            f'<span class="ws-pin-mini">페르소나</span>'
+            f'</span>'
+        )
+        return prefill, "제안서 톤·길이·강조점을 추가로 조정할 수 있어요", pins
+
+    if from_kind == "ia_map" and target:
+        prefill = (
+            f"{target} 공정의 현재 상황과 매칭된 뉴스 신호를 정리하고,\n"
+            f"적용 가능한 자동화 옵션 3가지를 비교해줘."
+        )
+        pins = (
+            '<span class="ws-cmp-pin">📎 컨텍스트 첨부됨</span>'
+            f'<span class="ws-cmp-pin-list">'
+            f'<span class="ws-pin-mini">🔎 공정 매핑</span>'
+            f'<span class="ws-pin-mini">{_html.escape(target)[:30]}</span>'
+            f'<span class="ws-pin-mini">페르소나</span>'
+            f'</span>'
+        )
+        return prefill, "비교 기준(난이도·비용·기간)을 추가로 명시할 수 있어요", pins
+
+    # 기본 — 인계 없음
+    pins = (
+        '<span class="ws-cmp-pin">컨텍스트 미첨부</span>'
+        '<span class="ws-cmp-pin-list">'
+        '<span class="ws-pin-mini">페르소나만 적용</span>'
+        '</span>'
+    )
+    return "", "무엇을 도와드릴까요? — 보드/인사이트 카드의 CTA 로 시작해도 됩니다", pins
+
+
 def _render_main(persona: Persona) -> None:
-    """sola_main.html 템플릿 로드 + persona snapshot 치환."""
+    """sola_main.html 템플릿 로드 + persona snapshot + composer prefill 치환."""
     name = persona.name or "사용자"
     dept = persona.dept or ""
     job = persona.job or ""
@@ -162,6 +239,8 @@ def _render_main(persona: Persona) -> None:
     interests = persona.interest_lv3 or persona.interest_tasks or []
     interests_label = ", ".join(interests[:3]) if interests else "미설정"
 
+    prefill, placeholder, pins_html = _composer_prefill()
+
     template = _SOLA_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
         template
@@ -169,5 +248,8 @@ def _render_main(persona: Persona) -> None:
         .replace("{{PERSONA_INTERESTS}}", _html.escape(interests_label))
         .replace("{{PERSONA_TEAM_SIZE}}", "5–15명")
         .replace("{{KEYWORDS_COUNT}}", "8개")
+        .replace("{{COMPOSER_PREFILL}}", _html.escape(prefill))
+        .replace("{{COMPOSER_PLACEHOLDER}}", _html.escape(placeholder))
+        .replace("{{COMPOSER_PINS}}", pins_html)
     )
     st.html(html_out)

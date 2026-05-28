@@ -53,6 +53,10 @@ with st.sidebar:
 # v2 글로벌 인터랙션 — 패널 접기/펴기 토글 (사이드바·SOLA)
 app_shell.consume_panel_toggle()
 
+# v2 ⌘K 빠른 이동 팔레트 — topbar 검색창 label 로 연결되는 모달.
+# 페이지마다 1회 마운트되며 .db-topbar 가 있는 v2 셸에서만 노출.
+app_shell.render_command_palette()
+
 if st.session_state.get("show_persona_editor"):
     persona_page.render()
 elif area == "📊 오늘의 보드":

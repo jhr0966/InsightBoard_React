@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-05-28 · A.7 후속 (composer prefill) + A.4 ⌘K wire + CTA 스타일 회복
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 36 커밋
+
+**변경:**
+- `sola_workshop_v2._composer_prefill()` — `?from` 4종에 따라 textarea 자동 채움
+- composer 템플릿에 `{{COMPOSER_PINS/PLACEHOLDER/PREFILL}}` 3 placeholder, rows=3
+- handoff banner sticky 위치 stacking — LLM banner 동시 노출 시 132px 로 자동 하강
+- app.py 에 `app_shell.render_command_palette()` wire (5-nav + 페르소나 row 모달)
+- shell.css : a/label 형태의 db-hdr-search + ph/kbd 자식 스타일
+- board.css / insights.css : `<a>` 로 전환된 CTA 4종 (db-prop-discuss / db-mx-cta / db-act / db-act-primary / ia-pc-detail) 의 text-decoration · :visited 회복
+- +7 tests: composer prefill 6 케이스 + 팔레트 렌더
+
+**검증:**
+- py_compile OK (5개 파일)
+- 금지 패턴 (on_click=, 사외 requests.*) — 0 hits
+- 테스트는 다음 일괄 실행에서 검증
+
+**남은 작업 (deferred):**
+- 남은 v1 5 모듈 (board_tab/bookmarks_tab/data_health/home_tab/sola_tab) 의 테스트 v2 마이그 → 추후 코드 정리 가능 (현 PR 범위 밖)
+
+---
+
 ## 2026-05-28 · A.7 확장 — 4 CTA 모두 SOLA 작업실로 라우팅 통일
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 35 커밋

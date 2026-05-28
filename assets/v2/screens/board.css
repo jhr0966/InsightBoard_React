@@ -868,6 +868,10 @@
   box-shadow: 0 2px 6px rgba(37,99,235,0.22);
 }
 .db-act-primary:hover { background: var(--accent-hover); color: #fff; }
+.db-act { text-decoration: none; }
+.db-act:hover { text-decoration: none; }
+a.db-act, a.db-act:visited { color: var(--text-secondary); }
+a.db-act-primary, a.db-act-primary:visited { color: #fff; }
 
 /* ═════════════════════════════════════════════════════════
     ③ TOP STORIES
@@ -1199,7 +1203,10 @@
   color: var(--accent-primary);
   background: rgba(37,99,235,0.06);
   border: 1px solid rgba(37,99,235,0.20);
+  text-decoration: none;
 }
+.db-prop-discuss:hover { background: rgba(37,99,235,0.12); text-decoration: none; }
+a.db-prop-discuss:visited { color: var(--accent-primary); }
 .db-prop-accept {
   color: #fff;
   background: var(--accent-primary);
@@ -1513,7 +1520,9 @@
   letter-spacing: -0.005em;
   box-shadow: 0 2px 8px rgba(37,99,235,0.22);
 }
-.db-mx-cta:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.db-mx-cta { text-decoration: none; }
+.db-mx-cta:hover { background: var(--accent-hover); transform: translateY(-1px); text-decoration: none; }
+a.db-mx-cta, a.db-mx-cta:visited { color: #fff; }
 
 /* ═════════════════════════════════════════════════════════
     ⑦ KEYWORD MANAGER (inline)

@@ -158,6 +158,23 @@
   letter-spacing: -0.008em;
 }
 .db-hdr-search input::placeholder { color: var(--text-muted); }
+/* a/label 로 전환된 검색 placeholder + kbd */
+a.db-hdr-search, label.db-hdr-search { text-decoration: none; color: var(--text-muted); cursor: pointer; }
+a.db-hdr-search:hover, label.db-hdr-search:hover { border-color: var(--accent-primary); }
+.db-hdr-search-ph {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: -0.008em;
+}
+.db-hdr-search-kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border: 1px solid var(--surface-divider);
+  border-radius: 5px;
+}
 .db-hdr-kbd { display: flex; gap: 3px; }
 .db-kbd {
   display: inline-flex;

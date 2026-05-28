@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (v2 — A.7 후속 + A.4 ⌘K 모달 wire + CTA 스타일 회복)
+- `ui/sola_workshop_v2.py::_composer_prefill()` 신규 — `?from=brief/opp/matrix/ia_map` 에 따라 textarea 자동 prefill + placeholder + pins 마크업 생성. brief 는 session_state 3건 제목, 나머지는 URL dept · lv3 로 작성된 한국어 초안 (제안서 / 비교 분석).
+- `assets/v2/screens/sola_main.html` — composer 정적 `<textarea rows="1">` + 가짜 pins → `{{COMPOSER_PINS}}` / `{{COMPOSER_PLACEHOLDER}}` / `{{COMPOSER_PREFILL}}` 3 placeholder. rows=3 으로 prefill 표시 영역 확장.
+- `ui/sola_workshop_v2.py::_render_brief_handoff_banner_if_needed` — sticky top 을 stacked 로 변경: 단독 시 76px, LLM banner 동시 노출 시 132px (`body:has(.app-llm-banner)` 분기).
+- `app.py` — `app_shell.render_command_palette()` 호출 추가. v2 셸의 topbar 검색창 라벨이 모달을 토글. 5-nav + 페르소나 편집 6 row 노출, 각 row 는 `?app_area=` 링크.
+- `assets/v2/shell.css` — `<a class="db-hdr-search">` 전환 후 새 자식 `db-hdr-search-ph` (placeholder text) + `db-hdr-search-kbd` (⌘K 키캡) 스타일 추가. text-decoration 제거.
+- `assets/v2/screens/board.css` — `.db-prop-discuss` / `.db-mx-cta` / `.db-act` / `.db-act-primary` 의 `<a>` 변형용 `text-decoration: none` + `:visited` 색상 회복 (button → a 전환 시 시각 회귀 방어).
+- `assets/v2/screens/insights.css` — `.ia-pc-detail` 동일 `<a>` 보강.
+- `tests/test_v2_screens.py` — composer prefill 6 케이스 (default / opp / matrix / ia_map / brief with items / brief without items) + ⌘K 팔레트 렌더 검증 (5-nav + 페르소나 row + checkbox/backdrop/modal 마크업 존재). +7 tests.
+
 ### Added (v2 — A.7 확장: 4 CTA 모두 SOLA 작업실로 라우팅 통일)
 - `ui/board_v2.py::_sola_handoff_href(from_kind, **payload)` 신규 헬퍼 — `?app_area=🤖+SOLA+작업실&from=<kind>&dept=X&lv3=Y` URL 빌더. payload 자동 quote, 빈값 생략. `_brief_html` 도 헬퍼 사용으로 통일.
 - `ui/board_v2.py::_opp_card_html` — `<button class="db-prop-discuss" disabled>SOLA와 검토</button>` → `<a href="?...from=opp&dept=X&lv3=Y">SOLA와 검토 →</a>`. 카드 4개 모두 dept/lv3 인계.
