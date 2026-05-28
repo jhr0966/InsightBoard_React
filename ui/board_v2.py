@@ -119,6 +119,116 @@ def _side_story_html(row: pd.Series) -> str:
 
 
 @st.cache_data(ttl=60)
+def _brief_html() -> dict[str, str]:
+    """SOLA 오늘의 브리핑 — 페르소나 매칭 top 3 뉴스.
+
+    LLM 호출 없이 score_matches 상위 3건 + 인용 pill 만 만든다.
+    실제 LLM 요약/요점은 후속 PR (sola.summarize 연동).
+    """
+    try:
+        news_df = _news_db.load_news_for_days(days=3)
+    except Exception:
+        news_df = None
+    try:
+        roadmap_df = _load_roadmap()
+    except Exception:
+        roadmap_df = None
+
+    items: list[dict] = []
+    if (
+        news_df is not None and not news_df.empty
+        and roadmap_df is not None and not roadmap_df.empty
+    ):
+        try:
+            matches = _score_matches(news_df, roadmap_df, top_k=3)
+            if not matches.empty and "score" in matches.columns:
+                top = (
+                    matches[matches["score"] > 0]
+                    .sort_values("score", ascending=False)
+                    .drop_duplicates("link")
+                    .head(3)
+                )
+                # join with news_df for collected_at
+                merged = top.merge(news_df[["link", "source", "collected_at"]], on="link", how="left", suffixes=("", "_n"))
+                # fallback source if missing
+                for _, r in merged.iterrows():
+                    items.append({
+                        "title": str(r.get("news_title", "") or r.get("title", "") or "(제목 없음)"),
+                        "source": str(r.get("source", "") or ""),
+                        "when": str(r.get("collected_at", "") or ""),
+                    })
+        except Exception:
+            pass
+
+    # fallback: 매칭 없을 때 그냥 최근 3건
+    if not items and news_df is not None and not news_df.empty:
+        if "collected_at" in news_df.columns:
+            news_df = news_df.sort_values("collected_at", ascending=False)
+        for _, r in news_df.head(3).iterrows():
+            items.append({
+                "title": str(r.get("title", "") or "(제목 없음)"),
+                "source": str(r.get("source", "") or ""),
+                "when": str(r.get("collected_at", "") or ""),
+            })
+
+    if not items:
+        # 빈 상태
+        return {
+            "summary": '<div class="db-brief-greet">'
+                       '<span class="db-brief-greet-tag">요약</span>'
+                       '아직 수집된 뉴스가 없어요. 데이터 관리에서 수집을 시작하세요.'
+                       '</div>',
+            "list": "",
+            "cites": "",
+        }
+
+    # 한 줄 요약 — 키워드 추출 없이 토픽 추정
+    summary_text = (
+        f"최근 매칭된 뉴스 {len(items)}건이 두드러집니다."
+        if len(items) > 0 else "오늘 매칭된 뉴스가 없습니다."
+    )
+    summary_html = (
+        '<div class="db-brief-greet">'
+        '<span class="db-brief-greet-tag">요약</span>'
+        f'{_html.escape(summary_text)}'
+        '</div>'
+    )
+
+    # 3 numbered items
+    list_parts = ['<ol class="db-brief-list">']
+    for i, item in enumerate(items, start=1):
+        title = _html.escape(item["title"][:120])
+        list_parts.append(
+            f'<li><span class="db-brief-num">{i}</span>'
+            f'<div><b>{title}</b><sup class="db-cite">{i}</sup></div></li>'
+        )
+    list_parts.append('</ol>')
+    list_html = "".join(list_parts)
+
+    # Cite pills
+    cite_parts = ['<div class="db-brief-cites">']
+    for i, item in enumerate(items, start=1):
+        src = _html.escape(item["source"] or "—")
+        date_str = ""
+        when = item["when"]
+        if when:
+            try:
+                from datetime import datetime as _dt
+                dt = _dt.fromisoformat(when.replace("Z", "+00:00"))
+                date_str = f" · {dt.month:02d}/{dt.day:02d}"
+            except Exception:
+                pass
+        cite_parts.append(
+            f'<span class="db-cite-pill"><span class="db-cite-num">{i}</span>'
+            f'{src}{_html.escape(date_str)}</span>'
+        )
+    cite_parts.append('</div>')
+    cites_html = "".join(cite_parts)
+
+    return {"summary": summary_html, "list": list_html, "cites": cites_html}
+
+
+@st.cache_data(ttl=60)
 def _opportunities_html() -> str:
     """자동화 기회 4-grid — opportunity.score_cells → 카드.
 
@@ -396,5 +506,12 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{KPI_PENDING_CLS}}", "db-delta-flat")
         .replace("{{BOARD_STORIES}}", _board_stories_html())
         .replace("{{BOARD_OPPORTUNITIES}}", _opportunities_html())
+    )
+    brief = _brief_html()
+    html_out = (
+        html_out
+        .replace("{{BRIEF_SUMMARY}}", brief["summary"])
+        .replace("{{BRIEF_LIST}}", brief["list"])
+        .replace("{{BRIEF_CITES}}", brief["cites"])
     )
     st.html(html_out)
