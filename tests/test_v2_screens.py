@@ -392,9 +392,14 @@ def test_command_palette_renders_5_nav_rows():
     html = captured[0]
     # 5 nav rows + 1 persona row
     assert html.count('class="v2-cmdk-row"') == 6
-    assert "📊 오늘의 보드" in html
-    assert "🤖 SOLA 작업실" in html
+    # render_command_palette 는 _NAV_ITEMS 의 title (이모지 없음) 만 노출, area_key (이모지 포함)는
+    # href 쿼리스트링에 URL 인코딩되어 들어감.
+    assert "오늘의 보드" in html
+    assert "SOLA 작업실" in html
     assert "페르소나 편집" in html
+    # area_key 가 quote 되어 href 에 포함
+    from urllib.parse import quote
+    assert quote("📊 오늘의 보드") in html
     # checkbox + backdrop + modal 마크업
     assert 'id="v2-cmdk"' in html
     assert 'class="v2-cmdk-backdrop"' in html
