@@ -15,6 +15,7 @@ _V2_CSS_FILES = (
     "v2/card.css",
     "v2/shell.css",
     "v2/streamlit-overrides.css",
+    "v2/scale.css",
 )
 
 

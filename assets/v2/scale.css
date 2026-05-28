@@ -1,0 +1,76 @@
+/* ──────────────────────────────────────────────────────────────
+   v2 typography scale-up — global ~10% bump
+   ──────────────────────────────────────────────────────────────
+   핸드오프 시안 자체가 dense 한 톤이라 실제 사용 환경에서 본문이
+   작게 느껴진다는 사용자 피드백 (2026-05-28).
+
+   - board.css / shell.css / card.css 의 원본을 손대지 않고 여기서 덮어쓰기
+   - load 순서: tokens → card → shell → streamlit-overrides → scale (여기) → screens
+   - 토큰 값 자체를 키워 .t-* 클래스 + 본문 텍스트 + 카드 메타가 동시에 커짐
+   - 시안과 비교 검증할 일이 생기면 이 파일만 제거하면 원복
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  /* 본문 / 캡션 한 단계 위로 */
+  --fs-body:        15px;  --lh-body:        1.55;   /* 14 → 15 */
+  --fs-caption:     13px;  --lh-caption:     1.45;   /* 12 → 13 */
+  --fs-micro:       12px;  --lh-micro:       1.40;   /* 11 → 12 */
+
+  /* 헤드라인 — 약간만 */
+  --fs-headline-sm: 16px;  --lh-headline-sm: 1.35;   /* 15 → 16 */
+  --fs-headline:    20px;  --lh-headline:    1.30;   /* 18 → 20 */
+  --fs-headline-lg: 26px;  --lh-headline-lg: 1.22;   /* 24 → 26 */
+  --fs-headline-xl: 38px;  --lh-headline-xl: 1.15;   /* 34 → 38 */
+}
+
+/* ── v2 셸이 활성일 때만 — v1 화면 영향 차단 ─────────────────── */
+
+/* 헤더 — 페이지 타이틀·메타 */
+body:has(.db-topbar) .db-topbar-title { font-size: 25px; }     /* 22 → 25 */
+body:has(.db-topbar) .db-topbar-date  { font-size: 13px; }     /* 11.5 → 13 */
+
+/* 인사 블록 */
+body:has(.db-topbar) .db-greet-h     { font-size: 30px; }      /* 시안 26 → 30 */
+body:has(.db-topbar) .db-greet-sum   { font-size: 16px; line-height: 1.55; }
+body:has(.db-topbar) .db-date        { font-size: 12px; }
+
+/* KPI 숫자는 이미 크므로 키 라벨만 */
+body:has(.db-topbar) .db-kpi-key     { font-size: 12.5px; }
+body:has(.db-topbar) .db-kpi-delta   { font-size: 12px; }
+
+/* 섹션 헤더 */
+body:has(.db-topbar) .db-sec-title   { font-size: 22px; line-height: 1.28; }
+body:has(.db-topbar) .db-sec-eye     { font-size: 11px; }
+body:has(.db-topbar) .db-sec-meta    { font-size: 11.5px; }
+
+/* SOLA 브리핑 본문 */
+body:has(.db-topbar) .db-brief-summary { font-size: 16px; line-height: 1.6; }
+body:has(.db-topbar) .db-brief-list li { font-size: 14.5px; line-height: 1.6; }
+
+/* 뉴스 / 스토리 카드 */
+body:has(.db-topbar) .db-story-title,
+body:has(.db-topbar) .db-news-title    { font-size: 16px; line-height: 1.4; }
+body:has(.db-topbar) .db-story-body,
+body:has(.db-topbar) .db-news-body     { font-size: 13.5px; line-height: 1.55; }
+body:has(.db-topbar) .db-story-src,
+body:has(.db-topbar) .db-news-src      { font-size: 11.5px; }
+body:has(.db-topbar) .db-story-time,
+body:has(.db-topbar) .db-news-time     { font-size: 11px; }
+
+/* 사이드바 nav · 페르소나 */
+body:has(.db-topbar) .app-side-brand-t { font-size: 16px; }    /* 14.5 → 16 */
+body:has(.db-topbar) .app-side-nav-t   { font-size: 13.5px; }  /* 12 → 13.5 */
+body:has(.db-topbar) .app-side-nav-s   { font-size: 11.5px; }  /* 10 → 11.5 */
+body:has(.db-topbar) .app-side-pname   { font-size: 14px; }    /* 13 → 14 */
+body:has(.db-topbar) .app-side-prole   { font-size: 12px; }    /* 10.5 → 12 */
+body:has(.db-topbar) .app-side-stats b { font-size: 17px; }    /* 15 → 17 */
+body:has(.db-topbar) .app-side-stats span { font-size: 10.5px; }
+
+/* SOLA 우측 패널 */
+body:has(.db-topbar) .app-sola-hdr-name   { font-size: 14.5px; }
+body:has(.db-topbar) .app-sola-ctx-name   { font-size: 13px; }
+body:has(.db-topbar) .app-sola-ctx-sub    { font-size: 12px; }
+body:has(.db-topbar) .app-sola-quick-q    { font-size: 13px; line-height: 1.5; }
+body:has(.db-topbar) .app-sola-recent-q   { font-size: 13px; }
+body:has(.db-topbar) .app-sola-recent-a   { font-size: 13.5px; line-height: 1.6; }
+body:has(.db-topbar) .app-sola-comp-input { font-size: 14px; }
