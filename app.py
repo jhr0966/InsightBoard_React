@@ -18,13 +18,14 @@ from ui import (
     board_tab,
     board_v2,
     bookmarks_tab,
-    data_health,
+    data_health,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    data_management_v2,
     home_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
-    ingest_tab,
-    news_tab,
+    ingest_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    news_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     persona_page,
     proposal_workbench,
-    roadmap_tab,
+    roadmap_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     sidebar,
     sola_tab,
 )
@@ -54,17 +55,7 @@ if st.session_state.get("show_persona_editor"):
 elif area == "📊 오늘의 보드":
     board_v2.render()
 elif area == "🧱 데이터 관리":
-    data_health.render()
-    st.markdown("<div style='height:0.8rem;'></div>", unsafe_allow_html=True)
-    tab_collect, tab_browse, tab_roadmap = st.tabs([
-        "1. 뉴스 수집", "2. 뉴스 둘러보기", "3. 로드맵 업로드",
-    ])
-    with tab_collect:
-        ingest_tab.render()
-    with tab_browse:
-        news_tab.render()
-    with tab_roadmap:
-        roadmap_tab.render()
+    data_management_v2.render()
 elif area == "🔎 인사이트 분석":
     board_tab.render()
 elif area == "🤖 SOLA 작업실":

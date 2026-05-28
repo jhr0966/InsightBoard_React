@@ -5,7 +5,7 @@
   - render_app_side(): 좌측 고정 패널 (264px, 접으면 44px) — 브랜드 + 페르소나 + 5-nav
   - render_app_sola(): 우측 고정 패널 (344px, 접으면 60px) — SOLA 컨텍스트 + 빠른 질문
 
-인터랙티브 동작(⌘K 검색, SOLA 전송, 패널 접기 등)은 화면별 후속 PR에서 와이어업.
+인터랙티브 동작(Ctrl+K 검색, SOLA 전송, 패널 접기 등)은 화면별 후속 PR에서 와이어업.
 지금은 마크업/스타일만 — visual handoff 충실.
 """
 from __future__ import annotations
@@ -129,7 +129,7 @@ def render_topbar(
                 <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
               </svg>
               <input placeholder="뉴스 · 작업 · 키워드 검색" disabled>
-              <div class="db-hdr-kbd"><span class="db-kbd">⌘</span><span class="db-kbd">K</span></div>
+              <div class="db-hdr-kbd"><span class="db-kbd">Ctrl</span><span class="db-kbd">K</span></div>
             </div>
           </div>
 
@@ -409,7 +409,7 @@ def render_app_sola(
               </div>
             </div>
             <div class="app-sola-comp-tips">
-              <span class="app-sola-comp-kbd">⌘</span><span class="app-sola-comp-kbd">↵</span> 전송 ·
+              <span class="app-sola-comp-kbd">Ctrl</span><span class="app-sola-comp-kbd">↵</span> 전송 ·
               <span class="app-sola-comp-kbd">↑</span> 직전 질문
             </div>
           </div>
