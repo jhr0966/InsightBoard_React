@@ -144,6 +144,75 @@ body:has(.db-topbar) .oa-src-more {
   display: block !important;
 }
 
+/* ════════════════════════════════════════════════════════════
+   인터랙션 A.1 — 사이드바 / SOLA 패널 접기·펴기
+   원본 card.css 가 body.app-side-collapsed 선택자를 쓰지만 Streamlit 에서
+   body class 토글이 어려워, .app-side / .app-sola 자신에 클래스 부여하는
+   방식으로 옮긴다. block-container 패딩은 :has() 로.
+   ════════════════════════════════════════════════════════════ */
+
+/* 기본: rail 숨김 (열린 상태) */
+body:has(.db-topbar) .app-side-rail-open { display: none !important; }
+body:has(.db-topbar) .app-sola > .app-sola-rail { display: none !important; }
+
+/* SIDEBAR · 접힌 상태 ----------------------------------------------------- */
+body:has(.db-topbar) .app-side.app-side-collapsed {
+  width: 44px !important;
+  padding: 10px 0 !important;
+  overflow: hidden !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed > *:not(.app-side-brand):not(.app-side-nav):not(.app-side-rail-open) {
+  display: none !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-brand {
+  border-bottom: 0;
+  padding: 0;
+  margin-bottom: 14px;
+  justify-content: center;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-brand > .app-side-brand-t,
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-brand > .app-side-collapse {
+  display: none !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-item {
+  grid-template-columns: 24px !important;
+  justify-items: center;
+  padding: 8px 0 !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-item > div,
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-item > .app-side-nav-cnt {
+  display: none !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-active::before {
+  left: -1px !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-rail-open {
+  display: grid !important;
+  place-items: center;
+  margin-top: auto;
+}
+
+/* SOLA · 접힌 상태 ------------------------------------------------------- */
+body:has(.db-topbar) .app-sola.app-sola-collapsed {
+  width: 60px !important;
+}
+body:has(.db-topbar) .app-sola.app-sola-collapsed > *:not(.app-sola-rail) {
+  display: none !important;
+}
+body:has(.db-topbar) .app-sola.app-sola-collapsed > .app-sola-rail {
+  display: flex !important;
+}
+
+/* 본문 padding 조정 — 패널 접힘에 맞춰 */
+body:has(.app-side.app-side-collapsed) .main .block-container,
+body:has(.app-side.app-side-collapsed) [data-testid="stMain"] .block-container {
+  padding-left: 80px !important;
+}
+body:has(.app-sola.app-sola-collapsed) .main .block-container,
+body:has(.app-sola.app-sola-collapsed) [data-testid="stMain"] .block-container {
+  padding-right: 80px !important;
+}
+
 /* 폰트 시스템 통일 (사용자 UI/UX 검토 요청 — 화면별 미세 차이 정리) */
 /* page.desc — board 19.5 / 나머지 18.5 → 19 로 통일 */
 body:has(.db-topbar) .db-greet-sum,

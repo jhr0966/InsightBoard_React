@@ -21,6 +21,40 @@ from persona.schema import Persona
 from sola.client import is_configured as llm_ready
 
 
+# ── 패널 접기/펴기 — query-param 기반 상태 ────────────────────────────────
+# `<a href>` 클릭이 full page reload 를 일으켜 session_state 가 유지 안 됨.
+# URL 의 ?side=c / ?sola=c 를 단일 진실로 사용. 토글 링크는 현재 상태에서
+# 반전된 URL 을 미리 계산해 hardcode.
+
+
+def consume_panel_toggle() -> None:
+    """현재는 noop — query-param 기반이라 별도 소비 불필요. 인터페이스 유지."""
+    return None
+
+
+def _side_collapsed() -> bool:
+    return st.query_params.get("side") == "c"
+
+
+def _sola_collapsed() -> bool:
+    return st.query_params.get("sola") == "c"
+
+
+def _toggle_href(panel: str) -> str:
+    """현재 area + 다른 패널 상태는 보존, 지정 패널만 토글하는 URL 생성."""
+    area = st.session_state.get("app_area", "📊 오늘의 보드")
+    cur_side = _side_collapsed()
+    cur_sola = _sola_collapsed()
+    new_side = (not cur_side) if panel == "side" else cur_side
+    new_sola = (not cur_sola) if panel == "sola" else cur_sola
+    parts = [f"app_area={quote(area)}"]
+    if new_side:
+        parts.append("side=c")
+    if new_sola:
+        parts.append("sola=c")
+    return "?" + "&".join(parts)
+
+
 # ── 5-nav 정의 (sidebar.AREAS 와 1:1 대응) ─────────────────────
 _NAV_ITEMS: tuple[tuple[str, str, str, str], ...] = (
     # (area_key, title, subtitle, svg_d_path)
@@ -217,9 +251,24 @@ def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]
     model_safe = _html.escape(llm_model() or "미설정")
     foot_dot_cls = "app-side-foot-dot" if llm_ready() else "app-side-foot-dot app-side-foot-dot-warn"
 
+    collapsed = _side_collapsed()
+    side_cls = "app-side app-side-collapsed" if collapsed else "app-side"
+    toggle_href = _toggle_href("side")
+    # 접힘/펼침 양쪽 버튼 — CSS 가 collapsed 상태에 따라 한 쪽만 노출
+    side_collapse_btn = (
+        f'<a class="app-side-collapse" href="{toggle_href}" title="사이드바 접기" target="_self">'
+        f'<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#475569\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'15 18 9 12 15 6\'/></svg>" width="14" height="14" alt="" />'
+        f'</a>'
+    )
+    side_rail_open_btn = (
+        f'<a class="app-side-rail-open" href="{toggle_href}" title="사이드바 펴기" target="_self">'
+        f'<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'13\' height=\'13\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#475569\' stroke-width=\'2.4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'9 18 15 12 9 6\'/></svg>" width="13" height="13" alt="" />'
+        f'</a>'
+    )
+
     st.html(
         f"""
-        <aside class="app-side">
+        <aside class="{side_cls}">
           <div class="app-side-brand">
             <div class="app-side-mark">
               <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none'
@@ -229,6 +278,7 @@ def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]
               </svg>" width="14" height="14" alt="" />
             </div>
             <span class="app-side-brand-t">인사이트<b>보드</b></span>
+            {side_collapse_btn}
           </div>
 
           <div class="app-side-profile">
@@ -268,6 +318,7 @@ def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]
               <div class="app-side-foot-s">{model_safe}</div>
             </div>
           </div>
+          {side_rail_open_btn}
         </aside>
         """
     )
@@ -354,9 +405,30 @@ def render_app_sola(
         </div>
         """
 
+    collapsed = _sola_collapsed()
+    sola_cls = "app-sola app-sola-collapsed" if collapsed else "app-sola"
+    sola_toggle_href = _toggle_href("sola")
+    sola_collapse_btn = (
+        f'<a class="app-sola-hdr-x" href="{sola_toggle_href}" title="접기" target="_self">'
+        f'<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'13\' height=\'13\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#475569\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'9 18 15 12 9 6\'/></svg>" width="13" height="13" alt="" />'
+        f'</a>'
+    )
+    sola_rail_html = f"""
+      <div class="app-sola-rail">
+        <div class="app-sola-rail-mark">
+          <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2L9.5 8.5 3 11l6.5 2.5L12 20l2.5-6.5L21 11l-6.5-2.5z'/></svg>" width="13" height="13" alt="" />
+        </div>
+        <span class="app-sola-rail-label">SOLA</span>
+        <a class="app-sola-rail-open" href="{sola_toggle_href}" title="패널 펴기" target="_self">
+          <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='15 18 9 12 15 6'/></svg>" width="13" height="13" alt="" />
+        </a>
+      </div>
+    """
+
     st.html(
         f"""
-        <aside class="app-sola">
+        <aside class="{sola_cls}">
+          {sola_rail_html}
           <div class="app-sola-hdr">
             <div class="app-sola-hdr-l">
               <div class="app-sola-mark">
@@ -370,12 +442,7 @@ def render_app_sola(
                 <div class="app-sola-hdr-meta">컨텍스트 자동 첨부</div>
               </div>
             </div>
-            <button class="app-sola-hdr-x" title="접기" disabled>
-              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569'
-                   stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
-                <polyline points='9 18 15 12 9 6'/>
-              </svg>" width="13" height="13" alt="" />
-            </button>
+            {sola_collapse_btn}
           </div>
 
           {ctx_block_html}

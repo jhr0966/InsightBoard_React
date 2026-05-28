@@ -15,6 +15,7 @@ import streamlit as st
 from config import ensure_data_dirs
 from store import bookmarks as _bookmarks_store
 from ui import (
+    app_shell,
     archive_v2,
     board_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     board_v2,
@@ -52,6 +53,9 @@ if not st.session_state.get("_did_expire_check"):
 
 with st.sidebar:
     area = sidebar.render()
+
+# v2 글로벌 인터랙션 — 패널 접기/펴기 토글 (사이드바·SOLA)
+app_shell.consume_panel_toggle()
 
 if st.session_state.get("show_persona_editor"):
     persona_page.render()
