@@ -360,6 +360,129 @@ def _ia_matrix_empty() -> str:
             '</div>')
 
 
+# ── 트렌드 → 공정 매핑 카드 (.ia-map) ───────────────────────
+_IA_PC_PALETTE = [
+    ("#2563EB", "rgba(37,99,235,0.10)"),
+    ("#0F766E", "rgba(20,184,166,0.10)"),
+    ("#4F46E5", "rgba(99,102,241,0.10)"),
+]
+
+
+@st.cache_data(ttl=60)
+def _ia_process_map_html() -> str:
+    """SECTION A 우측 — 선택 키워드 → 매칭 Lv3 공정 카드 3개.
+
+    데이터:
+      from chip = top trending 키워드 (`_weekly_keyword_series` 1순위)
+      cards    = `_score_cells` 상위 3개 (각 dept × lv3)
+      fit %    = cell_score / max * 36 + 60 (60~96%)
+      현재     = sample_tasks 첫 항목 (없으면 매칭 작업 N건)
+      애로     = sample_news 첫 헤드라인 (없으면 매칭 뉴스 N건)
+    """
+    from ui.board_v2 import _weekly_keyword_series
+
+    try:
+        news_30 = _news_db.load_news_for_days(days=30)
+        roadmap_df = _load_roadmap()
+    except Exception:
+        news_30 = None
+        roadmap_df = None
+    if news_30 is None or news_30.empty or roadmap_df is None or roadmap_df.empty:
+        return _ia_pmap_empty()
+
+    # top trending kw
+    _labels, series = _weekly_keyword_series(weeks=5)
+    top_kw = series[0]["name"] if series else "—"
+    top_dot_color = _IA_PC_PALETTE[0][0]
+
+    try:
+        cells = _score_cells(news_30, roadmap_df).head(3)
+    except Exception:
+        return _ia_pmap_empty()
+    if cells.empty:
+        return _ia_pmap_empty()
+
+    max_score = max(float(cells["cell_score"].max()), 1.0)
+    avg_fit = int(round(cells["cell_score"].mean() / max_score * 36 + 60))
+    total_news = int(cells["matched_news"].sum())
+
+    cards = []
+    for i, (_, row) in enumerate(cells.iterrows()):
+        color, bg = _IA_PC_PALETTE[i % len(_IA_PC_PALETTE)]
+        dept = _html.escape(str(row.get("dept", "") or "—"))
+        lv3 = _html.escape(str(row.get("lv3", "") or "—"))
+        score = float(row.get("cell_score", 0) or 0)
+        fit_pct = int(round(score / max_score * 36 + 60))
+
+        sample_tasks = str(row.get("sample_tasks", "") or "").split(" · ")
+        first_task = _html.escape(sample_tasks[0][:48]) if sample_tasks and sample_tasks[0] else ""
+        matched_tasks = int(row.get("matched_tasks", 0) or 0)
+        now_text = first_task if first_task else f"매칭 작업 {matched_tasks}건 후보"
+
+        sample_news = str(row.get("sample_news", "") or "").split(" · ")
+        first_news = _html.escape(sample_news[0][:80]) if sample_news and sample_news[0] else ""
+        matched_news = int(row.get("matched_news", 0) or 0)
+        pain_text = first_news if first_news else f"매칭 뉴스 {matched_news}건 · 현재 도메인 신호 누적 중"
+
+        rank_tag = "★ 최적 매칭" if i == 0 else ""
+        tag_cls = "ia-pc-tag-1" if i < 2 else "ia-pc-tag-2"
+        tag_label = "PoC 후보" if i < 2 else "관찰 대상"
+
+        cards.append(f"""<li class="ia-pcard{' ia-pcard-top' if i == 0 else ''}">
+          <div class="ia-pc-head">
+            <span class="ia-pc-icon" style="background:{bg}; color:{color};">◆</span>
+            <div>
+              <div class="ia-pc-name">{dept} · {lv3}{' <span class="ia-pc-rank">' + rank_tag + '</span>' if rank_tag else ''}</div>
+              <div class="ia-pc-path">{dept} › {lv3} (Lv3)</div>
+            </div>
+            <span class="ia-pc-fit"><b>{fit_pct}%</b><small>적합도</small></span>
+          </div>
+          <div class="ia-pc-body">
+            <div class="ia-pc-now">
+              <span class="ia-pc-k">현재</span>
+              <span class="ia-pc-v">{now_text}</span>
+            </div>
+            <div class="ia-pc-pain">
+              <span class="ia-pc-k">신호</span>
+              <span class="ia-pc-v">{pain_text}</span>
+            </div>
+          </div>
+          <div class="ia-pc-foot">
+            <span class="ia-pc-tag {tag_cls}">{tag_label}</span>
+            <span class="ia-pc-tag">매칭 뉴스 {matched_news}건</span>
+            <button class="ia-pc-detail" disabled>상세 →</button>
+          </div>
+        </li>""")
+
+    return f"""<div class="ia-map">
+      <div class="ia-map-head">
+        <div class="ia-map-from">
+          <span class="ia-map-eye">선택된 키워드</span>
+          <span class="ia-map-from-chip">
+            <span class="ia-map-from-dot" style="background:{top_dot_color};"></span>
+            {_html.escape(top_kw)}
+          </span>
+        </div>
+        <div class="ia-map-arrow">→</div>
+        <div class="ia-map-to">
+          <span class="ia-map-eye">조선소 적용 공정 (Lv3)</span>
+          <span class="ia-map-to-meta">{len(cards)}건 매칭 · 평균 적합도 <b>{avg_fit}%</b> · 매칭 뉴스 {total_news}건</span>
+        </div>
+      </div>
+      <ul class="ia-pcards">
+        {"".join(cards)}
+      </ul>
+    </div>"""
+
+
+def _ia_pmap_empty() -> str:
+    return ('<div style="padding:32px 18px; text-align:center; color:var(--text-muted);'
+            ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;">'
+            '아직 키워드 → 공정 매핑 결과가 없어요.<br>'
+            '<span style="font-size:12.5px;">뉴스 30일분 + 로드맵 업로드 후 자동으로 채워집니다.</span>'
+            '</div>')
+
+
 def _load_persona() -> Persona:
     p = st.session_state.get("persona")
     if isinstance(p, Persona):
@@ -500,6 +623,8 @@ def render() -> None:
         stats=stats,
     )
 
+    app_shell.render_setup_banner_if_needed()
+
     template = _IA_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
         template
@@ -516,6 +641,7 @@ def render() -> None:
         .replace("{{IA_CHART_LEGEND}}", chart["legend"])
         .replace("{{IA_CHART_PILL}}", chart["pill"])
         .replace("{{IA_MATRIX_SVG}}", _ia_matrix_svg())
+        .replace("{{IA_PROCESS_MAP}}", _ia_process_map_html())
     )
     st.html(html_out)
 

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (v2 인사이트 — 트렌드 → 공정 매핑 3 카드 + LLM 미설정 전역 banner)
+- `ui/insights_v2.py::_ia_process_map_html` (cached) — SECTION A 우측 `.ia-map` 빌더. from chip = top trending kw (`_weekly_keyword_series(5)` 1순위), 카드 3개 = `_score_cells.head(3)`. fit% = cell_score/max × 36 + 60 (60~96 범위), 현재 = sample_tasks 첫 항목 fallback, 신호 = sample_news 첫 헤드라인 fallback. 1위는 `ia-pcard-top` 강조 + ★ 최적 매칭 라벨. 상단 메타 = 매칭 개수 · 평균 적합도 · 매칭 뉴스 합.
+- `assets/v2/screens/insights_main.html` — `.ia-map` 하드코딩 ~115줄 → `{{IA_PROCESS_MAP}}` placeholder.
+- `ui/app_shell.py::render_setup_banner_if_needed` 신규 — `llm_ready()=False` 일 때 본문 상단 sticky 노란 banner ('LLM 미설정 · 백엔드 X · 키 없음 — 미리보기만'). 설정 시 no-op. `body:has(.db-topbar)` scoped CSS 라 v1 화면 영향 없음.
+- `ui/board_v2.py` / `ui/insights_v2.py::render()` — `render_app_side()` 직후 `app_shell.render_setup_banner_if_needed()` 호출.
+
 ### Added (v2 인사이트 — 트렌드 차트 + 기회 매트릭스 실데이터)
 - `ui/insights_v2.py::_ia_chart_parts` (cached) — 5주 × top-5 키워드 라인 차트. 보드의 `_weekly_keyword_series(5)` + `_delta_pct` 재사용. 1순위는 gradient fill + 큰 marker + callout box ('비전 검사 12건 · +162%'), 2-3순위는 컬러 라인 + 점, 4-5순위는 mute. Y label 동적 nice round, X label 'W−4..이번주', vertical highlight 마지막 컬럼. Legend / pill 동시 생성.
 - `ui/insights_v2.py::_ia_matrix_svg` (cached) — 600×420 viewBox, score_cells head(8) → 좌상단 = PoC 후보 (쉽고 효과 큰). x = 40+(1−ease)·520 · y = 20+(1−effect)·360 · r = 14+score·22. dept 별 5색 팔레트 (도장/용접/의장/조립/절단), 1위 cell halo dasharray.

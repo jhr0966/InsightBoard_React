@@ -965,6 +965,9 @@ def render() -> None:
         stats=stats,
     )
 
+    # ── 2.5) LLM 미설정 안내 (설정 완료 시 no-op) ──
+    app_shell.render_setup_banner_if_needed()
+
     # ── 3) 본문 (main) — 템플릿 로드 후 placeholder 치환 ──
     _render_main(persona=persona, refresh_label=refresh)
 

@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-05-28 · v2 인사이트 공정 매핑 + LLM 미설정 banner (B.3 + C)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 32 커밋
+
+**변경:**
+- `ui/insights_v2.py::_ia_process_map_html` (cached) — top trending kw → score_cells head(3) → 카드 3개. fit% = 60+score/max×36, 1위 ia-pcard-top + ★ 최적 매칭. sample_tasks/sample_news fallback.
+- `assets/v2/screens/insights_main.html` — .ia-map ~115줄 → `{{IA_PROCESS_MAP}}`
+- `ui/app_shell.py::render_setup_banner_if_needed` 신규 — LLM 미설정 시 본문 상단 sticky 노란 banner. body:has(.db-topbar) scoped.
+- `board_v2.py` / `insights_v2.py::render()` 에서 호출
+
+**검증:**
+- pytest 197/197, py_compile OK, 금지 패턴 0
+- 합성 cells 3 → 3 카드 + 1 top + fit '96/87/79' 평균 87%, top kw '비전 검사'
+- push 성공 PR #50
+
+**보드 + 인사이트 메인 영역 시각 바인딩 완료. 남은 큰 항목:**
+- 산출물 보관함 v2 (kanban + carousel)
+- 데이터 관리 v2 (job 행 + sparkline 외 추가 항목)
+- 인터랙션 (A 시리즈)
+
+**다음:**
+1. **H — v1 레거시 정리** (home_tab, insights_v1 등) — 안정화된 v2 가 v1 대체 가능한지 확인 후 제거
+2. **A.4 — Ctrl+K 모달** (검색 search bar)
+3. **A.3 — SOLA composer** (입력→pending→LLM)
+
+---
+
 ## 2026-05-28 · v2 인사이트 트렌드 차트 + 기회 매트릭스 실데이터 (B.3)
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 31 커밋

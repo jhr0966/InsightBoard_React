@@ -101,6 +101,45 @@ def _avatar_letter(persona: Persona) -> str:
     return _html.escape(src.strip()[:1] or "?")
 
 
+def render_setup_banner_if_needed() -> None:
+    """LLM 키 미설정 시 본문 상단에 안내 배너 1줄.
+
+    설정 완료(`llm_ready()`) 면 아무것도 그리지 않는다. 배너는 본문 안쪽에 inline
+    sticky 로 들어가서 .app-side / .app-sola 사이 영역만 차지한다 (fixed 가 아님).
+    """
+    if llm_ready():
+        return
+    backend_safe = _html.escape(llm_backend())
+    st.html(
+        f"""
+        <style>
+          body:has(.db-topbar) .app-llm-banner {{
+            position: sticky; top: 76px; z-index: 8;
+            display: flex; align-items: center; gap: 10px;
+            margin: 0 24px 14px; padding: 9px 14px;
+            background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px;
+            font-size: 13px; color: #78350F; font-weight: 600;
+          }}
+          body:has(.db-topbar) .app-llm-banner b {{ color: #78350F; }}
+          body:has(.db-topbar) .app-llm-banner .app-llm-banner-sub {{
+            font-weight: 500; color: #92400E;
+          }}
+          body:has(.db-topbar) .app-llm-banner .app-llm-banner-dot {{
+            width: 8px; height: 8px; border-radius: 50%; background: #F59E0B;
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
+          }}
+        </style>
+        <div class="app-llm-banner">
+          <span class="app-llm-banner-dot"></span>
+          <b>LLM 미설정</b>
+          <span class="app-llm-banner-sub">
+            현재 백엔드 <b>{backend_safe}</b> · API 키가 없어 요약·제안서·채팅 응답이 미리보기로만 표시됩니다. ⚙ 설정에서 키를 입력하세요.
+          </span>
+        </div>
+        """
+    )
+
+
 def render_topbar(
     *,
     page_title: str,
