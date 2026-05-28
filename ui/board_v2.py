@@ -377,6 +377,40 @@ def _persona_short(persona: Persona) -> str:
     return persona.name or persona.dept or "사용자"
 
 
+def _greet_summary_html(persona: Persona, kpis: dict[str, int]) -> str:
+    """인사 요약 — persona / data 상태에 맞춰 동적 문구.
+
+    case 1: 페르소나 미설정 → 설정 CTA
+    case 2: 페르소나 설정 + 오늘 수집 0 → 수집 시작 CTA
+    case 3: 페르소나 + 데이터 있음 → 실제 카운트 요약
+    """
+    if not persona.is_set():
+        return (
+            '👋 아직 페르소나가 설정되지 않았어요. '
+            '<a href="?persona_editor=1" target="_self" '
+            'style="color:var(--accent-primary); font-weight:700; text-decoration:none;">'
+            '페르소나를 설정</a>하면 부서·직무·관심 공정에 맞춘 매칭과 SOLA 답변을 받을 수 있어요.'
+        )
+
+    collect = kpis.get("collect", 0)
+    match = kpis.get("match", 0)
+    opp = kpis.get("opp", 0)
+    if collect == 0:
+        return (
+            '아직 오늘 수집된 뉴스가 없어요. '
+            '<a href="?app_area=%F0%9F%A7%B1+%EB%8D%B0%EC%9D%B4%ED%84%B0+%EA%B4%80%EB%A6%AC" '
+            'target="_self" style="color:var(--accent-primary); font-weight:700; '
+            'text-decoration:none;">데이터 관리</a>에서 첫 수집을 시작하세요.'
+        )
+
+    parts = [f'지난 24시간 동안 <b>{collect}건</b>이 들어왔어요.']
+    if match > 0:
+        parts.append(f'페르소나 기준으로 <b>{match}건</b>이 매칭됐어요.')
+    if opp > 0:
+        parts.append(f'그중 <b>자동화 기회 {opp}건</b>이 두드러집니다.')
+    return " ".join(parts)
+
+
 @st.cache_data(ttl=60)
 def _board_kpis() -> dict[str, int]:
     """4 KPI 실데이터 계산 — 60초 캐시. 실패 시 0 폴백 (시각 화면은 항상 렌더).
@@ -492,6 +526,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{REFRESH_LABEL}}", _html.escape(refresh_label))
         .replace("{{PERSONA_GREET}}", _html.escape(_persona_greet(persona)))
         .replace("{{PERSONA_NAME}}", _html.escape(_persona_short(persona)))
+        .replace("{{GREET_SUMMARY}}", _greet_summary_html(persona, kpis))
         .replace("{{KPI_COLLECT}}", str(kpis["collect"]))
         .replace("{{KPI_MATCH}}", str(kpis["match"]))
         .replace("{{KPI_OPP}}", str(kpis["opp"]))
