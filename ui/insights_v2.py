@@ -22,6 +22,81 @@ from ui import app_shell
 from ui.styles import inject_screen_css
 
 
+# 트렌드 키워드 색상 팔레트 — rank 별
+_TKW_COLORS = ["#2563EB", "#14B8A6", "#F59E0B", "#6366F1", "#0EA5E9", "#94A3B8"]
+
+
+def _tkw_list_html() -> str:
+    """ia-tkw-item 6개 동적 빌드. top_keywords + emergence 결합."""
+    try:
+        news_30 = _news_db.load_news_for_days(days=30)
+    except Exception:
+        news_30 = None
+    if news_30 is None or news_30.empty:
+        return _tkw_empty_html()
+
+    try:
+        top_df = _trends.top_keywords(news_30, top_n=6)
+    except Exception:
+        return _tkw_empty_html()
+    if top_df.empty:
+        return _tkw_empty_html()
+
+    # emergence — last 7 days vs prior 14 days
+    new_set: set[str] = set()
+    deltas: dict[str, int] = {}
+    try:
+        today_df = _news_db.load_news_for_days(days=7)
+        # base: 7-14일 전 (간이: 30일 - 7일 ≈ base)
+        base_df = news_30
+        em = _trends.keyword_emergence(today_df, base_df, top_n=20)
+        for _, r in em["new"].iterrows():
+            new_set.add(str(r["keyword"]))
+        for _, r in em["rising"].iterrows():
+            today = int(r.get("today", 0))
+            base = int(r.get("base", 0))
+            if base > 0:
+                deltas[str(r["keyword"])] = round((today - base) / base * 100)
+            else:
+                deltas[str(r["keyword"])] = 100
+    except Exception:
+        pass
+
+    max_count = max(int(top_df["count"].max()), 1)
+    parts = []
+    for i, (_, row) in enumerate(top_df.iterrows()):
+        kw = str(row["keyword"])
+        count = int(row["count"])
+        rank = f"{i+1:02d}"
+        bar_pct = max(round(count / max_count * 100), 8)
+        color = _TKW_COLORS[i % len(_TKW_COLORS)]
+        delta = deltas.get(kw, 0)
+        delta_label = f"+{delta}%" if delta > 0 else (f"−{abs(delta)}%" if delta < 0 else "0%")
+        delta_cls = "ia-tkw-up" if delta > 0 else ("ia-tkw-down" if delta < 0 else "ia-tkw-flat")
+        new_badge = ' <span class="ia-tkw-new">NEW</span>' if kw in new_set else ""
+        active_cls = " ia-tkw-on" if i == 0 else ""
+        parts.append(
+            f'<button class="ia-tkw-item{active_cls}" disabled>'
+            f'<span class="ia-tkw-rank">{rank}</span>'
+            f'<span class="ia-tkw-body">'
+            f'<span class="ia-tkw-name">{_html.escape(kw)}{new_badge}</span>'
+            f'<span class="ia-tkw-meta">{count}건</span>'
+            f'</span>'
+            f'<span class="ia-tkw-bar"><span style="width:{bar_pct}%; background:{color};"></span></span>'
+            f'<span class="ia-tkw-delta {delta_cls}">{delta_label}</span>'
+            f'</button>'
+        )
+    return "\n".join(parts)
+
+
+def _tkw_empty_html() -> str:
+    return ('<div style="padding: 18px; text-align: center; color: var(--text-muted); '
+            'font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 10px;">'
+            '아직 분석할 키워드가 없어요.<br>'
+            '<span style="font-size:12.5px;">데이터 관리에서 30일분 수집 후 다시 확인하세요.</span>'
+            '</div>')
+
+
 _IA_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "insights_main.html"
 
 
@@ -172,6 +247,7 @@ def render() -> None:
         .replace("{{IA_NEW_TRENDS}}", _html.escape(ia_stats["new_trends"]))
         .replace("{{IA_MATCHED_PROCESSES}}", _html.escape(ia_stats["matched_processes"]))
         .replace("{{IA_POC_CANDIDATES}}", _html.escape(ia_stats["poc_candidates"]))
+        .replace("{{IA_TKW_LIST}}", _tkw_list_html())
     )
     st.html(html_out)
 
