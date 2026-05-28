@@ -92,93 +92,14 @@
 
           <!-- Job rows -->
           <ul class="dm-job-list">
-            <li class="dm-job dm-job-done">
-              <span class="dm-job-mark" style="background:linear-gradient(135deg,#DC2626,#F87171);"></span>
-              <div class="dm-job-body">
-                <div class="dm-job-name">AI Times <span class="dm-job-meta">52건 · 1.4s</span></div>
-                <div class="dm-job-sub">
-                  <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='#15803D' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>" width="9" height="9" alt="" />
-                  본문 enrich 완료
-                </div>
-              </div>
-              <span class="dm-job-time">04:12</span>
-            </li>
-            <li class="dm-job dm-job-done">
-              <span class="dm-job-mark" style="background:linear-gradient(135deg,#D97706,#F59E0B);"></span>
-              <div class="dm-job-body">
-                <div class="dm-job-name">오토메이션월드 <span class="dm-job-meta">38건 · 0.9s</span></div>
-                <div class="dm-job-sub">
-                  <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='#15803D' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>" width="9" height="9" alt="" />
-                  본문 enrich 완료
-                </div>
-              </div>
-              <span class="dm-job-time">04:14</span>
-            </li>
-            <li class="dm-job dm-job-run">
-              <span class="dm-job-mark" style="background:linear-gradient(135deg,#047857,#14B8A6);"></span>
-              <div class="dm-job-body">
-                <div class="dm-job-name">Google RSS <span class="dm-job-meta">42 / 60건</span></div>
-                <div class="dm-job-sub">
-                  <span class="dm-job-bar"><span style="width:70%;"></span></span>
-                  <span class="dm-job-pct">70%</span>
-                </div>
-              </div>
-              <span class="dm-job-time dm-job-time-run">진행 중</span>
-            </li>
-            <li class="dm-job dm-job-done">
-              <span class="dm-job-mark" style="background:linear-gradient(135deg,#6D28D9,#A78BFA);"></span>
-              <div class="dm-job-body">
-                <div class="dm-job-name">네이버 기술 <span class="dm-job-meta">28건 · 1.1s</span></div>
-                <div class="dm-job-sub">
-                  <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='#15803D' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>" width="9" height="9" alt="" />
-                  본문 enrich 완료
-                </div>
-              </div>
-              <span class="dm-job-time">04:09</span>
-            </li>
-            <li class="dm-job dm-job-warn">
-              <span class="dm-job-mark" style="background:#94A3B8;"></span>
-              <div class="dm-job-body">
-                <div class="dm-job-name">조선해양 e뉴스 <span class="dm-job-meta">6건 중 0건</span></div>
-                <div class="dm-job-sub">
-                  <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='#B45309' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>" width="9" height="9" alt="" />
-                  셀렉터 불일치 — DOM 변경 의심
-                </div>
-                <button class="dm-job-retry">재시도</button>
-              </div>
-              <span class="dm-job-time">04:11</span>
-            </li>
+            {{INGEST_JOBS}}
           </ul>
 
           <!-- Ingest history sparkline -->
           <div class="dm-history">
-            <div class="dm-hist-head">
-              <span class="dm-hist-t">14일 수집량</span>
-              <span class="dm-hist-meta">평균 142건/일</span>
-            </div>
-            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' class='dm-hist-chart' viewBox='0 0 280 70' preserveAspectRatio='none'>
-              <!-- baseline -->
-              <line x1='0' y1='50' x2='280' y2='50' stroke='#E5E7EB' stroke-dasharray='2 3'/>
-              <!-- bars -->
-              <rect x='2'   y='22' width='16' height='38' fill='#CBD5E1' rx='2'/>
-              <rect x='22'  y='28' width='16' height='32' fill='#CBD5E1' rx='2'/>
-              <rect x='42'  y='18' width='16' height='42' fill='#CBD5E1' rx='2'/>
-              <rect x='62'  y='32' width='16' height='28' fill='#CBD5E1' rx='2'/>
-              <rect x='82'  y='14' width='16' height='46' fill='#CBD5E1' rx='2'/>
-              <rect x='102' y='20' width='16' height='40' fill='#CBD5E1' rx='2'/>
-              <rect x='122' y='10' width='16' height='50' fill='#CBD5E1' rx='2'/>
-              <rect x='142' y='16' width='16' height='44' fill='#CBD5E1' rx='2'/>
-              <rect x='162' y='12' width='16' height='48' fill='#CBD5E1' rx='2'/>
-              <rect x='182' y='20' width='16' height='40' fill='#CBD5E1' rx='2'/>
-              <rect x='202' y='8'  width='16' height='52' fill='#CBD5E1' rx='2'/>
-              <rect x='222' y='14' width='16' height='46' fill='#CBD5E1' rx='2'/>
-              <rect x='242' y='10' width='16' height='50' fill='#CBD5E1' rx='2'/>
-              <rect x='262' y='6'  width='16' height='54' fill='#2563EB' rx='2'/>
-            </svg>" width="16" height="38" alt="" />
-            <div class="dm-hist-x">
-              <span>−14d</span>
-              <span>오늘 156</span>
-            </div>
+            {{HIST_HEAD}}
+            {{HIST_SVG}}
+            {{HIST_X}}
           </div>
         </section>
 

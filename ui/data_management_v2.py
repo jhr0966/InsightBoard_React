@@ -197,6 +197,144 @@ def _news_empty_html() -> str:
 
 
 @st.cache_data(ttl=60)
+def _ingest_jobs_html() -> str:
+    """오늘의 수집잡 — source 별 카운트 + 마지막 시각 → dm-job 행 빌드.
+
+    실제 ingest job tracker 가 없어 news_db 의 source 별 그룹 카운트로 대체.
+    상태는 모두 'done' 으로 표시 (실시간 진행 상태 트래킹은 후속 PR).
+    """
+    try:
+        today_df = _news_db.load_all_today()
+    except Exception:
+        today_df = None
+
+    if today_df is None or today_df.empty:
+        return ('<li class="dm-job" style="border:1px dashed var(--surface-divider); '
+                'padding:14px; text-align:center; color: var(--text-muted); font-size: 14px;">'
+                '오늘 실행된 수집잡이 없습니다.<br>'
+                '<span style="font-size:12.5px;">[지금 실행] 으로 수집 시작</span>'
+                '</li>')
+
+    if "source" not in today_df.columns:
+        return ""
+
+    grouped = today_df.groupby("source").size().reset_index(name="count")
+    grouped = grouped.sort_values("count", ascending=False).head(5)
+
+    parts = []
+    for _, row in grouped.iterrows():
+        src = str(row["source"])
+        cnt = int(row["count"])
+        gradient = _SOURCE_GRADIENTS.get(src, _DEFAULT_GRADIENT)
+        # 마지막 시각
+        src_today = today_df[today_df["source"] == src]
+        last_time = ""
+        for col in ("collected_at", "published_at"):
+            if col in src_today.columns:
+                try:
+                    ts = src_today[col].dropna().astype(str).max()
+                    if ts:
+                        if "T" in ts:
+                            last_time = ts.split("T")[1][:5]
+                        elif " " in ts:
+                            last_time = ts.split(" ")[1][:5]
+                        break
+                except Exception:
+                    pass
+        parts.append(
+            f'<li class="dm-job dm-job-done">'
+            f'<span class="dm-job-mark" style="background:{gradient};"></span>'
+            f'<div class="dm-job-body">'
+            f'<div class="dm-job-name">{_html.escape(src)} '
+            f'<span class="dm-job-meta">{cnt}건</span></div>'
+            f'<div class="dm-job-sub">본문 enrich 완료</div>'
+            f'</div>'
+            f'<span class="dm-job-time">{_html.escape(last_time)}</span>'
+            f'</li>'
+        )
+    return "\n".join(parts)
+
+
+@st.cache_data(ttl=60)
+def _hist_html() -> dict[str, str]:
+    """14일 수집량 sparkline + head/foot 라벨 HTML.
+
+    SVG 는 img src='data:image/svg+xml,...' 형식이라 큰따옴표 escape 필요 →
+    src 내부는 모두 단일 따옴표.
+    """
+    try:
+        hist_df = _news_db.load_news_for_days(days=14)
+    except Exception:
+        hist_df = None
+
+    # daily volume
+    daily_counts: list[int] = [0] * 14
+    today_count = 0
+    avg_daily = 0
+    if hist_df is not None and not hist_df.empty:
+        try:
+            from datetime import datetime, timezone, timedelta
+            today = datetime.now(timezone.utc).date()
+            # bucket per day
+            for col in ("collected_at", "published_at", "fetched_at"):
+                if col in hist_df.columns:
+                    for ts_str in hist_df[col].dropna().astype(str):
+                        try:
+                            d = datetime.fromisoformat(ts_str.replace("Z","+00:00")).date()
+                            delta = (today - d).days
+                            if 0 <= delta < 14:
+                                daily_counts[13 - delta] += 1
+                        except Exception:
+                            pass
+                    break
+            today_count = daily_counts[-1]
+            non_zero = [c for c in daily_counts if c > 0]
+            if non_zero:
+                avg_daily = sum(non_zero) // len(non_zero)
+        except Exception:
+            pass
+
+    max_val = max(daily_counts) if any(daily_counts) else 1
+
+    # Build SVG bars — 14 bars at x=2,22,42,...,262 (20px stride, 16px wide), bar h max 56
+    bars = []
+    for i, count in enumerate(daily_counts):
+        x = 2 + i * 20
+        h = max(round(count / max_val * 56), 2) if count > 0 else 2
+        y = 60 - h
+        is_today = (i == 13)
+        fill = "#2563EB" if is_today else "#CBD5E1"
+        bars.append(f"<rect x='{x}' y='{y}' width='16' height='{h}' fill='{fill}' rx='2'/>")
+
+    svg_inner = (
+        "<line x1='0' y1='50' x2='280' y2='50' stroke='#E5E7EB' stroke-dasharray='2 3'/>"
+        + "".join(bars)
+    )
+    svg_full = (
+        "<svg xmlns='http://www.w3.org/2000/svg' "
+        "class='dm-hist-chart' viewBox='0 0 280 70' "
+        "preserveAspectRatio='none'>"
+        f"{svg_inner}"
+        "</svg>"
+    )
+    svg_img = f'<img src="data:image/svg+xml;utf8,{svg_full}" width="280" height="70" alt="14일 수집량 차트" />'
+
+    head_html = (
+        '<div class="dm-hist-head">'
+        '<span class="dm-hist-t">14일 수집량</span>'
+        f'<span class="dm-hist-meta">평균 {avg_daily}건/일</span>'
+        '</div>'
+    )
+    foot_html = (
+        '<div class="dm-hist-x">'
+        '<span>−14d</span>'
+        f'<span>오늘 {today_count}</span>'
+        '</div>'
+    )
+    return {"head": head_html, "svg": svg_img, "foot": foot_html}
+
+
+@st.cache_data(ttl=60)
 def _news_cards_html() -> str:
     """최근 뉴스 6건 → 카드 HTML 결합."""
     try:
@@ -309,6 +447,7 @@ def render() -> None:
 def _render_main(dm_stats: dict[str, str | int]) -> None:
     """data_management_main.html 템플릿 로드 + placeholder 치환."""
     template = _DM_TEMPLATE.read_text(encoding="utf-8")
+    hist = _hist_html()
     html_out = (
         template
         .replace("{{LAST_UPDATE}}", _html.escape(str(dm_stats["last_update"])))
@@ -316,5 +455,9 @@ def _render_main(dm_stats: dict[str, str | int]) -> None:
         .replace("{{TODAY_COUNT}}", _html.escape(str(dm_stats["today_count"])))
         .replace("{{TOTAL_CHUNKS}}", _html.escape(str(dm_stats["total_chunks"])))
         .replace("{{NEWS_CARDS}}", _news_cards_html())
+        .replace("{{INGEST_JOBS}}", _ingest_jobs_html())
+        .replace("{{HIST_HEAD}}", hist["head"])
+        .replace("{{HIST_SVG}}", hist["svg"])
+        .replace("{{HIST_X}}", hist["foot"])
     )
     st.html(html_out)
