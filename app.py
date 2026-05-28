@@ -15,9 +15,10 @@ import streamlit as st
 from config import ensure_data_dirs
 from store import bookmarks as _bookmarks_store
 from ui import (
+    archive_v2,
     board_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     board_v2,
-    bookmarks_tab,
+    bookmarks_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     data_health,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     data_management_v2,
     home_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
@@ -63,4 +64,4 @@ elif area == "🔎 인사이트 분석":
 elif area == "🤖 SOLA 작업실":
     sola_workshop_v2.render()
 else:
-    bookmarks_tab.render()
+    archive_v2.render()
