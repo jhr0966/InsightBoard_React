@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-05-28 · v2 보드 트렌드 차트 + 키워드 리스트 실데이터 (B.1)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** (Draft) · 누적 28 커밋
+**상태:** 보드 섹션 ① ② ③ ④ ⑤ 실데이터 완료 (남은: ⑥ 매트릭스 · ⑦ 키워드 관리)
+
+**변경:**
+- `ui/board_v2.py` — `_weekly_keyword_series(weeks=8)` (top-6 키워드 × 주별 버킷), `_path_d` / `_sparkline_d` (SVG path 생성), `_delta_pct` (head 1/3 vs tail 1/3 변화율), `_board_trend()` (cached, 어노테이션·Y라벨·6 li rows 빌드), `_board_trend_block_html()` (전체 트렌드 섹션 HTML)
+- `assets/v2/screens/board_main.html` — 트렌드 섹션 ⑤ 의 하드코딩 ~108줄을 `{{BOARD_TREND}}` 한 줄로 교체
+- 빈 상태: 데이터 부족 시 안내 카드
+
+**검증:**
+- `python -m py_compile` OK
+- `python -m pytest -q` **197/197 passed**
+- 금지 패턴 (`on_click=`, 사외 `requests.*`) — 0 hits
+- 합성 데이터 스모크: 56일 458행 → 8 라벨 (W15..금주), 6 시리즈, +149% delta 어노테이션 확인
+
+**다음 단계:**
+1. ⑥ 기회 매트릭스 (ROI×난이도 산점도) — `_score_cells` 결과 → 버블 좌표 매핑
+2. ⑦ 키워드 관리 (SOLA 자동 추출 + 직접 추가 그룹) — 페르소나 기반
+3. 인사이트 트렌드 차트도 동일 패턴으로 (board 함수 공유 가능성)
+
+---
+
 ## 2026-05-28 · v2 디자인 시스템 Phase 0+1 (오늘의 보드)
 
 **브랜치:** `claude/nice-bell-eEZLj`

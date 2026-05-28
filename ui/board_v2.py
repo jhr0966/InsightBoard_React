@@ -11,7 +11,7 @@ CLAUDE.md 규칙:
 from __future__ import annotations
 
 import html as _html
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -22,6 +22,7 @@ from persona.schema import Persona
 from roadmap.query import load_latest as _load_roadmap
 from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
+from store import trends as _trends
 from store.match import score_matches as _score_matches
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
@@ -226,6 +227,231 @@ def _brief_html() -> dict[str, str]:
     cites_html = "".join(cite_parts)
 
     return {"summary": summary_html, "list": list_html, "cites": cites_html}
+
+
+# 트렌드 차트 4 series 색상 (Azure/Teal/Amber/Indigo)
+_TREND_COLORS = ["#2563EB", "#14B8A6", "#F59E0B", "#6366F1"]
+# 키워드 리스트 6색 (4 series + Sky + Slate)
+_TREND_KW_COLORS = _TREND_COLORS + ["#0EA5E9", "#64748B"]
+
+
+def _weekly_keyword_series(weeks: int = 8) -> tuple[list[str], list[dict]]:
+    """top-6 키워드의 주별 출현 빈도. weeks 개 버킷.
+
+    Returns: (week_labels, [{name, counts:list[int]} ...]) — week_labels 는
+    'W14'~'금주' 형식, counts 는 weeks 길이.
+    """
+    try:
+        news = _news_db.load_news_for_days(days=weeks * 7)
+    except Exception:
+        return [], []
+    if news is None or news.empty:
+        return [], []
+
+    # date 컬럼 정규화
+    if "published_at" in news.columns:
+        dt = pd.to_datetime(news["published_at"], errors="coerce", utc=True)
+    elif "collected_at" in news.columns:
+        dt = pd.to_datetime(news["collected_at"], errors="coerce", utc=True)
+    else:
+        return [], []
+    news = news.assign(_dt=dt).dropna(subset=["_dt"])
+    if news.empty:
+        return [], []
+
+    now = datetime.now(timezone.utc)
+    # 주차 인덱스: 0 = 가장 오래된 주, weeks-1 = 금주
+    def _week_idx(t: pd.Timestamp) -> int:
+        days_ago = (now - t.to_pydatetime()).days
+        idx = (weeks - 1) - (days_ago // 7)
+        return int(idx)
+
+    news = news.assign(_w=news["_dt"].apply(_week_idx))
+    news = news[(news["_w"] >= 0) & (news["_w"] < weeks)]
+    if news.empty:
+        return [], []
+
+    # top-6 키워드 후보
+    try:
+        top_df = _trends.top_keywords(news, top_n=6)
+    except Exception:
+        return [], []
+    if top_df.empty:
+        return [], []
+
+    series: list[dict] = []
+    for kw in top_df["keyword"].astype(str).tolist():
+        counts = [0] * weeks
+        for _w, sub in news.groupby("_w"):
+            mask = pd.Series(False, index=sub.index)
+            for col in ("keywords_llm", "keywords"):
+                if col in sub.columns:
+                    mask |= sub[col].fillna("").astype(str).str.contains(
+                        kw, regex=False, case=False
+                    )
+            counts[int(_w)] = int(mask.sum())
+        series.append({"name": kw, "counts": counts})
+
+    # 주차 라벨: ISO week 의 마지막 2자리, 마지막은 '금주'
+    labels: list[str] = []
+    for i in range(weeks):
+        wk_dt = now - timedelta(days=(weeks - 1 - i) * 7)
+        if i == weeks - 1:
+            labels.append("금주")
+        else:
+            labels.append(f"W{wk_dt.isocalendar().week:02d}")
+    return labels, series
+
+
+def _path_d(counts: list[int], y_max: int) -> str:
+    """8-week counts → SVG path 'M ... L ...' (viewBox 560×200)."""
+    if not counts:
+        return ""
+    x_left, x_right = 30, 540
+    y_top, y_bottom = 20, 180
+    n = len(counts)
+    if n == 1:
+        x_step = 0
+    else:
+        x_step = (x_right - x_left) / (n - 1)
+    points = []
+    for i, c in enumerate(counts):
+        x = x_left + i * x_step
+        y = y_bottom - (c / y_max) * (y_bottom - y_top) if y_max > 0 else y_bottom
+        points.append(f"{x:.0f} {y:.0f}")
+    return "M " + " L ".join(points)
+
+
+def _sparkline_d(counts: list[int]) -> str:
+    """sparkline 60×18 viewBox path."""
+    if not counts:
+        return ""
+    mx = max(counts) or 1
+    n = len(counts)
+    x_step = 60 / max(n - 1, 1)
+    points = []
+    for i, c in enumerate(counts):
+        x = i * x_step
+        y = 17 - (c / mx) * 15
+        points.append(f"{x:.0f} {y:.1f}")
+    return "M " + " L ".join(points)
+
+
+def _delta_pct(counts: list[int]) -> int:
+    """첫 1/3 평균 → 마지막 1/3 평균 변화율 (%)."""
+    if not counts or len(counts) < 3:
+        return 0
+    n = len(counts)
+    third = max(n // 3, 1)
+    head = sum(counts[:third]) / third
+    tail = sum(counts[-third:]) / third
+    if head == 0:
+        return 100 if tail > 0 else 0
+    return round((tail - head) / head * 100)
+
+
+@st.cache_data(ttl=60)
+def _board_trend() -> dict[str, str]:
+    """⑤ 트렌드 섹션 — 동적 SVG + 키워드 리스트.
+
+    Returns dict with placeholders:
+      svg_paths, xticks, anno_name, anno_sub,
+      y_4..y_1 (Y-axis 라벨), kw_list (6 li rows)
+    """
+    labels, series = _weekly_keyword_series(weeks=8)
+    if not series:
+        empty = ('<div style="grid-column:1/-1; padding:32px 18px; text-align:center;'
+                 ' color:var(--text-muted); font-size:14px; border:1px dashed'
+                 ' var(--surface-divider); border-radius:12px;">'
+                 '아직 트렌드를 그릴 수 있는 데이터가 부족해요.<br>'
+                 '<span style="font-size:12.5px;">30일 이상 수집 후 키워드 출현 빈도가 누적되면 표시됩니다.</span>'
+                 '</div>')
+        return {
+            "svg_paths": "", "xticks": "", "anno_name": "", "anno_sub": "",
+            "y_4": "", "y_3": "", "y_2": "", "y_1": "",
+            "kw_list": "", "empty": empty,
+        }
+
+    # 차트는 상위 4 시리즈만, 키워드 리스트는 6개 전체
+    chart_series = series[:4]
+    y_max = max((max(s["counts"]) for s in chart_series), default=1) or 1
+    # Y label nice round (1.25× 마진)
+    nice_max = max(int((y_max * 1.25) // 5 + 1) * 5, 5)
+
+    # SVG paths
+    svg_lines = []
+    for i, s in enumerate(chart_series):
+        d = _path_d(s["counts"], nice_max)
+        color = _TREND_COLORS[i]
+        dash = ' stroke-dasharray=\'3 3\'' if i == 3 else ''
+        svg_lines.append(
+            f"<path d='{d}' fill='none' stroke='{color}' "
+            f"stroke-width='2.2' stroke-linecap='round'{dash}/>"
+        )
+    # 어노 marker: top series 마지막 점
+    top_counts = chart_series[0]["counts"]
+    last_x = 540
+    last_y = 180 - (top_counts[-1] / nice_max) * 160 if nice_max > 0 else 180
+    svg_lines.append(
+        f"<circle cx='{last_x:.0f}' cy='{last_y:.0f}' r='5' fill='#fff' "
+        f"stroke='{_TREND_COLORS[0]}' stroke-width='2.4'/>"
+    )
+
+    # X-axis ticks
+    xticks = "".join(f"<span>{_html.escape(l)}</span>" for l in labels)
+
+    # 어노테이션 — 가장 큰 delta 키워드
+    deltas = [(s["name"], _delta_pct(s["counts"])) for s in chart_series]
+    deltas.sort(key=lambda x: x[1], reverse=True)
+    top_name, top_delta = deltas[0]
+    anno_name = f"{_html.escape(top_name)} {'↑' if top_delta > 0 else ('↓' if top_delta < 0 else '·')}"
+    anno_sub = (f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 산업 분기점 가능성"
+                if abs(top_delta) >= 20
+                else f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 추세 관찰 중")
+
+    # Y labels — 4 ticks
+    y_4 = str(nice_max)
+    y_3 = str(round(nice_max * 0.75))
+    y_2 = str(round(nice_max * 0.5))
+    y_1 = str(round(nice_max * 0.25))
+
+    # 키워드 리스트 (6개)
+    kw_parts = []
+    for i, s in enumerate(series[:6]):
+        color = _TREND_KW_COLORS[i]
+        delta = _delta_pct(s["counts"])
+        if delta >= 20:
+            num_cls, delta_str = "db-good", f"+{delta}%"
+        elif delta <= -20:
+            num_cls, delta_str = "db-bad", f"{delta}%"
+        else:
+            num_cls = "db-flat"
+            delta_str = f"+{delta}%" if delta >= 0 else f"{delta}%"
+        spark_d = _sparkline_d(s["counts"])
+        spark_svg = (
+            f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 18' "
+            f"preserveAspectRatio='none'><path d='{spark_d}' fill='none' "
+            f"stroke='{color}' stroke-width='1.4'/></svg>"
+        )
+        kw_parts.append(
+            f'<li class="db-kw-row">'
+            f'<span class="db-kw-dot" style="background:{color};"></span>'
+            f'<span class="db-kw-name">{_html.escape(s["name"])}</span>'
+            f'<span class="db-kw-spark">{spark_svg}</span>'
+            f'<b class="db-kw-num {num_cls}">{delta_str}</b>'
+            f'</li>'
+        )
+    kw_list = "\n".join(kw_parts)
+
+    return {
+        "svg_paths": "\n".join(svg_lines),
+        "xticks": xticks,
+        "anno_name": anno_name,
+        "anno_sub": anno_sub,
+        "y_4": y_4, "y_3": y_3, "y_2": y_2, "y_1": y_1,
+        "kw_list": kw_list,
+        "empty": "",
+    }
 
 
 @st.cache_data(ttl=60)
@@ -541,6 +767,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{KPI_PENDING_CLS}}", "db-delta-flat")
         .replace("{{BOARD_STORIES}}", _board_stories_html())
         .replace("{{BOARD_OPPORTUNITIES}}", _opportunities_html())
+        .replace("{{BOARD_TREND}}", _board_trend_block_html())
     )
     brief = _brief_html()
     html_out = (
@@ -550,3 +777,41 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BRIEF_CITES}}", brief["cites"])
     )
     st.html(html_out)
+
+
+def _board_trend_block_html() -> str:
+    """{{BOARD_TREND}} 자리에 들어갈 트렌드 섹션 전체 HTML 빌드."""
+    t = _board_trend()
+    if t["empty"]:
+        return t["empty"]
+    return f"""<div class="db-trend">
+            <div class="db-trend-chart">
+              <div class="db-trend-y">
+                <span>{t["y_4"]}</span>
+                <span>{t["y_3"]}</span>
+                <span>{t["y_2"]}</span>
+                <span>{t["y_1"]}</span>
+                <span>0</span>
+              </div>
+              <div class="db-trend-plot">
+                <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 200' preserveAspectRatio='none' class='db-trend-svg' style='width:100%; height:100%;'>
+                  <line x1='0' y1='40'  x2='560' y2='40'  stroke='#E5E7EB' stroke-dasharray='2 4'/>
+                  <line x1='0' y1='80'  x2='560' y2='80'  stroke='#E5E7EB' stroke-dasharray='2 4'/>
+                  <line x1='0' y1='120' x2='560' y2='120' stroke='#E5E7EB' stroke-dasharray='2 4'/>
+                  <line x1='0' y1='160' x2='560' y2='160' stroke='#E5E7EB' stroke-dasharray='2 4'/>
+                  {t["svg_paths"]}
+                </svg>
+                <div class="db-trend-x">{t["xticks"]}</div>
+                <div class="db-trend-anno" style="right: 8px; top: 8px;">
+                  <div class="db-anno-arrow"></div>
+                  <div>
+                    <div class="db-anno-t">{t["anno_name"]}</div>
+                    <div class="db-anno-s">{t["anno_sub"]}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ul class="db-kw-list">
+              {t["kw_list"]}
+            </ul>
+          </div>"""

@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (v2 보드 — 트렌드 차트 + 키워드 리스트 실데이터)
+- `ui/board_v2.py::_weekly_keyword_series`, `_board_trend`, `_board_trend_block_html` 신규 — `news_db.load_news_for_days(56)` → top-6 키워드 추출 → 8주차 버킷별 출현 빈도 집계 → SVG `<path>` 4 series + 6-row 키워드 리스트(스파크라인 포함) 동적 생성. Y-축 라벨은 데이터 max 의 1.25× 5단위 nice round, 어노테이션은 첫 1/3 vs 마지막 1/3 평균 변화율(`_delta_pct`) 최대값 키워드.
+- `assets/v2/screens/board_main.html` — 트렌드 섹션 ⑤ 의 하드코딩 차트(SVG + 6 li, ~108줄)를 `{{BOARD_TREND}}` 단일 placeholder 로 치환.
+- 빈 상태: 데이터 부족 시 "30일 이상 수집 후 표시" 안내 카드로 대체.
+
 ### Added (v2 디자인 시스템 — InsightBoard 핸드오프 Phase 0+1)
 - `assets/v2/tokens.css`, `assets/v2/card.css`, `assets/v2/shell.css`, `assets/v2/streamlit-overrides.css` — Azure 라이트 테마 디자인 토큰 + 공유 컴포넌트(.app-side / .app-sola / .db-topbar) + Streamlit 크롬 무력화. 셸 활성 분기는 `body:has(.db-topbar)` 로 화면별 점진 마이그레이션.
 - `static/fonts/PretendardVariable.woff2`, `static/fonts/JetBrainsMono.woff2` + `.streamlit/config.toml [server] enableStaticServing = true` — CDN 의존 제거, 사내망/오프라인 환경에서 폰트 깨짐 방지.
