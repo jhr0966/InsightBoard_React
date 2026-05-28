@@ -203,7 +203,7 @@ body:has(.db-topbar) .app-sola.app-sola-collapsed > .app-sola-rail {
   display: flex !important;
 }
 
-/* A.2 — topbar 아바타가 <button> → <a> 로 바뀌어 anchor 기본 스타일 보정 */
+/* A.2 — topbar 아바타가 button 에서 anchor 태그로 바뀌어 기본 스타일 보정 */
 body:has(.db-topbar) .db-topbar-avatar {
   display: inline-flex !important;
   align-items: center;

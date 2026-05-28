@@ -1,9 +1,7 @@
 """오늘의 보드 — v2 디자인 적용.
 
 핸드오프 `dashboard-full v2.html` 의 main 컬럼을 그대로 가져오고 persona 이름과
-갱신 시각만 동적 치환. 데이터 와이어업(KPI · 탑 스토리 · 트렌드 등)은 후속 PR
-에서 화면 자체를 건드리지 않고 placeholder 를 데이터 바인딩으로 교체하는 방식
-으로 점진 적용한다.
+갱신 시각 + 4 KPI 카드 (수집·매칭·자동화 기회·채택 대기) 를 동적 치환.
 
 CLAUDE.md 규칙:
   - on_click 금지 → 모든 인터랙션 disabled (visual handoff 단계)
@@ -18,7 +16,11 @@ import streamlit as st
 
 from config import ASSETS_DIR
 from persona.schema import Persona
+from roadmap.query import load_latest as _load_roadmap
 from store import bookmarks as bookmarks_store
+from store import news_db as _news_db
+from store.match import score_matches as _score_matches
+from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
 from ui.styles import inject_screen_css
 
@@ -53,18 +55,63 @@ def _persona_short(persona: Persona) -> str:
     return persona.name or persona.dept or "사용자"
 
 
-def _archive_stats() -> dict[str, int]:
-    """app-side 통계 — 북마크 store 에서 가능한 부분만 채움.
+@st.cache_data(ttl=60)
+def _board_kpis() -> dict[str, int]:
+    """4 KPI 실데이터 계산 — 60초 캐시. 실패 시 0 폴백 (시각 화면은 항상 렌더).
 
-    오늘 매칭/자동화 기회 카운트는 후속 PR 에서 store/match.py 와 연결할 때 합류.
-    지금은 핸드오프 시안의 시각적 무게를 살리려고 시안 카운트(32/4/대기수) 를 사용.
+    Returns:
+      collect: 오늘 수집된 뉴스 수
+      match:   강한 매칭 (score>0) 뉴스 수
+      opp:     자동화 기회 셀 수 (dept × lv3)
+      pending: 채택 대기 제안서 수
     """
+    try:
+        news_df = _news_db.load_news_for_days(days=1)
+    except Exception:
+        news_df = None
+    try:
+        roadmap_df = _load_roadmap()
+    except Exception:
+        roadmap_df = None
+
+    collect = int(len(news_df)) if news_df is not None else 0
+
+    match_count = 0
+    opp_count = 0
+    if (
+        news_df is not None and not news_df.empty
+        and roadmap_df is not None and not roadmap_df.empty
+    ):
+        try:
+            matches = _score_matches(news_df, roadmap_df, top_k=3)
+            if not matches.empty:
+                match_count = int(matches[matches["score"] > 0]["link"].nunique())
+        except Exception:
+            pass
+        try:
+            cells = _score_cells(news_df, roadmap_df)
+            opp_count = int(len(cells))
+        except Exception:
+            pass
+
     summary = bookmarks_store.summary_counts()
     pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
+
     return {
-        "match_today": 32,         # TODO: store/match.py 연결 시 실제값
-        "opportunities": 4,         # TODO: sola/opportunity.py 연결 시 실제값
-        "pending_adopt": pending,
+        "collect": collect,
+        "match": match_count,
+        "opp": opp_count,
+        "pending": pending,
+    }
+
+
+def _archive_stats() -> dict[str, int]:
+    """app-side 좌측 카운트 — 보드 KPI 와 동일 소스 재사용."""
+    kpis = _board_kpis()
+    return {
+        "match_today": kpis["match"],
+        "opportunities": kpis["opp"],
+        "pending_adopt": kpis["pending"],
     }
 
 
@@ -115,11 +162,25 @@ def render() -> None:
 
 
 def _render_main(*, persona: Persona, refresh_label: str) -> None:
+    kpis = _board_kpis()
+    # 델타는 yesterday snapshot 비교 후속 PR — 일단 빈 값
     template = _BOARD_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
         template
         .replace("{{REFRESH_LABEL}}", _html.escape(refresh_label))
         .replace("{{PERSONA_GREET}}", _html.escape(_persona_greet(persona)))
         .replace("{{PERSONA_NAME}}", _html.escape(_persona_short(persona)))
+        .replace("{{KPI_COLLECT}}", str(kpis["collect"]))
+        .replace("{{KPI_MATCH}}", str(kpis["match"]))
+        .replace("{{KPI_OPP}}", str(kpis["opp"]))
+        .replace("{{KPI_PENDING}}", str(kpis["pending"]))
+        .replace("{{KPI_COLLECT_DELTA}}", "")
+        .replace("{{KPI_MATCH_DELTA}}", "")
+        .replace("{{KPI_OPP_DELTA}}", "")
+        .replace("{{KPI_PENDING_DELTA}}", "")
+        .replace("{{KPI_COLLECT_CLS}}", "db-delta-flat")
+        .replace("{{KPI_MATCH_CLS}}", "db-delta-flat")
+        .replace("{{KPI_OPP_CLS}}", "db-delta-flat")
+        .replace("{{KPI_PENDING_CLS}}", "db-delta-flat")
     )
     st.html(html_out)
