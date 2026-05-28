@@ -15,13 +15,14 @@ import streamlit as st
 from config import ensure_data_dirs
 from store import bookmarks as _bookmarks_store
 from ui import (
-    board_tab,
+    board_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     board_v2,
     bookmarks_tab,
     data_health,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     data_management_v2,
     home_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     ingest_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    insights_v2,
     news_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     persona_page,
     proposal_workbench,
@@ -57,7 +58,7 @@ elif area == "📊 오늘의 보드":
 elif area == "🧱 데이터 관리":
     data_management_v2.render()
 elif area == "🔎 인사이트 분석":
-    board_tab.render()
+    insights_v2.render()
 elif area == "🤖 SOLA 작업실":
     tab_sola, tab_wb = st.tabs(["SOLA 작업", "제안서 작업장"])
     with tab_sola:

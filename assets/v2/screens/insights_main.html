@@ -1,0 +1,911 @@
+<div class="ia-shell">
+<header class="ia-head">
+        <div class="ia-head-l">
+          <div class="ia-bc">
+            <span>워크플로</span>
+            <span class="ia-bc-sep">›</span>
+            <span class="ia-bc-cur">인사이트 분석</span>
+          </div>
+          <h1 class="ia-title">자동화 기회 분석실 <span class="ia-title-sub">트렌드 · 공정 매칭 · PoC 후보</span></h1>
+          <p class="ia-desc">
+            바깥세상의 자동화 트렌드를 우리 조선소 공정 위에 겹쳐봅니다. <b>"무엇이 뜨고 있나 →
+            우리 어디에 적용 가능한가 → 어떤 과제부터 시작할 것인가"</b> 한 화면에서 답합니다.
+          </p>
+        </div>
+        <div class="ia-head-stats">
+          <div class="ia-stat">
+            <div class="ia-stat-v">214</div>
+            <div class="ia-stat-k">분석 뉴스</div>
+            <div class="ia-stat-d">최근 30일</div>
+          </div>
+          <div class="ia-stat-sep"></div>
+          <div class="ia-stat">
+            <div class="ia-stat-v ia-good">+18</div>
+            <div class="ia-stat-k">신규 트렌드</div>
+            <div class="ia-stat-d">이번 주</div>
+          </div>
+          <div class="ia-stat-sep"></div>
+          <div class="ia-stat">
+            <div class="ia-stat-v">42</div>
+            <div class="ia-stat-k">매칭 공정</div>
+            <div class="ia-stat-d">Lv3 기준</div>
+          </div>
+          <div class="ia-stat-sep"></div>
+          <div class="ia-stat">
+            <div class="ia-stat-v ia-warn">7</div>
+            <div class="ia-stat-k">PoC 후보</div>
+            <div class="ia-stat-d">검토 대기</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ════════════════════════════════════════════════════
+            FILTER STRIP
+           ════════════════════════════════════════════════════ -->
+      <div class="ia-filters">
+        <div class="ia-fil-group">
+          <span class="ia-fil-lbl">기간</span>
+          <div class="ia-seg">
+            <button class="ia-seg-i">7일</button>
+            <button class="ia-seg-i ia-seg-i-active">30일</button>
+            <button class="ia-seg-i">90일</button>
+          </div>
+        </div>
+        <div class="ia-fil-sep"></div>
+        <div class="ia-fil-group">
+          <span class="ia-fil-lbl">공정 범위</span>
+          <button class="ia-fil-sel">
+            도장 · 용접 · 의장
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="ia-fil-sep"></div>
+        <div class="ia-fil-group">
+          <span class="ia-fil-lbl">기술 카테고리</span>
+          <div class="ia-fil-chips">
+            <span class="ia-fc ia-fc-on">비전</span>
+            <span class="ia-fc ia-fc-on">로봇</span>
+            <span class="ia-fc">예지보전</span>
+            <span class="ia-fc">디지털트윈</span>
+            <span class="ia-fc">+5</span>
+          </div>
+        </div>
+        <div class="ia-fil-spacer"></div>
+        <button class="ia-fil-save">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          현재 조합 저장
+        </button>
+        <button class="ia-fil-view">
+          저장한 뷰 · 3
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════
+            MAIN GRID
+           ════════════════════════════════════════════════════ -->
+      <div class="ia-grid">
+
+        <!-- ═════════════════ MAIN COLUMN ═════════════════ -->
+        <main class="ia-main">
+
+          <!-- ════════════════════════════════════════════════
+                SECTION A · 트렌드 → 공정 매핑
+               ════════════════════════════════════════════════ -->
+          <section class="ia-sec" id="trend">
+            <div class="ia-sec-head">
+              <div>
+                <div class="ia-sec-eye">STEP 1 · 트렌드 → 공정 연결</div>
+                <h2 class="ia-sec-t">자동화 뉴스에서 뜨고 있는 키워드</h2>
+                <p class="ia-sec-d">키워드를 클릭하면 우리 조선소 공정에 어디 적용 가능한지 즉시 매핑됩니다.</p>
+              </div>
+              <div class="ia-sec-meta">
+                30일 / 4개 출처 · <b>214건</b> 분석
+              </div>
+            </div>
+
+            <div class="ia-trend-grid">
+
+              <!-- ── Trend chart ─────────────────────────── -->
+              <div class="ia-chart">
+                <div class="ia-chart-head">
+                  <div class="ia-chart-legend">
+                    <span class="ia-lg"><span class="ia-lg-d" style="background:#2563EB;"></span>비전 검사</span>
+                    <span class="ia-lg"><span class="ia-lg-d" style="background:#14B8A6;"></span>협동 로봇</span>
+                    <span class="ia-lg"><span class="ia-lg-d" style="background:#F59E0B;"></span>예지보전</span>
+                    <span class="ia-lg ia-lg-mute"><span class="ia-lg-d" style="background:#CBD5E1;"></span>디지털트윈</span>
+                    <span class="ia-lg ia-lg-mute"><span class="ia-lg-d" style="background:#CBD5E1;"></span>외골격</span>
+                  </div>
+                  <div class="ia-chart-y-axis">언급 빈도 (건/주)</div>
+                </div>
+
+                <svg class="ia-chart-svg" viewBox="0 0 540 230" preserveAspectRatio="none">
+                  <!-- Grid -->
+                  <g stroke="#E5E7EB" stroke-width="0.6">
+                    <line x1="40" y1="20"  x2="540" y2="20"/>
+                    <line x1="40" y1="65"  x2="540" y2="65"/>
+                    <line x1="40" y1="110" x2="540" y2="110"/>
+                    <line x1="40" y1="155" x2="540" y2="155"/>
+                    <line x1="40" y1="200" x2="540" y2="200"/>
+                  </g>
+                  <!-- Y labels -->
+                  <g font-family="JetBrains Mono, monospace" font-size="8.5" fill="#94A3B8" font-weight="700">
+                    <text x="35" y="23" text-anchor="end">40</text>
+                    <text x="35" y="68" text-anchor="end">30</text>
+                    <text x="35" y="113" text-anchor="end">20</text>
+                    <text x="35" y="158" text-anchor="end">10</text>
+                    <text x="35" y="203" text-anchor="end">0</text>
+                  </g>
+                  <!-- X labels (4 weeks) -->
+                  <g font-family="JetBrains Mono, monospace" font-size="8.5" fill="#94A3B8" font-weight="700">
+                    <text x="80"  y="215" text-anchor="middle">W−4</text>
+                    <text x="200" y="215" text-anchor="middle">W−3</text>
+                    <text x="320" y="215" text-anchor="middle">W−2</text>
+                    <text x="440" y="215" text-anchor="middle">W−1</text>
+                    <text x="525" y="215" text-anchor="end">이번 주</text>
+                  </g>
+
+                  <!-- Vertical highlight -->
+                  <rect x="430" y="20" width="100" height="180" fill="rgba(37,99,235,0.04)"/>
+
+                  <!-- Muted series first -->
+                  <path d="M 80 175 L 200 160 L 320 145 L 440 135 L 525 130" stroke="#CBD5E1" stroke-width="1.6" fill="none" opacity="0.7"/>
+                  <path d="M 80 165 L 200 168 L 320 158 L 440 150 L 525 148" stroke="#CBD5E1" stroke-width="1.6" fill="none" opacity="0.7"/>
+
+                  <!-- 예지보전 -->
+                  <path d="M 80 140 L 200 130 L 320 115 L 440 100 L 525 96" stroke="#F59E0B" stroke-width="2" fill="none"/>
+                  <g fill="#F59E0B">
+                    <circle cx="80"  cy="140" r="2.5"/><circle cx="200" cy="130" r="2.5"/>
+                    <circle cx="320" cy="115" r="2.5"/><circle cx="440" cy="100" r="2.5"/>
+                    <circle cx="525" cy="96"  r="2.5"/>
+                  </g>
+
+                  <!-- 협동 로봇 -->
+                  <path d="M 80 115 L 200 105 L 320 92 L 440 78 L 525 70" stroke="#14B8A6" stroke-width="2" fill="none"/>
+                  <g fill="#14B8A6">
+                    <circle cx="80"  cy="115" r="2.5"/><circle cx="200" cy="105" r="2.5"/>
+                    <circle cx="320" cy="92"  r="2.5"/><circle cx="440" cy="78"  r="2.5"/>
+                    <circle cx="525" cy="70"  r="2.5"/>
+                  </g>
+
+                  <!-- 비전 검사 (highlighted / selected) -->
+                  <defs>
+                    <linearGradient id="ia-vis-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%"   stop-color="#2563EB" stop-opacity="0.18"/>
+                      <stop offset="100%" stop-color="#2563EB" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M 80 95 L 200 85 L 320 64 L 440 42 L 525 34 L 525 200 L 80 200 Z" fill="url(#ia-vis-fill)"/>
+                  <path d="M 80 95 L 200 85 L 320 64 L 440 42 L 525 34" stroke="#2563EB" stroke-width="2.6" fill="none"/>
+                  <g fill="#2563EB" stroke="#fff" stroke-width="1.4">
+                    <circle cx="80"  cy="95" r="3.2"/>
+                    <circle cx="200" cy="85" r="3.2"/>
+                    <circle cx="320" cy="64" r="3.2"/>
+                    <circle cx="440" cy="42" r="3.2"/>
+                    <circle cx="525" cy="34" r="4.6"/>
+                  </g>
+
+                  <!-- Highlighted point callout -->
+                  <g>
+                    <rect x="460" y="-2" width="78" height="28" rx="6" fill="#0F172A"/>
+                    <text x="499" y="14" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="700" fill="#fff">비전 검사</text>
+                    <text x="499" y="24" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#94A3B8">38건 · +52%</text>
+                  </g>
+                </svg>
+
+                <div class="ia-chart-foot">
+                  <span class="ia-trend-pill ia-trend-up">▲ 비전 검사 +52% (지난 30일 대비)</span>
+                  <span class="ia-chart-hint">점을 클릭하면 SOLA가 그 시점 뉴스를 분석합니다</span>
+                </div>
+              </div>
+
+              <!-- ── Trend keyword list ──────────────────── -->
+              <div class="ia-tkw">
+                <div class="ia-tkw-head">
+                  <span>트렌드 키워드</span>
+                  <span class="ia-tkw-sort">▲ 상승률 순</span>
+                </div>
+
+                <!-- Selected -->
+                <button class="ia-tkw-item ia-tkw-on">
+                  <span class="ia-tkw-rank">01</span>
+                  <span class="ia-tkw-body">
+                    <span class="ia-tkw-name">비전 검사</span>
+                    <span class="ia-tkw-meta">38건 · 매칭 공정 <b>3</b></span>
+                  </span>
+                  <span class="ia-tkw-bar"><span style="width:92%;"></span></span>
+                  <span class="ia-tkw-delta ia-tkw-up">+52%</span>
+                </button>
+
+                <button class="ia-tkw-item">
+                  <span class="ia-tkw-rank">02</span>
+                  <span class="ia-tkw-body">
+                    <span class="ia-tkw-name">협동 로봇 <span class="ia-tkw-new">NEW</span></span>
+                    <span class="ia-tkw-meta">29건 · 매칭 공정 <b>4</b></span>
+                  </span>
+                  <span class="ia-tkw-bar"><span style="width:74%; background:#14B8A6;"></span></span>
+                  <span class="ia-tkw-delta ia-tkw-up">+38%</span>
+                </button>
+
+                <button class="ia-tkw-item">
+                  <span class="ia-tkw-rank">03</span>
+                  <span class="ia-tkw-body">
+                    <span class="ia-tkw-name">예지보전</span>
+                    <span class="ia-tkw-meta">24건 · 매칭 공정 <b>5</b></span>
+                  </span>
+                  <span class="ia-tkw-bar"><span style="width:62%; background:#F59E0B;"></span></span>
+                  <span class="ia-tkw-delta ia-tkw-up">+24%</span>
+                </button>
+
+                <button class="ia-tkw-item">
+                  <span class="ia-tkw-rank">04</span>
+                  <span class="ia-tkw-body">
+                    <span class="ia-tkw-name">디지털트윈</span>
+                    <span class="ia-tkw-meta">18건 · 매칭 공정 <b>2</b></span>
+                  </span>
+                  <span class="ia-tkw-bar"><span style="width:46%; background:#6366F1;"></span></span>
+                  <span class="ia-tkw-delta ia-tkw-flat">+4%</span>
+                </button>
+
+                <button class="ia-tkw-item">
+                  <span class="ia-tkw-rank">05</span>
+                  <span class="ia-tkw-body">
+                    <span class="ia-tkw-name">외골격 슈트 <span class="ia-tkw-new">NEW</span></span>
+                    <span class="ia-tkw-meta">11건 · 매칭 공정 <b>2</b></span>
+                  </span>
+                  <span class="ia-tkw-bar"><span style="width:28%; background:#0EA5E9;"></span></span>
+                  <span class="ia-tkw-delta ia-tkw-up">+82%</span>
+                </button>
+
+                <button class="ia-tkw-item ia-tkw-warn">
+                  <span class="ia-tkw-rank">06</span>
+                  <span class="ia-tkw-body">
+                    <span class="ia-tkw-name">자율 운반차 (AGV)</span>
+                    <span class="ia-tkw-meta">9건 · 매칭 공정 <b>1</b> · 데이터 부족</span>
+                  </span>
+                  <span class="ia-tkw-bar"><span style="width:22%; background:#94A3B8;"></span></span>
+                  <span class="ia-tkw-delta ia-tkw-down">−12%</span>
+                </button>
+
+                <div class="ia-tkw-foot">
+                  <button class="ia-tkw-add">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    키워드 추가 · 더 수집
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Process mapping result (the answer to "what does this trend touch?") -->
+            <div class="ia-map">
+              <div class="ia-map-head">
+                <div class="ia-map-from">
+                  <span class="ia-map-eye">선택된 키워드</span>
+                  <span class="ia-map-from-chip">
+                    <span class="ia-map-from-dot" style="background:#2563EB;"></span>
+                    비전 검사
+                  </span>
+                </div>
+                <div class="ia-map-arrow">
+                  <svg width="46" height="14" viewBox="0 0 46 14" fill="none">
+                    <line x1="0" y1="7" x2="40" y2="7" stroke="#94A3B8" stroke-width="1.6" stroke-dasharray="3 3"/>
+                    <polyline points="36 2, 44 7, 36 12" stroke="#94A3B8" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="ia-map-to">
+                  <span class="ia-map-eye">조선소 적용 공정 (Lv3)</span>
+                  <span class="ia-map-to-meta">3건 매칭 · 평균 적합도 <b>87%</b></span>
+                </div>
+              </div>
+
+              <ul class="ia-pcards">
+                <!-- Process 1 ───────────────────────────── -->
+                <li class="ia-pcard ia-pcard-top">
+                  <div class="ia-pc-head">
+                    <span class="ia-pc-icon" style="background:rgba(37,99,235,0.10); color:#2563EB;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="2"/></svg>
+                    </span>
+                    <div>
+                      <div class="ia-pc-name">도장 품질검사 <span class="ia-pc-rank">★ 최적 매칭</span></div>
+                      <div class="ia-pc-path">의장 › 도장 › 품질검사 (Lv3)</div>
+                    </div>
+                    <span class="ia-pc-fit"><b>96%</b><small>적합도</small></span>
+                  </div>
+                  <div class="ia-pc-body">
+                    <div class="ia-pc-now">
+                      <span class="ia-pc-k">현재</span>
+                      <span class="ia-pc-v">육안 검사 14명/일 · 부스 6기</span>
+                    </div>
+                    <div class="ia-pc-pain">
+                      <span class="ia-pc-k">애로</span>
+                      <span class="ia-pc-v">광택차이로 미세결함 누락 / 야간 가시성 저하 / 검사자 경력 편차</span>
+                    </div>
+                  </div>
+                  <div class="ia-pc-foot">
+                    <span class="ia-pc-tag ia-pc-tag-1">PoC 후보</span>
+                    <span class="ia-pc-tag">유사 사례 8건</span>
+                    <button class="ia-pc-detail">상세 →</button>
+                  </div>
+                </li>
+
+                <!-- Process 2 ───────────────────────────── -->
+                <li class="ia-pcard">
+                  <div class="ia-pc-head">
+                    <span class="ia-pc-icon" style="background:rgba(20,184,166,0.10); color:#0F766E;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l4-8 4 8 4-6 6 8"/><path d="M3 19h18"/></svg>
+                    </span>
+                    <div>
+                      <div class="ia-pc-name">용접 비드 검사</div>
+                      <div class="ia-pc-path">선체 › 용접 › 비드 외관 (Lv3)</div>
+                    </div>
+                    <span class="ia-pc-fit"><b>88%</b><small>적합도</small></span>
+                  </div>
+                  <div class="ia-pc-body">
+                    <div class="ia-pc-now">
+                      <span class="ia-pc-k">현재</span>
+                      <span class="ia-pc-v">샘플링 검사 + 사후 X-ray · 22명/일</span>
+                    </div>
+                    <div class="ia-pc-pain">
+                      <span class="ia-pc-k">애로</span>
+                      <span class="ia-pc-v">전수검사 불가 / 비드 형상 분류가 검사자 주관</span>
+                    </div>
+                  </div>
+                  <div class="ia-pc-foot">
+                    <span class="ia-pc-tag ia-pc-tag-1">PoC 후보</span>
+                    <span class="ia-pc-tag">유사 사례 5건</span>
+                    <button class="ia-pc-detail">상세 →</button>
+                  </div>
+                </li>
+
+                <!-- Process 3 ───────────────────────────── -->
+                <li class="ia-pcard">
+                  <div class="ia-pc-head">
+                    <span class="ia-pc-icon" style="background:rgba(99,102,241,0.10); color:#4F46E5;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>
+                    </span>
+                    <div>
+                      <div class="ia-pc-name">블록 외관 검사</div>
+                      <div class="ia-pc-path">선체 › 조립 › 블록 외관 (Lv3)</div>
+                    </div>
+                    <span class="ia-pc-fit"><b>78%</b><small>적합도</small></span>
+                  </div>
+                  <div class="ia-pc-body">
+                    <div class="ia-pc-now">
+                      <span class="ia-pc-k">현재</span>
+                      <span class="ia-pc-v">조립 완료 시점 일괄 검사 · 9명/일</span>
+                    </div>
+                    <div class="ia-pc-pain">
+                      <span class="ia-pc-k">애로</span>
+                      <span class="ia-pc-v">블록 크기 큼 → 고지대 접근성 / 색조 대비 부족</span>
+                    </div>
+                  </div>
+                  <div class="ia-pc-foot">
+                    <span class="ia-pc-tag ia-pc-tag-2">관찰 대상</span>
+                    <span class="ia-pc-tag">유사 사례 3건</span>
+                    <button class="ia-pc-detail">상세 →</button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <!-- ════════════════════════════════════════════════
+                SECTION B · 자동화 기회 매트릭스
+               ════════════════════════════════════════════════ -->
+          <section class="ia-sec" id="matrix">
+            <div class="ia-sec-head">
+              <div>
+                <div class="ia-sec-eye">STEP 2 · 우선순위 판단</div>
+                <h2 class="ia-sec-t">자동화 기회 매트릭스</h2>
+                <p class="ia-sec-d">난이도 × 기대효과로 정렬해서 <b>어디부터 PoC 할지</b> 한눈에 정합니다. 좌상단(쉽고 효과 큰) 영역이 우선 후보.</p>
+              </div>
+              <div class="ia-sec-meta">
+                <span class="ia-sec-leg"><span class="ia-leg-d" style="background:#2563EB;"></span>도장</span>
+                <span class="ia-sec-leg"><span class="ia-leg-d" style="background:#14B8A6;"></span>용접</span>
+                <span class="ia-sec-leg"><span class="ia-leg-d" style="background:#F59E0B;"></span>의장</span>
+                <span class="ia-sec-leg"><span class="ia-leg-d" style="background:#6366F1;"></span>조립</span>
+              </div>
+            </div>
+
+            <div class="ia-mtx-wrap">
+              <!-- Matrix plot -->
+              <div class="ia-mtx">
+                <!-- Axis labels -->
+                <div class="ia-mtx-y-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                  기대효과 — 인력/시수 절감 폭
+                </div>
+
+                <svg class="ia-mtx-svg" viewBox="0 0 600 420" preserveAspectRatio="xMidYMid meet">
+                  <!-- Background quadrants -->
+                  <rect x="40" y="20" width="280" height="190" fill="rgba(21,128,61,0.06)"/>
+                  <rect x="320" y="20" width="240" height="190" fill="rgba(180,83,9,0.04)"/>
+                  <rect x="40" y="210" width="280" height="170" fill="rgba(15,23,42,0.02)"/>
+                  <rect x="320" y="210" width="240" height="170" fill="rgba(15,23,42,0.02)"/>
+
+                  <!-- PoC zone label (top-left) -->
+                  <g>
+                    <rect x="50" y="32" width="118" height="22" rx="5" fill="#15803D"/>
+                    <text x="109" y="47" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="800" fill="#fff" letter-spacing="0.04em">★ PoC 후보 영역</text>
+                  </g>
+                  <text x="172" y="46" font-family="Pretendard" font-size="10.5" fill="#15803D" font-weight="700">쉽고 효과 큰 — 먼저 시도</text>
+
+                  <text x="330" y="46" font-family="Pretendard" font-size="10.5" fill="#B45309" font-weight="700">전략 과제 — 효과는 크나 난이도 ↑</text>
+                  <text x="48"  y="372" font-family="Pretendard" font-size="10.5" fill="#94A3B8" font-weight="600">소규모 개선 — 낮은 효과</text>
+                  <text x="330" y="372" font-family="Pretendard" font-size="10.5" fill="#94A3B8" font-weight="600">유보 — 검토 보류</text>
+
+                  <!-- Axis lines -->
+                  <line x1="40"  y1="380" x2="560" y2="380" stroke="#0F172A" stroke-width="1.4"/>
+                  <line x1="40"  y1="20"  x2="40"  y2="380" stroke="#0F172A" stroke-width="1.4"/>
+                  <line x1="320" y1="20"  x2="320" y2="380" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 3"/>
+                  <line x1="40"  y1="210" x2="560" y2="210" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 3"/>
+
+                  <!-- Y ticks -->
+                  <g font-family="JetBrains Mono, monospace" font-size="9" fill="#94A3B8" font-weight="700">
+                    <text x="34" y="24"  text-anchor="end">高</text>
+                    <text x="34" y="105" text-anchor="end">·</text>
+                    <text x="34" y="213" text-anchor="end">中</text>
+                    <text x="34" y="300" text-anchor="end">·</text>
+                    <text x="34" y="383" text-anchor="end">低</text>
+                  </g>
+                  <!-- X ticks -->
+                  <g font-family="JetBrains Mono, monospace" font-size="9" fill="#94A3B8" font-weight="700">
+                    <text x="40"  y="398" text-anchor="middle">쉬움</text>
+                    <text x="180" y="398" text-anchor="middle">·</text>
+                    <text x="320" y="398" text-anchor="middle">中</text>
+                    <text x="440" y="398" text-anchor="middle">·</text>
+                    <text x="560" y="398" text-anchor="middle">어려움</text>
+                  </g>
+
+                  <!-- X axis title -->
+                  <text x="300" y="416" text-anchor="middle" font-family="Pretendard" font-size="11" fill="#475569" font-weight="700">
+                    적용 난이도 →  현장 통합 · 안전 인증 · 정확도 임계
+                  </text>
+
+                  <!-- Bubbles (sized by news count / opportunity score) -->
+                  <!-- Best PoC candidates: top-left -->
+
+                  <!-- B1: 도장 비전 검사 (★ selected) -->
+                  <g>
+                    <circle cx="120" cy="68" r="34" fill="rgba(37,99,235,0.16)" stroke="#2563EB" stroke-width="2.4"/>
+                    <circle cx="120" cy="68" r="6"  fill="#2563EB"/>
+                    <text x="120" y="124" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="800" fill="#0F172A">도장 비전 검사</text>
+                    <text x="120" y="137" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#475569" font-weight="700">사례 8건 · 적합도 96%</text>
+                    <!-- selection halo -->
+                    <circle cx="120" cy="68" r="44" fill="none" stroke="#2563EB" stroke-width="1.4" stroke-dasharray="3 3"/>
+                  </g>
+
+                  <!-- B2: 용접 비드 검사 -->
+                  <g>
+                    <circle cx="195" cy="115" r="26" fill="rgba(20,184,166,0.16)" stroke="#14B8A6" stroke-width="2"/>
+                    <circle cx="195" cy="115" r="5" fill="#14B8A6"/>
+                    <text x="195" y="158" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="800" fill="#0F172A">용접 비드 검사</text>
+                    <text x="195" y="170" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#475569" font-weight="700">사례 5건</text>
+                  </g>
+
+                  <!-- B3: 의장 부품 자동 인식 (orange) -->
+                  <g>
+                    <circle cx="78" cy="158" r="22" fill="rgba(245,158,11,0.16)" stroke="#F59E0B" stroke-width="2"/>
+                    <circle cx="78" cy="158" r="5" fill="#F59E0B"/>
+                    <text x="78" y="195" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="800" fill="#0F172A">의장 부품 자동 인식</text>
+                    <text x="78" y="207" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#475569" font-weight="700">사례 4건</text>
+                  </g>
+
+                  <!-- B4: 협동 로봇 도장 -->
+                  <g>
+                    <circle cx="270" cy="92" r="28" fill="rgba(37,99,235,0.10)" stroke="#2563EB" stroke-width="1.6"/>
+                    <circle cx="270" cy="92" r="5" fill="#2563EB"/>
+                    <text x="270" y="138" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="800" fill="#0F172A">협동 로봇 도장</text>
+                    <text x="270" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#475569" font-weight="700">사례 6건</text>
+                  </g>
+
+                  <!-- B5: 디지털트윈 의장 시뮬 (strategic / top-right) -->
+                  <g>
+                    <circle cx="440" cy="78" r="36" fill="rgba(245,158,11,0.12)" stroke="#F59E0B" stroke-width="2" stroke-dasharray="4 3"/>
+                    <circle cx="440" cy="78" r="5" fill="#F59E0B"/>
+                    <text x="440" y="130" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="800" fill="#0F172A">디지털트윈 시뮬레이션</text>
+                    <text x="440" y="142" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#475569" font-weight="700">사례 3건 · 전략</text>
+                  </g>
+
+                  <!-- B6: 예지보전 회전기기 -->
+                  <g>
+                    <circle cx="380" cy="160" r="24" fill="rgba(245,158,11,0.16)" stroke="#F59E0B" stroke-width="2"/>
+                    <circle cx="380" cy="160" r="5" fill="#F59E0B"/>
+                    <text x="380" y="200" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="800" fill="#0F172A">예지보전 회전기기</text>
+                    <text x="380" y="212" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#475569" font-weight="700">사례 4건</text>
+                  </g>
+
+                  <!-- B7: 외골격 (low / new) -->
+                  <g>
+                    <circle cx="160" cy="270" r="16" fill="rgba(14,165,233,0.16)" stroke="#0EA5E9" stroke-width="1.6"/>
+                    <circle cx="160" cy="270" r="4" fill="#0EA5E9"/>
+                    <text x="160" y="298" text-anchor="middle" font-family="Pretendard" font-size="10" font-weight="700" fill="#475569">외골격 슈트</text>
+                  </g>
+
+                  <!-- B8: AGV (low effect / hard) -->
+                  <g>
+                    <circle cx="480" cy="290" r="14" fill="rgba(148,163,184,0.20)" stroke="#94A3B8" stroke-width="1.4"/>
+                    <circle cx="480" cy="290" r="3" fill="#94A3B8"/>
+                    <text x="480" y="316" text-anchor="middle" font-family="Pretendard" font-size="10" font-weight="700" fill="#475569">자율 운반차</text>
+                  </g>
+                </svg>
+
+                <div class="ia-mtx-x-label">
+                  <span>← 효과 大</span>
+                  <span class="ia-mtx-x-mid">바깥세상 자동화 사례 8개월간 통합 분석</span>
+                  <span>난이도 大 →</span>
+                </div>
+              </div>
+
+              <!-- Right side · PoC candidates ranking -->
+              <aside class="ia-mtx-rank">
+                <div class="ia-mtx-rank-head">
+                  <span class="ia-mtx-rank-eye">★ PoC 후보 (좌상단)</span>
+                  <span class="ia-mtx-rank-cnt">7건</span>
+                </div>
+                <ul class="ia-poc-list">
+                  <li class="ia-poc ia-poc-on">
+                    <span class="ia-poc-i">01</span>
+                    <div class="ia-poc-body">
+                      <div class="ia-poc-name">도장 비전 검사</div>
+                      <div class="ia-poc-meta">
+                        <span class="ia-poc-effort">난이도 <b>低</b></span>
+                        <span class="ia-poc-impact">효과 <b>高</b></span>
+                      </div>
+                      <div class="ia-poc-why">14명/일 → 6명/일 · 부스 #3 PoC 가능</div>
+                    </div>
+                    <span class="ia-poc-score">9.2</span>
+                  </li>
+                  <li class="ia-poc">
+                    <span class="ia-poc-i">02</span>
+                    <div class="ia-poc-body">
+                      <div class="ia-poc-name">용접 비드 검사</div>
+                      <div class="ia-poc-meta">
+                        <span class="ia-poc-effort">난이도 <b>低</b></span>
+                        <span class="ia-poc-impact">효과 <b>中+</b></span>
+                      </div>
+                      <div class="ia-poc-why">전수검사로 전환 시 X-ray 비용 −40%</div>
+                    </div>
+                    <span class="ia-poc-score">8.5</span>
+                  </li>
+                  <li class="ia-poc">
+                    <span class="ia-poc-i">03</span>
+                    <div class="ia-poc-body">
+                      <div class="ia-poc-name">의장 부품 자동 인식</div>
+                      <div class="ia-poc-meta">
+                        <span class="ia-poc-effort">난이도 <b>低</b></span>
+                        <span class="ia-poc-impact">효과 <b>中</b></span>
+                      </div>
+                      <div class="ia-poc-why">자재창고 인입 단계 RFID 대체 가능</div>
+                    </div>
+                    <span class="ia-poc-score">7.8</span>
+                  </li>
+                  <li class="ia-poc">
+                    <span class="ia-poc-i">04</span>
+                    <div class="ia-poc-body">
+                      <div class="ia-poc-name">협동 로봇 도장</div>
+                      <div class="ia-poc-meta">
+                        <span class="ia-poc-effort">난이도 <b>中</b></span>
+                        <span class="ia-poc-impact">효과 <b>高</b></span>
+                      </div>
+                      <div class="ia-poc-why">실내 부스 안정 / 협소공간 회피 필요</div>
+                    </div>
+                    <span class="ia-poc-score">7.4</span>
+                  </li>
+                  <li class="ia-poc">
+                    <span class="ia-poc-i">05</span>
+                    <div class="ia-poc-body">
+                      <div class="ia-poc-name">예지보전 회전기기</div>
+                      <div class="ia-poc-meta">
+                        <span class="ia-poc-effort">난이도 <b>中</b></span>
+                        <span class="ia-poc-impact">효과 <b>中+</b></span>
+                      </div>
+                      <div class="ia-poc-why">컴프레서 14대 진동 센서 후보</div>
+                    </div>
+                    <span class="ia-poc-score">7.0</span>
+                  </li>
+                </ul>
+                <button class="ia-poc-more">7건 전체 보기 →</button>
+              </aside>
+            </div>
+          </section>
+
+          <!-- ════════════════════════════════════════════════
+                SECTION C · 공정 × 기회 매칭 히트맵
+               ════════════════════════════════════════════════ -->
+          <section class="ia-sec">
+            <div class="ia-sec-head">
+              <div>
+                <div class="ia-sec-eye">STEP 3 · 공정별 매칭 강도</div>
+                <h2 class="ia-sec-t">공정 × 자동화 기술 히트맵</h2>
+                <p class="ia-sec-d">각 공정이 어떤 자동화 기술과 얼마나 강하게 매칭되는지. 진한 칸을 클릭하면 매칭된 뉴스가 우측에 펼쳐집니다.</p>
+              </div>
+              <div class="ia-sec-meta">
+                ▦ 칸 = 해당 공정에서 그 기술이 언급된 뉴스 수
+              </div>
+            </div>
+
+            <div class="ia-hm">
+              <!-- column headers -->
+              <div class="ia-hm-cols">
+                <div></div>
+                <div class="ia-hm-col">비전</div>
+                <div class="ia-hm-col">협동 로봇</div>
+                <div class="ia-hm-col">예지보전</div>
+                <div class="ia-hm-col">디지털트윈</div>
+                <div class="ia-hm-col">외골격</div>
+                <div class="ia-hm-col">AGV</div>
+                <div class="ia-hm-col">AI 스케줄</div>
+              </div>
+              <!-- rows -->
+              <div class="ia-hm-row">
+                <div class="ia-hm-rh">도장 품질검사</div>
+                <div class="ia-hm-c ia-hm-c-strong" data-v="38" title="비전 × 도장 — 뉴스 38건">38</div>
+                <div class="ia-hm-c ia-hm-c-mid">14</div>
+                <div class="ia-hm-c">3</div>
+                <div class="ia-hm-c ia-hm-c-low">5</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-low">2</div>
+              </div>
+              <div class="ia-hm-row">
+                <div class="ia-hm-rh">용접 비드</div>
+                <div class="ia-hm-c ia-hm-c-strong">22</div>
+                <div class="ia-hm-c ia-hm-c-mid">11</div>
+                <div class="ia-hm-c ia-hm-c-low">4</div>
+                <div class="ia-hm-c">8</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+              </div>
+              <div class="ia-hm-row">
+                <div class="ia-hm-rh">블록 외관</div>
+                <div class="ia-hm-c ia-hm-c-mid">15</div>
+                <div class="ia-hm-c ia-hm-c-low">6</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-low">3</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+              </div>
+              <div class="ia-hm-row">
+                <div class="ia-hm-rh">의장 자재 입고</div>
+                <div class="ia-hm-c ia-hm-c-mid">12</div>
+                <div class="ia-hm-c ia-hm-c-low">4</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-low">2</div>
+                <div class="ia-hm-c ia-hm-c-mid">9</div>
+                <div class="ia-hm-c ia-hm-c-low">3</div>
+              </div>
+              <div class="ia-hm-row">
+                <div class="ia-hm-rh">의장 배관 설치</div>
+                <div class="ia-hm-c ia-hm-c-low">5</div>
+                <div class="ia-hm-c ia-hm-c-mid">13</div>
+                <div class="ia-hm-c ia-hm-c-low">3</div>
+                <div class="ia-hm-c ia-hm-c-low">4</div>
+                <div class="ia-hm-c">8</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+              </div>
+              <div class="ia-hm-row">
+                <div class="ia-hm-rh">회전기기 정비</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-low">3</div>
+                <div class="ia-hm-c ia-hm-c-strong">24</div>
+                <div class="ia-hm-c ia-hm-c-low">5</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-mid">10</div>
+              </div>
+              <div class="ia-hm-row">
+                <div class="ia-hm-rh">선체 조립 공정</div>
+                <div class="ia-hm-c ia-hm-c-low">4</div>
+                <div class="ia-hm-c">8</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-mid">11</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c ia-hm-c-empty">·</div>
+                <div class="ia-hm-c">7</div>
+              </div>
+
+              <div class="ia-hm-legend">
+                <span>강도:</span>
+                <span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-empty">·</span>없음</span>
+                <span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-low">5</span>약</span>
+                <span class="ia-hm-leg-i"><span class="ia-hm-leg-d">8</span>중</span>
+                <span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-mid">14</span>강</span>
+                <span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-strong">24+</span>매우 강</span>
+                <span class="ia-hm-spacer"></span>
+                <button class="ia-hm-trig">빈 칸 클릭 → 키워드 추가 수집</button>
+              </div>
+            </div>
+          </section>
+
+        </main>
+
+        <!-- ════════════════════════════════════════════════
+              SOLA SIDE PANEL
+             ════════════════════════════════════════════════ -->
+        <aside class="ia-sola">
+
+          <!-- Header -->
+          <div class="ia-sola-head">
+            <div class="ia-sola-avatar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8 15c1 1 2.5 1.5 4 1.5s3-.5 4-1.5"/></svg>
+            </div>
+            <div class="ia-sola-h-body">
+              <div class="ia-sola-name">SOLA · 분석 모드</div>
+              <div class="ia-sola-sub">
+                <span class="ia-sola-dot"></span>
+                선택을 따라 자동 분석 중
+              </div>
+            </div>
+            <button class="ia-sola-min" title="접기">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+            </button>
+          </div>
+
+          <!-- Context pins -->
+          <div class="ia-sola-ctx">
+            <div class="ia-sola-ctx-eye">컨텍스트</div>
+            <div class="ia-sola-ctx-list">
+              <span class="ia-sola-pin">
+                <span class="ia-sola-pin-k">화면</span>
+                인사이트 분석
+              </span>
+              <span class="ia-sola-pin ia-sola-pin-on">
+                <span class="ia-sola-pin-k">키워드</span>
+                비전 검사
+                <button class="ia-sola-pin-x">✕</button>
+              </span>
+              <span class="ia-sola-pin ia-sola-pin-on">
+                <span class="ia-sola-pin-k">공정</span>
+                도장 품질검사
+                <button class="ia-sola-pin-x">✕</button>
+              </span>
+              <span class="ia-sola-pin">
+                <span class="ia-sola-pin-k">페르소나</span>
+                의장설계팀
+              </span>
+            </div>
+          </div>
+
+          <!-- ── Answer card 1 · 왜 뜨는지 -->
+          <div class="ia-sola-card">
+            <div class="ia-sola-card-h">
+              <span class="ia-sola-q">Q</span>
+              왜 비전 검사가 뜨고 있나요?
+            </div>
+            <div class="ia-sola-card-b">
+              <p>
+                이번 달 비전 검사 언급이 <b>+52%</b> 늘었어요. 주된 원인 3가지<span class="ia-sola-cite">1</span><span class="ia-sola-cite">2</span><span class="ia-sola-cite">3</span>:
+              </p>
+              <ul class="ia-sola-list">
+                <li><b>광학 부품가 하락</b> — 2메가 산업용 카메라가 1년 전 대비 40% 저렴해짐</li>
+                <li><b>현장 추론박스</b> — Jetson Orin 등 엣지 디바이스로 클라우드 의존 없이 실시간 검사 가능</li>
+                <li><b>현대중공업 PoC 공개</b> — 부스 #3 불량률 38% 절감 사례가 4월 공개되면서 동종업계 도입 검토 활발</li>
+              </ul>
+              <div class="ia-sola-cites">
+                <span class="ia-sola-cite-pill"><span class="ia-sola-cite-n">1</span>AI Times · 4시간 전</span>
+                <span class="ia-sola-cite-pill"><span class="ia-sola-cite-n">2</span>오토메이션월드 · 2일 전</span>
+                <span class="ia-sola-cite-pill"><span class="ia-sola-cite-n">3</span>한국경제 · 5일 전</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Answer card 2 · 조선소 어디 적용 -->
+          <div class="ia-sola-card">
+            <div class="ia-sola-card-h">
+              <span class="ia-sola-q">Q</span>
+              우리 조선소 어디에 적용 가능한가요?
+            </div>
+            <div class="ia-sola-card-b">
+              <p>
+                페르소나(<b>의장설계팀 / 도장·용접 관심</b>)와 사내 공정 트리(Lv3)를 겹쳐보니
+                직접 매칭되는 공정 <b>3개</b>가 잡혔어요. 적합도 순:
+              </p>
+              <ul class="ia-sola-process">
+                <li>
+                  <span class="ia-sola-p-dot" style="background:#2563EB;"></span>
+                  <span>
+                    <b>도장 품질검사</b> <small>96%</small>
+                    <small class="ia-sola-p-mt">육안검사 14명/일 → 비전+추론박스로 6명/일까지 가능 예상</small>
+                  </span>
+                </li>
+                <li>
+                  <span class="ia-sola-p-dot" style="background:#14B8A6;"></span>
+                  <span>
+                    <b>용접 비드 검사</b> <small>88%</small>
+                    <small class="ia-sola-p-mt">샘플링 → 전수검사 전환 / X-ray 사후검사 일부 대체</small>
+                  </span>
+                </li>
+                <li>
+                  <span class="ia-sola-p-dot" style="background:#6366F1;"></span>
+                  <span>
+                    <b>블록 외관 검사</b> <small>78%</small>
+                    <small class="ia-sola-p-mt">접근성 이슈로 드론 비전 결합 필요 — 난이도 中</small>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- ── Answer card 3 · 추천 과제 -->
+          <div class="ia-sola-card ia-sola-card-reco">
+            <div class="ia-sola-card-h">
+              <span class="ia-sola-q ia-sola-q-reco">★</span>
+              추천 PoC 과제
+            </div>
+            <div class="ia-sola-card-b">
+              <div class="ia-sola-reco">
+                <div class="ia-sola-reco-t">도장 부스 #3 비전 PoC</div>
+                <div class="ia-sola-reco-grid">
+                  <div>
+                    <span class="ia-sola-reco-k">기간</span>
+                    <span class="ia-sola-reco-v">3개월</span>
+                  </div>
+                  <div>
+                    <span class="ia-sola-reco-k">예산</span>
+                    <span class="ia-sola-reco-v">≈ 1.4억</span>
+                  </div>
+                  <div>
+                    <span class="ia-sola-reco-k">기대효과</span>
+                    <span class="ia-sola-reco-v ia-good">−38% 불량</span>
+                  </div>
+                  <div>
+                    <span class="ia-sola-reco-k">난이도</span>
+                    <span class="ia-sola-reco-v">低 — 부스 1기만</span>
+                  </div>
+                </div>
+                <p class="ia-sola-reco-why">
+                  매트릭스 좌상단 1위. 유사 사례 8건 중 실패 0건. 현대重 부스 #3
+                  PoC 가 직접 참조 가능합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Action buttons (the required 5) -->
+          <div class="ia-sola-actions">
+            <div class="ia-sola-act-eye">다음 액션</div>
+            <div class="ia-sola-act-row">
+              <a class="ia-sola-act ia-sola-act-primary" href="outputs-archive.html#pending">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                제안서 초안 만들기
+              </a>
+              <a class="ia-sola-act" href="sola-workshop.html">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                SOLA 작업실로
+              </a>
+              <button class="ia-sola-act">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+                관련 뉴스 8건
+              </button>
+              <button class="ia-sola-act">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></svg>
+                매트릭스에서 보기
+              </button>
+              <button class="ia-sola-act ia-sola-act-ghost">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/></svg>
+                더 수집하기
+              </button>
+            </div>
+          </div>
+
+          <!-- Composer -->
+          <div class="ia-sola-comp">
+            <div class="ia-sola-comp-wrap">
+              <input class="ia-sola-comp-in" placeholder="이 분석에 대해 더 물어보기…">
+              <button class="ia-sola-comp-send">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+            <div class="ia-sola-comp-hint">
+              <span class="ia-sola-kbd">⌘</span><span class="ia-sola-kbd">K</span>
+              로 어디서든 호출
+            </div>
+          </div>
+
+        </aside>
+</div>
