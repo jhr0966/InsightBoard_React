@@ -1,0 +1,200 @@
+"""v2 화면 binder 회귀 베이크.
+
+각 placeholder helper 가:
+  1) 빈 데이터 상태에서 예외 없이 friendly empty 카드를 반환
+  2) 합성 데이터 주입 시 placeholder 가 모두 채워지고 시안 클래스가 살아있음
+
+st.html 경계는 다루지 않는다 (Streamlit runtime 의존 → 통합 테스트로 분리).
+"""
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
+import pandas as pd
+
+from persona.schema import Persona
+
+
+# ── 1) 빈 데이터 — 모든 helper 가 예외 없이 friendly 카드 반환 ──
+
+def test_board_empty_state_helpers_dont_raise():
+    from ui import board_v2
+
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
+         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame()):
+        # cache clear (other tests can populate)
+        for fn in (
+            board_v2._opportunities_html,
+            board_v2._board_stories_html,
+            board_v2._brief_html,
+            board_v2._board_trend,
+            board_v2._board_matrix_html,
+        ):
+            if hasattr(fn, "clear"):
+                fn.clear()
+
+        assert "기회" in board_v2._opportunities_html() or "data" in board_v2._opportunities_html().lower()
+        assert "뉴스" in board_v2._board_stories_html()
+        brief = board_v2._brief_html()
+        assert set(brief.keys()) == {"summary", "list", "cites"}
+        trend = board_v2._board_trend()
+        assert trend["empty"] and not trend["svg_paths"]
+        assert "매트릭스" in board_v2._board_matrix_html() or "기회" in board_v2._board_matrix_html()
+
+        p = Persona()
+        kw = board_v2._board_kw_mgr_html(p)
+        assert "키워드" in kw or "데이터" in kw
+
+
+def test_insights_empty_state_helpers_dont_raise():
+    from ui import insights_v2
+
+    with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
+         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame()):
+        for fn in (
+            insights_v2._tkw_list_html,
+            insights_v2._ia_chart_parts,
+            insights_v2._ia_matrix_svg,
+            insights_v2._ia_process_map_html,
+        ):
+            if hasattr(fn, "clear"):
+                fn.clear()
+
+        assert "키워드" in insights_v2._tkw_list_html()
+        chart = insights_v2._ia_chart_parts()
+        assert chart["legend"] == "" and chart["pill"] == ""
+        assert "트렌드" in chart["svg"] or "데이터" in chart["svg"]
+        assert "매트릭스" in insights_v2._ia_matrix_svg() or "기회" in insights_v2._ia_matrix_svg()
+        assert "매핑" in insights_v2._ia_process_map_html() or "로드맵" in insights_v2._ia_process_map_html()
+
+
+# ── 2) 합성 데이터 — 시안 클래스가 살아있음 ──
+
+def _synthetic_news_30d() -> pd.DataFrame:
+    now = datetime.now(timezone.utc)
+    rows = []
+    for d in range(30):
+        t = (now - timedelta(days=d)).isoformat()
+        for _ in range(3):
+            rows.append({
+                "published_at": t,
+                "collected_at": t,
+                "title": "도장 결함 검사 막두께 자동 측정",
+                "summary": "AI 비전 분석",
+                "keywords": "도장 결함 검사, AI 비전, 머신비전",
+                "keywords_llm": "도장 결함 검사, AI 비전",
+                "source": "AI Times",
+                "link": f"http://example.com/{d}-{_}",
+            })
+    return pd.DataFrame(rows)
+
+
+def _synthetic_cells() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"dept": "도장", "lv3": "비전 검사", "cell_score": 95, "avg_score": 12,
+         "matched_news": 40, "matched_tasks": 18, "sample_tasks": "AI 도막 검사",
+         "sample_news": "현대重 PoC 38% 절감"},
+        {"dept": "용접", "lv3": "비드 검사", "cell_score": 70, "avg_score": 9,
+         "matched_news": 28, "matched_tasks": 12, "sample_tasks": "", "sample_news": ""},
+        {"dept": "의장", "lv3": "부품 인식", "cell_score": 50, "avg_score": 7,
+         "matched_news": 18, "matched_tasks": 8, "sample_tasks": "", "sample_news": ""},
+    ])
+
+
+def test_board_trend_with_data_emits_4_series_paths():
+    from ui import board_v2
+
+    news = _synthetic_news_30d()
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=news):
+        board_v2._board_trend.clear() if hasattr(board_v2._board_trend, "clear") else None
+        board_v2._weekly_keyword_series.clear() if hasattr(board_v2._weekly_keyword_series, "clear") else None
+
+        trend = board_v2._board_trend()
+        assert trend["xticks"].count("<span>") == 8
+        assert trend["kw_list"].count("<li") >= 1
+        assert "stroke='#2563EB'" in trend["svg_paths"]
+
+
+def test_board_matrix_with_data_emits_6_bubbles():
+    from ui import board_v2
+
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
+        board_v2._board_matrix_html.clear()
+        html = board_v2._board_matrix_html()
+        assert html.count("db-mx-bubble") == 3
+        assert "db-mx-q-strong" in html
+        assert "도장" in html
+
+
+def test_board_kw_mgr_with_persona_emits_both_groups():
+    from ui import board_v2
+
+    news = _synthetic_news_30d()
+    p = Persona(dept="도장1팀", interest_tasks=["막두께 측정"], interest_lv3=["비전 검사"])
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=news):
+        html = board_v2._board_kw_mgr_html(p)
+        assert "SOLA 자동 추출" in html
+        assert "내가 추가" in html
+        assert "막두께 측정" in html
+
+
+def test_insights_process_map_with_data_emits_top_card():
+    from ui import insights_v2
+
+    cells = _synthetic_cells()
+    with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_score_cells", return_value=cells), \
+         patch(
+             "ui.board_v2._weekly_keyword_series",
+             return_value=(["W1", "W2", "W3", "W4", "이번주"],
+                           [{"name": "비전 검사", "counts": [5, 8, 10, 15, 20]}]),
+         ):
+        insights_v2._ia_process_map_html.clear()
+        html = insights_v2._ia_process_map_html()
+        assert "ia-pcard-top" in html
+        assert "★ 최적 매칭" in html
+        assert "비전 검사" in html
+        assert html.count('class="ia-pcard') >= 3
+
+
+def test_insights_chart_with_data_emits_legend_and_pill():
+    from ui import insights_v2, board_v2
+
+    with patch(
+        "ui.board_v2._weekly_keyword_series",
+        return_value=(
+            ["W1", "W2", "W3", "W4", "이번주"],
+            [
+                {"name": "비전 검사", "counts": [5, 8, 12, 18, 25]},
+                {"name": "협동 로봇", "counts": [3, 5, 7, 10, 12]},
+                {"name": "예지보전", "counts": [2, 3, 4, 6, 8]},
+                {"name": "디지털트윈", "counts": [1, 2, 3, 4, 5]},
+                {"name": "외골격", "counts": [0, 1, 1, 2, 3]},
+            ],
+        ),
+    ):
+        insights_v2._ia_chart_parts.clear()
+        chart = insights_v2._ia_chart_parts()
+        assert "ia-chart-svg" in chart["svg"]
+        assert chart["legend"].count("ia-lg-mute") == 2
+        assert "비전 검사" in chart["legend"]
+        assert "▲" in chart["pill"] or "▼" in chart["pill"]
+
+
+def test_insights_matrix_with_data_emits_halo():
+    from ui import insights_v2
+
+    cells = _synthetic_cells()
+    with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_score_cells", return_value=cells):
+        insights_v2._ia_matrix_svg.clear()
+        svg = insights_v2._ia_matrix_svg()
+        # 1위 cell halo dashed circle
+        assert svg.count("stroke-dasharray='3 3'") >= 1
+        assert "ia-mtx-svg" in svg
+        assert "★ PoC 후보 영역" in svg

@@ -13,12 +13,7 @@ def build_refine_messages(
     *,
     persona: Persona | None = None,
 ) -> list[dict]:
-    """`refine_proposal` 이 LLM 에 전달할 messages.
-
-    별도 함수로 분리한 이유: 호출자(`ui/proposal_workbench.py::_do_refine`)가
-    LLM 미설정 시 좌측 본문을 덮어쓰지 않고 채팅에 미리보기를 보여줄 수 있도록
-    동일 컨텍스트를 재사용해야 함.
-    """
+    """`refine_proposal` 이 LLM 에 전달할 messages."""
     persona_block = persona_ctx.system_block(persona) if persona else ""
     user = (
         "## [현재 제안서]\n"

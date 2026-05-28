@@ -17,20 +17,16 @@ from store import bookmarks as _bookmarks_store
 from ui import (
     app_shell,
     archive_v2,
-    board_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    board_tab,  # noqa: F401 — 테스트 의존: tests/test_board_flow.py.
     board_v2,
-    bookmarks_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
-    data_health,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    bookmarks_tab,  # noqa: F401 — 테스트 의존: tests/test_sola_workspace.py.
+    data_health,  # noqa: F401 — 테스트 의존: tests/test_data_health.py.
     data_management_v2,
-    home_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
-    ingest_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    home_tab,  # noqa: F401 — 테스트 의존: tests/test_home_trend_widget.py.
     insights_v2,
-    news_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     persona_page,
-    proposal_workbench,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
-    roadmap_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     sidebar,
-    sola_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
+    sola_tab,  # noqa: F401 — 테스트 의존: tests/test_sola_workspace.py.
     sola_workshop_v2,
 )
 from ui.styles import inject_global_styles

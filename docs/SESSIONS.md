@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-05-28 · 회귀 베이크 + v1 데드코드 925줄 제거 (I + H)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 33 커밋
+
+**변경:**
+- `tests/test_v2_screens.py` (+8 tests) — 보드/인사이트 helper 회귀 베이크 (빈 상태 + 합성 데이터 클래스 검증)
+- v1 데드코드 925줄 제거:
+  * `ui/ingest_tab.py` (-284)
+  * `ui/news_tab.py` (-121)
+  * `ui/proposal_workbench.py` (-364)
+  * `ui/roadmap_tab.py` (-156)
+- `app.py` — 4개 noqa 임포트 제거, 남은 v1 모듈은 "테스트 의존" 사유로 라벨링
+- `sola/refine.py` — stale docstring 정리
+
+**검증:**
+- pytest **205/205 passed** (197 + 8 신규)
+- 4 v1 모듈 외부 참조 grep 결과 0
+- 금지 패턴 (on_click=, 사외 requests.*) — 0 hits
+- py_compile OK
+- push 성공 PR #50
+
+**남은 v1 모듈 (테스트 의존):** board_tab / bookmarks_tab / data_health / home_tab / sola_tab. 다음 정리는 해당 테스트들의 v2 마이그레이션 후.
+
+**다음:**
+1. **A.7 — 보드 ② CTA → SOLA workshop 라우팅** (인터랙션 첫 진입)
+2. **A.4 — Ctrl+K 검색 모달**
+3. **레거시 테스트 v2 마이그레이션** (board_tab → board_v2 helpers)
+
+---
+
 ## 2026-05-28 · v2 인사이트 공정 매핑 + LLM 미설정 banner (B.3 + C)
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 32 커밋

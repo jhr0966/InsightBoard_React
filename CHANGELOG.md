@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (v2 — 회귀 베이크 + v1 데드코드 925줄 제거)
+- `tests/test_v2_screens.py` 신규 (+8 tests) — 보드/인사이트 9개 placeholder helper 의 ① 빈 데이터 friendly empty 검증 + ② 합성 데이터 시안 클래스 보존 검증 (`db-mx-bubble`, `ia-pcard-top`, `★ 최적 매칭`, callout pill `▲/▼` 등). Streamlit runtime 의존 없이 helper 단위 회귀 방어.
+- `ui/ingest_tab.py` (-284), `ui/news_tab.py` (-121), `ui/proposal_workbench.py` (-364), `ui/roadmap_tab.py` (-156) 삭제 — 총 -925줄. 외부 참조 0건 (app.py 의 noqa 임포트 외) 확인 후 제거.
+- `app.py` — 위 4 모듈의 `# noqa: F401` 임포트 제거. 남은 v1 모듈(board_tab/bookmarks_tab/data_health/home_tab/sola_tab)은 테스트가 직접 import 하므로 보존 + noqa 사유를 "테스트 의존" 으로 갱신.
+- `sola/refine.py` — `build_refine_messages` docstring 의 stale `ui/proposal_workbench.py` 호출자 언급 제거.
+
 ### Added (v2 인사이트 — 트렌드 → 공정 매핑 3 카드 + LLM 미설정 전역 banner)
 - `ui/insights_v2.py::_ia_process_map_html` (cached) — SECTION A 우측 `.ia-map` 빌더. from chip = top trending kw (`_weekly_keyword_series(5)` 1순위), 카드 3개 = `_score_cells.head(3)`. fit% = cell_score/max × 36 + 60 (60~96 범위), 현재 = sample_tasks 첫 항목 fallback, 신호 = sample_news 첫 헤드라인 fallback. 1위는 `ia-pcard-top` 강조 + ★ 최적 매칭 라벨. 상단 메타 = 매칭 개수 · 평균 적합도 · 매칭 뉴스 합.
 - `assets/v2/screens/insights_main.html` — `.ia-map` 하드코딩 ~115줄 → `{{IA_PROCESS_MAP}}` placeholder.
