@@ -158,69 +158,7 @@
             </div>
           </div>
 
-          <div class="db-matrix-wrap">
-            <div class="db-matrix">
-              <!-- Y label -->
-              <div class="db-mx-ylabel">ROI 점수 →</div>
-              <!-- X label -->
-              <div class="db-mx-xlabel">← 실행 난이도</div>
-
-              <!-- Plot area -->
-              <div class="db-mx-plot">
-                <!-- Quadrant lines -->
-                <div class="db-mx-line db-mx-line-v"></div>
-                <div class="db-mx-line db-mx-line-h"></div>
-
-                <!-- Quadrant labels -->
-                <span class="db-mx-q db-mx-q-tl">예측 R&D</span>
-                <span class="db-mx-q db-mx-q-tr db-mx-q-strong">즉시 PoC 후보</span>
-                <span class="db-mx-q db-mx-q-bl">관찰 대기</span>
-                <span class="db-mx-q db-mx-q-br">소규모 트라이얼</span>
-
-                <!-- Bubbles — positioned via inline left/top -->
-                <button class="db-mx-bubble db-mx-strong" style="left:78%; top:14%;" title="도장 비전 검사">
-                  <span class="db-mx-bsize" style="--s: 30px;"></span>
-                  <span class="db-mx-blabel">도장 비전 검사</span>
-                </button>
-                <button class="db-mx-bubble" style="left:66%; top:30%;" title="VOC 예측 트윈">
-                  <span class="db-mx-bsize" style="--s: 24px;"></span>
-                  <span class="db-mx-blabel">VOC 예측 트윈</span>
-                </button>
-                <button class="db-mx-bubble" style="left:54%; top:48%;" title="절단 마스킹">
-                  <span class="db-mx-bsize" style="--s: 20px;"></span>
-                  <span class="db-mx-blabel">절단 마스킹</span>
-                </button>
-                <button class="db-mx-bubble" style="left:36%; top:62%;" title="도료 자동 공급">
-                  <span class="db-mx-bsize" style="--s: 18px;"></span>
-                  <span class="db-mx-blabel">도료 자동 공급</span>
-                </button>
-                <button class="db-mx-bubble db-mx-soft" style="left:22%; top:78%;" title="부스 환기 모니터">
-                  <span class="db-mx-bsize" style="--s: 14px;"></span>
-                  <span class="db-mx-blabel">부스 환기</span>
-                </button>
-                <button class="db-mx-bubble db-mx-soft" style="left:14%; top:36%;" title="암모니아 연료">
-                  <span class="db-mx-bsize" style="--s: 16px;"></span>
-                  <span class="db-mx-blabel">암모니아 연료</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Side: focused bubble detail -->
-            <aside class="db-mx-detail">
-              <div class="db-mx-detail-eye">선택됨 · 우상단</div>
-              <h4 class="db-mx-detail-h">도장 비전 검사</h4>
-              <div class="db-mx-stats">
-                <div><b class="db-good">82</b><span>ROI 점수</span></div>
-                <div><b class="db-good">28</b><span>난이도</span></div>
-                <div><b>TRL 7</b><span>성숙도</span></div>
-              </div>
-              <p class="db-mx-why">우리 도장 1팀 인프라와 90% 호환, 4개월 PoC로 38% 불량률 절감 입증.</p>
-              <button class="db-mx-cta">
-                제안서 작업장에서 보기
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'/><polyline points='12 5 19 12 12 19'/></svg>" width="11" height="11" alt="" />
-              </button>
-            </aside>
-          </div>
+          {{BOARD_MATRIX}}
         </section>
 
         <!-- ════════════════════════════════════════════════════

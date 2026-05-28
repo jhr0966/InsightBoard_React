@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-05-28 · v2 보드 ⑥ 기회 매트릭스 ROI×난이도 산점도 실데이터
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 29 커밋
+**상태:** 보드 섹션 ① ② ③ ④ ⑤ ⑥ 실데이터 완료 (남은: ⑦ 키워드 관리)
+
+**변경:**
+- `ui/board_v2.py::_board_matrix_html` (cached) — score_cells head(6) → 버블 6개 동적 좌표/크기/quadrant 토글, detail aside = 1위 cell
+- `assets/v2/screens/board_main.html` — 매트릭스 ~65줄 → `{{BOARD_MATRIX}}` 단일 placeholder
+- 빈 상태: '뉴스 + 로드맵 매칭 후' 안내
+
+**검증:** pytest 197/197, py_compile OK, 합성 cells 6 → 6 버블/strong-1/soft-1/detail '도장1팀 · 비전 검사' 확인
+
+**다음:** ⑦ 키워드 관리 (페르소나 keywords + 직접 추가 그룹)
+
+---
+
 ## 2026-05-28 · v2 보드 트렌드 차트 + 키워드 리스트 실데이터 (B.1)
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** (Draft) · 누적 28 커밋

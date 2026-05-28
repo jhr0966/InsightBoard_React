@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added (v2 보드 — 기회 매트릭스 ROI×난이도 산점도 실데이터)
+- `ui/board_v2.py::_board_matrix_html` 신규 — `sola.opportunity.score_cells` 상위 6개를 ROI(matched_news) × 난이도(matched_tasks) 평면에 매핑. top% = 90 − roi_norm·78, left% = 10 + ease_norm·80, 버블 크기 14~32px. 우상단 quadrant(쉬움+ROI높음) → `db-mx-strong` 토글, 좌하단 → `db-mx-soft`. detail panel 은 1위 cell (종합점수·매칭뉴스·매칭작업 + 1줄 why).
+- `assets/v2/screens/board_main.html` — 매트릭스 섹션 ⑥ 의 하드코딩 버블 6개 + detail aside(~65줄) → `{{BOARD_MATRIX}}` placeholder.
+
 ### Added (v2 보드 — 트렌드 차트 + 키워드 리스트 실데이터)
 - `ui/board_v2.py::_weekly_keyword_series`, `_board_trend`, `_board_trend_block_html` 신규 — `news_db.load_news_for_days(56)` → top-6 키워드 추출 → 8주차 버킷별 출현 빈도 집계 → SVG `<path>` 4 series + 6-row 키워드 리스트(스파크라인 포함) 동적 생성. Y-축 라벨은 데이터 max 의 1.25× 5단위 nice round, 어노테이션은 첫 1/3 vs 마지막 1/3 평균 변화율(`_delta_pct`) 최대값 키워드.
 - `assets/v2/screens/board_main.html` — 트렌드 섹션 ⑤ 의 하드코딩 차트(SVG + 6 li, ~108줄)를 `{{BOARD_TREND}}` 단일 placeholder 로 치환.

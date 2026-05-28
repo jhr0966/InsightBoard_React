@@ -455,6 +455,119 @@ def _board_trend() -> dict[str, str]:
 
 
 @st.cache_data(ttl=60)
+def _board_matrix_html() -> str:
+    """⑥ 기회 매트릭스 — score_cells 상위 6개를 ROI×난이도 좌표로 매핑.
+
+    좌표 휴리스틱 (cell metric 만 사용):
+      - ROI 축 (top%) : matched_news 정규화 → 클수록 상단
+      - 난이도 축 (left%) : matched_tasks 정규화 → 클수록 우측 (= 적용 가능
+        작업 많음 = 실행 쉬움). X축 라벨 '← 실행 난이도' 와 일치.
+      - 버블 크기 (px) : cell_score 정규화 → 14~32px
+      - 우상단(쉬움+ROI높음) → db-mx-strong, 좌하단 → db-mx-soft 토글
+    """
+    try:
+        news_df = _news_db.load_news_for_days(days=14)
+        roadmap_df = _load_roadmap()
+    except Exception:
+        news_df = None
+        roadmap_df = None
+
+    if news_df is None or news_df.empty or roadmap_df is None or roadmap_df.empty:
+        return _matrix_empty_html()
+
+    try:
+        cells = _score_cells(news_df, roadmap_df).head(6)
+    except Exception:
+        return _matrix_empty_html()
+    if cells.empty:
+        return _matrix_empty_html()
+
+    max_news = max(int(cells["matched_news"].max()), 1)
+    max_tasks = max(int(cells["matched_tasks"].max()), 1)
+    max_score = max(float(cells["cell_score"].max()), 1.0)
+
+    bubbles = []
+    detail_row = cells.iloc[0]
+    for _, row in cells.iterrows():
+        roi_norm = int(row.get("matched_news", 0) or 0) / max_news
+        ease_norm = int(row.get("matched_tasks", 0) or 0) / max_tasks
+        score_norm = float(row.get("cell_score", 0) or 0) / max_score
+
+        top_pct = 90 - roi_norm * 78
+        left_pct = 10 + ease_norm * 80
+        size_px = round(14 + score_norm * 18)
+
+        label = str(row.get("lv3", "") or row.get("dept", "") or "—")
+        title = f"{row.get('dept', '')} · {label}"
+
+        extra_cls = ""
+        if left_pct >= 55 and top_pct <= 40:
+            extra_cls = " db-mx-strong"
+        elif left_pct <= 35 and top_pct >= 60:
+            extra_cls = " db-mx-soft"
+
+        bubbles.append(
+            f'<button class="db-mx-bubble{extra_cls}" '
+            f'style="left:{left_pct:.0f}%; top:{top_pct:.0f}%;" '
+            f'title="{_html.escape(title)}" disabled>'
+            f'<span class="db-mx-bsize" style="--s: {size_px}px;"></span>'
+            f'<span class="db-mx-blabel">{_html.escape(label[:14])}</span>'
+            f'</button>'
+        )
+
+    # detail panel — 1위 cell
+    detail_label = _html.escape(str(detail_row.get("lv3", "") or "—"))
+    detail_dept = _html.escape(str(detail_row.get("dept", "") or ""))
+    roi_val = int(detail_row.get("matched_news", 0) or 0)
+    ease_val = int(detail_row.get("matched_tasks", 0) or 0)
+    score_val = round(float(detail_row.get("cell_score", 0) or 0))
+    sample_tasks = str(detail_row.get("sample_tasks", "") or "").split(" · ")[:1]
+    why_text = (
+        f"{detail_dept} 영역의 {detail_label} 작업과 매칭 뉴스 {roi_val}건이 누적, "
+        f"관련 작업 {ease_val}건이 잠재 적용 대상."
+        if not sample_tasks or not sample_tasks[0]
+        else f"{detail_dept} · {_html.escape(sample_tasks[0])[:80]} — 매칭 뉴스 {roi_val}건."
+    )
+
+    return f"""<div class="db-matrix-wrap">
+        <div class="db-matrix">
+          <div class="db-mx-ylabel">ROI 점수 →</div>
+          <div class="db-mx-xlabel">← 실행 난이도</div>
+          <div class="db-mx-plot">
+            <div class="db-mx-line db-mx-line-v"></div>
+            <div class="db-mx-line db-mx-line-h"></div>
+            <span class="db-mx-q db-mx-q-tl">예측 R&amp;D</span>
+            <span class="db-mx-q db-mx-q-tr db-mx-q-strong">즉시 PoC 후보</span>
+            <span class="db-mx-q db-mx-q-bl">관찰 대기</span>
+            <span class="db-mx-q db-mx-q-br">소규모 트라이얼</span>
+            {"".join(bubbles)}
+          </div>
+        </div>
+        <aside class="db-mx-detail">
+          <div class="db-mx-detail-eye">선택됨 · 1위</div>
+          <h4 class="db-mx-detail-h">{detail_dept} · {detail_label}</h4>
+          <div class="db-mx-stats">
+            <div><b class="db-good">{score_val}</b><span>종합 점수</span></div>
+            <div><b>{roi_val}</b><span>매칭 뉴스</span></div>
+            <div><b>{ease_val}</b><span>매칭 작업</span></div>
+          </div>
+          <p class="db-mx-why">{why_text}</p>
+          <button class="db-mx-cta" disabled>
+            제안서 작업장에서 보기
+          </button>
+        </aside>
+      </div>"""
+
+
+def _matrix_empty_html() -> str:
+    return ('<div style="padding: 32px 18px; text-align: center; color: var(--text-muted);'
+            ' font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 12px;">'
+            '아직 매트릭스에 그릴 자동화 기회가 없어요.<br>'
+            '<span style="font-size:12.5px;">뉴스 + 로드맵 매칭 후 자동으로 채워집니다.</span>'
+            '</div>')
+
+
+@st.cache_data(ttl=60)
 def _opportunities_html() -> str:
     """자동화 기회 4-grid — opportunity.score_cells → 카드.
 
@@ -768,6 +881,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BOARD_STORIES}}", _board_stories_html())
         .replace("{{BOARD_OPPORTUNITIES}}", _opportunities_html())
         .replace("{{BOARD_TREND}}", _board_trend_block_html())
+        .replace("{{BOARD_MATRIX}}", _board_matrix_html())
     )
     brief = _brief_html()
     html_out = (
