@@ -182,7 +182,7 @@ def render_topbar(
               </svg>" width="16" height="16" alt="" />
             </button>
             <div class="db-topbar-divider"></div>
-            <button class="db-topbar-avatar" title="프로필" disabled>{_avatar_letter(_get_persona())}</button>
+            <a class="db-topbar-avatar" href="?persona_editor=1" title="프로필 / 페르소나 편집" target="_self">{_avatar_letter(_get_persona())}</a>
           </div>
         </header>
         <div class="v2-scroll-fade" aria-hidden="true"></div>

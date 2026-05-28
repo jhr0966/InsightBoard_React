@@ -203,6 +203,14 @@ body:has(.db-topbar) .app-sola.app-sola-collapsed > .app-sola-rail {
   display: flex !important;
 }
 
+/* A.2 — topbar 아바타가 <button> → <a> 로 바뀌어 anchor 기본 스타일 보정 */
+body:has(.db-topbar) .db-topbar-avatar {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none !important;
+}
+
 /* 본문 padding 조정 — 패널 접힘에 맞춰 */
 body:has(.app-side.app-side-collapsed) .main .block-container,
 body:has(.app-side.app-side-collapsed) [data-testid="stMain"] .block-container {
