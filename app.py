@@ -16,9 +16,10 @@ from config import ensure_data_dirs
 from store import bookmarks as _bookmarks_store
 from ui import (
     board_tab,
+    board_v2,
     bookmarks_tab,
     data_health,
-    home_tab,
+    home_tab,  # noqa: F401 — v2 마이그레이션 중, 롤백용 보존.
     ingest_tab,
     news_tab,
     persona_page,
@@ -51,7 +52,7 @@ with st.sidebar:
 if st.session_state.get("show_persona_editor"):
     persona_page.render()
 elif area == "📊 오늘의 보드":
-    home_tab.render()
+    board_v2.render()
 elif area == "🧱 데이터 관리":
     data_health.render()
     st.markdown("<div style='height:0.8rem;'></div>", unsafe_allow_html=True)

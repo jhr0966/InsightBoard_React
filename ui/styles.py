@@ -10,11 +10,31 @@ from config import ASSETS_DIR
 from sola.client import is_configured
 
 
+_V2_CSS_FILES = (
+    "v2/tokens.css",
+    "v2/card.css",
+    "v2/shell.css",
+    "v2/streamlit-overrides.css",
+)
+
+
 def inject_global_styles() -> None:
-    css_path = ASSETS_DIR / "styles.css"
-    if not css_path.exists():
+    """Inject v2 design tokens + Streamlit overrides + legacy styles.
+
+    순서 중요: tokens → card(components) → shell(v2 topbar) → streamlit overrides
+    → legacy styles.css (점진 제거 대상, 마지막에 로드해 v2 토큰을 못 덮어쓰게 함).
+    """
+    parts: list[str] = []
+    for rel in _V2_CSS_FILES:
+        path = ASSETS_DIR / rel
+        if path.exists():
+            parts.append(path.read_text(encoding="utf-8"))
+    legacy = ASSETS_DIR / "styles.css"
+    if legacy.exists():
+        parts.append(legacy.read_text(encoding="utf-8"))
+    if not parts:
         return
-    st.html(f"<style>{Path(css_path).read_text(encoding='utf-8')}</style>")
+    st.html("<style>" + "\n".join(parts) + "</style>")
 
 
 def page_header(

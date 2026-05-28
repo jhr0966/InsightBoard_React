@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (v2 디자인 시스템 — InsightBoard 핸드오프 Phase 0+1)
+- `assets/v2/tokens.css`, `assets/v2/card.css`, `assets/v2/shell.css`, `assets/v2/streamlit-overrides.css` — Azure 라이트 테마 디자인 토큰 + 공유 컴포넌트(.app-side / .app-sola / .db-topbar) + Streamlit 크롬 무력화. 셸 활성 분기는 `body:has(.db-topbar)` 로 화면별 점진 마이그레이션.
+- `static/fonts/PretendardVariable.woff2`, `static/fonts/JetBrainsMono.woff2` + `.streamlit/config.toml [server] enableStaticServing = true` — CDN 의존 제거, 사내망/오프라인 환경에서 폰트 깨짐 방지.
+- `ui/app_shell.py` 신규 — 모든 v2 화면이 공유할 글로벌 크롬 3종 헬퍼: `render_topbar(page_title, eyebrow_current, refresh_label, fresh_kind)`, `render_app_side(active_area, persona, stats)`, `render_app_sola(context_label, quick_prompts, last_q, last_a_html, ...)`. 인터랙션은 후속 PR (disabled 상태로 시각만 완성).
+- `ui/board_v2.py` + `assets/v2/screens/board_main.html`, `assets/v2/screens/board.css` — 오늘의 보드 v2 풀 셸 적용. 헤더·좌측 네비·우측 SOLA·7섹션(인사·SOLA 브리핑·탑 스토리·자동화 기회·트렌드·매트릭스·키워드) 마크업/스타일 완성. 페르소나 이름·갱신 시각만 동적 치환.
+- `app.py` 의 `📊 오늘의 보드` 분기를 `home_tab.render()` → `board_v2.render()` 로 교체. `home_tab` 은 롤백용 보존(`# noqa: F401`).
+- `ui/styles.py::inject_global_styles()` — v2 CSS 4개 파일을 `tokens → card → shell → streamlit-overrides` 순으로 로드 후 legacy `assets/styles.css` 를 마지막에 inject (v1 화면 호환 유지).
+- `.streamlit/config.toml [theme]` — primaryColor/backgroundColor 를 v2 토큰(#2563EB / #F3F5F8 / #0F172A) 으로 맞춤.
+
 ### Added (LLM 미설정 — 입력 컨텍스트 미리보기)
 - `sola/preview.py` 신규 — `format_messages_preview(messages, *, header, footer_hint)` 헬퍼. system/user/assistant 역할별로 코드블록(`text`)에 본문을 그대로 보존해 마크다운 렌더에 안전.
 - `sola/summarize.py::summarize_news`, `sola/propose.py::propose_for_task`, `sola/insight.py::insight_for_dept` — LLM 미설정 시 빈 에러 메시지 대신 호출에 사용될 입력 messages 를 그대로 노출. 캐시에 미리보기는 저장하지 않음 (키 세팅 후 재호출하면 실제 응답으로 대체).

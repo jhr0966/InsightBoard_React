@@ -1,0 +1,183 @@
+/* ──────────────────────────────────────────────────────────────
+   InsightBoard v2 — Design tokens (Azure light theme)
+   ──────────────────────────────────────────────────────────────
+   원본: design handoff bundle / project/colors_and_type.css
+   - 색은 항상 var(--token-name) 만 참조 — hex literal 금지
+   - 폰트는 Streamlit 정적 서빙 (`static/fonts/` → `app/static/fonts/`)
+   ────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 45 920;
+  font-display: swap;
+  src: url('app/static/fonts/PretendardVariable.woff2') format('woff2-variations'),
+       url('app/static/fonts/PretendardVariable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('app/static/fonts/JetBrainsMono.woff2') format('woff2-variations'),
+       url('app/static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+
+:root {
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'SF Pro KR',
+               'SF Pro Text', system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', 'Noto Serif KR', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  --fs-headline-xl: 34px;  --lh-headline-xl: 1.15;
+  --fs-headline-lg: 24px;  --lh-headline-lg: 1.22;
+  --fs-headline:    18px;  --lh-headline:    1.30;
+  --fs-headline-sm: 15px;  --lh-headline-sm: 1.35;
+  --fs-body:        14px;  --lh-body:        1.55;
+  --fs-caption:     12px;  --lh-caption:     1.45;
+  --fs-micro:       11px;  --lh-micro:       1.40;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold: 600;
+  --fw-bold:    700;
+  --fw-black:   800;
+
+  --tracking-tight:  -0.025em;
+  --tracking-normal: -0.012em;
+  --tracking-loose:   0.08em;
+
+  --r-sm:   6px;
+  --r-md:   10px;
+  --r-lg:   14px;
+  --r-xl:   18px;
+  --r-full: 9999px;
+
+  --space-1:  6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --easing:    cubic-bezier(.4, 0, .2, 1);
+  --t-fast:    120ms var(--easing);
+  --t-base:    180ms var(--easing);
+
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-3: 0 12px 28px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.04);
+
+  /* Azure theme (default) */
+  --bg-base:           #FBFCFE;
+  --bg-gradient-from:  #FFFFFF;
+  --bg-gradient-to:    #EEF3FA;
+  --bg-orb-1:          rgba(96, 165, 250, 0.22);
+  --bg-orb-2:          rgba(186, 230, 253, 0.28);
+
+  --surface-glass-bg:     rgba(255, 255, 255, 0.72);
+  --surface-glass-border: rgba(15, 23, 42, 0.08);
+  --surface-glass-shadow: rgba(15, 30, 60, 0.08);
+  --surface-inset-bg:     rgba(248, 250, 254, 0.85);
+
+  --surface-page:    #FFFFFF;
+  --surface-card:    #FFFFFF;
+  --surface-soft:    #F5F7FB;
+  --surface-divider: #E5E7EB;
+
+  --text-primary:    #0F172A;
+  --text-secondary:  rgba(15, 23, 42, 0.68);
+  --text-muted:      rgba(15, 23, 42, 0.48);
+  --text-on-accent:  #FFFFFF;
+
+  --accent-primary:  #2563EB;
+  --accent-hover:    #1D4ED8;
+  --accent-active:   #1E40AF;
+  --accent-ring:     rgba(37, 99, 235, 0.22);
+  --accent-glow:     rgba(37, 99, 235, 0.18);
+
+  --semantic-success:  #15803D;
+  --semantic-warning:  #B45309;
+  --semantic-danger:   #B91C1C;
+  --semantic-info:     #0369A1;
+
+  --chart-series-1: #2563EB;
+  --chart-series-2: #0EA5E9;
+  --chart-series-3: #14B8A6;
+  --chart-series-4: #F59E0B;
+  --chart-series-5: #6366F1;
+  --chart-series-6: #64748B;
+}
+
+/* ── Type role classes ─────────────────────────────────── */
+
+.t-headline-xl {
+  font-size: var(--fs-headline-xl);
+  line-height: var(--lh-headline-xl);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+}
+.t-headline-lg {
+  font-size: var(--fs-headline-lg);
+  line-height: var(--lh-headline-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+}
+.t-headline {
+  font-size: var(--fs-headline);
+  line-height: var(--lh-headline);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-normal);
+  color: var(--text-primary);
+}
+.t-headline-sm {
+  font-size: var(--fs-headline-sm);
+  line-height: var(--lh-headline-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-normal);
+  color: var(--text-primary);
+}
+.t-body {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+}
+.t-caption {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+.t-micro {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-loose);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.t-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.t-source {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+}
+.t-kpi {
+  font-size: 36px;
+  line-height: 1;
+  font-weight: var(--fw-black);
+  letter-spacing: -0.035em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}

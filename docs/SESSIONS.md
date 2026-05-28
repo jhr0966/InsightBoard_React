@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-05-28 · v2 디자인 시스템 Phase 0+1 (오늘의 보드)
+
+**브랜치:** `claude/nice-bell-eEZLj`
+**PR:** [#50](https://github.com/jhr0966/News_TEST/pull/50) (Draft)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+Claude Design 핸드오프 번들 `InsightBoard Design System v2 (2026-05-28)` 도착. Azure 라이트 테마 + 풀폭 고정 헤더(.db-topbar) + 좌·우 fixed 패널(.app-side / .app-sola) 의 통합 셸을 5개 메인 화면에 적용. 보존 후 점진 교체 전략 — 첫 화면은 오늘의 보드.
+
+**완료:**
+1. **디자인 토큰 + 폰트 인프라** — `assets/v2/tokens.css`, `assets/v2/card.css`, `assets/v2/shell.css` (핸드오프 `_card.css` / `_v2.css` 그대로 이식). Pretendard / JetBrains Mono variable woff2 를 `static/fonts/` 에 커밋, `enableStaticServing=true` 로 `app/static/fonts/` 경로 서빙.
+2. **셸 무력화 분기** — `assets/v2/streamlit-overrides.css` 의 모든 룰을 `body:has(.db-topbar)` 로 묶음. v2 셸을 그리는 화면에서만 Streamlit 기본 헤더/사이드바를 숨기고, 본문 컨테이너에 280/384px 패딩을 적용. v1 화면은 영향 없음.
+3. **글로벌 크롬 헬퍼** — `ui/app_shell.py` 에 `render_topbar/render_app_side/render_app_sola` 3개 함수. 페르소나 통계, LLM 상태, 5-nav (query-param `?app_area=...` 호환) 까지 와이어. 인터랙티브 버튼은 모두 `disabled` (Phase 2~ 에서 와이어업).
+4. **오늘의 보드 v2** — `ui/board_v2.py` + `assets/v2/screens/board_main.html` (핸드오프 main 컬럼 그대로) + `assets/v2/screens/board.css` (시안 자체 스타일 ~2200줄). 페르소나 이름·갱신 시각만 동적 치환, 나머지 7섹션 콘텐츠는 시안의 한국어 그대로.
+5. **app.py 분기 교체** — `📊 오늘의 보드` 만 `board_v2.render()` 호출. 나머지 4 분기는 그대로 (v1 화면 유지).
+
+**검증:**
+- `python -m py_compile` — OK (변경 파일 전체)
+- `on_click=` / `requests.get/Session()` 금지 패턴 — 0 hits
+- `pytest -q` — **197/197 passed**
+- `ui/home_tab.py` 보존 (`# noqa: F401`) — 롤백 시 한 줄 교체로 복귀 가능
+
+**다음 단계 (Phase 2~):**
+1. 데이터 관리 화면 v2 (`data-management v2.html` → `ui/data_management_v2.py`)
+2. 인사이트 분석 화면 v2
+3. SOLA 작업실 + 제안서 작업장 v2
+4. 산출물 보관함 (칸반 드래그 포함)
+5. 설정 화면
+6. 인터랙션 와이어업 — ⌘K 검색 모달, SOLA composer, 패널 접기/펴기 (query-param + pending flag 패턴)
+
+---
+
 ## 2026-05-19 · LLM 미설정 시 입력 컨텍스트 미리보기
 
 **브랜치:** `claude/review-insight-board-Ej5EO`

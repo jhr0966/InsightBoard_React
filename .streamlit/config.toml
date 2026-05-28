@@ -1,15 +1,16 @@
 [theme]
 base = "light"
-primaryColor = "#1D6FE8"
-backgroundColor = "#F7F6F2"
+primaryColor = "#2563EB"
+backgroundColor = "#F3F5F8"
 secondaryBackgroundColor = "#FFFFFF"
-textColor = "#1A1918"
+textColor = "#0F172A"
 font = "sans serif"
 
 [server]
 headless = true
 runOnSave = true
 maxUploadSize = 200
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false
