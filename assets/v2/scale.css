@@ -4,6 +4,7 @@
    사용자 피드백 (2026-05-28):
      1차 — 본문이 dense. 토큰을 1단계 위로 + spot bump.
      2차 — 더 키우고 좌·우 패널도 폭 확대.
+     3차 — 한 단계 더 키우기.
 
    - 시안 _card.css / _v2.css / board.css 의 원본을 손대지 않고 여기서 덮어쓰기.
    - body:has(.db-topbar) 분기로 v1 화면 보호.
@@ -15,27 +16,27 @@
    1) Type tokens — base bump (모든 .t-* 클래스에 영향)
    ════════════════════════════════════════════════════════════ */
 :root {
-  --fs-body:        16px;  --lh-body:        1.6;    /* 14 → 16 */
-  --fs-caption:     14px;  --lh-caption:     1.45;   /* 12 → 14 */
-  --fs-micro:       12px;  --lh-micro:       1.40;   /* 11 → 12 */
+  --fs-body:        18px;  --lh-body:        1.6;    /* 14 → 18 */
+  --fs-caption:     15px;  --lh-caption:     1.45;   /* 12 → 15 */
+  --fs-micro:       13px;  --lh-micro:       1.40;   /* 11 → 13 */
 
-  --fs-headline-sm: 17px;  --lh-headline-sm: 1.35;   /* 15 → 17 */
-  --fs-headline:    22px;  --lh-headline:    1.30;   /* 18 → 22 */
-  --fs-headline-lg: 28px;  --lh-headline-lg: 1.22;   /* 24 → 28 */
-  --fs-headline-xl: 42px;  --lh-headline-xl: 1.15;   /* 34 → 42 */
+  --fs-headline-sm: 19px;  --lh-headline-sm: 1.35;   /* 15 → 19 */
+  --fs-headline:    25px;  --lh-headline:    1.30;   /* 18 → 25 */
+  --fs-headline-lg: 32px;  --lh-headline-lg: 1.22;   /* 24 → 32 */
+  --fs-headline-xl: 48px;  --lh-headline-xl: 1.15;   /* 34 → 48 */
 }
 
 /* ════════════════════════════════════════════════════════════
    2) Panel widths — 좌측 사이드바 + 우측 SOLA 폭 확대
    ════════════════════════════════════════════════════════════ */
-body:has(.db-topbar) .app-side  { width: 280px !important; }   /* 240 → 280 */
-body:has(.db-topbar) .app-sola  { width: 400px !important; }   /* 344 → 400 */
+body:has(.db-topbar) .app-side  { width: 304px !important; }   /* 240 → 304 */
+body:has(.db-topbar) .app-sola  { width: 440px !important; }   /* 344 → 440 */
 
 /* 본문 컨테이너 — outer 16 + panel + gap 24 만큼 확보 */
 body:has(.db-topbar) .main .block-container,
 body:has(.db-topbar) [data-testid="stMain"] .block-container {
-  padding-left: 320px !important;     /* 16 + 280 + 24 */
-  padding-right: 440px !important;    /* 16 + 400 + 24 */
+  padding-left: 344px !important;     /* 16 + 304 + 24 */
+  padding-right: 480px !important;    /* 16 + 440 + 24 */
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -43,67 +44,67 @@ body:has(.db-topbar) [data-testid="stMain"] .block-container {
    ════════════════════════════════════════════════════════════ */
 
 /* 헤더 */
-body:has(.db-topbar) .db-topbar-title { font-size: 28px; }      /* 22 → 28 */
-body:has(.db-topbar) .db-topbar-date  { font-size: 14px; }      /* 11.5 → 14 */
+body:has(.db-topbar) .db-topbar-title { font-size: 31px; }      /* 22 → 31 */
+body:has(.db-topbar) .db-topbar-date  { font-size: 15px; }
 body:has(.db-topbar) .db-topbar-fresh,
-body:has(.db-topbar) .db-topbar-eye   { font-size: 11px; }
+body:has(.db-topbar) .db-topbar-eye   { font-size: 12px; }
 
 /* 인사 블록 */
-body:has(.db-topbar) .db-greet-h     { font-size: 34px; line-height: 1.2; }  /* 26 → 34 */
-body:has(.db-topbar) .db-greet-sum   { font-size: 17px; line-height: 1.6; }
-body:has(.db-topbar) .db-date        { font-size: 13px; }
+body:has(.db-topbar) .db-greet-h     { font-size: 40px; line-height: 1.2; }
+body:has(.db-topbar) .db-greet-sum   { font-size: 19px; line-height: 1.6; }
+body:has(.db-topbar) .db-date        { font-size: 14px; }
 
 /* KPI */
-body:has(.db-topbar) .db-kpi-key     { font-size: 13.5px; }
-body:has(.db-topbar) .db-kpi-delta   { font-size: 13px; }
+body:has(.db-topbar) .db-kpi-key     { font-size: 15px; }
+body:has(.db-topbar) .db-kpi-delta   { font-size: 14px; }
 
 /* 섹션 헤더 */
-body:has(.db-topbar) .db-sec-title   { font-size: 24px; line-height: 1.28; }
-body:has(.db-topbar) .db-sec-eye     { font-size: 12px; }
-body:has(.db-topbar) .db-sec-meta    { font-size: 12.5px; }
+body:has(.db-topbar) .db-sec-title   { font-size: 27px; line-height: 1.28; }
+body:has(.db-topbar) .db-sec-eye     { font-size: 13px; }
+body:has(.db-topbar) .db-sec-meta    { font-size: 14px; }
 
 /* SOLA 브리핑 본문 */
-body:has(.db-topbar) .db-brief-summary { font-size: 17px; line-height: 1.6; }
-body:has(.db-topbar) .db-brief-list li { font-size: 15.5px; line-height: 1.65; }
+body:has(.db-topbar) .db-brief-summary { font-size: 19px; line-height: 1.6; }
+body:has(.db-topbar) .db-brief-list li { font-size: 17px; line-height: 1.65; }
 
 /* 뉴스 / 스토리 카드 */
 body:has(.db-topbar) .db-story-title,
-body:has(.db-topbar) .db-news-title    { font-size: 17px; line-height: 1.4; }
+body:has(.db-topbar) .db-news-title    { font-size: 19px; line-height: 1.4; }
 body:has(.db-topbar) .db-story-body,
-body:has(.db-topbar) .db-news-body     { font-size: 14.5px; line-height: 1.6; }
+body:has(.db-topbar) .db-news-body     { font-size: 16px; line-height: 1.6; }
 body:has(.db-topbar) .db-story-src,
-body:has(.db-topbar) .db-news-src      { font-size: 12.5px; }
+body:has(.db-topbar) .db-news-src      { font-size: 14px; }
 body:has(.db-topbar) .db-story-time,
-body:has(.db-topbar) .db-news-time     { font-size: 12px; }
+body:has(.db-topbar) .db-news-time     { font-size: 13px; }
 
-/* 사이드바 — 폭이 280px 로 늘었으니 글자도 1단계 위로 */
-body:has(.db-topbar) .app-side-brand-t { font-size: 17px; }    /* 14.5 → 17 */
-body:has(.db-topbar) .app-side-nav-t   { font-size: 14.5px; }  /* 12 → 14.5 */
-body:has(.db-topbar) .app-side-nav-s   { font-size: 12.5px; }  /* 10 → 12.5 */
-body:has(.db-topbar) .app-side-pname   { font-size: 15px; }    /* 13 → 15 */
-body:has(.db-topbar) .app-side-prole   { font-size: 13px; }    /* 10.5 → 13 */
-body:has(.db-topbar) .app-side-tag     { font-size: 10.5px; }
-body:has(.db-topbar) .app-side-stats b { font-size: 19px; }    /* 15 → 19 */
-body:has(.db-topbar) .app-side-stats span { font-size: 11px; }
-body:has(.db-topbar) .app-side-seclbl  { font-size: 11px; }
-body:has(.db-topbar) .app-side-chip    { font-size: 12px; padding: 3px 10px; }
-body:has(.db-topbar) .app-side-foot-t  { font-size: 12px; }
-body:has(.db-topbar) .app-side-foot-s  { font-size: 11px; }
+/* 사이드바 */
+body:has(.db-topbar) .app-side-brand-t { font-size: 19px; }
+body:has(.db-topbar) .app-side-nav-t   { font-size: 16px; }
+body:has(.db-topbar) .app-side-nav-s   { font-size: 14px; }
+body:has(.db-topbar) .app-side-pname   { font-size: 17px; }
+body:has(.db-topbar) .app-side-prole   { font-size: 14px; }
+body:has(.db-topbar) .app-side-tag     { font-size: 11.5px; }
+body:has(.db-topbar) .app-side-stats b { font-size: 22px; }
+body:has(.db-topbar) .app-side-stats span { font-size: 12px; }
+body:has(.db-topbar) .app-side-seclbl  { font-size: 12px; }
+body:has(.db-topbar) .app-side-chip    { font-size: 13px; padding: 4px 11px; }
+body:has(.db-topbar) .app-side-foot-t  { font-size: 13.5px; }
+body:has(.db-topbar) .app-side-foot-s  { font-size: 12px; }
 
-/* SOLA 우측 패널 — 폭이 400px 로 늘었으니 본문/답변도 한 단계 위로 */
-body:has(.db-topbar) .app-sola-hdr-name   { font-size: 16px; }       /* 13 → 16 */
-body:has(.db-topbar) .app-sola-hdr-meta   { font-size: 11px; }
-body:has(.db-topbar) .app-sola-ctx-eye    { font-size: 10.5px; }
-body:has(.db-topbar) .app-sola-ctx-name   { font-size: 14px; }       /* 12 → 14 */
-body:has(.db-topbar) .app-sola-ctx-sub    { font-size: 12.5px; }
-body:has(.db-topbar) .app-sola-quick-eye  { font-size: 10.5px; }
-body:has(.db-topbar) .app-sola-quick-q    { font-size: 14px; line-height: 1.55; }  /* 11.5 → 14 */
-body:has(.db-topbar) .app-sola-quick-i    { font-size: 11.5px; }
-body:has(.db-topbar) .app-sola-recent-eye { font-size: 10.5px; }
-body:has(.db-topbar) .app-sola-recent-q   { font-size: 14px; }
-body:has(.db-topbar) .app-sola-recent-a   { font-size: 14.5px; line-height: 1.65; }  /* 12 → 14.5 */
-body:has(.db-topbar) .app-sola-recent-time { font-size: 11px; }
-body:has(.db-topbar) .app-sola-comp-input { font-size: 15px; line-height: 1.5; }   /* 12.5 → 15 */
-body:has(.db-topbar) .app-sola-comp-pin   { font-size: 11px; }
-body:has(.db-topbar) .app-sola-comp-send  { font-size: 12.5px; padding: 8px 12px; }
-body:has(.db-topbar) .app-sola-comp-tips  { font-size: 10.5px; }
+/* SOLA 우측 패널 */
+body:has(.db-topbar) .app-sola-hdr-name   { font-size: 18px; }
+body:has(.db-topbar) .app-sola-hdr-meta   { font-size: 12px; }
+body:has(.db-topbar) .app-sola-ctx-eye    { font-size: 11.5px; }
+body:has(.db-topbar) .app-sola-ctx-name   { font-size: 16px; }
+body:has(.db-topbar) .app-sola-ctx-sub    { font-size: 14px; }
+body:has(.db-topbar) .app-sola-quick-eye  { font-size: 11.5px; }
+body:has(.db-topbar) .app-sola-quick-q    { font-size: 16px; line-height: 1.55; }
+body:has(.db-topbar) .app-sola-quick-i    { font-size: 13px; }
+body:has(.db-topbar) .app-sola-recent-eye { font-size: 11.5px; }
+body:has(.db-topbar) .app-sola-recent-q   { font-size: 16px; }
+body:has(.db-topbar) .app-sola-recent-a   { font-size: 16.5px; line-height: 1.65; }
+body:has(.db-topbar) .app-sola-recent-time { font-size: 12px; }
+body:has(.db-topbar) .app-sola-comp-input { font-size: 17px; line-height: 1.5; }
+body:has(.db-topbar) .app-sola-comp-pin   { font-size: 12px; }
+body:has(.db-topbar) .app-sola-comp-send  { font-size: 14px; padding: 9px 14px; }
+body:has(.db-topbar) .app-sola-comp-tips  { font-size: 11.5px; }
