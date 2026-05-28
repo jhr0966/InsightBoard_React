@@ -21,7 +21,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 8px;
@@ -30,14 +30,14 @@
 .oa-bc-cur { color: var(--text-primary); font-weight: 700; }
 .oa-title {
   margin: 0 0 8px;
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 800;
   letter-spacing: -0.028em;
   color: var(--text-primary);
   line-height: 1.2;
 }
 .oa-title-sub {
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 600;
   color: var(--text-muted);
   margin-left: 8px;
@@ -45,7 +45,7 @@
 }
 .oa-desc {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 18.5px;
   line-height: 1.6;
   color: var(--text-secondary);
   letter-spacing: -0.005em;
@@ -64,7 +64,7 @@
 }
 .oa-stat { text-align: center; min-width: 78px; }
 .oa-stat-v {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--text-primary);
@@ -73,14 +73,14 @@
 }
 .oa-stat-k {
   margin-top: 6px;
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text-secondary);
 }
 .oa-stat-d {
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 .oa-stat-sep { width: 1px; background: var(--surface-divider); }
@@ -124,7 +124,7 @@
   gap: 5px;
   padding: 5px 11px;
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--text-secondary);
   background: transparent;
@@ -155,7 +155,7 @@
   border: 0; background: transparent; outline: 0;
   flex: 1;
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: 17.5px;
   color: var(--text-primary);
   letter-spacing: -0.005em;
 }
@@ -169,7 +169,7 @@
   height: 17px;
   padding: 0 4px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   border-radius: 4px;
   background: #fff;
@@ -182,7 +182,7 @@
   padding: 5px 11px;
   border-radius: 999px;
   background: var(--surface-soft);
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--text-secondary);
   border: 1px solid transparent;
@@ -201,7 +201,7 @@
   gap: 5px;
   padding: 6px 12px;
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   background: #fff;
   border: 1px solid var(--surface-divider);
@@ -213,7 +213,7 @@
 .oa-btn-ghost:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 .oa-btn-cnt {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 999px;
@@ -260,14 +260,14 @@
 }
 .oa-col-t {
   margin: 0;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.018em;
 }
 .oa-col-cnt {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 800;
   padding: 2px 9px;
   border-radius: 999px;
@@ -281,7 +281,7 @@
 }
 .oa-col-add {
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--accent-primary);
   background: transparent;
@@ -297,7 +297,7 @@
   align-items: center;
   gap: 4px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 999px;
@@ -306,7 +306,7 @@
 }
 .oa-col-meta {
   padding: 0 4px 8px;
-  font-size: 11px;
+  font-size: 15px;
   color: var(--text-muted);
   letter-spacing: -0.005em;
   border-bottom: 1px dashed var(--surface-divider);
@@ -355,7 +355,7 @@
 }
 .oa-tag {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 800;
   padding: 2px 7px;
   border-radius: 4px;
@@ -367,7 +367,7 @@
 .oa-tag-rep { background: rgba(99,102,241,0.10); color: #4F46E5; }
 .oa-card-id {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0;
@@ -390,7 +390,7 @@
   align-items: center;
   gap: 4px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 800;
   padding: 2px 7px;
   border-radius: 4px;
@@ -402,7 +402,7 @@
 
 .oa-card-t {
   margin: 0;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.015em;
@@ -410,7 +410,7 @@
 }
 .oa-card-d {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 15.5px;
   line-height: 1.45;
   color: var(--text-secondary);
   letter-spacing: -0.005em;
@@ -421,7 +421,7 @@
 }
 .oa-card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .oa-mini {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
@@ -436,7 +436,7 @@
   padding-top: 7px;
   border-top: 1px dashed var(--surface-divider);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   color: var(--text-muted);
   font-weight: 700;
 }
@@ -470,7 +470,7 @@
   gap: 4px;
   padding: 6px 10px;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   background: #fff;
   border: 1px solid var(--surface-divider);
@@ -500,7 +500,7 @@
   border: 1px dashed var(--surface-divider);
   border-radius: 8px;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-muted);
   cursor: pointer;
@@ -522,7 +522,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--semantic-warning);
   background: rgba(180,83,9,0.06);
@@ -535,7 +535,7 @@
   border: 0;
   padding: 3px 6px;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent-primary);
   cursor: pointer;
@@ -568,7 +568,7 @@
 }
 .oa-list-t {
   margin: 0;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.022em;
   color: var(--text-primary);
@@ -579,14 +579,14 @@
 }
 .oa-list-cnt {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-muted);
 }
 .oa-listbar-sub {
   margin-top: 4px;
   display: block;
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-muted);
   letter-spacing: -0.005em;
 }
@@ -603,7 +603,7 @@
   background: rgba(37,99,235,0.06);
   border: 1px solid rgba(37,99,235,0.20);
   border-radius: 7px;
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--accent-primary);
   letter-spacing: -0.005em;
@@ -612,7 +612,7 @@
 .oa-bulk-act {
   padding: 7px 12px;
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   background: #fff;
   border: 1px solid var(--surface-divider);
@@ -644,7 +644,7 @@
   align-items: center;
   padding: 8px 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -672,7 +672,7 @@
 .oa-r-cb input { width: 13px; height: 13px; accent-color: var(--accent-primary); }
 .oa-r-t { min-width: 0; }
 .oa-r-name {
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.012em;
@@ -683,7 +683,7 @@
 .oa-r-id {
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -702,14 +702,14 @@
 }
 .oa-r-cite {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text-secondary);
 }
 .oa-r-cite b { color: var(--text-primary); font-weight: 800; }
 .oa-r-d {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -717,7 +717,7 @@
 .oa-st-pill {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 800;
   padding: 3px 9px;
   border-radius: 999px;
@@ -743,7 +743,7 @@
   border: 0;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 800;
 }
 .oa-r-ic:hover { background: var(--surface-soft); color: var(--text-primary); }
@@ -759,7 +759,7 @@
 }
 .oa-pg-info {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   color: var(--text-muted);
 }
 .oa-pg-ctrls { display: flex; gap: 2px; }
@@ -771,7 +771,7 @@
   border: 0;
   background: transparent;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-secondary);
   cursor: pointer;
@@ -788,7 +788,7 @@
   place-items: center;
   min-width: 22px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   color: var(--text-muted);
 }
 
@@ -809,7 +809,7 @@
 }
 .oa-prev-eye {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -818,7 +818,7 @@
 }
 .oa-prev-t {
   margin: 0 0 7px;
-  font-size: 14.5px;
+  font-size: 19.5px;
   font-weight: 800;
   letter-spacing: -0.018em;
   color: var(--text-primary);
@@ -829,7 +829,7 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   color: var(--text-muted);
   font-weight: 700;
 }
@@ -862,12 +862,12 @@
   grid-template-columns: 80px 1fr;
   gap: 10px;
   padding: 7px 0;
-  font-size: 12px;
+  font-size: 17px;
 }
 .oa-doc-row + .oa-doc-row { border-top: 1px dashed var(--surface-divider); }
 .oa-doc-k {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 800;
   color: var(--text-muted);
   letter-spacing: 0.06em;
@@ -883,7 +883,7 @@
 .oa-prev-sec {}
 .oa-prev-sec-h {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -915,11 +915,11 @@
   background: var(--accent-primary);
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 800;
 }
 .oa-src-t {
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.005em;
@@ -933,14 +933,14 @@
   grid-column: 2;
   margin-top: 3px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 .oa-src-more {
   grid-column: 1 / -1;
   text-align: center;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent-primary);
   padding: 4px;
@@ -955,7 +955,7 @@
 }
 .oa-decide-eye {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -975,7 +975,7 @@
   gap: 5px;
   padding: 8px 10px;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 700;
   background: #fff;
   border: 1px solid var(--surface-divider);
@@ -1005,7 +1005,7 @@
   border: 0;
   padding: 6px;
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--accent-primary);
   text-align: center;
@@ -1043,7 +1043,7 @@
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .oa-hist-t {
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.010em;
@@ -1052,7 +1052,7 @@
 .oa-hist-m {
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 
@@ -1070,7 +1070,7 @@
   gap: 5px;
   padding: 6px 11px;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   background: #fff;
   border: 1px solid var(--surface-divider);

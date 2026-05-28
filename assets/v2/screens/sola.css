@@ -40,7 +40,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.04em;
@@ -53,7 +53,7 @@
   gap: 5px;
   padding: 6px 10px;
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: #fff;
   background: var(--accent-primary);
@@ -82,7 +82,7 @@
   background: transparent;
   outline: 0;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 17px;
   color: var(--text-primary);
 }
 .ws-th-search input::placeholder { color: var(--text-muted); }
@@ -95,7 +95,7 @@
   flex-wrap: wrap;
 }
 .ws-th-filter {
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 600;
   padding: 3px 9px;
   border-radius: 999px;
@@ -112,7 +112,7 @@
 
 .ws-th-grp {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -175,7 +175,7 @@
   color: #fff;
 }
 .ws-th-name {
-  font-size: 12.5px;
+  font-size: 17.5px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.010em;
@@ -187,11 +187,11 @@
 .ws-th-meta {
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 .ws-th-tag {
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
@@ -231,7 +231,7 @@
 .ws-icon-btn:hover { background: var(--surface-soft); color: var(--text-primary); }
 .ws-chat-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 800;
   letter-spacing: -0.020em;
   color: var(--text-primary);
@@ -243,12 +243,12 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 14.5px;
   color: var(--text-muted);
 }
 .ws-chat-tag {
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 4px;
@@ -263,7 +263,7 @@
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text-secondary);
@@ -298,7 +298,7 @@
 }
 .ws-day-divider span {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -326,7 +326,7 @@
   border-radius: 999px;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: #fff;
   flex-shrink: 0;
@@ -338,14 +338,14 @@
   background: #0F172A;
 }
 .ws-msg-from-name {
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.012em;
 }
 .ws-from-tag {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 4px;
@@ -360,7 +360,7 @@
 
 .ws-bubble {
   padding: 14px 18px;
-  font-size: 13.5px;
+  font-size: 18.5px;
   line-height: 1.65;
   letter-spacing: -0.005em;
   border-radius: 14px;
@@ -389,7 +389,7 @@
   align-items: center;
   gap: 7px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 .ws-msg-meta-bot {
@@ -401,7 +401,7 @@
 .ws-meta-t {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 .ws-fb {
@@ -442,24 +442,24 @@
   display: grid;
   place-items: center;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 800;
 }
 .ws-plan-t {
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.010em;
 }
 .ws-plan-s {
   margin-top: 2px;
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-muted);
   letter-spacing: -0.005em;
 }
 .ws-plan-risk {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
   padding: 3px 9px;
   border-radius: 999px;
@@ -483,14 +483,14 @@
 }
 .ws-callout svg { color: var(--semantic-warning); margin-top: 2px; }
 .ws-callout-t {
-  font-size: 12.5px;
+  font-size: 17.5px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.008em;
 }
 .ws-callout-s {
   margin-top: 2px;
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-secondary);
   letter-spacing: -0.005em;
 }
@@ -506,7 +506,7 @@
   background: var(--accent-primary);
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 700;
   vertical-align: top;
   cursor: pointer;
@@ -525,7 +525,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 600;
   padding: 3px 9px 3px 3px;
   border-radius: 999px;
@@ -544,7 +544,7 @@
   background: var(--accent-primary);
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-weight: 700;
 }
 
@@ -561,7 +561,7 @@
   gap: 5px;
   padding: 7px 13px;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 700;
   background: #fff;
   border: 1px solid var(--surface-divider);
@@ -610,7 +610,7 @@
   place-items: center;
 }
 .ws-doc-t {
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.015em;
@@ -618,7 +618,7 @@
 .ws-doc-s {
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 .ws-doc-body {
@@ -632,12 +632,12 @@
   grid-template-columns: 110px 1fr;
   gap: 10px;
   padding: 4px 0;
-  font-size: 12px;
+  font-size: 17px;
 }
 .ws-doc-row + .ws-doc-row { border-top: 1px dashed var(--surface-divider); padding-top: 6px; }
 .ws-doc-key {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.04em;
@@ -645,7 +645,7 @@
 }
 .ws-doc-val {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 17px;
   letter-spacing: -0.005em;
 }
 .ws-doc-val b { font-weight: 700; }
@@ -655,7 +655,7 @@
 .ws-msg-typing { opacity: 1; }
 .ws-typing-now {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.04em;
@@ -673,7 +673,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 17px;
   color: var(--text-muted);
 }
 .ws-typ-done { color: var(--text-secondary); }
@@ -685,7 +685,7 @@
   border-radius: 999px;
   background: var(--semantic-success);
   color: #fff;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 700;
 }
 .ws-typ-spin {
@@ -720,7 +720,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 700;
   padding: 3px 9px;
   border-radius: 999px;
@@ -729,7 +729,7 @@
 }
 .ws-cmp-pin-list { display: inline-flex; gap: 3px; }
 .ws-pin-mini {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 999px;
@@ -739,7 +739,7 @@
 }
 .ws-cmp-help {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 .ws-composer-wrap {
@@ -775,7 +775,7 @@
   outline: 0;
   resize: none;
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: 18.5px;
   line-height: 1.5;
   color: var(--text-primary);
   padding: 6px 4px;
@@ -843,20 +843,20 @@
 }
 .ws-ctx-t {
   flex: 1;
-  font-size: 12.5px;
+  font-size: 17.5px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.012em;
 }
 .ws-ctx-cnt {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   color: var(--text-muted);
   margin-left: 3px;
 }
 .ws-ctx-edit {
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent-primary);
   background: transparent;
@@ -874,14 +874,14 @@
   padding: 10px 12px;
 }
 .ws-pp-name {
-  font-size: 12.5px;
+  font-size: 17.5px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 6px;
   letter-spacing: -0.010em;
 }
 .ws-pp-row {
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-secondary);
   padding: 2px 0;
 }
@@ -918,11 +918,11 @@
   background: var(--accent-primary);
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
 }
 .ws-src-t {
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.010em;
@@ -938,7 +938,7 @@
   align-items: center;
   gap: 5px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
   font-weight: 600;
 }
@@ -951,7 +951,7 @@
   gap: 6px;
 }
 .ws-prop-h {
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.015em;
@@ -963,7 +963,7 @@
   gap: 5px;
 }
 .ws-prop-tag-tech {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
@@ -971,7 +971,7 @@
   color: var(--accent-primary);
 }
 .ws-prop-state {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
@@ -988,13 +988,13 @@
   justify-content: space-around;
 }
 .ws-prop-stats > span {
-  font-size: 11px;
+  font-size: 15px;
   color: var(--text-muted);
   text-align: center;
 }
 .ws-prop-stats b {
   display: block;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.020em;
   color: var(--text-primary);
@@ -1006,7 +1006,7 @@
   border: 0;
   padding: 4px 0;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--accent-primary);
   cursor: pointer;
@@ -1040,7 +1040,7 @@
   place-items: center;
 }
 .ws-art-t {
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.010em;
@@ -1048,14 +1048,14 @@
 .ws-art-s {
   margin-top: 1px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 13.5px;
   color: var(--text-muted);
 }
 .ws-art-go {
   background: transparent;
   border: 0;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 19px;
   cursor: pointer;
   padding: 4px 6px;
 }
