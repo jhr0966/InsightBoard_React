@@ -70,6 +70,7 @@ _HANDOFF_LABELS: dict[str, tuple[str, str]] = {
     "opp": ("🎯 자동화 기회 카드에서 인계됨", "이 부서·공정으로 제안서 초안 시작"),
     "matrix": ("🧭 기회 매트릭스 1위에서 인계됨", "이 부서·공정으로 제안서 초안 시작"),
     "ia_map": ("🔎 인사이트 공정 매핑 카드에서 인계됨", "이 공정 상세 — 매칭 뉴스·작업 컨텍스트"),
+    "edit": ("📦 산출물 보관함에서 인계됨", "기존 제안서를 이어서 수정"),
 }
 
 
@@ -95,6 +96,16 @@ def _render_brief_handoff_banner_if_needed() -> None:
             f'<li><span class="ws-brief-num">{i + 1}</span>{_html.escape(it.get("title", "")[:80])}</li>'
             for i, it in enumerate(items[:3])
         ) + "</ol>"
+    elif from_kind == "edit":
+        bm_title = st.query_params.get("title", "")
+        if not bm_title:
+            return
+        body_html = (
+            f'<div class="ws-brief-target">'
+            f'<span class="ws-brief-target-eye">대상 제안서</span>'
+            f'<span class="ws-brief-target-v">{_html.escape(bm_title[:80])}</span>'
+            f'</div>'
+        )
     else:
         dept = st.query_params.get("dept", "")
         lv3 = st.query_params.get("lv3", "")
@@ -217,6 +228,23 @@ def _composer_prefill() -> tuple[str, str, str]:
             f'</span>'
         )
         return prefill, "비교 기준(난이도·비용·기간)을 추가로 명시할 수 있어요", pins
+
+    if from_kind == "edit":
+        bm_title = st.query_params.get("title", "")
+        if bm_title:
+            prefill = (
+                f"기존 제안서 '{bm_title[:80]}' 를 이어서 수정하려고 해.\n"
+                f"현재 내용을 검토하고 개선할 점을 제안해줘."
+            )
+            pins = (
+                '<span class="ws-cmp-pin">📎 컨텍스트 첨부됨</span>'
+                '<span class="ws-cmp-pin-list">'
+                '<span class="ws-pin-mini">📦 기존 제안서</span>'
+                f'<span class="ws-pin-mini">{_html.escape(bm_title[:30])}</span>'
+                '<span class="ws-pin-mini">페르소나</span>'
+                '</span>'
+            )
+            return prefill, "수정 방향(톤·근거 보강·일정 등)을 구체적으로 적어주세요", pins
 
     # 기본 — 인계 없음
     pins = (

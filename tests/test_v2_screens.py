@@ -434,6 +434,36 @@ def test_archive_consume_action_invokes_set_status_and_strips_query():
     assert "bm_id" not in st.query_params
 
 
+def test_archive_edit_handoff_href_carries_bm_and_title():
+    from ui import archive_v2
+    from store.bookmarks import Bookmark
+
+    bm = Bookmark(id="bm_99", type="proposal", title="도장 PoC 제안서",
+                  content="x", tags=[], created_at="2026-05-01T00:00:00+00:00")
+    href = archive_v2._edit_handoff_href(bm)
+    assert "from=edit" in href
+    assert "bm_id=bm_99" in href
+    assert "title=" in href
+    assert "SOLA" in href or "%F0%9F%A4%96" in href
+
+
+def test_sola_composer_prefill_from_edit():
+    from ui import sola_workshop_v2
+    import streamlit as st
+
+    st.query_params.clear()
+    st.query_params["from"] = "edit"
+    st.query_params["bm_id"] = "bm_99"
+    st.query_params["title"] = "도장 PoC 제안서"
+    try:
+        prefill, _ph, pins = sola_workshop_v2._composer_prefill()
+        assert "도장 PoC 제안서" in prefill
+        assert "이어서 수정" in prefill
+        assert "📦 기존 제안서" in pins
+    finally:
+        st.query_params.clear()
+
+
 def test_archive_consume_action_noop_when_action_missing():
     from ui import archive_v2
     import streamlit as st

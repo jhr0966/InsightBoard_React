@@ -50,6 +50,20 @@ def _archive_action_href(action: str, bm_id: str) -> str:
     return "?" + "&".join(parts)
 
 
+def _edit_handoff_href(bm: Bookmark) -> str:
+    """수정 버튼 → SOLA 작업실 인계 (`from=edit&bm_id=&title=`).
+
+    board_v2 와 동일 패턴이지만 archive 는 bm_id + title 을 stateless 로 전달.
+    """
+    parts = [
+        f"app_area={quote('🤖 SOLA 작업실')}",
+        "from=edit",
+        f"bm_id={quote(bm.id or '')}",
+        f"title={quote((bm.title or '')[:80])}",
+    ]
+    return "?" + "&".join(parts)
+
+
 def _consume_action_if_any() -> tuple[str, str] | None:
     """`?action=...&bm_id=...` 가 있으면 1회 소비 후 set_status.
 
@@ -140,10 +154,11 @@ def _card_html(bm: Bookmark, *, with_actions: bool = False) -> str:
     actions_html = ""
     if with_actions and bm.id:
         # 1순위 카드만 액션 노출 — 같은 화면 유지 + status 변경
+        edit_href = _edit_handoff_href(bm)
         actions_html = (
             '<div class="oa-card-actions">'
             f'<a class="oa-act oa-act-good" href="{_archive_action_href("adopt", bm.id)}" target="_self">채택</a>'
-            f'<button class="oa-act" disabled title="수정 흐름은 SOLA 작업실 PR 에서 wire">수정</button>'
+            f'<a class="oa-act" href="{edit_href}" target="_self">수정</a>'
             f'<a class="oa-act oa-act-warn" href="{_archive_action_href("reject", bm.id)}" target="_self">기각</a>'
             '</div>'
         )

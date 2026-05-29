@@ -138,10 +138,11 @@ I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 
 
 보드/인사이트의 카드 CTA 는 모두 `ui/board_v2._sola_handoff_href(from_kind, **payload)` 한 줄로 만든다. SOLA 작업실은 `?from` 값을 보고 composer prefill 과 handoff banner 를 동시 결정.
 
-- **단일 진입점**: `_sola_handoff_href` 외 직접 `?app_area=...` 문자열 조립 금지. payload 자동 quote.
-- **지원 from kind**: `brief` (보드 ② SOLA 브리핑), `opp` (보드 ④ 자동화 기회), `matrix` (보드 ⑥ 매트릭스 detail), `ia_map` (인사이트 공정 매핑).
+- **단일 진입점**: `_sola_handoff_href` (board_v2) / `_edit_handoff_href` (archive_v2) 외 직접 `?app_area=...` 문자열 조립 금지. payload 자동 quote.
+- **지원 from kind**: `brief` (보드 ② SOLA 브리핑), `opp` (보드 ④ 자동화 기회), `matrix` (보드 ⑥ 매트릭스 detail), `ia_map` (인사이트 공정 매핑), `edit` (산출물 보관함 카드 "수정" → `bm_id`+`title` 전달).
 - **brief 만 session_state**: 3건 뉴스 제목 리스트는 `st.session_state["_board_brief_items"]` 에 저장 (URL 길이 제한 회피). 보드 진입마다 갱신/삭제.
-- **opp/matrix/ia_map**: 모두 stateless — URL 만으로 prefill 재현 가능.
+- **opp/matrix/ia_map/edit**: 모두 stateless — URL 만으로 prefill 재현 가능.
+- **1회-소비 액션 패턴**: 산출물 보관함 `?action=adopt|reject|restore&bm_id=...` (`_consume_action_if_any` → `bookmarks_store.set_status` → 캐시 invalidate → query strip) + 데이터관리 `?refresh=now` (`_consume_refresh_if_any` → 캐시 clear → toast flag). 둘 다 render 첫 단계에서 소비 후 query 제거 → 새로고침/재방문 시 재실행 방지.
 
 ## I-17 — v2 sticky banner stacking 규칙
 

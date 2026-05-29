@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (v2 — archive "수정" → SOLA 인계 + SOLA 미배선 요소 정직화)
+- `ui/archive_v2.py::_edit_handoff_href` — 칸반 1순위 카드 "수정" 버튼 (`<button disabled>` → `<a href="?app_area=🤖+SOLA+작업실&from=edit&bm_id=&title=">`). bm_id + title 을 stateless URL 로 SOLA 작업실에 인계.
+- `ui/sola_workshop_v2.py` — `_HANDOFF_LABELS` 에 `edit` 추가, handoff banner + `_composer_prefill` 이 `?from=edit&title=` 처리 ("기존 제안서 '…' 를 이어서 수정… 검토하고 개선할 점 제안" prefill + 📦 기존 제안서 pin).
+- `assets/v2/screens/sola_main.html` — 미배선 요소 정직화: "새 스레드" 버튼 `disabled` + title "B.4 PR", "스레드 검색" input `disabled` + placeholder "(B.4 PR)", thread list 상단에 노란 미리보기 노트 ("스레드 목록은 시안 미리보기 — 영구화·검색은 B.4 PR").
+- `docs/INVARIANTS.md::I-16` — `edit` from kind + 1회-소비 액션 패턴 (`?action=` / `?refresh=now`) 문서화.
+- `tests/test_v2_screens.py` (+2) — `_edit_handoff_href` URL 검증, `_composer_prefill` edit 케이스.
+
 ### Added (v2 — 중간 작업: archive 카드 액션 + 데이터 관리 refresh + 회귀 테스트)
 - `ui/archive_v2.py::_archive_action_href`, `_consume_action_if_any` 신규 — 칸반 카드 위 "채택"/"기각"/"되돌리기" 버튼이 `<button disabled>` → `<a href="?action=adopt|reject|restore&bm_id=...">` 로 wire. `render()` 첫 단계에서 query 1회 소비 → `bookmarks_store.set_status` 호출 + 캐시 invalidate + query strip (재실행 방지). 채택/기각 컬럼 1순위 카드에도 "↶ 대기로 되돌리기" CTA 추가.
 - `ui/data_management_v2.py::_refresh_cta_html`, `_consume_refresh_if_any`, `_render_refresh_toast_if_needed` 신규 — "지금 실행" 정적 버튼 → `<a href="?refresh=now">지금 새로고침</a>`. 클릭 시 모든 dm 캐시(`_dm_stats`/`_ingest_jobs_html`/`_hist_html`/`_news_cards_html`/`_archive_stats_dm`) invalidate + 녹색 inline toast "✓ 캐시를 새로 그렸어요 (실제 수집은 06:00 KST 스케줄러)". `body:has(.db-topbar)` scoped. 또한 `render_setup_banner_if_needed` 호출 누락 보완.

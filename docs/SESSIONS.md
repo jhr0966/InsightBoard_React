@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-05-28 · archive "수정"→SOLA 인계 + SOLA 미배선 요소 정직화
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 40 커밋
+
+**변경:**
+- archive 카드 "수정" → `_edit_handoff_href` (`from=edit&bm_id=&title=`) → SOLA 작업실
+- sola_workshop_v2 : `edit` from kind (banner + composer prefill "기존 제안서 수정")
+- sola_main.html 정직화: 새 스레드/검색 disabled + thread list 미리보기 노트
+- INVARIANTS I-16 : edit kind + 1회-소비 액션 패턴 문서화
+- +2 tests (edit href / edit prefill)
+
+**검증:** pytest **195/195** · 금지패턴 0 · py_compile OK
+**자체 검토:** archive cards e2e (adopt/edit/reject/restore 링크 모두 렌더), data refresh CTA placeholder 1:1, consume 순서(캐시 읽기 전) 확인
+
+**B.4 PR 로 미룸:** SOLA thread list 실데이터 (thread store 설계 필요), 데이터관리 탭 4개 본문, 트렌드 월별 버킷.
+
+---
+
 ## 2026-05-28 · 중간 작업 — archive 카드 액션 + 데이터관리 refresh + 회귀 테스트
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 39 커밋
