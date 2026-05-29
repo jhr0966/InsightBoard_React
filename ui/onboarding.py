@@ -183,15 +183,28 @@ def _progress_html(step: int) -> str:
     )
 
 
-# ── 렌더 ────────────────────────────────────────────────────
+# ── 렌더 (중앙 모달 + backdrop 딤 = st.dialog) ───────────────
 
 def render(persona: Persona) -> None:
-    """온보딩 마법사 렌더. app.py 에서 should_show True 일 때만 호출."""
+    """온보딩 마법사 렌더 — 실제 화면 위에 중앙 모달로 띄운다.
+
+    app.py 는 화면(보드 등)을 먼저 렌더한 뒤 should_show True 일 때 이 함수를
+    호출한다. `st.dialog(dismissible=False)` 라 backdrop/ESC/X 로는 닫히지 않고
+    "다음에 하기" 또는 "완료" 버튼으로만 종료된다 → 닫히면 should_show 가 False
+    가 되어 다음 run 에서 다시 뜨지 않는다.
+    """
     _handle_pending()
-    _inject_css()
-
     step = st.session_state.get("_onb_step", 0)
+    title = "반갑습니다 👋" if step == 0 else "프로필 설정"
+    # 동적 title 을 위해 런타임 데코레이트.
+    dialog = st.dialog(title, width="large", dismissible=False)
+    dialog(_dialog_body)(persona)
 
+
+def _dialog_body(persona: Persona) -> None:
+    """모달 내부 — 단계에 따라 환영 / 입력 스텝."""
+    _inject_css()
+    step = st.session_state.get("_onb_step", 0)
     if step == 0:
         _render_welcome()
     else:
@@ -203,7 +216,6 @@ def _render_welcome() -> None:
         """
         <div class="onb-hero">
           <span class="onb-badge">✨ 처음 오셨네요</span>
-          <h1 class="onb-title">반갑습니다 👋</h1>
           <p class="onb-sub">
             부서·직무·관심 공정을 알려주시면 <b>오늘의 보드</b>와 <b>SOLA</b>가
             당신의 작업에 맞춘 인사이트로 채워집니다.<br>
@@ -212,15 +224,13 @@ def _render_welcome() -> None:
         </div>
         """
     )
-    _, mid, _ = st.columns([1, 2, 1])
-    with mid:
-        if st.button("프로필 설정 시작하기", type="primary", use_container_width=True, key="onb_start_btn"):
-            st.session_state["_do_onb_start"] = True
-            st.rerun()
-        if st.button("다음에 하기", use_container_width=True, key="onb_skip_btn"):
-            st.session_state["_do_onb_dismiss"] = True
-            st.rerun()
-        st.caption("나중에 사이드바 프로필 카드에서 언제든 설정할 수 있어요.")
+    if st.button("프로필 설정 시작하기", type="primary", use_container_width=True, key="onb_start_btn"):
+        st.session_state["_do_onb_start"] = True
+        st.rerun()
+    if st.button("다음에 하기", use_container_width=True, key="onb_skip_btn"):
+        st.session_state["_do_onb_dismiss"] = True
+        st.rerun()
+    st.caption("나중에 사이드바 프로필 카드에서 언제든 설정할 수 있어요.")
 
 
 def _render_step(step: int, persona: Persona) -> None:
@@ -228,8 +238,7 @@ def _render_step(step: int, persona: Persona) -> None:
     data = _onb_data()
     st.html(_progress_html(step))
 
-    _, mid, _ = st.columns([1, 2, 1])
-    with mid:
+    with st.container():  # dialog 폭이 이미 좁아 별도 중앙 컬럼 불필요
         if step == 1:
             st.html('<div class="onb-q">이름을 알려주세요</div>'
                     '<div class="onb-q-help">보고서·제안서에 표시될 이름이에요.</div>')

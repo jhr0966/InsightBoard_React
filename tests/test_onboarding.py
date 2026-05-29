@@ -80,7 +80,8 @@ def test_wizard_welcome_then_full_completion_saves_persona(clean_persona):
     at = _fresh_app()
     at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
-    assert "반갑습니다" in htmls          # welcome 노출
+    assert "처음 오셨네요" in htmls       # welcome 모달 body 노출 ("반갑습니다"는 dialog 제목)
+    assert "db-topbar" in htmls          # 배경 화면도 함께 렌더 (모달이 위에 뜸)
     assert not at.exception
 
     assert _click(at, "시작"); at.run()
@@ -99,16 +100,20 @@ def test_wizard_welcome_then_full_completion_saves_persona(clean_persona):
     assert saved.is_set()
     # 완료 후 마법사 사라지고 실제 화면 렌더
     htmls = "\n".join(h.proto.body for h in at.get("html"))
-    assert "db-topbar" in htmls and "반갑습니다" not in htmls
+    assert "db-topbar" in htmls and "처음 오셨네요" not in htmls
 
 
 def test_wizard_skip_persists_dismiss(clean_persona):
     at = _fresh_app()
     at.run()
     assert _click(at, "다음에 하기"); at.run()
+    # dismiss 마커는 즉시 기록됨
     assert clean_persona.is_onboarding_dismissed() is True
+    # AppTest 는 _handle_pending 연쇄 rerun 을 1 run 에 완전 정착 못 시킴
+    # (실 브라우저는 즉시 정착) → 한 번 더 run 으로 should_show=False 반영
+    at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
-    assert "db-topbar" in htmls and "반갑습니다" not in htmls
+    assert "db-topbar" in htmls and "처음 오셨네요" not in htmls
 
 
 def test_wizard_back_navigation_preserves_input(clean_persona):
@@ -127,5 +132,5 @@ def test_persona_editor_open_suppresses_wizard(clean_persona):
     at.session_state["show_persona_editor"] = True
     at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
-    assert "반갑습니다" not in htmls   # welcome 미노출
+    assert "처음 오셨네요" not in htmls   # welcome 모달 미노출
     assert "사용자 프로필 설정" in htmls or "프로필" in htmls

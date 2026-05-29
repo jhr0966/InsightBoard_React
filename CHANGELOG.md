@@ -6,7 +6,7 @@
 ## [Unreleased]
 
 ### Added (페르소나 온보딩 마법사 — 미설정 사용자 단계별 프로필 설정)
-- `ui/onboarding.py` 신규 — 페르소나 미설정 사용자에게 환영 화면 + 4단계 마법사(이름 → 부서·팀 → 직무 → 관심 공정). `should_show(persona)` (미설정 + 미dismiss) True 면 app.py 가 `render()` 후 `st.stop()` 으로 집중 온보딩. 각 단계 [이전]/[다음], 마지막 [완료], 어느 단계든 [다음에 하기].
+- `ui/onboarding.py` 신규 — 페르소나 미설정 사용자에게 **중앙 모달(+backdrop 딤)** 환영 화면 + 4단계 마법사(이름 → 부서·팀 → 직무 → 관심 공정). `st.dialog(width="large", dismissible=False)` 라 backdrop/ESC/X 로 안 닫히고 "다음에 하기"/"완료" 로만 종료. app.py 는 실제 화면(보드 등)을 먼저 렌더한 뒤 모달을 그 위에 띄움. 각 단계 [이전]/[다음], 마지막 [완료], 어느 단계든 [다음에 하기].
 - 단계 전환 시 위젯 unmount → state GC 함정 방지: `_onb_data` 안정 저장소에 매 전환마다 `_snapshot_inputs()` 로 보존, 위젯은 거기서 seed. 뒤로 가도 입력 유지.
 - `persona/store.py` — `is_onboarding_dismissed` / `dismiss_onboarding` / `clear_onboarding_dismiss` (`data/persona/.onboarding_dismissed` 마커). "다음에 하기" 영구화 → 재접속 시 강제로 안 띄움. 완료 시 마커 제거.
 - `app.py` — sidebar 후 화면 분기 전에 온보딩 게이트. `show_persona_editor` 중에는 미개입.
