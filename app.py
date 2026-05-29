@@ -14,6 +14,7 @@ import streamlit as st
 
 from config import ensure_data_dirs
 from store import bookmarks as _bookmarks_store
+from persona import store as _persona_store
 from ui import (
     app_shell,
     archive_v2,
@@ -21,6 +22,7 @@ from ui import (
     data_health,  # noqa: F401 — 테스트 의존: tests/test_data_health.py.
     data_management_v2,
     insights_v2,
+    onboarding,
     persona_page,
     sidebar,
     sola_workshop_v2,
@@ -53,6 +55,10 @@ app_shell.consume_panel_toggle()
 # 페이지마다 1회 마운트되며 .db-topbar 가 있는 v2 셸에서만 노출.
 app_shell.render_command_palette()
 
+_persona = st.session_state.get("persona") or _persona_store.load()
+st.session_state["persona"] = _persona
+
+# 실제 화면을 먼저 렌더 (모달 뒤 배경이 됨).
 if st.session_state.get("show_persona_editor"):
     persona_page.render()
 elif area == "📊 오늘의 보드":
@@ -65,3 +71,8 @@ elif area == "🤖 SOLA 작업실":
     sola_workshop_v2.render()
 else:
     archive_v2.render()
+
+# 페르소나 미설정 + 미dismiss → 배경 화면 위에 중앙 모달(+backdrop 딤) 으로 온보딩.
+# 명시적 편집(show_persona_editor) 중에는 마법사를 띄우지 않는다.
+if not st.session_state.get("show_persona_editor") and onboarding.should_show(_persona):
+    onboarding.render(_persona)
