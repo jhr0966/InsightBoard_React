@@ -396,6 +396,71 @@ def _archive_stats_dm() -> dict[str, int]:
     }
 
 
+def chat_context_block(persona: Persona) -> str:
+    """데이터 관리 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
+
+    헤더 4 stats + 14일 sparkline 일별 수집량 + 뉴스 라이브러리 6 + 수집잡 요약.
+    캐시된 helper 들이 같은 데이터를 계산해두므로 재호출은 캐시 hit.
+    """
+    parts: list[str] = ["--- 현재 화면: 데이터 관리 (🧱) ---"]
+
+    # 헤더 4 stats
+    try:
+        s = _dm_stats()
+        parts.append(
+            f"수집 현황: 활성 출처 {s.get('active_sources','—')}개 · "
+            f"오늘 수집 {s.get('today_count','—')}건 · "
+            f"30일 누적 {s.get('total_chunks','—')} · "
+            f"최근 업데이트 {s.get('last_update','—')}"
+        )
+    except Exception:
+        pass
+
+    # 14일 일별 수집 추이 (sparkline 원본)
+    try:
+        week = _news_db.load_news_for_days(days=14)
+        if not week.empty and "collected_at" in week.columns:
+            import pandas as _pd
+            dt = _pd.to_datetime(week["collected_at"], errors="coerce", utc=True).dt.strftime("%m/%d")
+            by_day = dt.value_counts().sort_index().tail(14)
+            parts.append("14일 일별 수집 추이:")
+            parts.append("  " + " · ".join(f"{d}: {int(c)}건" for d, c in by_day.items()))
+    except Exception:
+        pass
+
+    # 출처별 분포 (수집잡 5행)
+    try:
+        week = _news_db.load_news_for_days(days=7)
+        if not week.empty and "source" in week.columns:
+            top_src = week["source"].value_counts().head(5)
+            parts.append("출처별 7일 수집량 top 5:")
+            for src, cnt in top_src.items():
+                parts.append(f"  - {src}: {int(cnt)}건")
+    except Exception:
+        pass
+
+    # 뉴스 라이브러리 — 최근 6건
+    try:
+        today_df = _news_db.load_all_today()
+        recent = today_df if today_df is not None and not today_df.empty else \
+                 _news_db.load_news_for_days(days=3)
+        if not recent.empty:
+            if "collected_at" in recent.columns:
+                recent = recent.sort_values("collected_at", ascending=False)
+            parts.append("뉴스 라이브러리 (최근 6건):")
+            for _, r in recent.head(6).iterrows():
+                t = str(r.get("title", ""))[:100]
+                s = str(r.get("source", ""))
+                summary = str(r.get("summary_llm", "") or r.get("summary", ""))[:120]
+                parts.append(f"  - {t} ({s})")
+                if summary:
+                    parts.append(f"    요약: {summary}")
+    except Exception:
+        pass
+
+    return "\n".join(parts)
+
+
 def render() -> None:
     """데이터 관리 v2 — topbar + app-side + main + app-sola 풀 셸 렌더.
 

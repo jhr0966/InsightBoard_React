@@ -1,0 +1,210 @@
+"""각 v2 화면의 chat_context_block — '보이는 모든 것' 이 텍스트로 packaging 되는지.
+
+각 화면이 자기가 보여주는 데이터를 LLM 컨텍스트로 정확히 변환하는지 검증.
+사용자가 화면 보다가 SOLA 에게 무엇이든 물어보면 LLM 이 답할 수 있어야 함.
+"""
+from __future__ import annotations
+
+from unittest.mock import patch
+
+import pandas as pd
+
+from persona.schema import Persona
+
+
+# ── 보드 ────────────────────────────────────────────────────
+
+def test_board_chat_context_includes_screen_marker_and_kpis():
+    from ui import board_v2
+
+    with patch.object(board_v2, "_board_kpis",
+                      return_value={"collect": 125, "match": 18, "opp": 4, "pending": 3}):
+        ctx = board_v2.chat_context_block(Persona())
+
+    assert "현재 화면: 오늘의 보드" in ctx
+    assert "125" in ctx and "18" in ctx and "4" in ctx and "3" in ctx
+
+
+def test_board_chat_context_includes_brief_items_from_session():
+    from ui import board_v2
+    import streamlit as st
+
+    st.session_state["_board_brief_items"] = [
+        {"title": "도장 비전 PoC 38% 절감", "source": "AI Times", "when": ""},
+        {"title": "VOC 예측 트윈", "source": "Google RSS", "when": ""},
+    ]
+    try:
+        with patch.object(board_v2, "_board_kpis", return_value={"collect": 0, "match": 0, "opp": 0, "pending": 0}):
+            ctx = board_v2.chat_context_block(Persona())
+        assert "도장 비전 PoC" in ctx
+        assert "VOC 예측 트윈" in ctx
+        assert "AI Times" in ctx
+    finally:
+        st.session_state.pop("_board_brief_items", None)
+
+
+def test_board_chat_context_includes_opportunities_and_matrix_top():
+    from ui import board_v2
+
+    cells = pd.DataFrame([
+        {"dept": "도장", "lv3": "비전 검사", "cell_score": 95.0,
+         "matched_news": 40, "matched_tasks": 18, "sample_tasks": "AI 도막 검사", "sample_news": ""},
+        {"dept": "용접", "lv3": "비드 검사", "cell_score": 70.0,
+         "matched_news": 28, "matched_tasks": 12, "sample_tasks": "", "sample_news": ""},
+    ])
+    fake_news = pd.DataFrame([{"title": "x", "source": "y", "collected_at": "2026-05-29T00:00:00+00:00"}])
+    fake_roadmap = pd.DataFrame([{"a": 1}])
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=fake_news), \
+         patch.object(board_v2, "_load_roadmap", return_value=fake_roadmap), \
+         patch.object(board_v2, "_score_cells", return_value=cells), \
+         patch.object(board_v2, "_board_kpis", return_value={"collect": 0, "match": 0, "opp": 0, "pending": 0}):
+        ctx = board_v2.chat_context_block(Persona())
+
+    assert "자동화 기회 top 4" in ctx
+    assert "도장 · 비전 검사" in ctx
+    assert "점수 95" in ctx
+    assert "AI 도막 검사" in ctx
+    assert "매트릭스 1위" in ctx
+
+
+def test_board_chat_context_includes_trend_keywords():
+    from ui import board_v2
+
+    with patch.object(board_v2, "_weekly_keyword_series",
+                      return_value=(["W1","W2","W3","W4","W5","W6","W7","금주"],
+                                    [{"name": "비전 검사", "counts": [5,8,12,18,25,30,38,40]},
+                                     {"name": "협동 로봇", "counts": [3,3,5,7,10,12,12,12]}])), \
+         patch.object(board_v2, "_board_kpis", return_value={"collect": 0, "match": 0, "opp": 0, "pending": 0}):
+        ctx = board_v2.chat_context_block(Persona())
+    assert "트렌드" in ctx
+    assert "비전 검사" in ctx
+    assert "협동 로봇" in ctx
+    assert "변화율" in ctx
+
+
+def test_board_chat_context_includes_persona_user_keywords():
+    from ui import board_v2
+
+    p = Persona(interest_lv3=["비전 검사", "협동 로봇"], interest_tasks=["막두께 측정"])
+    with patch.object(board_v2, "_board_kpis", return_value={"collect": 0, "match": 0, "opp": 0, "pending": 0}):
+        ctx = board_v2.chat_context_block(p)
+    assert "내가 추가한 키워드" in ctx
+    assert "비전 검사" in ctx
+    assert "막두께 측정" in ctx
+
+
+def test_board_chat_context_empty_state_does_not_crash():
+    from ui import board_v2
+
+    with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
+         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame()), \
+         patch.object(board_v2, "_weekly_keyword_series", return_value=([], [])):
+        ctx = board_v2.chat_context_block(Persona())
+    assert "현재 화면: 오늘의 보드" in ctx
+    # 데이터 없어도 헤더는 나옴
+    assert len(ctx) > 20
+
+
+# ── 데이터 관리 ──────────────────────────────────────────────
+
+def test_data_mgmt_chat_context_includes_screen_marker_and_stats():
+    from ui import data_management_v2
+
+    with patch.object(data_management_v2, "_dm_stats", return_value={
+        "active_sources": "4", "today_count": "125", "total_chunks": "8.4k", "last_update": "08:24"}), \
+         patch.object(data_management_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
+         patch.object(data_management_v2._news_db, "load_all_today", return_value=pd.DataFrame()):
+        ctx = data_management_v2.chat_context_block(Persona())
+    assert "현재 화면: 데이터 관리" in ctx
+    assert "활성 출처 4개" in ctx
+    assert "125" in ctx
+    assert "8.4k" in ctx
+
+
+def test_data_mgmt_chat_context_includes_news_library_and_sources():
+    from ui import data_management_v2
+
+    news = pd.DataFrame([
+        {"title": "현대重 AI 비전 PoC", "source": "AI Times",
+         "collected_at": "2026-05-29T08:00:00+00:00", "summary_llm": "38% 불량률 절감"},
+        {"title": "삼성중 협동로봇 도입", "source": "Google RSS",
+         "collected_at": "2026-05-29T07:00:00+00:00", "summary_llm": ""},
+    ])
+    with patch.object(data_management_v2, "_dm_stats", return_value={
+        "active_sources": "—", "today_count": "—", "total_chunks": "—", "last_update": "—"}), \
+         patch.object(data_management_v2._news_db, "load_news_for_days", return_value=news), \
+         patch.object(data_management_v2._news_db, "load_all_today", return_value=news):
+        ctx = data_management_v2.chat_context_block(Persona())
+    assert "뉴스 라이브러리" in ctx
+    assert "현대重 AI 비전 PoC" in ctx
+    assert "38% 불량률 절감" in ctx
+    assert "출처별" in ctx
+    assert "AI Times" in ctx
+
+
+# ── 인사이트 분석 ────────────────────────────────────────────
+
+def test_insights_chat_context_includes_screen_marker_and_top_keywords():
+    from ui import insights_v2
+
+    top = pd.DataFrame([
+        {"keyword": "비전 검사", "count": 152},
+        {"keyword": "협동 로봇", "count": 88},
+    ])
+    with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"x": 1}])), \
+         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame()), \
+         patch.object(insights_v2._trends, "top_keywords", return_value=top), \
+         patch.object(insights_v2._trends, "keyword_emergence",
+                      return_value={"new": pd.DataFrame(columns=["keyword"])}):
+        ctx = insights_v2.chat_context_block(Persona())
+    assert "현재 화면: 인사이트 분석" in ctx
+    assert "비전 검사" in ctx
+    assert "152" in ctx
+
+
+def test_insights_chat_context_includes_matrix_cells():
+    from ui import insights_v2
+
+    cells = pd.DataFrame([
+        {"dept": "도장", "lv3": "비전 검사", "cell_score": 95.0,
+         "matched_news": 40, "matched_tasks": 18, "sample_tasks": "", "sample_news": "현대重 PoC 사례"},
+    ])
+    with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"x": 1}])), \
+         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"y": 1}])), \
+         patch.object(insights_v2, "_score_cells", return_value=cells), \
+         patch.object(insights_v2._trends, "top_keywords", return_value=pd.DataFrame(columns=["keyword","count"])), \
+         patch.object(insights_v2._trends, "keyword_emergence",
+                      return_value={"new": pd.DataFrame(columns=["keyword"])}):
+        ctx = insights_v2.chat_context_block(Persona())
+    assert "기회 매트릭스 top" in ctx
+    assert "도장 · 비전 검사" in ctx
+    assert "현대重 PoC 사례" in ctx
+
+
+# ── 산출물 보관함 ────────────────────────────────────────────
+
+def test_archive_chat_context_includes_screen_marker_and_counts():
+    from ui import archive_v2
+    from store.bookmarks import Bookmark
+
+    items = [
+        Bookmark(id="a", type="proposal", title="도장 PoC", content="설명1", tags=["AI"],
+                 created_at="2026-05-29T00:00:00+00:00", status="adopted"),
+        Bookmark(id="b", type="proposal", title="용접 검사", content="설명2", tags=[],
+                 created_at="2026-05-28T00:00:00+00:00", status="pending"),
+        Bookmark(id="c", type="proposal", title="X 제안", content="기각 사유", tags=[],
+                 created_at="2026-05-27T00:00:00+00:00", status="rejected"),
+    ]
+    with patch.object(archive_v2.bookmarks_store, "list_all", return_value=items):
+        ctx = archive_v2.chat_context_block(Persona())
+    assert "현재 화면: 산출물 보관함" in ctx
+    assert "총 3건" in ctx
+    assert "채택 1건" in ctx
+    assert "대기 1건" in ctx
+    assert "기각 1건" in ctx
+    # 칸반 카드 각 컬럼이 노출
+    assert "도장 PoC" in ctx
+    assert "용접 검사" in ctx
+    assert "X 제안" in ctx
+    # 본문 발췌
+    assert "설명1" in ctx or "기각 사유" in ctx

@@ -59,18 +59,25 @@ _persona = st.session_state.get("persona") or _persona_store.load()
 st.session_state["persona"] = _persona
 
 # 실제 화면을 먼저 렌더 (모달 뒤 배경이 됨).
+# 동시에 각 화면이 보여주는 데이터를 SOLA 채팅 컨텍스트로 packaging —
+# 사용자가 보드 보다가 SOLA 가서 "탑스토리 1위는?" 물어도 LLM 이 답할 수 있게.
+# SOLA 작업실 자체는 자기 화면을 컨텍스트로 안 넣음 (chat history 가 이미 컨텍스트).
 if st.session_state.get("show_persona_editor"):
     persona_page.render()
 elif area == "📊 오늘의 보드":
     board_v2.render()
+    st.session_state["_chat_context_for_sola"] = board_v2.chat_context_block(_persona)
 elif area == "🧱 데이터 관리":
     data_management_v2.render()
+    st.session_state["_chat_context_for_sola"] = data_management_v2.chat_context_block(_persona)
 elif area == "🔎 인사이트 분석":
     insights_v2.render()
+    st.session_state["_chat_context_for_sola"] = insights_v2.chat_context_block(_persona)
 elif area == "🤖 SOLA 작업실":
     sola_workshop_v2.render()
 else:
     archive_v2.render()
+    st.session_state["_chat_context_for_sola"] = archive_v2.chat_context_block(_persona)
 
 # 페르소나 미설정 + 미dismiss → 배경 화면 위에 중앙 모달(+backdrop 딤) 으로 온보딩.
 # 명시적 편집(show_persona_editor) 중에는 마법사를 띄우지 않는다.

@@ -986,6 +986,108 @@ def _archive_stats() -> dict[str, int]:
     }
 
 
+def chat_context_block(persona: Persona) -> str:
+    """오늘의 보드 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
+
+    사용자가 이 화면을 보다가 SOLA 작업실에서 "이 카드 뭐야?" "트렌드 1위는?"
+    같은 질문을 했을 때 LLM 이 화면 콘텐츠를 인식하고 답할 수 있도록.
+
+    이미 cached helper(`_board_kpis`/`_brief_html`/`_score_cells` 등)가 같은
+    데이터를 계산해두므로 재호출은 캐시 hit — 추가 비용 거의 없음.
+    """
+    parts: list[str] = ["--- 현재 화면: 오늘의 보드 (📊) ---"]
+
+    # ① KPI 4
+    try:
+        kpis = _board_kpis()
+        parts.append(
+            f"오늘 KPI: 수집 {kpis['collect']}건 · 매칭 {kpis['match']}건 · "
+            f"자동화 기회 {kpis['opp']}건 · 채택 대기 {kpis['pending']}건"
+        )
+    except Exception:
+        pass
+
+    # ② SOLA 브리핑 — 보드 진입 시 _brief_html 이 session 에 저장한 items 재사용
+    items = st.session_state.get("_board_brief_items") or []
+    if items:
+        parts.append("② SOLA 브리핑 top 3 매칭 뉴스:")
+        for i, it in enumerate(items[:3], 1):
+            t = (it.get("title") or "")[:120]
+            src = it.get("source") or "—"
+            parts.append(f"  {i}. {t} ({src})")
+
+    # ③ + ④ + ⑤ + ⑥ — 매칭/기회 데이터 재사용
+    try:
+        news = _news_db.load_news_for_days(days=14)
+        roadmap = _load_roadmap()
+    except Exception:
+        news = None
+        roadmap = None
+
+    # ③ 탑스토리 — 최근 3일 매칭 강한 뉴스 헤드라인
+    if news is not None and not news.empty and roadmap is not None and not roadmap.empty:
+        try:
+            recent = _news_db.load_news_for_days(days=3)
+            if not recent.empty:
+                if "collected_at" in recent.columns:
+                    recent = recent.sort_values("collected_at", ascending=False)
+                parts.append("③ 탑 스토리 (최근 3일):")
+                for _, r in recent.head(5).iterrows():
+                    t = str(r.get("title", ""))[:100]
+                    s = str(r.get("source", ""))
+                    parts.append(f"  - {t} ({s})")
+        except Exception:
+            pass
+
+        # ④ 자동화 기회 4
+        try:
+            cells = _score_cells(news, roadmap).head(4)
+            if not cells.empty:
+                parts.append("④ 자동화 기회 top 4:")
+                for _, r in cells.iterrows():
+                    parts.append(
+                        f"  - {r.get('dept','')} · {r.get('lv3','')} "
+                        f"(점수 {int(float(r.get('cell_score', 0) or 0))} · "
+                        f"매칭 뉴스 {int(r.get('matched_news', 0) or 0)}건 · "
+                        f"매칭 작업 {int(r.get('matched_tasks', 0) or 0)}건)"
+                    )
+                    sample = str(r.get("sample_tasks", "") or "").split(" · ")[0][:60]
+                    if sample:
+                        parts.append(f"    샘플 작업: {sample}")
+        except Exception:
+            pass
+
+        # ⑥ 매트릭스 1위 cell 상세
+        try:
+            cells = _score_cells(news, roadmap).head(6)
+            if not cells.empty:
+                top = cells.iloc[0]
+                parts.append(
+                    f"⑥ 매트릭스 1위(즉시 PoC 후보): {top.get('dept','')} · {top.get('lv3','')} "
+                    f"— 점수 {int(float(top.get('cell_score', 0) or 0))}"
+                )
+        except Exception:
+            pass
+
+    # ⑤ 트렌드 8주 키워드
+    try:
+        labels, series = _weekly_keyword_series(weeks=8)
+        if series:
+            parts.append("⑤ 트렌드 (최근 8주, 키워드 변화율):")
+            for s in series[:6]:
+                d = _delta_pct(s["counts"])
+                parts.append(f"  - {s['name']}: 변화율 {'+' if d>=0 else ''}{d}%")
+    except Exception:
+        pass
+
+    # ⑦ 키워드 관리 — 페르소나 관심사
+    user_kw = list(persona.interest_lv3 or []) + list(persona.interest_tasks or [])
+    if user_kw:
+        parts.append(f"⑦ 내가 추가한 키워드: {', '.join(user_kw[:6])}")
+
+    return "\n".join(parts)
+
+
 def render() -> None:
     """오늘의 보드 v2 — topbar + app-side + main + app-sola 풀 셸 렌더."""
     # 보드 화면 전용 스타일 (.db-greet, .db-kpi, .db-stories, .db-trend 등)
