@@ -2,6 +2,10 @@
 
 Opened from the large avatar/profile card in the sidebar so persona fields do not
 crowd the global navigation.
+
+v2: 글로벌 셸(topbar + app-side)로 감싸 다른 화면과 시각 통일. 폼 본문은 실제
+Streamlit 위젯(selectbox/multiselect/button)을 그대로 사용 — HTML 치환 불가
+(편집 입력이 필요). `body:has(.db-topbar)` 패딩 안에 위젯이 정렬된다.
 """
 from __future__ import annotations
 
@@ -10,7 +14,19 @@ import streamlit as st
 from persona import store as persona_store
 from persona.schema import Persona
 from roadmap.query import load_latest as load_roadmap
-from ui.styles import page_header, section_label
+from store import bookmarks as _bookmarks_store
+from ui import app_shell
+from ui.styles import inject_screen_css, page_header, section_label
+
+
+def _archive_stats() -> dict[str, int]:
+    """app-side 좌측 통계 — bookmarks summary 기반 (다른 화면과 동일 키)."""
+    try:
+        summary = _bookmarks_store.summary_counts()
+        pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
+    except Exception:
+        pending = 0
+    return {"match_today": 0, "opportunities": 0, "pending_adopt": pending}
 
 
 def _options(df, col: str) -> list[str]:
@@ -62,9 +78,24 @@ def _handle_pending(persona: Persona) -> None:
 
 
 def render() -> None:
-    """Render the main-content persona editor page."""
+    """Render the main-content persona editor page (v2 셸 적용)."""
     persona: Persona = st.session_state.get("persona") or persona_store.load()
     roadmap = load_roadmap()
+
+    # ── v2 글로벌 셸 — 다른 화면과 동일한 topbar + 좌측 네비 ──
+    inject_screen_css("board")  # 공통 토큰만 필요 (.db-* 미사용이나 안전)
+    app_shell.render_topbar(
+        page_title="프로필 설정",
+        eyebrow_current="프로필 / 페르소나",
+        refresh_label=app_shell.refresh_label_now(),
+        fresh_kind="",
+    )
+    app_shell.render_app_side(
+        active_area="",  # 5-nav 중 해당 없음 — 강조 없이 표시
+        persona=persona,
+        stats=_archive_stats(),
+    )
+    app_shell.render_setup_banner_if_needed()
 
     page_header(
         "사용자 프로필 설정",

@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-05-29 · v2 메인 머지 준비 — persona 셸 통일 + 미배선 탭 정직화
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 41 커밋
+
+**머지 블로커 3건 처리:**
+1. persona_page v2 셸 마이그 — topbar + app-side + setup banner. 폼 위젯은 유지(편집 필요), active_area="" 로 nav 강조 없음
+2. 데이터관리 탭 3개(키워드/로드맵/출처) disabled + "B.5 PR" 정직화
+3. 보드 트렌드 "월별" + 탑스토리 필터 → db-tab-soon (line-through + not-allowed)
+
+**SHOULD 처리:**
+- README UI 설명 v1 → v2 셸 구조로 갱신
+
+**검증:** pytest **195/195** · 금지패턴 0 · py_compile OK · active_area="" nav 안전 확인
+
+**머지 가능 상태 도달.** 남은 건 모두 별도 PR:
+- A.3 (composer 실 LLM) · B.4 (thread 영구화) · B.5 (데이터관리 탭 본문 + 트렌드 월별 + 키워드 관리)
+
+---
+
 ## 2026-05-28 · archive "수정"→SOLA 인계 + SOLA 미배선 요소 정직화
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 40 커밋

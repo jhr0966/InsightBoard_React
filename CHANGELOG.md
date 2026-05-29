@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (v2 머지 준비 — persona_page 셸 통일 + 미배선 탭 정직화 + README)
+- `ui/persona_page.py` — v2 글로벌 셸 적용. `render()` 가 `app_shell.render_topbar` + `render_app_side` + `render_setup_banner_if_needed` 로 감싸 다른 5 화면과 시각 통일. 폼 본문은 실 Streamlit 위젯(편집 입력 필요) 유지. `active_area=""` 로 5-nav 강조 없음. `_archive_stats()` 헬퍼 추가 (app-side 통계).
+- `assets/v2/screens/data_management_main.html` — 미배선 탭 3개(키워드/내부 로드맵/출처 설정) `disabled` + title "B.5 PR", 카운트 "B.5 PR" 로 정직화. 활성 탭(수집잡·뉴스 라이브러리)만 클릭 가능.
+- `assets/v2/screens/board_main.html` + `board.css` — 트렌드 "월별" 탭 + 탑스토리 "강한 매칭"/"출처별" 필터를 `db-tab-soon` (opacity 0.4 + line-through + cursor not-allowed) + title 로 정직화. 하드코딩 카운트("전체 32" 등) 제거.
+- `README.md` — UI 설명을 v1 (`ui/<name>_tab.py`) → v2 셸 구조 (`ui/<name>_v2.py` + `assets/v2/screens/` 템플릿 + `?app_area&from=` 인계 패턴) 로 갱신.
+
 ### Added (v2 — archive "수정" → SOLA 인계 + SOLA 미배선 요소 정직화)
 - `ui/archive_v2.py::_edit_handoff_href` — 칸반 1순위 카드 "수정" 버튼 (`<button disabled>` → `<a href="?app_area=🤖+SOLA+작업실&from=edit&bm_id=&title=">`). bm_id + title 을 stateless URL 로 SOLA 작업실에 인계.
 - `ui/sola_workshop_v2.py` — `_HANDOFF_LABELS` 에 `edit` 추가, handoff banner + `_composer_prefill` 이 `?from=edit&title=` 처리 ("기존 제안서 '…' 를 이어서 수정… 검토하고 개선할 점 제안" prefill + 📦 기존 제안서 pin).

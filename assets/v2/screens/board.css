@@ -581,6 +581,13 @@
   color: var(--accent-primary);
   font-weight: 700;
 }
+/* 아직 배선 안 된 mock 탭 — 정직한 비활성 표시 */
+.db-tab-soon {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.db-tab-soon:hover { background: transparent; color: var(--text-secondary); }
 .db-sec-link {
   font-family: var(--font-sans);
   font-size: 17px;
