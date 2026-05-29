@@ -5,6 +5,332 @@
 
 ---
 
+## 2026-05-29 · v2 메인 머지 준비 — persona 셸 통일 + 미배선 탭 정직화
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 41 커밋
+
+**머지 블로커 3건 처리:**
+1. persona_page v2 셸 마이그 — topbar + app-side + setup banner. 폼 위젯은 유지(편집 필요), active_area="" 로 nav 강조 없음
+2. 데이터관리 탭 3개(키워드/로드맵/출처) disabled + "B.5 PR" 정직화
+3. 보드 트렌드 "월별" + 탑스토리 필터 → db-tab-soon (line-through + not-allowed)
+
+**SHOULD 처리:**
+- README UI 설명 v1 → v2 셸 구조로 갱신
+
+**검증:** pytest **195/195** · 금지패턴 0 · py_compile OK · active_area="" nav 안전 확인
+
+**머지 가능 상태 도달.** 남은 건 모두 별도 PR:
+- A.3 (composer 실 LLM) · B.4 (thread 영구화) · B.5 (데이터관리 탭 본문 + 트렌드 월별 + 키워드 관리)
+
+---
+
+## 2026-05-28 · archive "수정"→SOLA 인계 + SOLA 미배선 요소 정직화
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 40 커밋
+
+**변경:**
+- archive 카드 "수정" → `_edit_handoff_href` (`from=edit&bm_id=&title=`) → SOLA 작업실
+- sola_workshop_v2 : `edit` from kind (banner + composer prefill "기존 제안서 수정")
+- sola_main.html 정직화: 새 스레드/검색 disabled + thread list 미리보기 노트
+- INVARIANTS I-16 : edit kind + 1회-소비 액션 패턴 문서화
+- +2 tests (edit href / edit prefill)
+
+**검증:** pytest **195/195** · 금지패턴 0 · py_compile OK
+**자체 검토:** archive cards e2e (adopt/edit/reject/restore 링크 모두 렌더), data refresh CTA placeholder 1:1, consume 순서(캐시 읽기 전) 확인
+
+**B.4 PR 로 미룸:** SOLA thread list 실데이터 (thread store 설계 필요), 데이터관리 탭 4개 본문, 트렌드 월별 버킷.
+
+---
+
+## 2026-05-28 · 중간 작업 — archive 카드 액션 + 데이터관리 refresh + 회귀 테스트
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 39 커밋
+
+**변경:**
+- archive_v2: 채택/기각/되돌리기 wire — `_archive_action_href` + `_consume_action_if_any`. 1순위 카드만 action 노출, 채택/기각 컬럼 1순위에 "↶ 되돌리기" 추가
+- data_management_v2: "지금 실행" 정적 → "지금 새로고침" 동적 — 캐시 invalidate + 녹색 toast
+- archive.css / data_management.css — `<a>` CTA CSS 회복 (I-19)
+- +6 tests : archive action URL/소비/noop, dm refresh caches+toast, 라벨 ellipsis, MATRIX_DEPT_COLORS 공유
+
+**검증:** pytest **193/193 passed** · 금지패턴 0 · py_compile OK
+
+**남은 큰 작업 (별도 PR 추천):**
+- A.3 SOLA composer 실 LLM 호출 wire
+- B.4 SOLA thread 영구화 (chat_log 확장)
+- persona_page v2 마이그
+- 데이터관리 실 수집 트리거 (현재는 캐시 갱신만)
+
+---
+
+## 2026-05-28 · 마무리 — 차트 clamp · dept 색 공유 · v1 -1366줄 · INVARIANTS 4건
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 38 커밋
+
+**변경:**
+- **Polish:**
+  - 인사이트 차트 callout box 좌표 viewBox 안으로 clamp (우측 끝 잘림 해결)
+  - 두 매트릭스 라벨 cap 14→12자 + ellipsis
+  - 매트릭스 dept 색상 단일 진실 → `board_v2.MATRIX_DEPT_COLORS` 공유
+  - 보드 ② "음성으로 듣기 · 3:42" → "준비 중" disabled (정적 가짜 라벨 제거)
+- **INVARIANTS +4**: I-16 handoff URL 패턴 · I-17 sticky banner stacking · I-18 MATRIX_DEPT_COLORS · I-19 `<a>` CTA CSS 회복 규칙
+- **v1 데드코드 -1366줄** : board_tab/home_tab/sola_tab/bookmarks_tab 4 모듈 + 3 v1 테스트 제거 (data_health 만 보존). app.py noqa 도 4개 제거.
+
+**검증:**
+- pytest **187/187 passed** (217 - 30 v1 tests 제거 = 187)
+- 금지 패턴 0, py_compile OK
+- 외부 참조 grep 결과 0
+
+**현 PR 상태:** 마무리 완료. 추가 작업은 별도 PR (A.3 LLM 호출 wire / B.4 thread 영구화 / persona_page v2 / archive 카드 액션).
+
+---
+
+## 2026-05-28 · A.7 후속 (composer prefill) + A.4 ⌘K wire + CTA 스타일 회복
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 36 커밋
+
+**변경:**
+- `sola_workshop_v2._composer_prefill()` — `?from` 4종에 따라 textarea 자동 채움
+- composer 템플릿에 `{{COMPOSER_PINS/PLACEHOLDER/PREFILL}}` 3 placeholder, rows=3
+- handoff banner sticky 위치 stacking — LLM banner 동시 노출 시 132px 로 자동 하강
+- app.py 에 `app_shell.render_command_palette()` wire (5-nav + 페르소나 row 모달)
+- shell.css : a/label 형태의 db-hdr-search + ph/kbd 자식 스타일
+- board.css / insights.css : `<a>` 로 전환된 CTA 4종 (db-prop-discuss / db-mx-cta / db-act / db-act-primary / ia-pc-detail) 의 text-decoration · :visited 회복
+- +7 tests: composer prefill 6 케이스 + 팔레트 렌더
+
+**검증:**
+- py_compile OK (5개 파일)
+- 금지 패턴 (on_click=, 사외 requests.*) — 0 hits
+- 테스트는 다음 일괄 실행에서 검증
+
+**남은 작업 (deferred):**
+- 남은 v1 5 모듈 (board_tab/bookmarks_tab/data_health/home_tab/sola_tab) 의 테스트 v2 마이그 → 추후 코드 정리 가능 (현 PR 범위 밖)
+
+---
+
+## 2026-05-28 · A.7 확장 — 4 CTA 모두 SOLA 작업실로 라우팅 통일
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 35 커밋
+
+**변경:**
+- `_sola_handoff_href(from_kind, **payload)` 신규 헬퍼 (board_v2)
+- 자동화 기회 4 카드 "SOLA와 검토" → `?from=opp&dept&lv3`
+- 매트릭스 detail "제안서 작업장에서 보기" → `?from=matrix&dept&lv3`
+- 인사이트 공정 매핑 3 카드 "상세 →" → `?from=ia_map&dept&lv3`
+- SOLA 작업실 handoff banner 일반화 (`_HANDOFF_LABELS` 테이블 + 4 from kind)
+- +4 tests: handoff URL 빌더, opp/matrix/ia_map CTA 패턴 검증
+
+**검증:**
+- pytest **210/210 passed** (206 + 4 신규)
+- 금지 패턴 0, py_compile OK
+- 4 CTA 패턴 동일 — 차후 다른 카드 추가도 `_sola_handoff_href` 한 줄로 wire 가능
+
+**다음:**
+1. **A.7 후속 — SOLA 채팅 composer 에 brief/opp/matrix/ia_map 컨텍스트 자동 prefill** (LLM 입력 wire)
+2. **A.4 — Ctrl+K 검색 모달** (전역 검색)
+3. **남은 v1 5 모듈 테스트 v2 마이그**
+
+---
+
+## 2026-05-28 · A.7 — 보드 ② SOLA 브리핑 CTA → SOLA 작업실 라우팅
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 34 커밋
+**상태:** 첫 인터랙션 wire — 보드 → SOLA 컨텍스트 인계
+
+**변경:**
+- `_brief_html()` — 빈/유효 두 분기에서 `st.session_state["_board_brief_items"]` 갱신/삭제. CTA 는 `<a href="?app_area=🤖+SOLA+작업실&from=brief">`.
+- 보드 템플릿 `<button>` → `{{BRIEF_CTA}}` placeholder.
+- `sola_workshop_v2._render_brief_handoff_banner_if_needed` — `?from=brief` 일 때만 sticky 파란 banner + 3건 제목 ol.
+- `sola_workshop_v2.render` 에 setup banner + brief banner 호출 wire.
+- 신규 테스트 `test_board_brief_cta_routes_to_sola_with_from_brief`: cta href / session_state 인계 검증.
+
+**검증:**
+- pytest **206/206 passed** (205 + 1 신규)
+- 금지 패턴 0
+- py_compile OK
+- A.7 라우팅 단위 테스트로 회귀 방어
+
+**다음:**
+1. **A.7 후속** — SOLA 작업실 templates 의 채팅 composer 와 brief items 를 실제 wire (LLM 호출은 별도 PR)
+2. **A.4 — Ctrl+K 검색 모달** (전역 검색)
+3. **레거시 테스트 v2 마이그** — 남은 v1 5 모듈 정리
+
+---
+
+## 2026-05-28 · 회귀 베이크 + v1 데드코드 925줄 제거 (I + H)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 33 커밋
+
+**변경:**
+- `tests/test_v2_screens.py` (+8 tests) — 보드/인사이트 helper 회귀 베이크 (빈 상태 + 합성 데이터 클래스 검증)
+- v1 데드코드 925줄 제거:
+  * `ui/ingest_tab.py` (-284)
+  * `ui/news_tab.py` (-121)
+  * `ui/proposal_workbench.py` (-364)
+  * `ui/roadmap_tab.py` (-156)
+- `app.py` — 4개 noqa 임포트 제거, 남은 v1 모듈은 "테스트 의존" 사유로 라벨링
+- `sola/refine.py` — stale docstring 정리
+
+**검증:**
+- pytest **205/205 passed** (197 + 8 신규)
+- 4 v1 모듈 외부 참조 grep 결과 0
+- 금지 패턴 (on_click=, 사외 requests.*) — 0 hits
+- py_compile OK
+- push 성공 PR #50
+
+**남은 v1 모듈 (테스트 의존):** board_tab / bookmarks_tab / data_health / home_tab / sola_tab. 다음 정리는 해당 테스트들의 v2 마이그레이션 후.
+
+**다음:**
+1. **A.7 — 보드 ② CTA → SOLA workshop 라우팅** (인터랙션 첫 진입)
+2. **A.4 — Ctrl+K 검색 모달**
+3. **레거시 테스트 v2 마이그레이션** (board_tab → board_v2 helpers)
+
+---
+
+## 2026-05-28 · v2 인사이트 공정 매핑 + LLM 미설정 banner (B.3 + C)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 32 커밋
+
+**변경:**
+- `ui/insights_v2.py::_ia_process_map_html` (cached) — top trending kw → score_cells head(3) → 카드 3개. fit% = 60+score/max×36, 1위 ia-pcard-top + ★ 최적 매칭. sample_tasks/sample_news fallback.
+- `assets/v2/screens/insights_main.html` — .ia-map ~115줄 → `{{IA_PROCESS_MAP}}`
+- `ui/app_shell.py::render_setup_banner_if_needed` 신규 — LLM 미설정 시 본문 상단 sticky 노란 banner. body:has(.db-topbar) scoped.
+- `board_v2.py` / `insights_v2.py::render()` 에서 호출
+
+**검증:**
+- pytest 197/197, py_compile OK, 금지 패턴 0
+- 합성 cells 3 → 3 카드 + 1 top + fit '96/87/79' 평균 87%, top kw '비전 검사'
+- push 성공 PR #50
+
+**보드 + 인사이트 메인 영역 시각 바인딩 완료. 남은 큰 항목:**
+- 산출물 보관함 v2 (kanban + carousel)
+- 데이터 관리 v2 (job 행 + sparkline 외 추가 항목)
+- 인터랙션 (A 시리즈)
+
+**다음:**
+1. **H — v1 레거시 정리** (home_tab, insights_v1 등) — 안정화된 v2 가 v1 대체 가능한지 확인 후 제거
+2. **A.4 — Ctrl+K 모달** (검색 search bar)
+3. **A.3 — SOLA composer** (입력→pending→LLM)
+
+---
+
+## 2026-05-28 · v2 인사이트 트렌드 차트 + 기회 매트릭스 실데이터 (B.3)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 31 커밋
+
+**변경:**
+- `ui/insights_v2.py`
+  - `_ia_chart_parts` (cached) — 보드 `_weekly_keyword_series(5)` 재사용 → 5주 × top-5 series 라인 차트 (1순위 강조 gradient fill + callout, 2-3 컬러 강조, 4-5 mute). Legend / pill 동시 생성.
+  - `_ia_matrix_svg` (cached) — `score_cells.head(8)` → 600×420 SVG. 좌상단 = PoC 후보 (쉽움 + 효과 大). dept 5색 팔레트, 1위 cell halo.
+- `assets/v2/screens/insights_main.html` — 트렌드 차트 ~75줄 + 매트릭스 ~115줄 placeholder 화
+- 빈 상태: 두 차트 모두 min-height 유지 안내 카드
+
+**검증:**
+- pytest 197/197, py_compile OK
+- 합성 데이터: chart svg 2920자 / legend 3 strong+2 mute / pill '+162%', matrix svg 3878자 / 4 버블 (9 circles + halo dasharray)
+- 금지 패턴 0
+- push 성공 PR #50
+
+**다음:**
+1. **인사이트 공정 매핑 카드** (`.ia-map` / `.ia-pc-list`) — 키워드 → 매칭 공정
+2. **인사이트 SECTION C 부서 인사이트** (있다면)
+3. **C — LLM 미설정 전역 banner**
+4. **A.3 — SOLA composer 인터랙션** (입력→pending→LLM)
+
+---
+
+## 2026-05-28 · v2 보드 ⑦ 내 키워드 관리 실데이터
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 30 커밋
+**상태:** 보드 7섹션 (① ~ ⑦) 실데이터 바인딩 완료 — **보드 화면 정복 완료**
+
+**변경:**
+- `_board_kw_mgr_html(persona)` — 2 그룹 + summary, 빈 상태 fallback
+- 템플릿 ~85줄 → `{{BOARD_KW_MGR}}` placeholder
+- pytest 197/197, 합성 데이터 170행 → 4 SOLA + 3 user chips, 30일 평균 6건/일 확인
+
+**보드 정복 완료 — 7섹션:**
+① 인사 + KPI 4 (페르소나 빈상태 분기) · ② SOLA 브리핑 top 3 · ③ 탑 스토리 1 lead + 4 side · ④ 자동화 기회 4 · ⑤ 트렌드 차트 + 키워드 6 · ⑥ 매트릭스 6 버블 + detail · ⑦ 키워드 관리 + summary
+
+**다음:**
+1. **인사이트 트렌드 차트** (보드 ⑤ 패턴 재사용 가능)
+2. **인사이트 매트릭스** (보드 ⑥ 패턴 재사용)
+3. **인사이트 공정 매핑 카드** (키워드 → 매칭 공정)
+4. 또는 A 시리즈 (SOLA composer / ⌘K 모달 / 카드 액션 라우팅) 인터랙션
+
+---
+
+## 2026-05-28 · v2 보드 ⑥ 기회 매트릭스 ROI×난이도 산점도 실데이터
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 29 커밋
+**상태:** 보드 섹션 ① ② ③ ④ ⑤ ⑥ 실데이터 완료 (남은: ⑦ 키워드 관리)
+
+**변경:**
+- `ui/board_v2.py::_board_matrix_html` (cached) — score_cells head(6) → 버블 6개 동적 좌표/크기/quadrant 토글, detail aside = 1위 cell
+- `assets/v2/screens/board_main.html` — 매트릭스 ~65줄 → `{{BOARD_MATRIX}}` 단일 placeholder
+- 빈 상태: '뉴스 + 로드맵 매칭 후' 안내
+
+**검증:** pytest 197/197, py_compile OK, 합성 cells 6 → 6 버블/strong-1/soft-1/detail '도장1팀 · 비전 검사' 확인
+
+**다음:** ⑦ 키워드 관리 (페르소나 keywords + 직접 추가 그룹)
+
+---
+
+## 2026-05-28 · v2 보드 트렌드 차트 + 키워드 리스트 실데이터 (B.1)
+
+**브랜치:** `claude/nice-bell-eEZLj` · **PR #50** (Draft) · 누적 28 커밋
+**상태:** 보드 섹션 ① ② ③ ④ ⑤ 실데이터 완료 (남은: ⑥ 매트릭스 · ⑦ 키워드 관리)
+
+**변경:**
+- `ui/board_v2.py` — `_weekly_keyword_series(weeks=8)` (top-6 키워드 × 주별 버킷), `_path_d` / `_sparkline_d` (SVG path 생성), `_delta_pct` (head 1/3 vs tail 1/3 변화율), `_board_trend()` (cached, 어노테이션·Y라벨·6 li rows 빌드), `_board_trend_block_html()` (전체 트렌드 섹션 HTML)
+- `assets/v2/screens/board_main.html` — 트렌드 섹션 ⑤ 의 하드코딩 ~108줄을 `{{BOARD_TREND}}` 한 줄로 교체
+- 빈 상태: 데이터 부족 시 안내 카드
+
+**검증:**
+- `python -m py_compile` OK
+- `python -m pytest -q` **197/197 passed**
+- 금지 패턴 (`on_click=`, 사외 `requests.*`) — 0 hits
+- 합성 데이터 스모크: 56일 458행 → 8 라벨 (W15..금주), 6 시리즈, +149% delta 어노테이션 확인
+
+**다음 단계:**
+1. ⑥ 기회 매트릭스 (ROI×난이도 산점도) — `_score_cells` 결과 → 버블 좌표 매핑
+2. ⑦ 키워드 관리 (SOLA 자동 추출 + 직접 추가 그룹) — 페르소나 기반
+3. 인사이트 트렌드 차트도 동일 패턴으로 (board 함수 공유 가능성)
+
+---
+
+## 2026-05-28 · v2 디자인 시스템 Phase 0+1 (오늘의 보드)
+
+**브랜치:** `claude/nice-bell-eEZLj`
+**PR:** [#50](https://github.com/jhr0966/News_TEST/pull/50) (Draft)
+**카테고리:** `feat`
+**상태:** in-progress
+
+**배경:**
+Claude Design 핸드오프 번들 `InsightBoard Design System v2 (2026-05-28)` 도착. Azure 라이트 테마 + 풀폭 고정 헤더(.db-topbar) + 좌·우 fixed 패널(.app-side / .app-sola) 의 통합 셸을 5개 메인 화면에 적용. 보존 후 점진 교체 전략 — 첫 화면은 오늘의 보드.
+
+**완료:**
+1. **디자인 토큰 + 폰트 인프라** — `assets/v2/tokens.css`, `assets/v2/card.css`, `assets/v2/shell.css` (핸드오프 `_card.css` / `_v2.css` 그대로 이식). Pretendard / JetBrains Mono variable woff2 를 `static/fonts/` 에 커밋, `enableStaticServing=true` 로 `app/static/fonts/` 경로 서빙.
+2. **셸 무력화 분기** — `assets/v2/streamlit-overrides.css` 의 모든 룰을 `body:has(.db-topbar)` 로 묶음. v2 셸을 그리는 화면에서만 Streamlit 기본 헤더/사이드바를 숨기고, 본문 컨테이너에 280/384px 패딩을 적용. v1 화면은 영향 없음.
+3. **글로벌 크롬 헬퍼** — `ui/app_shell.py` 에 `render_topbar/render_app_side/render_app_sola` 3개 함수. 페르소나 통계, LLM 상태, 5-nav (query-param `?app_area=...` 호환) 까지 와이어. 인터랙티브 버튼은 모두 `disabled` (Phase 2~ 에서 와이어업).
+4. **오늘의 보드 v2** — `ui/board_v2.py` + `assets/v2/screens/board_main.html` (핸드오프 main 컬럼 그대로) + `assets/v2/screens/board.css` (시안 자체 스타일 ~2200줄). 페르소나 이름·갱신 시각만 동적 치환, 나머지 7섹션 콘텐츠는 시안의 한국어 그대로.
+5. **app.py 분기 교체** — `📊 오늘의 보드` 만 `board_v2.render()` 호출. 나머지 4 분기는 그대로 (v1 화면 유지).
+
+**검증:**
+- `python -m py_compile` — OK (변경 파일 전체)
+- `on_click=` / `requests.get/Session()` 금지 패턴 — 0 hits
+- `pytest -q` — **197/197 passed**
+- `ui/home_tab.py` 보존 (`# noqa: F401`) — 롤백 시 한 줄 교체로 복귀 가능
+
+**다음 단계 (Phase 2~):**
+1. 데이터 관리 화면 v2 (`data-management v2.html` → `ui/data_management_v2.py`)
+2. 인사이트 분석 화면 v2
+3. SOLA 작업실 + 제안서 작업장 v2
+4. 산출물 보관함 (칸반 드래그 포함)
+5. 설정 화면
+6. 인터랙션 와이어업 — ⌘K 검색 모달, SOLA composer, 패널 접기/펴기 (query-param + pending flag 패턴)
+
+---
+
 ## 2026-05-19 · LLM 미설정 시 입력 컨텍스트 미리보기
 
 **브랜치:** `claude/review-insight-board-Ej5EO`

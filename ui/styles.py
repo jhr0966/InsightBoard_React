@@ -10,11 +10,45 @@ from config import ASSETS_DIR
 from sola.client import is_configured
 
 
+_V2_CSS_FILES = (
+    "v2/tokens.css",
+    "v2/card.css",
+    "v2/shell.css",
+    "v2/streamlit-overrides.css",
+    "v2/scale.css",
+)
+
+
 def inject_global_styles() -> None:
-    css_path = ASSETS_DIR / "styles.css"
-    if not css_path.exists():
+    """Inject v2 design tokens + Streamlit overrides + legacy styles.
+
+    순서 중요: tokens → card(components) → shell(v2 topbar) → streamlit overrides
+    → legacy styles.css (점진 제거 대상, 마지막에 로드해 v2 토큰을 못 덮어쓰게 함).
+    """
+    parts: list[str] = []
+    for rel in _V2_CSS_FILES:
+        path = ASSETS_DIR / rel
+        if path.exists():
+            parts.append(path.read_text(encoding="utf-8"))
+    legacy = ASSETS_DIR / "styles.css"
+    if legacy.exists():
+        parts.append(legacy.read_text(encoding="utf-8"))
+    if not parts:
         return
-    st.html(f"<style>{Path(css_path).read_text(encoding='utf-8')}</style>")
+    st.html("<style>" + "\n".join(parts) + "</style>")
+
+
+def inject_screen_css(name: str) -> None:
+    """화면별 CSS 로드 — `assets/v2/screens/<name>.css` 가 있으면 inject.
+
+    글로벌이 아닌 화면 전용 스타일(예: 보드 화면의 .db-greet/.db-stories 등)
+    을 화면 진입 시 한 번 주입한다. 같은 화면에 머무는 동안 매 rerun 마다
+    재주입되지만 브라우저가 같은 텍스트를 중복 적용해도 시각적 변화는 없음.
+    """
+    path = ASSETS_DIR / "v2" / "screens" / f"{name}.css"
+    if not path.exists():
+        return
+    st.html(f"<style>{path.read_text(encoding='utf-8')}</style>")
 
 
 def page_header(

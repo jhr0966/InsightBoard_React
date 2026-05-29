@@ -1,0 +1,181 @@
+      <main class="db-main">
+
+        <!-- ════════════════════════════════════════════════════
+              ① 인사 + 한 줄 요약
+             ════════════════════════════════════════════════════ -->
+        <section class="db-greet">
+          <div class="db-greet-l">
+            <div class="db-date">{{REFRESH_LABEL}}</div>
+            <h1 class="db-greet-h">
+              안녕하세요, {{PERSONA_GREET}}.
+            </h1>
+            <p class="db-greet-sum">
+              {{GREET_SUMMARY}}
+            </p>
+            <div class="db-greet-cta-row">
+              <button class="db-cta-primary">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2L9.5 8.5 3 11l6.5 2.5L12 20l2.5-6.5L21 11l-6.5-2.5z'/></svg>" width="13" height="13" alt="" />
+                SOLA에게 오늘 브리핑 듣기
+              </button>
+              <button class="db-cta-secondary">SOLA에 빠른 질문</button>
+            </div>
+          </div>
+
+          <div class="db-greet-r">
+            <div class="db-kpi-grid">
+              <div class="db-kpi">
+                <div class="db-kpi-val">{{KPI_COLLECT}}<small>건</small></div>
+                <div class="db-kpi-key">수집</div>
+                <div class="db-kpi-delta {{KPI_COLLECT_CLS}}">{{KPI_COLLECT_DELTA}}</div>
+              </div>
+              <div class="db-kpi">
+                <div class="db-kpi-val db-kpi-accent">{{KPI_MATCH}}<small>건</small></div>
+                <div class="db-kpi-key">매칭</div>
+                <div class="db-kpi-delta {{KPI_MATCH_CLS}}">{{KPI_MATCH_DELTA}}</div>
+              </div>
+              <div class="db-kpi">
+                <div class="db-kpi-val">{{KPI_OPP}}<small>건</small></div>
+                <div class="db-kpi-key">자동화 기회</div>
+                <div class="db-kpi-delta {{KPI_OPP_CLS}}">{{KPI_OPP_DELTA}}</div>
+              </div>
+              <div class="db-kpi">
+                <div class="db-kpi-val">{{KPI_PENDING}}<small>건</small></div>
+                <div class="db-kpi-key">채택 대기</div>
+                <div class="db-kpi-delta {{KPI_PENDING_CLS}}">{{KPI_PENDING_DELTA}}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ════════════════════════════════════════════════════
+              ② SOLA 오늘의 브리핑
+             ════════════════════════════════════════════════════ -->
+        <section class="db-sec">
+          <div class="db-sec-head">
+            <div>
+              <div class="db-sec-eye">SOLA 오늘의 브리핑</div>
+              <h2 class="db-sec-title">아침 7분 — 오늘 {{PERSONA_NAME}}님이 알아야 할 것</h2>
+            </div>
+            <div class="db-sec-meta">06:08 생성 · 32건 분석 · 1.4s</div>
+          </div>
+
+          <div class="db-brief">
+            <div class="db-brief-icon">
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2L9.5 8.5 3 11l6.5 2.5L12 20l2.5-6.5L21 11l-6.5-2.5z'/></svg>" width="18" height="18" alt="" />
+            </div>
+
+            <div class="db-brief-body">
+              {{BRIEF_SUMMARY}}
+              {{BRIEF_LIST}}
+              <div class="db-brief-foot">
+                {{BRIEF_CITES}}
+                <div class="db-brief-actions">
+                  <button class="db-act" disabled title="TTS 미구현 — 다음 PR">
+                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'/><path d='M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07'/></svg>" width="11" height="11" alt="" />
+                    음성으로 듣기 · 준비 중
+                  </button>
+                  {{BRIEF_CTA}}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ════════════════════════════════════════════════════
+              ③ 탑 스토리
+             ════════════════════════════════════════════════════ -->
+        <section class="db-sec">
+          <div class="db-sec-head">
+            <div>
+              <div class="db-sec-eye">탑 스토리</div>
+              <h2 class="db-sec-title">페르소나 매칭 강한 순</h2>
+            </div>
+            <div class="db-sec-meta">
+              <span class="db-tab db-tab-active">전체</span>
+              <span class="db-tab db-tab-soon" title="필터는 B.5 PR">강한 매칭</span>
+              <span class="db-tab db-tab-soon" title="필터는 B.5 PR">출처별</span>
+              <a class="db-sec-link" href="data-management.html">뉴스 라이브러리 보러가기 →</a>
+            </div>
+          </div>
+
+          <div class="db-stories">
+            {{BOARD_STORIES}}
+          </div>
+        </section>
+
+        <!-- ════════════════════════════════════════════════════
+              ④ 자동화 기회 · 제안서 초안 그리드
+             ════════════════════════════════════════════════════ -->
+        <section class="db-sec">
+          <div class="db-sec-head">
+            <div>
+              <div class="db-sec-eye">자동화 기회 · SOLA 자동 제안서 초안</div>
+              <h2 class="db-sec-title">검토 대기 4건</h2>
+            </div>
+            <div class="db-sec-meta">
+              <a class="db-sec-link" href="insights-analysis.html">전체 보러가기 →</a>
+            </div>
+          </div>
+
+          <div class="db-proposals">
+            {{BOARD_OPPORTUNITIES}}
+          </div>
+        </section>
+
+        <!-- ════════════════════════════════════════════════════
+              ⑤ 트렌드 (차트 + 키워드)
+             ════════════════════════════════════════════════════ -->
+        <section class="db-sec">
+          <div class="db-sec-head">
+            <div>
+              <div class="db-sec-eye">8주 트렌드</div>
+              <h2 class="db-sec-title">관심 공정 키워드 출현 빈도</h2>
+            </div>
+            <div class="db-sec-meta">
+              <span class="db-tab db-tab-active">주별</span>
+              <span class="db-tab db-tab-soon" title="월별 집계는 B.5 PR — 현재 8주 주별만 지원">월별</span>
+              <a class="db-sec-link" href="insights-analysis.html#trend">트렌드 작업장 →</a>
+            </div>
+          </div>
+
+          {{BOARD_TREND}}
+        </section>
+
+        <!-- ════════════════════════════════════════════════════
+              ⑥ 기회 매트릭스 (ROI × 난이도)
+             ════════════════════════════════════════════════════ -->
+        <section class="db-sec">
+          <div class="db-sec-head">
+            <div>
+              <div class="db-sec-eye">기회 매트릭스</div>
+              <h2 class="db-sec-title">ROI × 실행 난이도 — 우상단이 즉시 PoC 후보</h2>
+            </div>
+            <div class="db-sec-meta">
+              <a class="db-sec-link" href="insights-analysis.html#matrix">매트릭스 작업장 →</a>
+            </div>
+          </div>
+
+          {{BOARD_MATRIX}}
+        </section>
+
+        <!-- ════════════════════════════════════════════════════
+              ⑦ 내 키워드 관리
+             ════════════════════════════════════════════════════ -->
+        <section class="db-sec">
+          <div class="db-sec-head">
+            <div>
+              <div class="db-sec-eye">내 키워드 관리</div>
+              <h2 class="db-sec-title">매일 새벽 06:00 이 키워드로 수집됩니다</h2>
+            </div>
+            <div class="db-sec-meta">
+              <a class="db-sec-link" href="keyword-manager.html">키워드 매니저 풀 화면 →</a>
+            </div>
+          </div>
+
+          {{BOARD_KW_MGR}}
+        </section>
+
+        <div class="db-footer-end">
+          여기까지가 오늘의 보드입니다. 더 궁금한 점은 우측 SOLA 패널에서 질문하세요.
+        </div>
+      </main>

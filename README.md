@@ -6,7 +6,7 @@
 2. **🗂 로드맵·매칭** (`roadmap/`, `store/`) — 조선소 작업 정의 엑셀 → Parquet, 룰 기반 뉴스↔작업 매칭, 자동화 기회 매트릭스.
 3. **🤖 SOLA LLM** (`sola/`, `persona/`) — 요약·제안서·채팅·부서 인사이트, 페르소나 자동 주입.
 
-UI 는 업무 흐름형 5개 메뉴(`오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함`) + `ui/<name>_tab.py` 모듈로 분리.
+UI 는 업무 흐름형 5개 메뉴(`오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함`) — **v2 디자인 시스템** 적용. 각 화면은 고정 셸(`app_shell.render_topbar` + 좌측 `app-side` 네비 + 우측 `app-sola` 패널)을 공유하고, 본문은 `ui/<name>_v2.py` 가 `assets/v2/screens/<name>_main.html` 템플릿에 실데이터를 치환해 그린다. 화면 간 인계는 `?app_area=...&from=<kind>` URL 패턴 단일 진입점(`docs/INVARIANTS.md` I-16). 디자인 토큰은 `assets/v2/*.css`.
 
 ## 🚀 빠른 시작 (Groq 무료 API)
 

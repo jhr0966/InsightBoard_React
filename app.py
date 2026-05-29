@@ -15,17 +15,15 @@ import streamlit as st
 from config import ensure_data_dirs
 from store import bookmarks as _bookmarks_store
 from ui import (
-    board_tab,
-    bookmarks_tab,
-    data_health,
-    home_tab,
-    ingest_tab,
-    news_tab,
+    app_shell,
+    archive_v2,
+    board_v2,
+    data_health,  # noqa: F401 — 테스트 의존: tests/test_data_health.py.
+    data_management_v2,
+    insights_v2,
     persona_page,
-    proposal_workbench,
-    roadmap_tab,
     sidebar,
-    sola_tab,
+    sola_workshop_v2,
 )
 from ui.styles import inject_global_styles
 
@@ -48,29 +46,22 @@ if not st.session_state.get("_did_expire_check"):
 with st.sidebar:
     area = sidebar.render()
 
+# v2 글로벌 인터랙션 — 패널 접기/펴기 토글 (사이드바·SOLA)
+app_shell.consume_panel_toggle()
+
+# v2 ⌘K 빠른 이동 팔레트 — topbar 검색창 label 로 연결되는 모달.
+# 페이지마다 1회 마운트되며 .db-topbar 가 있는 v2 셸에서만 노출.
+app_shell.render_command_palette()
+
 if st.session_state.get("show_persona_editor"):
     persona_page.render()
 elif area == "📊 오늘의 보드":
-    home_tab.render()
+    board_v2.render()
 elif area == "🧱 데이터 관리":
-    data_health.render()
-    st.markdown("<div style='height:0.8rem;'></div>", unsafe_allow_html=True)
-    tab_collect, tab_browse, tab_roadmap = st.tabs([
-        "1. 뉴스 수집", "2. 뉴스 둘러보기", "3. 로드맵 업로드",
-    ])
-    with tab_collect:
-        ingest_tab.render()
-    with tab_browse:
-        news_tab.render()
-    with tab_roadmap:
-        roadmap_tab.render()
+    data_management_v2.render()
 elif area == "🔎 인사이트 분석":
-    board_tab.render()
+    insights_v2.render()
 elif area == "🤖 SOLA 작업실":
-    tab_sola, tab_wb = st.tabs(["SOLA 작업", "제안서 작업장"])
-    with tab_sola:
-        sola_tab.render()
-    with tab_wb:
-        proposal_workbench.render()
+    sola_workshop_v2.render()
 else:
-    bookmarks_tab.render()
+    archive_v2.render()

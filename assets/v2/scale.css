@@ -1,0 +1,359 @@
+/* ──────────────────────────────────────────────────────────────
+   v2 layout + spot overrides
+   ──────────────────────────────────────────────────────────────
+   - 화면별 CSS (board.css 등) 의 font-size 는 `scripts/bump_screen_fonts.py`
+     가 일괄 +4~+6px bump 처리 — 여기서는 layout · spot 수정만 담당.
+   - body:has(.db-topbar) 분기로 v1 화면 보호.
+   - load 순서: tokens → card → shell → streamlit-overrides → scale (여기) → screens
+   ────────────────────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   1) Type tokens — .t-* 유틸 클래스 base bump (시안 tokens.css 위에서)
+   ════════════════════════════════════════════════════════════ */
+:root {
+  --fs-body:        22px;  --lh-body:        1.6;
+  --fs-caption:     18px;  --lh-caption:     1.5;
+  --fs-micro:       15px;  --lh-micro:       1.45;
+
+  --fs-headline-sm: 23px;  --lh-headline-sm: 1.35;
+  --fs-headline:    30px;  --lh-headline:    1.30;
+  --fs-headline-lg: 38px;  --lh-headline-lg: 1.22;
+  --fs-headline-xl: 56px;  --lh-headline-xl: 1.12;
+}
+
+/* ════════════════════════════════════════════════════════════
+   2) 한글 word-break — Korean 단어 단위 유지 + 긴 토큰 안전 줄바꿈
+   기본 word-break: normal 이 좁은 컬럼에서 글자 단위로 끊기는 문제.
+   ════════════════════════════════════════════════════════════ */
+body:has(.db-topbar),
+body:has(.db-topbar) p,
+body:has(.db-topbar) li,
+body:has(.db-topbar) span,
+body:has(.db-topbar) div,
+body:has(.db-topbar) h1,
+body:has(.db-topbar) h2,
+body:has(.db-topbar) h3,
+body:has(.db-topbar) h4 {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* ════════════════════════════════════════════════════════════
+   3) Panel widths
+   ════════════════════════════════════════════════════════════ */
+body:has(.db-topbar) .app-side  { width: 304px !important; }
+body:has(.db-topbar) .app-sola  { width: 440px !important; }
+
+body:has(.db-topbar) .main .block-container,
+body:has(.db-topbar) [data-testid="stMain"] .block-container {
+  padding-left: 344px !important;
+  padding-right: 480px !important;
+}
+
+/* SOLA 작업실: app-sola 없는 화면 — 우측 패딩 축소 */
+body:has(.ws-shell) .main .block-container,
+body:has(.ws-shell) [data-testid="stMain"] .block-container {
+  padding-right: 32px !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   4) 사이드바 + SOLA 패널 상단/하단 여유 — top 80px (시안 72px → 8px 더)
+   사용자 피드백: 상단이 토픽바와 너무 가까워 짤린 느낌.
+
+   ★ 일관성 규칙 ★: 좌측 사이드바, 우측 SOLA, 본문 첫 요소의 Y 좌표가
+   모든 화면에서 동일해야 한다 (= 80px).
+   - .app-side / .app-sola: position fixed; top: 80px
+   - 본문: stMain padding-top: 80 (streamlit-overrides.css) + 셸 padding-top: 0
+   ════════════════════════════════════════════════════════════ */
+body:has(.db-topbar) .app-side,
+body:has(.db-topbar) .app-sola {
+  top: 96px !important;
+}
+
+/* 모든 화면별 셸의 padding-top 제거 — block-container 의 80px 패딩만으로 정렬 */
+body:has(.db-topbar) .dm-shell,
+body:has(.db-topbar) .ia-shell,
+body:has(.db-topbar) .ws-shell,
+body:has(.db-topbar) .oa-shell {
+  padding-top: 0 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   5) (removed) Ctrl 키 배지 — 와이어업 안 된 데코였음, 마크업에서 제거
+   ════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════
+   6) 보드 — WORKFLOW eyebrow 복원 (board.css 가 display:none 강제)
+   ════════════════════════════════════════════════════════════ */
+body:has(.db-topbar) .db-topbar-eye {
+  display: inline-flex !important;
+}
+body:has(.db-topbar) .db-topbar-l { gap: 4px !important; }
+
+/* ════════════════════════════════════════════════════════════
+   7) 데이터 관리 — 패널 좌측 padding 축소 (24 → 16) + dm-job 좌측 정렬
+   ════════════════════════════════════════════════════════════ */
+body:has(.db-topbar) .dm-jobs,
+body:has(.db-topbar) .dm-news {
+  padding: 18px 18px !important;
+}
+
+body:has(.db-topbar) .dm-job {
+  padding-left: 0 !important;
+  gap: 8px !important;
+}
+
+/* 뉴스 검색 input 잘림 방지 */
+body:has(.db-topbar) .dm-search { grid-template-columns: 15px 1fr auto; }
+body:has(.db-topbar) .dm-search input {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* dm-tabs / dm-fc 등 줄바꿈 제어 */
+body:has(.db-topbar) .dm-tab,
+body:has(.db-topbar) .dm-fc,
+body:has(.db-topbar) .dm-sel {
+  white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════
+   8) SOLA 작업실 — ws-threads 폭 늘리고 ws-callout word-break 안전
+   ════════════════════════════════════════════════════════════ */
+body:has(.ws-shell) .ws-shell {
+  grid-template-columns: 380px minmax(0, 1fr) 360px !important;
+  /* padding-top 은 Section 4 에서 0 으로 통일 — 여기서는 좌·우·하단만 */
+  padding-right: 16px !important;
+  padding-bottom: 24px !important;
+  padding-left: 16px !important;
+}
+
+/* SOLA workshop — 우측 ctx 컬럼만 padding-top 으로 첫 카드 표제가 14px 아래로 밀림
+   (threads.title=111 / chat.title=111 / ctx.title=125 → 14px 차이)
+   해결: .ws-ctx 자체 padding-top 0, ctx-card 의 내부 padding 만 살림 */
+body:has(.ws-shell) .ws-ctx {
+  padding-top: 0 !important;
+}
+
+/* Archive — .oa-src-list li 의 grid 22px 1fr 를 .oa-src-more 가 상속받아
+   텍스트 "+ 4건 더 보기" 가 22px 컬럼에 갇혀 글자 단위 줄바꿈 (ws-callout 동일 패턴)
+   해결: more 항목만 grid-column 전체 span + 자체 텍스트 정렬 */
+body:has(.db-topbar) .oa-src-more {
+  grid-template-columns: none !important;
+  grid-column: 1 / -1 !important;
+  display: block !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   인터랙션 A.1 — 사이드바 / SOLA 패널 접기·펴기
+   원본 card.css 가 body.app-side-collapsed 선택자를 쓰지만 Streamlit 에서
+   body class 토글이 어려워, .app-side / .app-sola 자신에 클래스 부여하는
+   방식으로 옮긴다. block-container 패딩은 :has() 로.
+   ════════════════════════════════════════════════════════════ */
+
+/* 기본: rail 숨김 (열린 상태) */
+body:has(.db-topbar) .app-side-rail-open { display: none !important; }
+body:has(.db-topbar) .app-sola > .app-sola-rail { display: none !important; }
+
+/* SIDEBAR · 접힌 상태 ----------------------------------------------------- */
+body:has(.db-topbar) .app-side.app-side-collapsed {
+  width: 44px !important;
+  padding: 10px 0 !important;
+  overflow: hidden !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed > *:not(.app-side-brand):not(.app-side-nav):not(.app-side-rail-open) {
+  display: none !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-brand {
+  border-bottom: 0;
+  padding: 0;
+  margin-bottom: 14px;
+  justify-content: center;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-brand > .app-side-brand-t,
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-brand > .app-side-collapse {
+  display: none !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-item {
+  grid-template-columns: 24px !important;
+  justify-items: center;
+  padding: 8px 0 !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-item > div,
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-item > .app-side-nav-cnt {
+  display: none !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-nav-active::before {
+  left: -1px !important;
+}
+body:has(.db-topbar) .app-side.app-side-collapsed .app-side-rail-open {
+  display: grid !important;
+  place-items: center;
+  margin-top: auto;
+}
+
+/* SOLA · 접힌 상태 ------------------------------------------------------- */
+body:has(.db-topbar) .app-sola.app-sola-collapsed {
+  width: 60px !important;
+}
+body:has(.db-topbar) .app-sola.app-sola-collapsed > *:not(.app-sola-rail) {
+  display: none !important;
+}
+body:has(.db-topbar) .app-sola.app-sola-collapsed > .app-sola-rail {
+  display: flex !important;
+}
+
+/* A.2 — topbar 아바타가 button 에서 anchor 태그로 바뀌어 기본 스타일 보정 */
+body:has(.db-topbar) .db-topbar-avatar {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none !important;
+}
+
+/* 본문 padding 조정 — 패널 접힘에 맞춰 */
+body:has(.app-side.app-side-collapsed) .main .block-container,
+body:has(.app-side.app-side-collapsed) [data-testid="stMain"] .block-container {
+  padding-left: 80px !important;
+}
+body:has(.app-sola.app-sola-collapsed) .main .block-container,
+body:has(.app-sola.app-sola-collapsed) [data-testid="stMain"] .block-container {
+  padding-right: 80px !important;
+}
+
+/* 폰트 시스템 통일 (사용자 UI/UX 검토 요청 — 화면별 미세 차이 정리) */
+/* page.desc — board 19.5 / 나머지 18.5 → 19 로 통일 */
+body:has(.db-topbar) .db-greet-sum,
+body:has(.db-topbar) .dm-desc,
+body:has(.db-topbar) .ia-desc,
+body:has(.db-topbar) .oa-desc {
+  font-size: 19px !important;
+}
+
+/* sec.eye — archive 15 vs 나머지 14 → 14 로 통일 */
+body:has(.db-topbar) .db-sec-eye,
+body:has(.db-topbar) .dm-sec-eye,
+body:has(.db-topbar) .ia-sec-eye,
+body:has(.db-topbar) .oa-col-meta {
+  font-size: 14px !important;
+}
+
+/* meta.tag / time — 13/13.5/14.5 산재 → 13.5 통일 */
+body:has(.db-topbar) .dm-art-tag,
+body:has(.db-topbar) .dm-art-tag-strong,
+body:has(.db-topbar) .db-tag,
+body:has(.db-topbar) .db-tag-strong,
+body:has(.db-topbar) .oa-tag,
+body:has(.db-topbar) .oa-tag-prop,
+body:has(.db-topbar) .db-time,
+body:has(.db-topbar) .db-story-time,
+body:has(.db-topbar) .db-news-time,
+body:has(.db-topbar) .dm-time,
+body:has(.db-topbar) .oa-card-age {
+  font-size: 13.5px !important;
+}
+
+body:has(.ws-shell) .ws-callout,
+body:has(.ws-shell) .ws-callout-t,
+body:has(.ws-shell) .ws-callout-s {
+  word-break: keep-all !important;
+  overflow-wrap: break-word !important;
+}
+
+/* 스레드 이름은 살짝 압축해 폭 절약 */
+body:has(.ws-shell) .ws-th-name {
+  letter-spacing: -0.020em;
+}
+
+/* ════════════════════════════════════════════════════════════
+   9) 정밀 분석 결과 layout 보정 (2026-05-28 4차)
+   ════════════════════════════════════════════════════════════ */
+
+/* B1 — 보드 greet: KPI 그리드가 우측 모서리에 몰리며 좌측 greet 와 큰 갭
+   원인: .db-greet 가 1.4fr / 1fr 인데 align-items: start 라 KPI grid (h:194)
+         가 greet content (h:310) 보다 짧아 아래쪽 빈 공간 생김
+   해결: align-items: center 로 KPI grid 를 세로 중앙 정렬 */
+body:has(.db-greet) .db-greet {
+  align-items: center !important;
+}
+
+/* B2 — 보드 탑 스토리: lead 1.4fr vs sidebar 1fr → 우측 너무 좁아 보임
+   1.2fr / 1fr 로 완화. 시안의 신문 레이아웃 의도는 유지하되 균형 개선 */
+body:has(.db-stories) .db-stories {
+  grid-template-columns: 1.2fr 1fr !important;
+}
+
+/* D1 — 데이터 관리 jobs vs news 컬럼 비율 1:1.69 → 1:1.35
+   jobs 380px 고정 → 1fr (가변, news 와 비슷한 폭)
+   결과: 수집잡 박스의 정보 표시 여유 + 뉴스 카드 그리드 유지 */
+body:has(.dm-split) .dm-split {
+  grid-template-columns: 1fr 1.35fr !important;
+}
+
+/* S1 — SOLA 작업실 ws-threads 가로 overflow
+   원인: 스레드 제목이 320px 컬럼보다 길 때 본문이 그대로 흘러 X 스크롤 발생
+   해결: 컬럼 자체에 overflow-x: hidden + 안쪽 텍스트에 text-overflow ellipsis */
+body:has(.ws-shell) .ws-threads {
+  overflow-x: hidden !important;
+}
+body:has(.ws-shell) .ws-th-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ════════════════════════════════════════════════════════════
+   10) 2026-05-28 5차 — Topbar 높이 통일 + Sidebar/SOLA 폰트 정상화
+   ════════════════════════════════════════════════════════════
+   문제:
+     - board.css 의 .db-topbar-title = 28px (bulk bump 됨) 만 우세,
+       다른 screen CSS 에는 이 룰 없어 shell.css 의 22px 가 적용
+       → board 만 topbar 83px, 나머지 70px (13px 차이)
+     - card.css (사이드바/SOLA 컴포넌트 CSS) 가 bulk bump 대상이 아니라
+       원본 px 값 그대로 — 사이드바 nav 12px / SOLA quick 11.5px 등
+       본문 (18-22px) 대비 절반 수준
+   해결: 모든 화면 강제 통일 */
+
+/* Topbar — 모든 화면에서 동일한 높이/타이포 */
+body:has(.db-topbar) .db-topbar-title {
+  font-size: 28px !important;
+  line-height: 1.1 !important;
+}
+body:has(.db-topbar) .db-topbar-date  { font-size: 14px !important; }
+body:has(.db-topbar) .db-topbar-fresh { font-size: 12px !important; }
+body:has(.db-topbar) .db-topbar-eye   { font-size: 12px !important; }
+
+/* Sidebar (.app-side) — 본문 18-20px 에 맞춰 한 단계 위로 */
+body:has(.db-topbar) .app-side-brand-t  { font-size: 18px !important; }
+body:has(.db-topbar) .app-side-tag      { font-size: 12px !important; }
+body:has(.db-topbar) .app-side-pname    { font-size: 17px !important; }
+body:has(.db-topbar) .app-side-prole    { font-size: 14px !important; }
+body:has(.db-topbar) .app-side-chip     { font-size: 13px !important; padding: 3px 10px; }
+body:has(.db-topbar) .app-side-stats b  { font-size: 22px !important; }
+body:has(.db-topbar) .app-side-stats span { font-size: 12px !important; }
+body:has(.db-topbar) .app-side-seclbl   { font-size: 12px !important; }
+body:has(.db-topbar) .app-side-nav-t    { font-size: 16px !important; }
+body:has(.db-topbar) .app-side-nav-s    { font-size: 13px !important; }
+body:has(.db-topbar) .app-side-nav-cnt  { font-size: 13px !important; padding: 2px 8px; }
+body:has(.db-topbar) .app-side-foot-t   { font-size: 13px !important; }
+body:has(.db-topbar) .app-side-foot-s   { font-size: 12px !important; }
+
+/* SOLA right panel (.app-sola) — 본문 18-22px 에 맞춰 한 단계 위로 */
+body:has(.db-topbar) .app-sola-hdr-name   { font-size: 17px !important; }
+body:has(.db-topbar) .app-sola-hdr-meta   { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-ctx-eye    { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-ctx-name   { font-size: 16px !important; }
+body:has(.db-topbar) .app-sola-ctx-sub    { font-size: 14px !important; }
+body:has(.db-topbar) .app-sola-quick-eye  { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-quick-q    { font-size: 16px !important; line-height: 1.5; padding: 11px 13px; }
+body:has(.db-topbar) .app-sola-quick-i    { font-size: 13px !important; }
+body:has(.db-topbar) .app-sola-recent-eye { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-recent-q   { font-size: 16px !important; }
+body:has(.db-topbar) .app-sola-recent-a   { font-size: 17px !important; line-height: 1.65; }
+body:has(.db-topbar) .app-sola-recent-time { font-size: 12px !important; }
+body:has(.db-topbar) .app-sola-comp-input { font-size: 16px !important; line-height: 1.5; }
+body:has(.db-topbar) .app-sola-comp-pin   { font-size: 12px !important; padding: 4px 9px; }
+body:has(.db-topbar) .app-sola-comp-send  { font-size: 14px !important; padding: 9px 14px; }
+body:has(.db-topbar) .app-sola-comp-tips  { font-size: 12px !important; }

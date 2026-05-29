@@ -5,6 +5,99 @@
 
 ## [Unreleased]
 
+### Changed (v2 머지 준비 — persona_page 셸 통일 + 미배선 탭 정직화 + README)
+- `ui/persona_page.py` — v2 글로벌 셸 적용. `render()` 가 `app_shell.render_topbar` + `render_app_side` + `render_setup_banner_if_needed` 로 감싸 다른 5 화면과 시각 통일. 폼 본문은 실 Streamlit 위젯(편집 입력 필요) 유지. `active_area=""` 로 5-nav 강조 없음. `_archive_stats()` 헬퍼 추가 (app-side 통계).
+- `assets/v2/screens/data_management_main.html` — 미배선 탭 3개(키워드/내부 로드맵/출처 설정) `disabled` + title "B.5 PR", 카운트 "B.5 PR" 로 정직화. 활성 탭(수집잡·뉴스 라이브러리)만 클릭 가능.
+- `assets/v2/screens/board_main.html` + `board.css` — 트렌드 "월별" 탭 + 탑스토리 "강한 매칭"/"출처별" 필터를 `db-tab-soon` (opacity 0.4 + line-through + cursor not-allowed) + title 로 정직화. 하드코딩 카운트("전체 32" 등) 제거.
+- `README.md` — UI 설명을 v1 (`ui/<name>_tab.py`) → v2 셸 구조 (`ui/<name>_v2.py` + `assets/v2/screens/` 템플릿 + `?app_area&from=` 인계 패턴) 로 갱신.
+
+### Added (v2 — archive "수정" → SOLA 인계 + SOLA 미배선 요소 정직화)
+- `ui/archive_v2.py::_edit_handoff_href` — 칸반 1순위 카드 "수정" 버튼 (`<button disabled>` → `<a href="?app_area=🤖+SOLA+작업실&from=edit&bm_id=&title=">`). bm_id + title 을 stateless URL 로 SOLA 작업실에 인계.
+- `ui/sola_workshop_v2.py` — `_HANDOFF_LABELS` 에 `edit` 추가, handoff banner + `_composer_prefill` 이 `?from=edit&title=` 처리 ("기존 제안서 '…' 를 이어서 수정… 검토하고 개선할 점 제안" prefill + 📦 기존 제안서 pin).
+- `assets/v2/screens/sola_main.html` — 미배선 요소 정직화: "새 스레드" 버튼 `disabled` + title "B.4 PR", "스레드 검색" input `disabled` + placeholder "(B.4 PR)", thread list 상단에 노란 미리보기 노트 ("스레드 목록은 시안 미리보기 — 영구화·검색은 B.4 PR").
+- `docs/INVARIANTS.md::I-16` — `edit` from kind + 1회-소비 액션 패턴 (`?action=` / `?refresh=now`) 문서화.
+- `tests/test_v2_screens.py` (+2) — `_edit_handoff_href` URL 검증, `_composer_prefill` edit 케이스.
+
+### Added (v2 — 중간 작업: archive 카드 액션 + 데이터 관리 refresh + 회귀 테스트)
+- `ui/archive_v2.py::_archive_action_href`, `_consume_action_if_any` 신규 — 칸반 카드 위 "채택"/"기각"/"되돌리기" 버튼이 `<button disabled>` → `<a href="?action=adopt|reject|restore&bm_id=...">` 로 wire. `render()` 첫 단계에서 query 1회 소비 → `bookmarks_store.set_status` 호출 + 캐시 invalidate + query strip (재실행 방지). 채택/기각 컬럼 1순위 카드에도 "↶ 대기로 되돌리기" CTA 추가.
+- `ui/data_management_v2.py::_refresh_cta_html`, `_consume_refresh_if_any`, `_render_refresh_toast_if_needed` 신규 — "지금 실행" 정적 버튼 → `<a href="?refresh=now">지금 새로고침</a>`. 클릭 시 모든 dm 캐시(`_dm_stats`/`_ingest_jobs_html`/`_hist_html`/`_news_cards_html`/`_archive_stats_dm`) invalidate + 녹색 inline toast "✓ 캐시를 새로 그렸어요 (실제 수집은 06:00 KST 스케줄러)". `body:has(.db-topbar)` scoped. 또한 `render_setup_banner_if_needed` 호출 누락 보완.
+- `assets/v2/screens/data_management_main.html` — 정적 "지금 실행" 버튼 → `{{INGEST_REFRESH_CTA}}` placeholder, "스케줄" 버튼 `disabled` + title "다음 PR".
+- `assets/v2/screens/archive.css`, `data_management.css` — `.oa-act{,-good,-warn}` / `.dm-btn-primary` 의 `<a>` 변형용 text-decoration · :visited 회복 (I-19 패턴 적용).
+- `tests/test_v2_screens.py` (+6) — `_archive_action_href` URL 빌더, `_consume_action_if_any` happy/noop/unknown, `_consume_refresh_if_any` 캐시 clear + toast, board matrix 라벨 ellipsis, MATRIX_DEPT_COLORS 공유 dict 검증.
+
+### Changed (v2 — 마무리: 차트 callout clamp · dept 색 공유 · v1 4모듈 -1366줄)
+- `ui/insights_v2.py::_ia_chart_parts` — callout box 좌표를 viewBox 540×230 안으로 clamp: x = `max(0, min(cx - 39, 540 - 78))`, y = 점 위 우선 (`cy - 32`) 또는 점이 너무 높으면 점 아래 (`cy + 10`). 마지막 점이 우측 끝일 때 box 가 잘리던 회귀 해결.
+- `ui/board_v2.py` + `ui/insights_v2.py` — 매트릭스 라벨 cap 14 → 12자 + ellipsis(`…`). `_IA_MATRIX_COLORS_BY_DEPT` 제거하고 `board_v2.MATRIX_DEPT_COLORS` / `MATRIX_DEPT_FALLBACK` 공유. 두 매트릭스의 dept 색상 단일 진실.
+- `assets/v2/screens/board_main.html` — "음성으로 듣기 · 3:42" → "음성으로 듣기 · 준비 중" + `disabled` + title "TTS 미구현 — 다음 PR". 정적 가짜 시간 라벨 제거.
+- `docs/INVARIANTS.md` — I-16 (handoff URL `?from=...` 단일 진입점), I-17 (sticky banner stacking 규칙), I-18 (MATRIX_DEPT_COLORS 공유), I-19 (`<a>` CTA CSS 회복 3-rule) 4건 추가.
+- **v1 데드코드 1366줄 제거** — `ui/board_tab.py` (-645), `ui/home_tab.py` (-603), `ui/sola_tab.py` (-312), `ui/bookmarks_tab.py` (-206) + 대응 테스트 3개 (`test_board_flow.py`, `test_home_trend_widget.py`, `test_sola_workspace.py`) 제거. v2 에 동등 기능이 모두 있고 외부 참조 0건 확인. `data_health` 만 보존 (테스트 + 유틸로 미래 활용 가능).
+- `app.py` — 4개 noqa 임포트 제거. 남은 v1 모듈은 `data_health` 1개.
+
+### Added (v2 — A.7 후속 + A.4 ⌘K 모달 wire + CTA 스타일 회복)
+- `ui/sola_workshop_v2.py::_composer_prefill()` 신규 — `?from=brief/opp/matrix/ia_map` 에 따라 textarea 자동 prefill + placeholder + pins 마크업 생성. brief 는 session_state 3건 제목, 나머지는 URL dept · lv3 로 작성된 한국어 초안 (제안서 / 비교 분석).
+- `assets/v2/screens/sola_main.html` — composer 정적 `<textarea rows="1">` + 가짜 pins → `{{COMPOSER_PINS}}` / `{{COMPOSER_PLACEHOLDER}}` / `{{COMPOSER_PREFILL}}` 3 placeholder. rows=3 으로 prefill 표시 영역 확장.
+- `ui/sola_workshop_v2.py::_render_brief_handoff_banner_if_needed` — sticky top 을 stacked 로 변경: 단독 시 76px, LLM banner 동시 노출 시 132px (`body:has(.app-llm-banner)` 분기).
+- `app.py` — `app_shell.render_command_palette()` 호출 추가. v2 셸의 topbar 검색창 라벨이 모달을 토글. 5-nav + 페르소나 편집 6 row 노출, 각 row 는 `?app_area=` 링크.
+- `assets/v2/shell.css` — `<a class="db-hdr-search">` 전환 후 새 자식 `db-hdr-search-ph` (placeholder text) + `db-hdr-search-kbd` (⌘K 키캡) 스타일 추가. text-decoration 제거.
+- `assets/v2/screens/board.css` — `.db-prop-discuss` / `.db-mx-cta` / `.db-act` / `.db-act-primary` 의 `<a>` 변형용 `text-decoration: none` + `:visited` 색상 회복 (button → a 전환 시 시각 회귀 방어).
+- `assets/v2/screens/insights.css` — `.ia-pc-detail` 동일 `<a>` 보강.
+- `tests/test_v2_screens.py` — composer prefill 6 케이스 (default / opp / matrix / ia_map / brief with items / brief without items) + ⌘K 팔레트 렌더 검증 (5-nav + 페르소나 row + checkbox/backdrop/modal 마크업 존재). +7 tests.
+
+### Added (v2 — A.7 확장: 4 CTA 모두 SOLA 작업실로 라우팅 통일)
+- `ui/board_v2.py::_sola_handoff_href(from_kind, **payload)` 신규 헬퍼 — `?app_area=🤖+SOLA+작업실&from=<kind>&dept=X&lv3=Y` URL 빌더. payload 자동 quote, 빈값 생략. `_brief_html` 도 헬퍼 사용으로 통일.
+- `ui/board_v2.py::_opp_card_html` — `<button class="db-prop-discuss" disabled>SOLA와 검토</button>` → `<a href="?...from=opp&dept=X&lv3=Y">SOLA와 검토 →</a>`. 카드 4개 모두 dept/lv3 인계.
+- `ui/board_v2.py::_board_matrix_html` — detail aside `<button class="db-mx-cta" disabled>` → `<a href="?...from=matrix&dept=X&lv3=Y">`. 1위 cell 자동 인계.
+- `ui/insights_v2.py::_ia_process_map_html` — 3 카드 `<button class="ia-pc-detail" disabled>상세 →</button>` → `<a href="?...from=ia_map&dept=X&lv3=Y">`. 각 cell 별 별도 인계.
+- `ui/sola_workshop_v2.py::_render_brief_handoff_banner_if_needed` 일반화 — 4 from kind (brief/opp/matrix/ia_map) 모두 처리. brief 는 session_state 3건 제목, 나머지는 URL query 의 dept · lv3. `_HANDOFF_LABELS` 테이블로 라벨/sub 관리.
+- `tests/test_v2_screens.py` — +4 tests (handoff URL 빌더, opp/matrix/ia_map CTA 검증). 총 13 v2 tests / 210 total.
+
+### Added (v2 — A.7: 보드 ② SOLA 브리핑 → SOLA 작업실 라우팅)
+- `assets/v2/screens/board_main.html` — "이 3건으로 제안서 만들기" `<button>` (정적) → `{{BRIEF_CTA}}` placeholder. `_brief_html()` 이 `<a href="?app_area=🤖+SOLA+작업실&from=brief">` 동적 생성. 빈 데이터 시 CTA 도 빈 문자열.
+- `ui/board_v2.py::_brief_html` — items 를 `st.session_state["_board_brief_items"]` 에 저장(다음 area 에서 소비). 빈 데이터 시 키 삭제로 stale 인계 방지.
+- `ui/sola_workshop_v2.py::_render_brief_handoff_banner_if_needed` 신규 — `?from=brief` 일 때만 sticky 파란 banner 렌더 ("📊 보드 브리핑에서 인계됨 — N건의 뉴스를 컨텍스트로 사용") + 3 제목 ol 노출. 실제 LLM 입력 와이어는 후속 PR.
+- `ui/sola_workshop_v2.py::render` — `render_setup_banner_if_needed()` + `_render_brief_handoff_banner_if_needed()` 호출.
+- `tests/test_v2_screens.py` — A.7 라우팅 테스트 1건 추가 (cta href / session_state 인계 검증).
+
+### Added (v2 — 회귀 베이크 + v1 데드코드 925줄 제거)
+- `tests/test_v2_screens.py` 신규 (+8 tests) — 보드/인사이트 9개 placeholder helper 의 ① 빈 데이터 friendly empty 검증 + ② 합성 데이터 시안 클래스 보존 검증 (`db-mx-bubble`, `ia-pcard-top`, `★ 최적 매칭`, callout pill `▲/▼` 등). Streamlit runtime 의존 없이 helper 단위 회귀 방어.
+- `ui/ingest_tab.py` (-284), `ui/news_tab.py` (-121), `ui/proposal_workbench.py` (-364), `ui/roadmap_tab.py` (-156) 삭제 — 총 -925줄. 외부 참조 0건 (app.py 의 noqa 임포트 외) 확인 후 제거.
+- `app.py` — 위 4 모듈의 `# noqa: F401` 임포트 제거. 남은 v1 모듈(board_tab/bookmarks_tab/data_health/home_tab/sola_tab)은 테스트가 직접 import 하므로 보존 + noqa 사유를 "테스트 의존" 으로 갱신.
+- `sola/refine.py` — `build_refine_messages` docstring 의 stale `ui/proposal_workbench.py` 호출자 언급 제거.
+
+### Added (v2 인사이트 — 트렌드 → 공정 매핑 3 카드 + LLM 미설정 전역 banner)
+- `ui/insights_v2.py::_ia_process_map_html` (cached) — SECTION A 우측 `.ia-map` 빌더. from chip = top trending kw (`_weekly_keyword_series(5)` 1순위), 카드 3개 = `_score_cells.head(3)`. fit% = cell_score/max × 36 + 60 (60~96 범위), 현재 = sample_tasks 첫 항목 fallback, 신호 = sample_news 첫 헤드라인 fallback. 1위는 `ia-pcard-top` 강조 + ★ 최적 매칭 라벨. 상단 메타 = 매칭 개수 · 평균 적합도 · 매칭 뉴스 합.
+- `assets/v2/screens/insights_main.html` — `.ia-map` 하드코딩 ~115줄 → `{{IA_PROCESS_MAP}}` placeholder.
+- `ui/app_shell.py::render_setup_banner_if_needed` 신규 — `llm_ready()=False` 일 때 본문 상단 sticky 노란 banner ('LLM 미설정 · 백엔드 X · 키 없음 — 미리보기만'). 설정 시 no-op. `body:has(.db-topbar)` scoped CSS 라 v1 화면 영향 없음.
+- `ui/board_v2.py` / `ui/insights_v2.py::render()` — `render_app_side()` 직후 `app_shell.render_setup_banner_if_needed()` 호출.
+
+### Added (v2 인사이트 — 트렌드 차트 + 기회 매트릭스 실데이터)
+- `ui/insights_v2.py::_ia_chart_parts` (cached) — 5주 × top-5 키워드 라인 차트. 보드의 `_weekly_keyword_series(5)` + `_delta_pct` 재사용. 1순위는 gradient fill + 큰 marker + callout box ('비전 검사 12건 · +162%'), 2-3순위는 컬러 라인 + 점, 4-5순위는 mute. Y label 동적 nice round, X label 'W−4..이번주', vertical highlight 마지막 컬럼. Legend / pill 동시 생성.
+- `ui/insights_v2.py::_ia_matrix_svg` (cached) — 600×420 viewBox, score_cells head(8) → 좌상단 = PoC 후보 (쉽고 효과 큰). x = 40+(1−ease)·520 · y = 20+(1−effect)·360 · r = 14+score·22. dept 별 5색 팔레트 (도장/용접/의장/조립/절단), 1위 cell halo dasharray.
+- `assets/v2/screens/insights_main.html` — 트렌드 차트 SVG(~75줄) → `{{IA_CHART_SVG}}` + `{{IA_CHART_LEGEND}}` + `{{IA_CHART_PILL}}` / 매트릭스 SVG(~115줄) → `{{IA_MATRIX_SVG}}` placeholder.
+- 빈 상태: 두 차트 모두 안내 카드 (min-height 유지하여 레이아웃 흔들림 방지).
+
+### Added (v2 보드 — ⑦ 내 키워드 관리 실데이터)
+- `ui/board_v2.py::_board_kw_mgr_html(persona)` — Group 1 (SOLA 자동 추출 top-6) + Group 2 (페르소나 `interest_tasks` + `interest_lv3` 최대 4) 동적 chip 리스트. Group 1 tier dot 은 빈도 비율(0.5↑ good / 0.2↑ mid / 그 외 low). Group 2 hits 는 title/summary/keywords 등 30d 본문 substring count. Summary = 키워드 총 개수 + 30일 평균 일별 수집량 + 출처 수.
+- `assets/v2/screens/board_main.html` — 키워드 관리 ⑦ 하드코딩 chip + summary(~85줄) → `{{BOARD_KW_MGR}}` placeholder.
+
+### Added (v2 보드 — 기회 매트릭스 ROI×난이도 산점도 실데이터)
+- `ui/board_v2.py::_board_matrix_html` 신규 — `sola.opportunity.score_cells` 상위 6개를 ROI(matched_news) × 난이도(matched_tasks) 평면에 매핑. top% = 90 − roi_norm·78, left% = 10 + ease_norm·80, 버블 크기 14~32px. 우상단 quadrant(쉬움+ROI높음) → `db-mx-strong` 토글, 좌하단 → `db-mx-soft`. detail panel 은 1위 cell (종합점수·매칭뉴스·매칭작업 + 1줄 why).
+- `assets/v2/screens/board_main.html` — 매트릭스 섹션 ⑥ 의 하드코딩 버블 6개 + detail aside(~65줄) → `{{BOARD_MATRIX}}` placeholder.
+
+### Added (v2 보드 — 트렌드 차트 + 키워드 리스트 실데이터)
+- `ui/board_v2.py::_weekly_keyword_series`, `_board_trend`, `_board_trend_block_html` 신규 — `news_db.load_news_for_days(56)` → top-6 키워드 추출 → 8주차 버킷별 출현 빈도 집계 → SVG `<path>` 4 series + 6-row 키워드 리스트(스파크라인 포함) 동적 생성. Y-축 라벨은 데이터 max 의 1.25× 5단위 nice round, 어노테이션은 첫 1/3 vs 마지막 1/3 평균 변화율(`_delta_pct`) 최대값 키워드.
+- `assets/v2/screens/board_main.html` — 트렌드 섹션 ⑤ 의 하드코딩 차트(SVG + 6 li, ~108줄)를 `{{BOARD_TREND}}` 단일 placeholder 로 치환.
+- 빈 상태: 데이터 부족 시 "30일 이상 수집 후 표시" 안내 카드로 대체.
+
+### Added (v2 디자인 시스템 — InsightBoard 핸드오프 Phase 0+1)
+- `assets/v2/tokens.css`, `assets/v2/card.css`, `assets/v2/shell.css`, `assets/v2/streamlit-overrides.css` — Azure 라이트 테마 디자인 토큰 + 공유 컴포넌트(.app-side / .app-sola / .db-topbar) + Streamlit 크롬 무력화. 셸 활성 분기는 `body:has(.db-topbar)` 로 화면별 점진 마이그레이션.
+- `static/fonts/PretendardVariable.woff2`, `static/fonts/JetBrainsMono.woff2` + `.streamlit/config.toml [server] enableStaticServing = true` — CDN 의존 제거, 사내망/오프라인 환경에서 폰트 깨짐 방지.
+- `ui/app_shell.py` 신규 — 모든 v2 화면이 공유할 글로벌 크롬 3종 헬퍼: `render_topbar(page_title, eyebrow_current, refresh_label, fresh_kind)`, `render_app_side(active_area, persona, stats)`, `render_app_sola(context_label, quick_prompts, last_q, last_a_html, ...)`. 인터랙션은 후속 PR (disabled 상태로 시각만 완성).
+- `ui/board_v2.py` + `assets/v2/screens/board_main.html`, `assets/v2/screens/board.css` — 오늘의 보드 v2 풀 셸 적용. 헤더·좌측 네비·우측 SOLA·7섹션(인사·SOLA 브리핑·탑 스토리·자동화 기회·트렌드·매트릭스·키워드) 마크업/스타일 완성. 페르소나 이름·갱신 시각만 동적 치환.
+- `app.py` 의 `📊 오늘의 보드` 분기를 `home_tab.render()` → `board_v2.render()` 로 교체. `home_tab` 은 롤백용 보존(`# noqa: F401`).
+- `ui/styles.py::inject_global_styles()` — v2 CSS 4개 파일을 `tokens → card → shell → streamlit-overrides` 순으로 로드 후 legacy `assets/styles.css` 를 마지막에 inject (v1 화면 호환 유지).
+- `.streamlit/config.toml [theme]` — primaryColor/backgroundColor 를 v2 토큰(#2563EB / #F3F5F8 / #0F172A) 으로 맞춤.
+
 ### Added (LLM 미설정 — 입력 컨텍스트 미리보기)
 - `sola/preview.py` 신규 — `format_messages_preview(messages, *, header, footer_hint)` 헬퍼. system/user/assistant 역할별로 코드블록(`text`)에 본문을 그대로 보존해 마크다운 렌더에 안전.
 - `sola/summarize.py::summarize_news`, `sola/propose.py::propose_for_task`, `sola/insight.py::insight_for_dept` — LLM 미설정 시 빈 에러 메시지 대신 호출에 사용될 입력 messages 를 그대로 노출. 캐시에 미리보기는 저장하지 않음 (키 세팅 후 재호출하면 실제 응답으로 대체).

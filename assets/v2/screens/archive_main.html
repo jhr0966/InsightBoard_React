@@ -1,0 +1,475 @@
+<div class="oa-shell">
+<header class="oa-head">
+        <div class="oa-head-l">
+          <div class="oa-bc">
+            <span>워크플로</span>
+            <span class="oa-bc-sep">›</span>
+            <span class="oa-bc-cur">산출물 보관함</span>
+          </div>
+          <h1 class="oa-title">산출물 보관함 <span class="oa-title-sub">제안서 · 브리핑 · 분석 보고서</span></h1>
+          <p class="oa-desc">
+            SOLA 와 함께 만든 모든 산출물의 사후 관리실. <b>대기 → 채택 → 적용</b> 흐름을
+            추적하고, 채택된 결과물은 다음 분석 컨텍스트로 자동 사용됩니다.
+          </p>
+        </div>
+        <div class="oa-head-stats">
+          <div class="oa-stat">
+            <div class="oa-stat-v">{{OA_TOTAL}}</div>
+            <div class="oa-stat-k">총 산출물</div>
+            <div class="oa-stat-d">전체</div>
+          </div>
+          <div class="oa-stat-sep"></div>
+          <div class="oa-stat">
+            <div class="oa-stat-v oa-good">{{OA_ADOPTED}}</div>
+            <div class="oa-stat-k">채택</div>
+            <div class="oa-stat-d">{{OA_ADOPTED_PCT}}</div>
+          </div>
+          <div class="oa-stat-sep"></div>
+          <div class="oa-stat">
+            <div class="oa-stat-v oa-info">{{OA_PENDING}}</div>
+            <div class="oa-stat-k">대기</div>
+            <div class="oa-stat-d">검토 대기</div>
+          </div>
+          <div class="oa-stat-sep"></div>
+          <div class="oa-stat">
+            <div class="oa-stat-v oa-warn">{{OA_REJECTED}}</div>
+            <div class="oa-stat-k">기각</div>
+            <div class="oa-stat-d">사유 기록</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ════════════════════════════════════════════════════
+            CONTROL STRIP
+           ════════════════════════════════════════════════════ -->
+      <div class="oa-controls">
+        <div class="oa-ctl-l">
+          <div class="oa-seg">
+            <button class="oa-seg-i oa-seg-i-active">
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='18' rx='1'/><rect x='14' y='3' width='7' height='11' rx='1'/></svg>" width="11" height="11" alt="" />
+              칸반
+            </button>
+            <button class="oa-seg-i">
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>" width="11" height="11" alt="" />
+              리스트
+            </button>
+            <button class="oa-seg-i">
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>" width="11" height="11" alt="" />
+              타임라인
+            </button>
+          </div>
+          <div class="oa-ctl-sep"></div>
+          <div class="oa-search">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/></svg>" width="13" height="13" alt="" />
+            <input placeholder="제목 · 키워드로 검색">
+          </div>
+          <div class="oa-fil-chips">
+            <span class="oa-fc oa-fc-on">전체 45</span>
+            <span class="oa-fc">제안서 32</span>
+            <span class="oa-fc">브리핑 8</span>
+            <span class="oa-fc">보고서 5</span>
+          </div>
+        </div>
+        <div class="oa-ctl-r">
+          <button class="oa-btn-ghost">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><line x1='4' y1='21' x2='4' y2='14'/><line x1='4' y1='10' x2='4' y2='3'/><line x1='12' y1='21' x2='12' y2='12'/><line x1='12' y1='8' x2='12' y2='3'/><line x1='20' y1='21' x2='20' y2='16'/><line x1='20' y1='12' x2='20' y2='3'/><line x1='1' y1='14' x2='7' y2='14'/><line x1='9' y1='8' x2='15' y2='8'/><line x1='17' y1='16' x2='23' y2='16'/></svg>" width="11" height="11" alt="" />
+            필터
+            <span class="oa-btn-cnt">3</span>
+          </button>
+          <button class="oa-btn-ghost">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/></svg>" width="11" height="11" alt="" />
+            묶음 내보내기
+          </button>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════
+            KANBAN BOARD
+           ════════════════════════════════════════════════════ -->
+      <section class="oa-board">
+
+        <!-- ────────── COLUMN 1 · 대기 ────────── -->
+        <div class="oa-col" id="pending">
+          <div class="oa-col-head">
+            <div class="oa-col-head-l">
+              <span class="oa-col-dot" style="background:#0369A1;"></span>
+              <h3 class="oa-col-t">대기</h3>
+              <span class="oa-col-cnt">{{OA_PENDING}}</span>
+            </div>
+            <button class="oa-col-add">+ 새로 만들기</button>
+          </div>
+          <div class="oa-col-meta">SOLA가 만든 초안 · 검토 대기 중</div>
+
+          <div class="oa-cards">
+            {{OA_CARDS_PENDING}}
+          </div>
+        </div>
+
+        <!-- ────────── COLUMN 2 · 채택 ────────── -->
+        <div class="oa-col oa-col-good">
+          <div class="oa-col-head">
+            <div class="oa-col-head-l">
+              <span class="oa-col-dot" style="background:#15803D;"></span>
+              <h3 class="oa-col-t">채택</h3>
+              <span class="oa-col-cnt">{{OA_ADOPTED}}</span>
+            </div>
+            <span class="oa-col-trend">
+              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='23 6 13.5 15.5 8.5 10.5 1 18'/><polyline points='17 6 23 6 23 12'/></svg>" width="10" height="10" alt="" />
+              +6 (전월 대비)
+            </span>
+          </div>
+          <div class="oa-col-meta">의사결정 완료 · SOLA 컨텍스트 자동 첨부</div>
+
+          <div class="oa-cards">
+            {{OA_CARDS_ADOPTED}}
+          </div>
+        </div>
+
+        <!-- ────────── COLUMN 3 · 기각 ────────── -->
+        <div class="oa-col oa-col-warn">
+          <div class="oa-col-head">
+            <div class="oa-col-head-l">
+              <span class="oa-col-dot" style="background:#B45309;"></span>
+              <h3 class="oa-col-t">기각</h3>
+              <span class="oa-col-cnt">{{OA_REJECTED}}</span>
+            </div>
+          </div>
+          <div class="oa-col-meta">사유와 함께 보관 · 향후 참고</div>
+
+          <div class="oa-cards">
+            {{OA_CARDS_REJECTED}}
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════
+            BOTTOM · DETAIL LIST + PREVIEW PANEL
+           ════════════════════════════════════════════════════ -->
+      <section class="oa-bottom">
+
+        <!-- ── Filter strip for the list ── -->
+        <div class="oa-listbar">
+          <div class="oa-listbar-l">
+            <h2 class="oa-list-t">전체 산출물 <span class="oa-list-cnt">45건</span></h2>
+            <span class="oa-listbar-sub">선택한 1건의 미리보기가 우측에 표시됩니다</span>
+          </div>
+          <div class="oa-listbar-r">
+            <span class="oa-bulk">
+              <input type="checkbox" id="oab" checked>
+              <label for="oab">3건 선택됨</label>
+            </span>
+            <button class="oa-bulk-act">일괄 채택</button>
+            <button class="oa-bulk-act oa-bulk-act-warn">일괄 기각</button>
+            <button class="oa-bulk-act">내보내기</button>
+          </div>
+        </div>
+
+        <!-- ── Split: list + preview ── -->
+        <div class="oa-detail-grid">
+
+          <!-- List table -->
+          <div class="oa-list">
+            <div class="oa-list-head">
+              <span class="oa-lh-cb"><input type="checkbox"></span>
+              <span class="oa-lh-t">제목</span>
+              <span class="oa-lh-type">종류</span>
+              <span class="oa-lh-src">출처 / 인용</span>
+              <span class="oa-lh-d">작성일</span>
+              <span class="oa-lh-st">상태</span>
+              <span class="oa-lh-act"></span>
+            </div>
+
+            <ul class="oa-list-body">
+              <li class="oa-row oa-row-sel">
+                <span class="oa-r-cb"><input type="checkbox" checked></span>
+                <div class="oa-r-t">
+                  <div class="oa-r-name">도장 부스 #3 비전 검사 PoC 제안서</div>
+                  <div class="oa-r-id">PRO-2026-041 · 의장설계팀</div>
+                </div>
+                <span class="oa-r-type"><span class="oa-tag oa-tag-prop">제안서</span></span>
+                <div class="oa-r-src">
+                  <span class="oa-src-stack">
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#DC2626,#F87171);"></span>
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#D97706,#F59E0B);"></span>
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#047857,#14B8A6);"></span>
+                  </span>
+                  <span class="oa-r-cite"><b>8</b>건 인용</span>
+                </div>
+                <span class="oa-r-d">05.22 · 2h</span>
+                <span class="oa-r-st"><span class="oa-st-pill oa-st-pend">대기</span></span>
+                <span class="oa-r-act">
+                  <button class="oa-r-ic">⋯</button>
+                </span>
+              </li>
+
+              <li class="oa-row">
+                <span class="oa-r-cb"><input type="checkbox" checked></span>
+                <div class="oa-r-t">
+                  <div class="oa-r-name">용접 비드 전수검사 시스템 도입안</div>
+                  <div class="oa-r-id">PRO-2026-040 · 의장설계팀</div>
+                </div>
+                <span class="oa-r-type"><span class="oa-tag oa-tag-prop">제안서</span></span>
+                <div class="oa-r-src">
+                  <span class="oa-src-stack">
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#D97706,#F59E0B);"></span>
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#6D28D9,#A78BFA);"></span>
+                  </span>
+                  <span class="oa-r-cite"><b>5</b>건 인용</span>
+                </div>
+                <span class="oa-r-d">05.22 · 5h</span>
+                <span class="oa-r-st"><span class="oa-st-pill oa-st-pend">대기</span></span>
+                <span class="oa-r-act">
+                  <button class="oa-r-ic">⋯</button>
+                </span>
+              </li>
+
+              <li class="oa-row">
+                <span class="oa-r-cb"><input type="checkbox" checked></span>
+                <div class="oa-r-t">
+                  <div class="oa-r-name">예지보전 컴프레서 14대 진단 결과</div>
+                  <div class="oa-r-id">BRF-2026-018 · 정비팀</div>
+                </div>
+                <span class="oa-r-type"><span class="oa-tag oa-tag-brief">브리핑</span></span>
+                <div class="oa-r-src">
+                  <span class="oa-src-stack">
+                    <span class="oa-src-d" style="background:#94A3B8;"></span>
+                  </span>
+                  <span class="oa-r-cite">사내 IoT</span>
+                </div>
+                <span class="oa-r-d">05.21</span>
+                <span class="oa-r-st"><span class="oa-st-pill oa-st-pend">대기</span></span>
+                <span class="oa-r-act">
+                  <button class="oa-r-ic">⋯</button>
+                </span>
+              </li>
+
+              <li class="oa-row">
+                <span class="oa-r-cb"><input type="checkbox"></span>
+                <div class="oa-r-t">
+                  <div class="oa-r-name">도장 비전검사 PoC 부스 #5 확장 (실적)</div>
+                  <div class="oa-r-id">PRO-2026-035 · 의장설계팀</div>
+                </div>
+                <span class="oa-r-type"><span class="oa-tag oa-tag-prop">제안서</span></span>
+                <div class="oa-r-src">
+                  <span class="oa-src-stack">
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#DC2626,#F87171);"></span>
+                  </span>
+                  <span class="oa-r-cite"><b>12</b>건 인용</span>
+                </div>
+                <span class="oa-r-d">04.08</span>
+                <span class="oa-r-st"><span class="oa-st-pill oa-st-good">채택</span></span>
+                <span class="oa-r-act">
+                  <button class="oa-r-ic">⋯</button>
+                </span>
+              </li>
+
+              <li class="oa-row">
+                <span class="oa-r-cb"><input type="checkbox"></span>
+                <div class="oa-r-t">
+                  <div class="oa-r-name">의장 부품 자동 인식 본격 도입안</div>
+                  <div class="oa-r-id">PRO-2026-031 · 의장설계팀</div>
+                </div>
+                <span class="oa-r-type"><span class="oa-tag oa-tag-prop">제안서</span></span>
+                <div class="oa-r-src">
+                  <span class="oa-src-stack">
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#047857,#14B8A6);"></span>
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#DC2626,#F87171);"></span>
+                  </span>
+                  <span class="oa-r-cite"><b>6</b>건 인용</span>
+                </div>
+                <span class="oa-r-d">04.22</span>
+                <span class="oa-r-st"><span class="oa-st-pill oa-st-good">채택</span></span>
+                <span class="oa-r-act">
+                  <button class="oa-r-ic">⋯</button>
+                </span>
+              </li>
+
+              <li class="oa-row">
+                <span class="oa-r-cb"><input type="checkbox"></span>
+                <div class="oa-r-t">
+                  <div class="oa-r-name">외골격 슈트 의장 작업자 보급안</div>
+                  <div class="oa-r-id">PRO-2026-037 · 인사노무팀</div>
+                </div>
+                <span class="oa-r-type"><span class="oa-tag oa-tag-prop">제안서</span></span>
+                <div class="oa-r-src">
+                  <span class="oa-src-stack">
+                    <span class="oa-src-d" style="background:linear-gradient(135deg,#D97706,#F59E0B);"></span>
+                  </span>
+                  <span class="oa-r-cite"><b>3</b>건 인용</span>
+                </div>
+                <span class="oa-r-d">05.06</span>
+                <span class="oa-r-st"><span class="oa-st-pill oa-st-rej">기각</span></span>
+                <span class="oa-r-act">
+                  <button class="oa-r-ic">⋯</button>
+                </span>
+              </li>
+
+              <li class="oa-row">
+                <span class="oa-r-cb"><input type="checkbox"></span>
+                <div class="oa-r-t">
+                  <div class="oa-r-name">5월 자동화 트렌드 월간 분석</div>
+                  <div class="oa-r-id">RPT-2026-007 · 자동 집계</div>
+                </div>
+                <span class="oa-r-type"><span class="oa-tag oa-tag-rep">보고서</span></span>
+                <div class="oa-r-src">
+                  <span class="oa-src-stack">
+                    <span class="oa-src-d" style="background:#94A3B8;"></span>
+                  </span>
+                  <span class="oa-r-cite">자동 집계</span>
+                </div>
+                <span class="oa-r-d">05.19</span>
+                <span class="oa-r-st"><span class="oa-st-pill oa-st-pend">대기</span></span>
+                <span class="oa-r-act">
+                  <button class="oa-r-ic">⋯</button>
+                </span>
+              </li>
+            </ul>
+
+            <div class="oa-pager">
+              <span class="oa-pg-info">1–7 / 45건</span>
+              <div class="oa-pg-ctrls">
+                <button class="oa-pg oa-pg-off">‹</button>
+                <button class="oa-pg oa-pg-active">1</button>
+                <button class="oa-pg">2</button>
+                <button class="oa-pg">3</button>
+                <span class="oa-pg-dots">…</span>
+                <button class="oa-pg">7</button>
+                <button class="oa-pg">›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview panel -->
+          <aside class="oa-prev">
+            <div class="oa-prev-head">
+              <div class="oa-prev-eye">미리보기</div>
+              <h3 class="oa-prev-t">도장 부스 #3 비전 검사 PoC 제안서</h3>
+              <div class="oa-prev-meta">
+                <span class="oa-tag oa-tag-prop">제안서</span>
+                <span class="oa-prev-id">PRO-2026-041</span>
+                <span class="oa-prev-by">의장설계팀 · 2시간 전</span>
+              </div>
+            </div>
+
+            <div class="oa-prev-body">
+              <!-- Doc summary -->
+              <div class="oa-doc">
+                <div class="oa-doc-row">
+                  <span class="oa-doc-k">대상 공정</span>
+                  <span class="oa-doc-v"><b>도장 품질검사</b> · 부스 #3</span>
+                </div>
+                <div class="oa-doc-row">
+                  <span class="oa-doc-k">기술 스택</span>
+                  <span class="oa-doc-v">머신비전 + 추론박스 (Jetson Orin) + 자체 결함 분류 모델</span>
+                </div>
+                <div class="oa-doc-row">
+                  <span class="oa-doc-k">기간 / 예산</span>
+                  <span class="oa-doc-v">3개월 / <b>₩ 1.4억</b></span>
+                </div>
+                <div class="oa-doc-row">
+                  <span class="oa-doc-k">기대 효과</span>
+                  <span class="oa-doc-v oa-good"><b>−38%</b> 불량률 · 14명 → 6명/일</span>
+                </div>
+                <div class="oa-doc-row">
+                  <span class="oa-doc-k">위험 요인</span>
+                  <span class="oa-doc-v">광택 차이 영향 / 부스 조명 표준화 필요</span>
+                </div>
+              </div>
+
+              <!-- Sources -->
+              <div class="oa-prev-sec">
+                <div class="oa-prev-sec-h">근거 뉴스 · 8건</div>
+                <ul class="oa-src-list">
+                  <li>
+                    <span class="oa-src-num">1</span>
+                    <span class="oa-src-t">현대중공업, AI 비전 도장 검사로 부스 #3 불량률 38% 절감</span>
+                    <span class="oa-src-meta">AI Times · 4시간 전</span>
+                  </li>
+                  <li>
+                    <span class="oa-src-num">2</span>
+                    <span class="oa-src-t">엣지 AI 추론박스, 조선·자동차 도장 라인 확산</span>
+                    <span class="oa-src-meta">오토메이션월드 · 2일 전</span>
+                  </li>
+                  <li>
+                    <span class="oa-src-num">3</span>
+                    <span class="oa-src-t">2메가 산업용 카메라 가격 1년 만에 40% 하락</span>
+                    <span class="oa-src-meta">한국경제 · 5일 전</span>
+                  </li>
+                  <li>
+                    <span class="oa-src-num">4</span>
+                    <span class="oa-src-t">조선 도장 부스 광학 검사 표준화 논의</span>
+                    <span class="oa-src-meta">조선해양 e뉴스 · 1주 전</span>
+                  </li>
+                  <li class="oa-src-more">+ 4건 더 보기 →</li>
+                </ul>
+              </div>
+
+              <!-- Decision panel -->
+              <div class="oa-decide">
+                <div class="oa-decide-eye">결정</div>
+                <div class="oa-decide-row">
+                  <button class="oa-decide-btn oa-decide-good">
+                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>" width="13" height="13" alt="" />
+                    채택하기
+                  </button>
+                  <button class="oa-decide-btn">
+                    수정 요청
+                  </button>
+                  <button class="oa-decide-btn oa-decide-warn">
+                    기각
+                  </button>
+                </div>
+                <a class="oa-decide-link" href="sola-workshop.html">
+                  SOLA 작업실에서 열기 →
+                </a>
+              </div>
+
+              <!-- History -->
+              <div class="oa-prev-sec">
+                <div class="oa-prev-sec-h">히스토리</div>
+                <ul class="oa-hist">
+                  <li>
+                    <span class="oa-hist-d"></span>
+                    <div>
+                      <div class="oa-hist-t">초안 자동 생성</div>
+                      <div class="oa-hist-m">SOLA · 05.22 09:14</div>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="oa-hist-d"></span>
+                    <div>
+                      <div class="oa-hist-t">담당자 보강 · 광택 조건 추가</div>
+                      <div class="oa-hist-m">의장설계팀 · 05.22 11:02</div>
+                    </div>
+                  </li>
+                  <li class="oa-hist-now">
+                    <span class="oa-hist-d oa-hist-d-on"></span>
+                    <div>
+                      <div class="oa-hist-t">검토 대기</div>
+                      <div class="oa-hist-m">의사결정 필요</div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- footer with export -->
+            <div class="oa-prev-foot">
+              <button class="oa-prev-export">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/></svg>" width="11" height="11" alt="" />
+                PDF
+              </button>
+              <button class="oa-prev-export">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>" width="11" height="11" alt="" />
+                DOCX
+              </button>
+              <span class="oa-prev-foot-spacer"></span>
+              <button class="oa-prev-share">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='18' cy='5' r='3'/><circle cx='6' cy='12' r='3'/><circle cx='18' cy='19' r='3'/><line x1='8.59' y1='13.51' x2='15.42' y2='17.49'/><line x1='15.41' y1='6.51' x2='8.59' y2='10.49'/></svg>" width="11" height="11" alt="" />
+                공유
+              </button>
+            </div>
+          </aside>
+
+        </div>
+</div>
