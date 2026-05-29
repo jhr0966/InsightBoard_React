@@ -5,6 +5,44 @@
 
 ---
 
+## 2026-05-29 · A.3 — SOLA composer 실 LLM 호출 wire
+
+**브랜치:** `feat-sola-composer-llm` (main `383e8ca` 기준 rebase)
+**상태:** 구현 완료, PR 생성 예정
+
+**배경:** PR #50/#51 머지 후 main 동기화. composer prefill까지만 동작하던
+SOLA 채팅을 실제 LLM 호출까지 wire. 사용자 환경에서 Groq API 키 사용 예정.
+
+**Option α (미니멀, 채택):**
+- 단일 `chat_key="sola_main"` thread (B.4의 thread store는 별도 PR)
+- 시안 footer textarea+send는 readonly/disabled로 시각만 유지
+- 실 입력은 `st.chat_input` (화면 하단 자동 고정, 전송 버튼 내장)
+- prefill 인계 시 "이 컨텍스트로 물어보기" 버튼
+
+**변경:**
+- `assets/v2/screens/sola_main.html` — 시안 메시지 15블록 → `{{WS_MESSAGES}}`
+- `ui/sola_workshop_v2.py`:
+  - `_load_messages` / `_append_message` (chat_log roundtrip)
+  - `_build_llm_messages` (system + persona block + history)
+  - `_msg_html` (XSS escape + newline)
+  - `_render_messages_html` (empty 친화 카드 / 순서대로 렌더)
+  - `_consume_send_if_any` (pending → LLM → append → rerun, 폴백/예외 처리)
+  - `_consume_prefill_ask_if_any` (인계 버튼 → 즉시 송신)
+  - `_render_main` 에 chat_input + prefill 버튼 추가
+- `tests/test_sola_composer.py` (+16)
+
+**검증:**
+- pytest **220/220** (204 + 16 신규)
+- 금지패턴 0
+- 브라우저 캡처: 빈 상태 + opp 인계 상태 둘 다 정상 렌더
+- 실 Groq 호출은 컨테이너 정책상 차단됨 (사용자 환경에선 정상 동작)
+
+**남은 작업 (별도 PR):**
+- B.4 — SOLA thread store (좌측 24 thread + 검색)
+- 보드/인사이트 카드의 정적 시안 추가 데이터 바인딩
+
+---
+
 ## 2026-05-29 · 페르소나 온보딩 마법사 (신규 브랜치 feat-persona-onboarding)
 
 **브랜치:** `feat-persona-onboarding` (main = #50 머지 후 `8e8cd15`)
