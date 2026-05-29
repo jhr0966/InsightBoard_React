@@ -62,12 +62,42 @@ def test_build_llm_messages_includes_system_and_persona():
         {"role": "user", "content": "Q", "ts": ""},
         {"role": "assistant", "content": "A", "ts": ""},
     ]
+    import streamlit as st
+    st.session_state.pop("_chat_context_for_sola", None)
     msgs = sola_v2._build_llm_messages(persona, history)
     assert msgs[0]["role"] == "system"
     assert "SOLA" in msgs[0]["content"]
     assert "도장1팀" in msgs[0]["content"]  # persona block 주입
     assert msgs[1] == {"role": "user", "content": "Q"}
     assert msgs[2] == {"role": "assistant", "content": "A"}
+
+
+def test_build_llm_messages_includes_screen_context_when_set():
+    """_chat_context_for_sola 가 set 되어 있으면 system 메시지에 첨부."""
+    import streamlit as st
+    persona = Persona(name="홍길동", dept="도장1팀")
+    st.session_state["_chat_context_for_sola"] = (
+        "--- 현재 화면: 오늘의 보드 ---\n"
+        "오늘 KPI: 수집 125건 · 매칭 18건\n"
+        "④ 자동화 기회: 도장 · 비전 검사 (점수 95)"
+    )
+    try:
+        msgs = sola_v2._build_llm_messages(persona, [])
+    finally:
+        st.session_state.pop("_chat_context_for_sola", None)
+    sys_content = msgs[0]["content"]
+    assert "오늘의 보드" in sys_content
+    assert "비전 검사" in sys_content
+    assert "점수 95" in sys_content
+    # 페르소나 블록은 여전히 존재
+    assert "도장1팀" in sys_content
+
+
+def test_build_llm_messages_omits_screen_context_when_unset():
+    import streamlit as st
+    st.session_state.pop("_chat_context_for_sola", None)
+    msgs = sola_v2._build_llm_messages(Persona(name="홍길동", dept="도장"), [])
+    assert "현재 화면" not in msgs[0]["content"]
 
 
 def test_build_llm_messages_skips_invalid_history_entries():

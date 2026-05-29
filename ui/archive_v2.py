@@ -288,6 +288,51 @@ def _archive_stats_oa() -> dict[str, int]:
     return {"match_today": match_count, "opportunities": opp_count, "pending_adopt": pending}
 
 
+def chat_context_block(persona: Persona) -> str:
+    """산출물 보관함 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
+
+    헤더 4 stats (총/채택/대기/기각 + 채택률) + 칸반 3 컬럼 각 카드 (제목/타입/연령/태그).
+    """
+    parts: list[str] = ["--- 현재 화면: 산출물 보관함 (📦) ---"]
+    try:
+        all_items = bookmarks_store.list_all(type_="proposal")
+    except Exception:
+        all_items = []
+
+    pending = [b for b in all_items if b.status == "pending"]
+    adopted = [b for b in all_items if b.status == "adopted"]
+    rejected = [b for b in all_items if b.status == "rejected"]
+    decided = len(adopted) + len(rejected)
+    rate = f"{(len(adopted)/decided)*100:.1f}%" if decided > 0 else "—"
+
+    parts.append(
+        f"현황: 총 {len(all_items)}건 · 채택 {len(adopted)}건 · 대기 {len(pending)}건 · "
+        f"기각 {len(rejected)}건 · 채택률 {rate}"
+    )
+
+    def _kanban_section(label: str, items: list[Bookmark], limit: int = 4) -> None:
+        if not items:
+            return
+        items_sorted = sorted(items, key=lambda b: b.created_at, reverse=True)
+        parts.append(f"[{label}] {len(items)}건:")
+        for bm in items_sorted[:limit]:
+            title = (bm.title or "(제목 없음)")[:100]
+            desc = (bm.content or "").strip()[:120]
+            age = _age_label(bm.created_at)
+            tags = ", ".join((bm.tags or [])[:3])
+            parts.append(f"  - {title} ({age})")
+            if desc:
+                parts.append(f"    {desc}")
+            if tags:
+                parts.append(f"    태그: {tags}")
+
+    _kanban_section("대기", pending)
+    _kanban_section("채택", adopted)
+    _kanban_section("기각", rejected)
+
+    return "\n".join(parts)
+
+
 def render() -> None:
     """산출물 보관함 v2 — topbar + app-side + main + app-sola.
 

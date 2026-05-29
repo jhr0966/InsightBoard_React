@@ -308,9 +308,21 @@ def _append_message(role: str, content: str) -> None:
 
 
 def _build_llm_messages(persona: Persona, history: list[dict]) -> list[dict]:
-    """sola_client.chat 에 전달할 OpenAI 포맷 messages — system + history."""
-    sys_block = _SOLA_SYSTEM_PROMPT + "\n\n" + persona_ctx.system_block(persona)
-    out: list[dict] = [{"role": "system", "content": sys_block.strip()}]
+    """sola_client.chat 에 전달할 OpenAI 포맷 messages — system + 화면 컨텍스트 + history.
+
+    System 메시지 구성:
+      1. SOLA 시스템 프롬프트
+      2. 페르소나 블록 (이름/부서/직무/관심공정)
+      3. **직전에 본 화면의 콘텐츠** — `_chat_context_for_sola` 에 각 area 의
+         render() 가 저장한 텍스트 블록. 사용자가 "보고있는 화면의 어떤 것이든"
+         질문해도 LLM 이 답할 수 있도록.
+    """
+    sys_parts = [_SOLA_SYSTEM_PROMPT, persona_ctx.system_block(persona)]
+    screen_ctx = st.session_state.get("_chat_context_for_sola", "").strip()
+    if screen_ctx:
+        sys_parts.append(screen_ctx)
+    sys_block = "\n\n".join(p for p in sys_parts if p).strip()
+    out: list[dict] = [{"role": "system", "content": sys_block}]
     for m in history:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             out.append({"role": m["role"], "content": m["content"]})

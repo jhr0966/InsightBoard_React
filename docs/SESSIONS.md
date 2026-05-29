@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-05-29 · A.3 후속 — 화면 콘텐츠 자동 LLM 컨텍스트 주입 (Option 1)
+
+**브랜치:** `feat-sola-composer-llm` (PR #52 에 추가 커밋)
+
+**요청:** "사용자가 보고있는 화면에서 보이는 어떤것이든 질문하면 다 대답할 수 있어야해"
+
+**변경:**
+- 각 v2 area 모듈에 `chat_context_block(persona)` 함수 신규 — 그 화면이 보여주는 모든 데이터를 LLM-친화 텍스트로 packaging (board 7섹션·data_mgmt 4섹션·insights 4섹션·archive 칸반)
+- `app.py` — 각 area render() 직후 컨텍스트 생성 → `_chat_context_for_sola` 에 저장
+- `sola_workshop_v2._build_llm_messages` — system 블록에 화면 컨텍스트 첨부
+
+**검증:**
+- pytest **233/233** (220 + 13 신규)
+- 합성 데이터 e2e: 보드 진입 → 컨텍스트 311자 생성 → SOLA system 메시지에 "오늘 KPI: 수집 125건…⑥ 매트릭스 1위: 도장·비전 검사 점수 95" 포함 확인
+- 토큰 비용: 빈 상태 80~150자, 데이터 채워졌을 때 500~1500자 (Groq 무료 티어 충분)
+
+---
+
 ## 2026-05-29 · A.3 — SOLA composer 실 LLM 호출 wire
 
 **브랜치:** `feat-sola-composer-llm` (main `383e8ca` 기준 rebase)

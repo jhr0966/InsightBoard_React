@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (A.3 후속 — "보고있는 화면 콘텐츠" 자동 LLM 컨텍스트 주입)
+- 각 v2 area 모듈에 `chat_context_block(persona) -> str` 함수 신규: `ui/board_v2`(7섹션: KPI·브리핑·탑스토리·자동화 기회·트렌드·매트릭스·키워드), `ui/data_management_v2`(헤더 stats·14일 일별 추이·출처별 분포·뉴스 라이브러리 6), `ui/insights_v2`(헤더·트렌드 키워드·5주 series·매트릭스 8·공정 매핑), `ui/archive_v2`(헤더 stats·칸반 3컬럼 각 카드 제목/본문/연령/태그).
+- `app.py` — 각 area 의 render() 직후 그 area 의 `chat_context_block()` 호출 → `session_state["_chat_context_for_sola"]` 에 저장. SOLA 작업실 area 자체는 skip (chat history 가 이미 컨텍스트).
+- `ui/sola_workshop_v2.py::_build_llm_messages` — system 블록에 화면 컨텍스트 첨부 ("SOLA 프롬프트 + 페르소나 블록 + 직전 화면 콘텐츠"). 사용자가 "탑 스토리 1위?", "⑥ 매트릭스 뭐 있어?" 같은 질문을 해도 LLM 이 답할 수 있음.
+- 비용: 캐시된 helper 들이 같은 데이터 계산해두므로 컨텍스트 생성 비용 거의 0 (캐시 hit). 토큰량은 빈 데이터 80~150 자, 데이터 채워졌을 때 500~1500 자 (~ 1.5k 토큰, Groq 무료 티어에서 충분).
+- `tests/test_chat_context_blocks.py` (+13) — 4 area 각각의 컨텍스트가 화면 마커 + 핵심 데이터(KPI/카드/키워드/카드 본문) 포함하는지 검증. 빈 상태에서도 예외 없이 헤더 반환. `tests/test_sola_composer.py` (+2) — `_build_llm_messages` 가 컨텍스트 set 시 첨부 / unset 시 미포함.
+
 ### Added (A.3 — SOLA composer 실 LLM 호출 wire)
 - `ui/sola_workshop_v2.py` — 채팅 영역 시안 15블록(`ws-msg`)을 `{{WS_MESSAGES}}` placeholder 로 교체하고 `_render_messages_html()` 가 session/chat_log 의 실 메시지를 렌더. 첫 진입 시 `chat_log.load_history("sola_main")` 로 복원, 빈 상태에선 친화 카드("대화를 시작해보세요…").
 - 송신 wire: 시안 footer의 `<textarea>` + send 버튼은 readonly + disabled로 시각 보존만, 실제 입력은 화면 하단 자동 고정되는 `st.chat_input` 사용. 인계 컨텍스트(`?from=brief/opp/matrix/ia_map/edit`)가 있으면 composer 위에 "📨 이 컨텍스트로 SOLA에게 물어보기" 버튼이 나타나 한 번에 prefill 송신.

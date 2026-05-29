@@ -615,6 +615,86 @@ def _archive_stats_ia() -> dict[str, int]:
     return {"match_today": match_count, "opportunities": opp_count, "pending_adopt": pending}
 
 
+def chat_context_block(persona: Persona) -> str:
+    """인사이트 분석 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
+
+    트렌드 키워드 6 + 5주 차트 series + 매트릭스 cells + 공정 매핑 카드.
+    """
+    parts: list[str] = ["--- 현재 화면: 인사이트 분석 (🔎) ---"]
+
+    # 30일 뉴스 + 로드맵 — 캐시된 helper 들이 같은 데이터 씀
+    try:
+        news_30 = _news_db.load_news_for_days(days=30)
+        roadmap = _load_roadmap()
+    except Exception:
+        news_30 = None
+        roadmap = None
+
+    # 트렌드 키워드 top 6 (빈도 + emergence)
+    if news_30 is not None and not news_30.empty:
+        try:
+            top = _trends.top_keywords(news_30, top_n=6)
+            if not top.empty:
+                parts.append("트렌드 키워드 top 6 (30일 빈도):")
+                for _, r in top.iterrows():
+                    parts.append(f"  - {r['keyword']}: {int(r['count'])}건")
+        except Exception:
+            pass
+
+        # 신규 emergence 키워드 (7일 vs 이전)
+        try:
+            today_df = _news_db.load_news_for_days(days=7)
+            em = _trends.keyword_emergence(today_df, news_30, top_n=5)
+            new_kw = list(em.get("new", []).get("keyword", [])) if hasattr(em.get("new"), "get") else []
+            if new_kw:
+                parts.append(f"신규 등장 키워드 (최근 7일): {', '.join(new_kw[:5])}")
+        except Exception:
+            pass
+
+    # 5주 트렌드 차트 series (board 공유 helper)
+    try:
+        from ui.board_v2 import _weekly_keyword_series, _delta_pct
+        _labels, series = _weekly_keyword_series(weeks=5)
+        if series:
+            parts.append("5주 차트 — 키워드 변화율:")
+            for s in series[:5]:
+                d = _delta_pct(s["counts"])
+                parts.append(f"  - {s['name']}: 변화율 {'+' if d>=0 else ''}{d}%")
+    except Exception:
+        pass
+
+    # 매트릭스 8 cells
+    if news_30 is not None and not news_30.empty and roadmap is not None and not roadmap.empty:
+        try:
+            cells = _score_cells(news_30, roadmap).head(8)
+            if not cells.empty:
+                parts.append("기회 매트릭스 top 8 (효과×난이도):")
+                for _, r in cells.iterrows():
+                    parts.append(
+                        f"  - {r.get('dept','')} · {r.get('lv3','')} "
+                        f"(점수 {int(float(r.get('cell_score', 0) or 0))} · "
+                        f"매칭 뉴스 {int(r.get('matched_news', 0) or 0)}건 · "
+                        f"매칭 작업 {int(r.get('matched_tasks', 0) or 0)}건)"
+                    )
+        except Exception:
+            pass
+
+        # 공정 매핑 카드 (트렌드 → 공정)
+        try:
+            cells3 = _score_cells(news_30, roadmap).head(3)
+            if not cells3.empty:
+                parts.append("공정 매핑 카드 (top 트렌드 키워드와 매칭되는 공정 3건):")
+                for _, r in cells3.iterrows():
+                    sample_news = str(r.get("sample_news", "") or "").split(" · ")[0][:80]
+                    parts.append(f"  - {r.get('dept','')} · {r.get('lv3','')}")
+                    if sample_news:
+                        parts.append(f"    매칭 뉴스 샘플: {sample_news}")
+        except Exception:
+            pass
+
+    return "\n".join(parts)
+
+
 def render() -> None:
     """인사이트 분석 v2 — topbar + app-side + main + app-sola."""
     inject_screen_css("insights")
