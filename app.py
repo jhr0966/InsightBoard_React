@@ -14,6 +14,7 @@ import streamlit as st
 
 from config import ensure_data_dirs
 from store import bookmarks as _bookmarks_store
+from persona import store as _persona_store
 from ui import (
     app_shell,
     archive_v2,
@@ -21,6 +22,7 @@ from ui import (
     data_health,  # noqa: F401 — 테스트 의존: tests/test_data_health.py.
     data_management_v2,
     insights_v2,
+    onboarding,
     persona_page,
     sidebar,
     sola_workshop_v2,
@@ -52,6 +54,14 @@ app_shell.consume_panel_toggle()
 # v2 ⌘K 빠른 이동 팔레트 — topbar 검색창 label 로 연결되는 모달.
 # 페이지마다 1회 마운트되며 .db-topbar 가 있는 v2 셸에서만 노출.
 app_shell.render_command_palette()
+
+# 페르소나 미설정 + 미dismiss → 온보딩 마법사로 집중 (다른 화면 미렌더).
+# 명시적 편집(show_persona_editor) 중에는 마법사를 띄우지 않는다.
+_persona = st.session_state.get("persona") or _persona_store.load()
+st.session_state["persona"] = _persona
+if not st.session_state.get("show_persona_editor") and onboarding.should_show(_persona):
+    onboarding.render(_persona)
+    st.stop()
 
 if st.session_state.get("show_persona_editor"):
     persona_page.render()

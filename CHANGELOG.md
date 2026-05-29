@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (페르소나 온보딩 마법사 — 미설정 사용자 단계별 프로필 설정)
+- `ui/onboarding.py` 신규 — 페르소나 미설정 사용자에게 환영 화면 + 4단계 마법사(이름 → 부서·팀 → 직무 → 관심 공정). `should_show(persona)` (미설정 + 미dismiss) True 면 app.py 가 `render()` 후 `st.stop()` 으로 집중 온보딩. 각 단계 [이전]/[다음], 마지막 [완료], 어느 단계든 [다음에 하기].
+- 단계 전환 시 위젯 unmount → state GC 함정 방지: `_onb_data` 안정 저장소에 매 전환마다 `_snapshot_inputs()` 로 보존, 위젯은 거기서 seed. 뒤로 가도 입력 유지.
+- `persona/store.py` — `is_onboarding_dismissed` / `dismiss_onboarding` / `clear_onboarding_dismiss` (`data/persona/.onboarding_dismissed` 마커). "다음에 하기" 영구화 → 재접속 시 강제로 안 띄움. 완료 시 마커 제거.
+- `app.py` — sidebar 후 화면 분기 전에 온보딩 게이트. `show_persona_editor` 중에는 미개입.
+- v2 Azure 토큰 기반 중앙 카드 CSS (배지·진행 점·질문 헤더). 모든 인터랙션 pending flag + `st.rerun()` (on_click 0).
+- `tests/test_onboarding.py` (+9) — should_show 4분기 · dismiss 마커 roundtrip · 완료 흐름(저장 확인) · skip(dismiss 영구화) · 뒤로가기 값 보존 · 편집 중 마법사 억제.
+- `scripts/verify_browser.py` — Playwright + 사전설치 chromium(`/opt/pw-browsers`) 으로 6 화면 자동 캡처 헬퍼.
+
 ### Changed (v2 머지 준비 — persona_page 셸 통일 + 미배선 탭 정직화 + README)
 - `ui/persona_page.py` — v2 글로벌 셸 적용. `render()` 가 `app_shell.render_topbar` + `render_app_side` + `render_setup_banner_if_needed` 로 감싸 다른 5 화면과 시각 통일. 폼 본문은 실 Streamlit 위젯(편집 입력 필요) 유지. `active_area=""` 로 5-nav 강조 없음. `_archive_stats()` 헬퍼 추가 (app-side 통계).
 - `assets/v2/screens/data_management_main.html` — 미배선 탭 3개(키워드/내부 로드맵/출처 설정) `disabled` + title "B.5 PR", 카운트 "B.5 PR" 로 정직화. 활성 탭(수집잡·뉴스 라이브러리)만 클릭 가능.

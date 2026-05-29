@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-05-29 · 페르소나 온보딩 마법사 (신규 브랜치 feat-persona-onboarding)
+
+**브랜치:** `feat-persona-onboarding` (main = #50 머지 후 `8e8cd15`)
+**상태:** 구현 완료, PR 생성 예정
+
+**배경:** PR #50(v2) 머지 완료 → main 동기화. 빈 데이터 환경 첫 진입점인
+페르소나 설정을 마법사로. + 브라우저 검증 환경 구축 (`/opt/pw-browsers` 사전설치
+chromium 발견 — apt/snap/google/playwright-CDN 전부 차단됐으나 이게 동작).
+
+**변경:**
+- `ui/onboarding.py` 신규 — 환영 + 4단계(이름/부서·팀/직무/관심공정) 마법사
+- `persona/store.py` — dismiss 마커 3함수 (`.onboarding_dismissed`)
+- `app.py` — 온보딩 게이트 (`should_show` → render + st.stop)
+- 위젯 GC 함정 회피: `_onb_data` 스냅샷 (단계 전환 시 unmount 위젯 값 보존)
+- `scripts/verify_browser.py` — 6화면 자동 캡처 헬퍼 (cherry-pick)
+- `tests/test_onboarding.py` (+9)
+
+**검증:** pytest **204/204** · 금지패턴 0 · AppTest 전 흐름(완료 저장/dismiss
+영구화/뒤로가기 보존/편집중 억제) + 브라우저 welcome 스크린샷
+
+**다음:** A.3 (SOLA composer 실 LLM 호출) — `feat-sola-composer-llm` 브랜치 대기
+
+---
+
 ## 2026-05-29 · v2 메인 머지 준비 — persona 셸 통일 + 미배선 탭 정직화
 
 **브랜치:** `claude/nice-bell-eEZLj` · **PR #50** · 누적 41 커밋
