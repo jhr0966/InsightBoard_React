@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (B.4 후속 2 — SOLA thread 검색 wire)
+- `ui/sola_workshop_v2.py::_filter_threads_by_query` 신규 — 제목 substring 매칭(대소문자 무시·공백 strip·빈 query 패스스루).
+- `_render_thread_list_html(search_query="")` 시그니처 확장 — 검색 모드면 일반 그룹(★고정/오늘/어제/이번 주/이전) 우회하고 **단일 평탄 "검색 결과 N건" 그룹**으로. 0 매칭 시 친화 빈 카드 (검색어 escape 노출 + "지우면 전체로" 안내).
+- `_render_main` 에 `st.text_input(key="_sola_search_q")` 추가 — Streamlit native (시안 좌측 `<input>` 은 HTML 내부라 wire 불가, placeholder "아래 검색창에서 입력하세요"로 정직화). 검색어는 session_state 에 자동 보존, 비우면 즉시 전체 목록 복귀.
+- XSS 방어 — 검색어를 빈 결과 카드에 노출할 때 `html.escape`.
+- `tests/test_sola_thread_search.py` (+10) — 필터 (빈/매칭/대소문자/없는키워드/빈 title) · 렌더 (검색 모드 평탄 그룹 / 빈 결과 안내 / 검색어 escape / 일반 모드 그룹 유지 / 긴 검색어 cap).
+
 ### Added (B.4 후속 — 인계 새 thread 진입 + pin 토글 + 대화 삭제)
 - `ui/sola_workshop_v2.py::_consume_prefill_ask_if_any` — 보드/인사이트 CTA 인계(`?from=...`)가 기존 대화에 섞이지 않도록 **전용 새 thread 생성** 후 prefill 전송. thread 제목은 인계 종류로 시드(자동화 기회 검토 / 매트릭스 후보 검토 / 공정 매핑 분석 / 보드 브리핑 검토 / 제안서 이어서 수정).
 - 활성 thread 액션 버튼 확장 (본문 위 Streamlit, HTML 내부 클릭 불가 우회): [➕ 새 대화] · [📌 상단 고정 / 고정 해제] · [🗑 대화 삭제]. 삭제는 메시지 0 이면 즉시(빈 대화 정리), 메시지 있으면 2-click 확인(⚠️ 정말 삭제).

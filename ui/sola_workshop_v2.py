@@ -507,9 +507,27 @@ def _hhmm(iso: str) -> str:
         return ""
 
 
-def _render_thread_list_html(threads: "list[sola_threads.Thread]", active_id: str) -> str:
-    """좌측 thread list — 시안 마크업과 호환되는 ul.ws-th-list 그룹 HTML."""
-    if not threads:
+def _filter_threads_by_query(threads: "list[sola_threads.Thread]", query: str) -> "list[sola_threads.Thread]":
+    """제목에 query 가 포함된 thread 만 (대소문자 무시, 공백 strip).
+
+    빈 query 면 입력 그대로 반환.
+    """
+    q = (query or "").strip().lower()
+    if not q:
+        return threads
+    return [t for t in threads if q in (t.title or "").lower()]
+
+
+def _render_thread_list_html(threads: "list[sola_threads.Thread]", active_id: str,
+                             search_query: str = "") -> str:
+    """좌측 thread list — 시안 마크업과 호환되는 ul.ws-th-list 그룹 HTML.
+
+    Args:
+        threads: 표시할 thread 리스트 (이미 정렬됨).
+        active_id: 강조할 활성 thread id.
+        search_query: 검색어 (있으면 결과를 단일 '검색 결과 N건' 그룹으로 평탄화).
+    """
+    if not threads and not search_query.strip():
         return (
             '<div style="padding: 18px 14px; text-align: center; color: var(--text-muted);'
             ' font-size: 13px; line-height: 1.6;">'
@@ -518,7 +536,44 @@ def _render_thread_list_html(threads: "list[sola_threads.Thread]", active_id: st
             '</div>'
         )
 
-    # 그룹별 묶기 (순서: 오늘 → 어제 → 이번 주 → 이전, pinned 는 별도 그룹)
+    def _item_html(t: "sola_threads.Thread") -> str:
+        active_cls = " ws-th-active" if t.id == active_id else ""
+        time_label = _hhmm(t.updated_at or t.created_at)
+        pin_mark = " · ★ 고정" if t.pinned else ""
+        href = f"?app_area={_AREA_QUOTED}&switch_thread={t.id}"
+        return (
+            f'<li class="ws-th-item{active_cls}">'
+            f'<a class="ws-th-l" href="{href}" target="_self" style="display:flex; align-items:center; gap:10px; flex:1; text-decoration:none; color:inherit;">'
+            f'<div class="ws-th-icon"><span style="font-size:11px;">💬</span></div>'
+            f'<div>'
+            f'<div class="ws-th-name">{_html.escape(t.title or "새 대화")}</div>'
+            f'<div class="ws-th-meta">{_html.escape(time_label)} · 메시지 {int(t.message_count)}{pin_mark}</div>'
+            f'</div>'
+            f'</a>'
+            f'</li>'
+        )
+
+    parts: list[str] = []
+
+    # 검색 모드 — 단일 평탄 그룹
+    if search_query.strip():
+        filtered = _filter_threads_by_query(threads, search_query)
+        if not filtered:
+            return (
+                f'<div class="ws-th-grp">검색 결과</div>'
+                '<div style="padding: 18px 14px; text-align: center; color: var(--text-muted);'
+                ' font-size: 13px; line-height: 1.6;">'
+                f'“{_html.escape(search_query[:40])}” 와 일치하는 대화가 없어요.<br>'
+                '<span style="font-size:12px;">검색을 지우면 전체 목록으로 돌아갑니다.</span>'
+                '</div>'
+            )
+        parts.append(f'<div class="ws-th-grp">검색 결과 {len(filtered)}건</div>')
+        parts.append('<ul class="ws-th-list">')
+        parts.extend(_item_html(t) for t in filtered)
+        parts.append('</ul>')
+        return "\n".join(parts)
+
+    # 일반 모드 — 그룹별 묶기 (순서: ★고정 → 오늘 → 어제 → 이번 주 → 이전)
     groups: dict[str, list[sola_threads.Thread]] = {}
     pinned: list[sola_threads.Thread] = []
     for t in threads:
@@ -528,29 +583,12 @@ def _render_thread_list_html(threads: "list[sola_threads.Thread]", active_id: st
         g = _group_label(t.updated_at or t.created_at)
         groups.setdefault(g, []).append(t)
 
-    parts: list[str] = []
-
     def _emit_group(label: str, items: "list[sola_threads.Thread]") -> None:
         if not items:
             return
         parts.append(f'<div class="ws-th-grp">{_html.escape(label)}</div>')
         parts.append('<ul class="ws-th-list">')
-        for t in items:
-            active_cls = " ws-th-active" if t.id == active_id else ""
-            time_label = _hhmm(t.updated_at or t.created_at)
-            pin_mark = " · ★ 고정" if t.pinned else ""
-            href = f"?app_area={_AREA_QUOTED}&switch_thread={t.id}"
-            parts.append(
-                f'<li class="ws-th-item{active_cls}">'
-                f'<a class="ws-th-l" href="{href}" target="_self" style="display:flex; align-items:center; gap:10px; flex:1; text-decoration:none; color:inherit;">'
-                f'<div class="ws-th-icon"><span style="font-size:11px;">💬</span></div>'
-                f'<div>'
-                f'<div class="ws-th-name">{_html.escape(t.title or "새 대화")}</div>'
-                f'<div class="ws-th-meta">{_html.escape(time_label)} · 메시지 {int(t.message_count)}{pin_mark}</div>'
-                f'</div>'
-                f'</a>'
-                f'</li>'
-            )
+        parts.extend(_item_html(t) for t in items)
         parts.append('</ul>')
 
     if pinned:
@@ -631,10 +669,11 @@ def _render_main(persona: Persona) -> None:
     messages = _load_messages()
     messages_html = _render_messages_html(messages)
 
-    # Thread list — 활성 thread 강조 + 그룹별 묶기
+    # Thread list — 활성 thread 강조 + 그룹별 묶기 + 검색 필터
     active_th = _active_thread()
     all_threads = sola_threads.list_threads()
-    thread_list_html = _render_thread_list_html(all_threads, active_th.id)
+    search_query = st.session_state.get("_sola_search_q", "") or ""
+    thread_list_html = _render_thread_list_html(all_threads, active_th.id, search_query)
     thread_filters_html = _render_thread_filters_html(all_threads)
     # 새 스레드 버튼 — `<a href>` 로 만들면 query param 안 쓰고 Streamlit
     # button (아래) 으로 일관 처리. 자리 표시용 정적 마크업만 placeholder 에 넣고
@@ -666,6 +705,17 @@ def _render_main(persona: Persona) -> None:
         .replace("{{COMPOSER_PINS}}", pins_html)
     )
     st.html(html_out)
+
+    # ── thread 검색 (Streamlit native, 시안 input 은 시각만) ──
+    # 입력 시 session_state 에 저장 → 다음 run 의 _render_thread_list_html 에
+    # 검색 모드로 단일 그룹 평탄화. on_change 콜백 대신 위젯 key 자체가 송신원.
+    st.text_input(
+        "스레드 검색",
+        key="_sola_search_q",
+        placeholder="제목으로 검색 — 비우면 전체 목록",
+        label_visibility="collapsed",
+        help="제목으로 검색합니다. 본문 검색은 후속 PR.",
+    )
 
     # ── 활성 thread 액션 버튼 (Streamlit native) ──
     # 시안의 좌측 <button class="ws-new"> 등은 HTML 내부라 클릭 wire 불가 →

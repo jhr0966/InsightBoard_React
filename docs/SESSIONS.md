@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-05-30 · B.4 후속 2 — SOLA thread 검색 wire
+
+**브랜치:** `feat-sola-thread-search` (main `864b85c` 기준)
+
+**변경:**
+- `_filter_threads_by_query`(제목 substring·대소문자 무시·빈 query 패스스루)
+- `_render_thread_list_html(search_query="")` — 검색 모드면 단일 "검색 결과 N건"
+  평탄 그룹, 빈 결과는 친화 카드 (XSS escape)
+- `_render_main` 에 `st.text_input(key="_sola_search_q")` — 시안 input 은
+  HTML 내부라 wire 불가, Streamlit native 로 본문 위에 노출
+
+**검증:**
+- pytest **260/260** (250 + 10 신규)
+- 금지패턴 0
+- 브라우저: '도' 검색 시 "검색 결과 2건" + 도장/도료만 노출, VOC 빠짐
+- XSS — 검색어 `<script>` 입력 시 escape 확인
+
+**SOLA workshop 좌측 영역 완전 마감.** thread 영구화 + 새 대화 + 전환 +
+pin 토글 + 삭제 + 검색 모두 wire 완료. 남은 mock 요소 0.
+
+---
+
 ## 2026-05-30 · B.4 후속 — 인계 새 thread + pin 토글 + 삭제
 
 **브랜치:** `feat-sola-thread-polish` (main `47b7851` 기준)
