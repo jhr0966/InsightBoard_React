@@ -52,6 +52,32 @@
 **SOLA workshop 양 사이드(좌측 thread list + 우측 ws-ctx) 완전 마감.**
 남은 시안 mock 영역: 본문 ws-typing 효과(LLM 응답 streaming 미구현 흔적)
 정도. 다음 작업은 보드 일부 disabled 영역 또는 사용자 작업 정의 엑셀.
+## 2026-05-30 · 글로벌 SOLA 채팅 + 화면별 안내 + SOLA workshop 좌측 fix
+
+**브랜치:** `feat-global-chat` (main `bfc3fd4` 기준)
+
+**사용자 요구:**
+1. 페르소나 설정 때도 LLM 채팅창 + 페르소나 설정 관련 질문 답변
+2. SOLA 작업실 좌측 영역 문제 (app-side + ws-threads 중복)
+3. 모든 화면 진입 시 그 화면 컨텍스트 LLM 에 주입
+4. 모든 화면 진입 시 채팅창에 안내 메시지/추천 질문
+
+**변경:**
+- 신규 `ui/chat_panel.py` — area별 본문 하단 채팅 패널 (메시지 + chat_input + 안내 카드)
+- `ui/persona_page.py::chat_context_block` 추가 (4번 + 1번 요구)
+- `app.py` — chat_panel.render(area_key) 모든 area 에 wire, persona 분기에도 ctx set, consume_send_if_any 최상단 호출
+- `ui/sola_workshop_v2.py` — render_app_side() 호출 제거 (2번 요구)
+- `assets/v2/streamlit-overrides.css` — body:has(.ws-shell) padding-left 16px
+- 6 area `_AREA_INTROS` 정의 (headline + 추천 질문 3~5건)
+
+**검증:**
+- pytest **273/273** (267 + 6 신규)
+- 금지 패턴 0
+- 브라우저: 보드/SOLA workshop/페르소나 3 화면 캡처 — 좌측 겹침 해결,
+  본문 하단 채팅 패널 + 추천 질문 노출 확인
+- st.html 사용 (test_html_rendering 통과)
+
+**SOLA workshop 만 예외** (자체 풀스크린 채팅이 본문에 있음). 나머지 5 화면(보드/데이터관리/인사이트/산출물/프로필)은 모두 동일 글로벌 패널.
 
 ---
 

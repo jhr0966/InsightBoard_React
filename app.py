@@ -19,6 +19,7 @@ from ui import (
     app_shell,
     archive_v2,
     board_v2,
+    chat_panel,
     data_health,  # noqa: F401 — 테스트 의존: tests/test_data_health.py.
     data_management_v2,
     insights_v2,
@@ -58,26 +59,43 @@ app_shell.render_command_palette()
 _persona = st.session_state.get("persona") or _persona_store.load()
 st.session_state["persona"] = _persona
 
+# 글로벌 chat 전송 핸들러 — 어느 area 에서든 chat_input 으로 송신한 텍스트를
+# LLM 호출 → 응답 append → chat_log 영구화. SOLA workshop 의 _consume_send_if_any
+# 재사용 (활성 thread 의 chat_key 로 저장).
+chat_panel.consume_send_if_any(_persona)
+
 # 실제 화면을 먼저 렌더 (모달 뒤 배경이 됨).
 # 동시에 각 화면이 보여주는 데이터를 SOLA 채팅 컨텍스트로 packaging —
-# 사용자가 보드 보다가 SOLA 가서 "탑스토리 1위는?" 물어도 LLM 이 답할 수 있게.
-# SOLA 작업실 자체는 자기 화면을 컨텍스트로 안 넣음 (chat history 가 이미 컨텍스트).
+# 사용자가 어느 화면에서든 그 화면 콘텐츠에 대해 질문하면 LLM 이 답할 수 있게.
+_active_area_key: str | None = None
 if st.session_state.get("show_persona_editor"):
     persona_page.render()
+    st.session_state["_chat_context_for_sola"] = persona_page.chat_context_block(_persona)
+    _active_area_key = "프로필 설정"
 elif area == "📊 오늘의 보드":
     board_v2.render()
     st.session_state["_chat_context_for_sola"] = board_v2.chat_context_block(_persona)
+    _active_area_key = area
 elif area == "🧱 데이터 관리":
     data_management_v2.render()
     st.session_state["_chat_context_for_sola"] = data_management_v2.chat_context_block(_persona)
+    _active_area_key = area
 elif area == "🔎 인사이트 분석":
     insights_v2.render()
     st.session_state["_chat_context_for_sola"] = insights_v2.chat_context_block(_persona)
+    _active_area_key = area
 elif area == "🤖 SOLA 작업실":
     sola_workshop_v2.render()
+    _active_area_key = area  # SOLA workshop 은 자체 풀스크린 채팅 — chat_panel 미렌더
 else:
     archive_v2.render()
     st.session_state["_chat_context_for_sola"] = archive_v2.chat_context_block(_persona)
+    _active_area_key = area
+
+# 글로벌 SOLA 채팅 패널 — SOLA 작업실 area 제외한 모든 화면 본문 끝에.
+# 페르소나 미설정 + 미dismiss 환경에선 모달이 우선이라 채팅이 가려져도 OK.
+if _active_area_key and _active_area_key != "🤖 SOLA 작업실":
+    chat_panel.render(_persona, area_key=_active_area_key)
 
 # 페르소나 미설정 + 미dismiss → 배경 화면 위에 중앙 모달(+backdrop 딤) 으로 온보딩.
 # 명시적 편집(show_persona_editor) 중에는 마법사를 띄우지 않는다.

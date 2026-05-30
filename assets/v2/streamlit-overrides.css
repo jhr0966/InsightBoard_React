@@ -60,6 +60,13 @@ body.app-sola-collapsed:has(.db-topbar) [data-testid="stMain"] .block-container 
   padding-right: 80px !important;
 }
 
+/* SOLA workshop — .app-side 미렌더이므로 좌측 패딩 제거 (ws-threads 가 좌측 자리).
+   우측은 ws-ctx 가 본문 안에 있으므로 별도 처리 불필요. */
+body:has(.ws-shell) .main .block-container,
+body:has(.ws-shell) [data-testid="stMain"] .block-container {
+  padding-left: 16px !important;
+}
+
 /* Streamlit 기본 토스트 / 시스템 메시지 위치 조정 (헤더 가림 방지) */
 body:has(.db-topbar) [data-testid="stToast"] {
   top: 76px !important;
