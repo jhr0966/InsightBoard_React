@@ -12,6 +12,16 @@
 - `tests/fixtures/sample_task_def.xlsx` 추가 — 사용자 제공 샘플 (가공팀 32행, 신엑셀 형식).
 - `tests/test_roadmap_task_def.py` (+17) — schema 신규 컬럼 / COLUMN_MAP 한글 매핑 / round-trip ingest (32행) / lv fallback / 기존 lv 보존 / 부분 혼합 안전 / parser 빈·잘못된·non-dict 입력 안전 / dict 리스트 평탄화 / `automation_keywords` 토큰 분리·dedupe·max_n / `to_chat_context_lines` 전 필드 노출 / 32행 전체 안전 파싱.
 - 기존 `roadmap.query.load_latest` / `sola.opportunity.score_cells` 호출 호환 검증 — 신규 컬럼 추가에도 모든 사용처 동작.
+### Added (SOLA workshop 우측 ws-ctx 패널 실데이터 wire)
+- `assets/v2/screens/sola_main.html` ws-ctx 4 카드 정리:
+  - **페르소나 스냅샷** — 편집 버튼 `<button>` → `<a href="?persona_editor=1">` (실 wire). `{{PERSONA_TEAM_SIZE}}="5–15명"` 정적 → `{{PERSONA_TEAM}}` 실 페르소나 `team` 필드. `{{KEYWORDS_COUNT}}="8개"` 정적 → `len(interest_lv3)+len(interest_tasks)` 실 카운트.
+  - **고정된 출처 (3)** 시안 정적 → 빈 안내 ("아직 고정한 출처가 없어요" + "후속 PR"), `+` 버튼 `disabled`.
+  - **연결된 제안서 (1)** 시안 정적 → **산출물 보관함** 카드로 의미 재정의. `bookmarks_store.list_all` pending 카운트 + 가장 최근 1건 미리보기 (`{{ARCHIVE_PENDING}}`+`{{LINKED_PROPOSALS}}`). "보관함 열기 (N건 대기) →" 링크가 `?app_area=📦+산출물+보관함` 으로 라우팅.
+  - **이 스레드의 산출물 (2)** 시안 정적 → 빈 안내.
+- `ui/sola_workshop_v2.py::_ctx_archive_summary` — 보관함 pending 카운트+최근 1건 HTML. 예외 시 빈 카드 폴백. 제목 `html.escape` (XSS).
+- `_ctx_age_label` — ISO → "오늘"/"어제"/"N일 전"/"M월 D일" 친화 라벨.
+- `assets/v2/screens/sola.css` — `<a class="ws-ctx-edit">`, `<a class="ws-ctx-link">` 의 text-decoration·:visited 색 회복 (I-19).
+- `tests/test_sola_ctx_panel.py` (+7) — `_ctx_archive_summary` 5 케이스(empty / pending 노출+카운트+링크 / adopted·rejected 제외 / XSS / store 예외 폴백) + `_ctx_age_label` 2 케이스.
 
 ### Added (B.4 후속 2 — SOLA thread 검색 wire)
 - `ui/sola_workshop_v2.py::_filter_threads_by_query` 신규 — 제목 substring 매칭(대소문자 무시·공백 strip·빈 query 패스스루).

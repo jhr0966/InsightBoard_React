@@ -103,106 +103,48 @@
           <div class="ws-ctx-head">
             <span class="ws-ctx-mark"><img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>" width="11" height="11" alt="" /></span>
             <div class="ws-ctx-t">페르소나 스냅샷</div>
-            <button class="ws-ctx-edit">편집</button>
+            <a class="ws-ctx-edit" href="?persona_editor=1" target="_self" style="text-decoration:none;">편집</a>
           </div>
           <div class="ws-ctx-persona">
             <div class="ws-pp-name">{{PERSONA_LINE}}</div>
             <div class="ws-pp-row">관심 공정: <b>{{PERSONA_INTERESTS}}</b></div>
-            <div class="ws-pp-row">팀 인원: <b>{{PERSONA_TEAM_SIZE}}</b></div>
+            <div class="ws-pp-row">팀: <b>{{PERSONA_TEAM}}</b></div>
             <div class="ws-pp-row">활성 키워드: <b>{{KEYWORDS_COUNT}}</b></div>
           </div>
         </div>
 
-        <!-- Pinned sources -->
+        <!-- Pinned sources — 미구현 (정직 빈 상태) -->
         <div class="ws-ctx-card">
           <div class="ws-ctx-head">
             <span class="ws-ctx-mark"><img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48'/></svg>" width="11" height="11" alt="" /></span>
-            <div class="ws-ctx-t">고정된 출처 <span class="ws-ctx-cnt">3</span></div>
-            <button class="ws-ctx-edit">+</button>
+            <div class="ws-ctx-t">고정된 출처 <span class="ws-ctx-cnt">0</span></div>
+            <button class="ws-ctx-edit" disabled title="출처 고정은 후속 PR" style="opacity:0.4; cursor:not-allowed;">+</button>
           </div>
-          <ul class="ws-ctx-src-list">
-            <li>
-              <span class="ws-src-pill"><span class="ws-src-num">1</span></span>
-              <div>
-                <div class="ws-src-t">현대중공업 AI 비전 도장 검사 — 불량률 38% 절감</div>
-                <div class="ws-src-s">
-                  <span class="ws-src-mark" style="background:linear-gradient(135deg,#DC2626,#F87171);"></span>
-                  AI Times · 05/20
-                </div>
-              </div>
-            </li>
-            <li>
-              <span class="ws-src-pill"><span class="ws-src-num">2</span></span>
-              <div>
-                <div class="ws-src-t">POSTECH 머신비전 핀홀 분류 정확도 96.4%</div>
-                <div class="ws-src-s">
-                  <span class="ws-src-mark" style="background:linear-gradient(135deg,#6D28D9,#A78BFA);"></span>
-                  네이버 기술 · 05/14
-                </div>
-              </div>
-            </li>
-            <li>
-              <span class="ws-src-pill"><span class="ws-src-num">3</span></span>
-              <div>
-                <div class="ws-src-t">도장 라벨링 인원 표준 — 산업 사례 정리</div>
-                <div class="ws-src-s">
-                  <span class="ws-src-mark" style="background:linear-gradient(135deg,#D97706,#F59E0B);"></span>
-                  오토메이션월드 · 05/12
-                </div>
-              </div>
-            </li>
-          </ul>
+          <div style="padding: 14px 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5;">
+            아직 고정한 출처가 없어요.<br>
+            <span style="font-size:11.5px;">출처 핀 기능은 후속 PR 에서 wire 됩니다.</span>
+          </div>
         </div>
 
-        <!-- Linked proposals -->
+        <!-- Linked proposals — 실데이터 (현 thread + 산출물 보관함 연결) -->
         <div class="ws-ctx-card">
           <div class="ws-ctx-head">
             <span class="ws-ctx-mark"><img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>" width="11" height="11" alt="" /></span>
-            <div class="ws-ctx-t">연결된 제안서 <span class="ws-ctx-cnt">1</span></div>
+            <div class="ws-ctx-t">산출물 보관함 <span class="ws-ctx-cnt">{{ARCHIVE_PENDING}}</span></div>
           </div>
-          <div class="ws-ctx-prop">
-            <div class="ws-prop-h">AI 비전 기반 도장 결함 자동 검사 PoC</div>
-            <div class="ws-prop-meta">
-              <span class="ws-prop-tag-tech">머신비전</span>
-              <span class="ws-prop-state">채택됨</span>
-            </div>
-            <div class="ws-prop-stats">
-              <span><b class="ws-good">82</b> ROI</span>
-              <span><b>4개월</b> 기간</span>
-              <span><b>1.8억</b> 예산</span>
-            </div>
-            <button class="ws-ctx-link">제안서 열기 →</button>
-          </div>
+          {{LINKED_PROPOSALS}}
         </div>
 
-        <!-- Generated artifacts -->
+        <!-- Generated artifacts — 미구현 (정직 빈 상태) -->
         <div class="ws-ctx-card">
           <div class="ws-ctx-head">
             <span class="ws-ctx-mark"><img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/></svg>" width="11" height="11" alt="" /></span>
-            <div class="ws-ctx-t">이 스레드의 산출물 <span class="ws-ctx-cnt">2</span></div>
+            <div class="ws-ctx-t">이 스레드의 산출물 <span class="ws-ctx-cnt">0</span></div>
           </div>
-          <ul class="ws-art-list">
-            <li>
-              <div class="ws-art-i">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>" width="12" height="12" alt="" />
-              </div>
-              <div>
-                <div class="ws-art-t">KPI 합의서 초안 v1</div>
-                <div class="ws-art-s">14:32 · 1 page · PDF</div>
-              </div>
-              <button class="ws-art-go">→</button>
-            </li>
-            <li>
-              <div class="ws-art-i">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><line x1='9' y1='3' x2='9' y2='21'/></svg>" width="12" height="12" alt="" />
-              </div>
-              <div>
-                <div class="ws-art-t">PoC 일정표 v2 (5개월안)</div>
-                <div class="ws-art-s">14:28 · 간트 · XLSX</div>
-              </div>
-              <button class="ws-art-go">→</button>
-            </li>
-          </ul>
+          <div style="padding: 14px 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5;">
+            아직 생성된 파일이 없어요.<br>
+            <span style="font-size:11.5px;">PDF · 간트 등 산출물 생성은 후속 PR에서 wire 됩니다.</span>
+          </div>
         </div>
 
       </aside>

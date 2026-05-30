@@ -866,6 +866,9 @@
   cursor: pointer;
 }
 .ws-ctx-edit:hover { background: rgba(37,99,235,0.08); }
+.ws-ctx-edit { text-decoration: none; }
+a.ws-ctx-edit, a.ws-ctx-edit:visited { color: var(--accent-primary); }
+a.ws-ctx-link, a.ws-ctx-link:visited { color: var(--accent-primary); text-decoration: none; }
 
 /* Persona */
 .ws-ctx-persona {
