@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-05-30 · 작업 정의 엑셀 Phase 1 — 신엑셀 컬럼 + JSON 파서
+
+**브랜치:** `feat-roadmap-task-def` (main `bfc3fd4` 기준)
+
+**배경:** 사용자가 신규 작업 정의 엑셀(가공팀 32행 샘플) 공유. 형식:
+  - 컬럼: 팀/부서/**분과**/**공정**/작업/세부작업/공정정의서(줄글)/**공정정의서(JSON)**
+  - JSON: process_id/name/description/objectives/quality_risks/automation_areas 등
+  - 추후 데이터 확장 예정 (형식 동일)
+
+**변경:**
+- `roadmap/schema.py` — division/process/task_def_json 신규 OPTIONAL 컬럼 + COLUMN_MAP 한글 매핑
+- `roadmap/ingest.py` — lv1/2/3 비어있으면 division/process/task 로 자동 fallback (기존 사용처 호환)
+- `roadmap/task_def_json.py` 신규 — TaskDef + parse + automation_keywords + to_chat_context_lines. dict 리스트 자동 평탄화 (area · technology · effect 등)
+- `tests/fixtures/sample_task_def.xlsx` + `tests/test_roadmap_task_def.py` (+17)
+
+**검증:**
+- pytest **277/277** (260 + 17 신규)
+- 32행 round-trip 성공 (8 컬럼 → 13 컬럼 Parquet)
+- `load_latest` + `score_cells` 호환 확인
+
+**Phase 2 (별도 PR):**
+- 자동화 매칭에 `automation_keywords` 활용 (정확도↑)
+- 보드 ④ 자동화 기회 카드에 `objectives` 노출
+- SOLA 컨텍스트에 `to_chat_context_lines` 첨부
+
+**Phase 3 (별도 PR):**
+- 데이터관리 "내부 로드맵" 탭 wire (현재 disabled)
+- 작업 정의 검색 + JSON 정의서 카드 뷰
+
+---
+
 ## 2026-05-30 · B.4 후속 2 — SOLA thread 검색 wire
 
 **브랜치:** `feat-sola-thread-search` (main `864b85c` 기준)
