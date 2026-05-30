@@ -59,6 +59,72 @@ def _archive_stats() -> dict[str, int]:
     return {"match_today": 32, "opportunities": 4, "pending_adopt": pending}
 
 
+def _ctx_archive_summary() -> tuple[int, str]:
+    """우측 ws-ctx "산출물 보관함" 카드 — 대기 카운트 + 최근 1건 미리보기.
+
+    thread ↔ bookmark 직접 연결 모델은 없으므로(후속 PR) "현재 보관함의 가장
+    최근 pending 제안서" 를 대표로 노출 → 사용자가 [열기] 로 보관함 area 로 이동.
+    """
+    try:
+        items = bookmarks_store.list_all(type_="proposal")
+    except Exception:
+        items = []
+    pending = [b for b in items if b.status == "pending"]
+    pending_count = len(pending)
+
+    if not pending:
+        body = (
+            '<div style="padding: 14px 12px; font-size: 12.5px; color: var(--text-muted);'
+            ' line-height: 1.5;">'
+            '아직 제안서가 없어요.<br>'
+            '<span style="font-size:11.5px;">보드의 자동화 기회 카드에서 SOLA 와 검토 → 채택하면 여기 모입니다.</span>'
+            '</div>'
+        )
+        return 0, body
+
+    # 가장 최근 pending — created_at 내림차순 첫 항목
+    pending.sort(key=lambda b: b.created_at, reverse=True)
+    top = pending[0]
+    title_safe = _html.escape((top.title or "(제목 없음)")[:60])
+    age_safe = _html.escape(_ctx_age_label(top.created_at))
+    tag_text = "대기"  # 모두 pending
+    from urllib.parse import quote as _q
+    archive_href = "?app_area=" + _q("📦 산출물 보관함")
+    body = (
+        '<div class="ws-ctx-prop">'
+        f'<div class="ws-prop-h">{title_safe}</div>'
+        '<div class="ws-prop-meta">'
+        f'<span class="ws-prop-tag-tech">{tag_text}</span>'
+        f'<span class="ws-prop-state">{age_safe}</span>'
+        '</div>'
+        f'<a class="ws-ctx-link" href="{archive_href}" target="_self" '
+        'style="text-decoration:none; display:inline-block;">'
+        f'보관함 열기 ({pending_count}건 대기) →'
+        '</a>'
+        '</div>'
+    )
+    return pending_count, body
+
+
+def _ctx_age_label(iso: str) -> str:
+    """ISO → '오늘'/'어제'/'5월 17일' 짧은 라벨."""
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except Exception:
+        return ""
+    now = datetime.now(timezone.utc)
+    delta = (now.date() - dt.date()).days
+    if delta <= 0:
+        return "오늘"
+    if delta == 1:
+        return "어제"
+    if delta <= 7:
+        return f"{delta}일 전"
+    return f"{dt.month}월 {dt.day}일"
+
+
 def render() -> None:
     """SOLA 작업실 v2 — topbar + app-side + 3-열 ws-shell (app-sola 없음)."""
     inject_screen_css("sola")
@@ -664,6 +730,13 @@ def _render_main(persona: Persona) -> None:
 
     interests = persona.interest_lv3 or persona.interest_tasks or []
     interests_label = ", ".join(interests[:3]) if interests else "미설정"
+    # 페르소나 카드: 팀 + 키워드 카운트 실데이터
+    team_label = persona.team or "—"
+    kw_count = len(persona.interest_lv3 or []) + len(persona.interest_tasks or [])
+    kw_label = f"{kw_count}개" if kw_count > 0 else "0개"
+
+    # 산출물 보관함 — pending 제안서 카운트 + 최근 1건 미리보기
+    archive_pending_count, linked_proposals_html = _ctx_archive_summary()
 
     prefill, placeholder, pins_html = _composer_prefill()
     messages = _load_messages()
@@ -694,8 +767,10 @@ def _render_main(persona: Persona) -> None:
         template
         .replace("{{PERSONA_LINE}}", _html.escape(persona_line))
         .replace("{{PERSONA_INTERESTS}}", _html.escape(interests_label))
-        .replace("{{PERSONA_TEAM_SIZE}}", "5–15명")
-        .replace("{{KEYWORDS_COUNT}}", "8개")
+        .replace("{{PERSONA_TEAM}}", _html.escape(team_label))
+        .replace("{{KEYWORDS_COUNT}}", kw_label)
+        .replace("{{ARCHIVE_PENDING}}", str(archive_pending_count))
+        .replace("{{LINKED_PROPOSALS}}", linked_proposals_html)
         .replace("{{NEW_THREAD_BTN}}", new_thread_btn_html)
         .replace("{{THREAD_FILTERS}}", thread_filters_html)
         .replace("{{THREAD_LIST}}", thread_list_html)

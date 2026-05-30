@@ -33,6 +33,25 @@
 **Phase 3 (별도 PR):**
 - 데이터관리 "내부 로드맵" 탭 wire (현재 disabled)
 - 작업 정의 검색 + JSON 정의서 카드 뷰
+## 2026-05-30 · SOLA workshop 우측 ws-ctx 패널 실데이터 wire
+
+**브랜치:** `feat-sola-ctx-panel` (main `bfc3fd4` 기준)
+
+**변경:**
+- ws-ctx 4 카드: 페르소나 스냅샷 wire (편집 링크 + 실 team/keyword count)
+  / 고정 출처 정직 빈 안내 / 산출물 보관함 카드 (pending 카운트 + 최근 1건 +
+  보관함 area 링크) / 이 스레드 산출물 정직 빈 안내
+- `_ctx_archive_summary` + `_ctx_age_label` 헬퍼
+- ws-ctx-edit/link <a> CSS 회복 (I-19)
+
+**검증:**
+- pytest **267/267** (260 + 7 신규)
+- 금지패턴 0
+- 브라우저: 모든 ws-ctx 카드 실데이터/정직 빈 상태 렌더 확인
+
+**SOLA workshop 양 사이드(좌측 thread list + 우측 ws-ctx) 완전 마감.**
+남은 시안 mock 영역: 본문 ws-typing 효과(LLM 응답 streaming 미구현 흔적)
+정도. 다음 작업은 보드 일부 disabled 영역 또는 사용자 작업 정의 엑셀.
 
 ---
 
