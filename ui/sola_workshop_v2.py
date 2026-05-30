@@ -446,6 +446,7 @@ def _consume_thread_actions_if_any() -> None:
     flag:
       _do_new_thread        — 새 thread 생성 후 active 전환
       _do_switch_thread     — value=thread_id, 그 thread 로 active 전환
+      _do_toggle_pin        — value=thread_id, pinned 토글
       _do_delete_thread     — value=thread_id, 삭제 후 active 재선정
     """
     if st.session_state.pop("_do_new_thread", False):
@@ -458,6 +459,13 @@ def _consume_thread_actions_if_any() -> None:
         if sola_threads.get(str(switch_id)):
             st.session_state[_ACTIVE_THREAD_KEY] = str(switch_id)
             st.rerun()
+
+    pin_id = st.session_state.pop("_do_toggle_pin", None)
+    if pin_id:
+        cur = sola_threads.get(str(pin_id))
+        if cur:
+            sola_threads.update(str(pin_id), pinned=not cur.pinned, touch=False)
+        st.rerun()
 
     del_id = st.session_state.pop("_do_delete_thread", None)
     if del_id:
@@ -583,11 +591,27 @@ _AREA_QUOTED = _urlquote("🤖 SOLA 작업실")
 
 
 def _consume_prefill_ask_if_any() -> None:
-    """`?ask_prefill=1` (또는 pending flag) → composer prefill 텍스트로 즉시 전송."""
+    """`_do_ask_prefill` pending → **새 thread 생성** 후 prefill 텍스트로 전송.
+
+    인계(보드/인사이트 CTA)는 보통 새 주제이므로, 기존 대화에 섞지 않고
+    전용 thread 를 만든다. thread 제목은 인계 종류로 시드(첫 user 메시지가
+    채워지면 _append_message 가 다시 제목을 잡음).
+    """
     if not st.session_state.pop("_do_ask_prefill", False):
         return
     prefill, _ph, _pins = _composer_prefill()
     if prefill.strip():
+        # 인계 전용 새 thread — 종류 기반 임시 제목
+        from_kind = st.query_params.get("from", "")
+        seed_title = {
+            "brief": "보드 브리핑 검토",
+            "opp": "자동화 기회 검토",
+            "matrix": "매트릭스 후보 검토",
+            "ia_map": "공정 매핑 분석",
+            "edit": "제안서 이어서 수정",
+        }.get(from_kind, "")
+        th = sola_threads.create(seed_title)
+        st.session_state[_ACTIVE_THREAD_KEY] = th.id
         st.session_state["_do_sola_send"] = prefill.strip()
     st.rerun()
 
@@ -643,10 +667,10 @@ def _render_main(persona: Persona) -> None:
     )
     st.html(html_out)
 
-    # ── 새 대화 시작 버튼 (Streamlit native, 실 인터랙션) ──
-    # 시안의 좌측 <button class="ws-new"> 은 HTML 내부라 클릭 wire 불가 → 본문 위에
-    # Streamlit 버튼으로 새 대화 생성을 노출.
-    c1, c2, c3 = st.columns([1, 1, 6])
+    # ── 활성 thread 액션 버튼 (Streamlit native) ──
+    # 시안의 좌측 <button class="ws-new"> 등은 HTML 내부라 클릭 wire 불가 →
+    # 본문 위에 Streamlit 버튼으로 현 thread 액션을 노출.
+    c1, c2, c3, c4 = st.columns([1.2, 1.4, 1.4, 4])
     with c1:
         if st.button("➕ 새 대화", key="sola_new_thread_btn",
                      use_container_width=True,
@@ -654,12 +678,34 @@ def _render_main(persona: Persona) -> None:
             st.session_state["_do_new_thread"] = True
             st.rerun()
     with c2:
-        # 현 thread 삭제 — 메시지 없을 때만 유효 (실수 방지)
-        if active_th.message_count == 0 and len(all_threads) > 1:
-            if st.button("🗑 빈 대화 정리", key="sola_del_thread_btn",
-                         use_container_width=True):
-                st.session_state["_do_delete_thread"] = active_th.id
-                st.rerun()
+        # 고정 토글 — 좌측 list 에서 ★ 고정 그룹 맨 위로
+        pin_label = "📌 고정 해제" if active_th.pinned else "📌 상단 고정"
+        if st.button(pin_label, key="sola_pin_thread_btn", use_container_width=True,
+                     help="이 대화를 좌측 목록 상단에 고정/해제"):
+            st.session_state["_do_toggle_pin"] = active_th.id
+            st.rerun()
+    with c3:
+        # 삭제 — 메시지 0 이면 즉시, 있으면 한 번 더 확인 (2-click)
+        if len(all_threads) > 1:
+            if active_th.message_count == 0:
+                if st.button("🗑 빈 대화 정리", key="sola_del_thread_btn",
+                             use_container_width=True):
+                    st.session_state["_do_delete_thread"] = active_th.id
+                    st.rerun()
+            else:
+                confirm_key = f"_confirm_del_{active_th.id}"
+                if st.session_state.get(confirm_key):
+                    if st.button("⚠️ 정말 삭제", key="sola_del_confirm_btn",
+                                 type="primary", use_container_width=True):
+                        st.session_state["_do_delete_thread"] = active_th.id
+                        st.session_state.pop(confirm_key, None)
+                        st.rerun()
+                else:
+                    if st.button("🗑 대화 삭제", key="sola_del_thread_btn2",
+                                 use_container_width=True,
+                                 help="이 대화와 메시지를 영구 삭제"):
+                        st.session_state[confirm_key] = True
+                        st.rerun()
 
     # ── prefill 인계받았을 때 즉시 전송 CTA (composer 시안 위) ──
     if prefill.strip():
