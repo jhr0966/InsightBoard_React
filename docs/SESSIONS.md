@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-05-30 · B.4 후속 — 인계 새 thread + pin 토글 + 삭제
+
+**브랜치:** `feat-sola-thread-polish` (main `47b7851` 기준)
+
+**변경:**
+- 인계(CTA) → 전용 새 thread 생성 후 prefill (기존 대화 안 섞임), 종류별 시드 제목
+- 활성 thread 액션 3종: 새 대화 / 고정 토글 / 삭제(2-click 확인)
+- `_do_toggle_pin` 핸들러 (touch=False)
+
+**검증:**
+- pytest **250/250** (248 + 3 신규)
+- 금지패턴 0
+- e2e: 인계 → 새 thread "자동화 기회 검토", 기존 thread 안 오염(msg 2 유지),
+  pin 토글 True/False, 메시지 있는 thread 삭제 → active 재선정
+
+**남은 후속 (별도 PR):** thread 검색 wire (input 아직 disabled)
+
+---
+
 ## 2026-05-30 · B.4 — SOLA thread 영구화 + 좌측 list 실데이터
 
 **브랜치:** `feat-sola-thread-store` (main `e5c8aa0` 기준)

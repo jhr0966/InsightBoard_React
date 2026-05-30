@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (B.4 후속 — 인계 새 thread 진입 + pin 토글 + 대화 삭제)
+- `ui/sola_workshop_v2.py::_consume_prefill_ask_if_any` — 보드/인사이트 CTA 인계(`?from=...`)가 기존 대화에 섞이지 않도록 **전용 새 thread 생성** 후 prefill 전송. thread 제목은 인계 종류로 시드(자동화 기회 검토 / 매트릭스 후보 검토 / 공정 매핑 분석 / 보드 브리핑 검토 / 제안서 이어서 수정).
+- 활성 thread 액션 버튼 확장 (본문 위 Streamlit, HTML 내부 클릭 불가 우회): [➕ 새 대화] · [📌 상단 고정 / 고정 해제] · [🗑 대화 삭제]. 삭제는 메시지 0 이면 즉시(빈 대화 정리), 메시지 있으면 2-click 확인(⚠️ 정말 삭제).
+- pending 핸들러 `_consume_thread_actions_if_any` 에 `_do_toggle_pin` 추가 (`sola_threads.update(pinned=not cur.pinned, touch=False)` — 고정 토글은 updated_at 안 건드림).
+- `tests/test_sola_composer.py` — `test_ask_prefill_creates_new_thread_and_sets_send_payload` (인계 새 thread + 시드 제목 + 송신 페이로드), `test_toggle_pin_action_flips_pinned`, `test_delete_action_removes_thread_and_resets_active`.
+
 ### Added (B.4 — SOLA thread 영구화 + 좌측 thread list 실데이터)
 - `store/sola_threads.py` 신규 — `Thread` dataclass + CRUD (`create`/`get`/`update`/`delete`/`list_threads`) + `ensure_active` (id 없거나 미존재면 최근/신규로 폴백) + `title_from_first_user_message` (자동 제목, 36자 cap) + `migrate_legacy_main_if_needed` (A.3 의 `sola_main` chat_key 누적분을 첫 thread 로 자동 마이그). 메타데이터 단일 파일 `data/sola/threads.json`, 메시지는 기존 `chat_log` 의 `chat_key=thread.id` 활용 (chat_key 별 파일 분리는 기존 기능 재사용).
 - `ui/sola_workshop_v2.py` — `_load_messages`/`_append_message` 가 활성 thread (`session_state["_sola_thread_id"]`) 의 chat_key 로 작동. 좌측 thread list 시안 24블록을 `{{THREAD_LIST}}` placeholder 로 교체하고 `_render_thread_list_html` 가 그룹(★ 고정/오늘/어제/이번 주/이전) + active 강조 + thread item 링크(`?switch_thread=<id>`) 동적 생성. 본문 위에 [➕ 새 대화] Streamlit 버튼 + 빈 thread (메시지 0, 다른 thread 있음) 일 때만 [🗑 빈 대화 정리] 노출. 첫 user 메시지로 thread 제목 자동 설정.

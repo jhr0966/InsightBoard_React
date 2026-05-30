@@ -236,8 +236,12 @@ def test_consume_send_no_pending_is_noop(clean_chat_log):
 
 # ── prefill ask 흐름 ─────────────────────────────────────────
 
-def test_ask_prefill_sets_send_payload_from_composer_prefill():
+def test_ask_prefill_creates_new_thread_and_sets_send_payload(clean_chat_log):
+    """인계(CTA)는 새 thread 를 만들고 prefill 텍스트를 그 thread 로 전송."""
     import streamlit as st
+    from store import sola_threads
+
+    before = len(sola_threads.list_threads())
     st.session_state["_do_ask_prefill"] = True
     st.query_params.clear()
     st.query_params["from"] = "opp"
@@ -246,10 +250,50 @@ def test_ask_prefill_sets_send_payload_from_composer_prefill():
     try:
         with patch("streamlit.rerun"):
             sola_v2._consume_prefill_ask_if_any()
-        # composer_prefill 의 opp 분기가 만든 텍스트가 그대로 송신 페이로드에
+        # 새 thread 생성됨 + active 전환
+        after = sola_threads.list_threads()
+        assert len(after) == before + 1
+        active_id = st.session_state["_sola_thread_id"]
+        assert sola_threads.get(active_id) is not None
+        # 인계 종류 기반 시드 제목
+        assert sola_threads.get(active_id).title == "자동화 기회 검토"
+        # composer_prefill 의 opp 텍스트가 송신 페이로드에
         sent = st.session_state.get("_do_sola_send", "")
         assert "도장" in sent and "비전 검사" in sent
     finally:
         st.query_params.clear()
         st.session_state.pop("_do_sola_send", None)
         st.session_state.pop("_do_ask_prefill", None)
+
+
+def test_toggle_pin_action_flips_pinned(clean_chat_log):
+    import streamlit as st
+    from store import sola_threads
+
+    th = sola_threads.create("핀 테스트")
+    assert th.pinned is False
+    st.session_state["_do_toggle_pin"] = th.id
+    with patch("streamlit.rerun"):
+        sola_v2._consume_thread_actions_if_any()
+    assert sola_threads.get(th.id).pinned is True
+    # 다시 토글 → 해제
+    st.session_state["_do_toggle_pin"] = th.id
+    with patch("streamlit.rerun"):
+        sola_v2._consume_thread_actions_if_any()
+    assert sola_threads.get(th.id).pinned is False
+
+
+def test_delete_action_removes_thread_and_resets_active(clean_chat_log):
+    import streamlit as st
+    from store import sola_threads
+
+    keep = sola_threads.create("유지")
+    victim = sola_threads.create("삭제대상")
+    st.session_state["_sola_thread_id"] = victim.id
+    st.session_state["_do_delete_thread"] = victim.id
+    with patch("streamlit.rerun"):
+        sola_v2._consume_thread_actions_if_any()
+    assert sola_threads.get(victim.id) is None
+    # 활성 thread id 가 삭제된 것이면 초기화됨 (다음 _active_thread 가 재선정)
+    assert st.session_state.get("_sola_thread_id") is None
+    assert sola_threads.get(keep.id) is not None
