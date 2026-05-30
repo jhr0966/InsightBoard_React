@@ -148,11 +148,10 @@ def render() -> None:
         refresh_label=refresh,
         fresh_kind="accent",
     )
-    app_shell.render_app_side(
-        active_area="🤖 SOLA 작업실",
-        persona=persona,
-        stats=stats,
-    )
+    # SOLA workshop 은 .app-side 글로벌 네비를 미렌더 — 좌측에 자체 ws-threads
+    # (380px 폭 thread list) 가 있어 두 패널이 겹쳐 보이는 문제 fix.
+    # 사용자는 topbar 또는 ⌘K 팔레트로 다른 area 이동 가능.
+    # block-container padding-left 도 ws-shell 분기에서 축소되어야 함 (CSS 처리).
     app_shell.render_setup_banner_if_needed()
     _render_brief_handoff_banner_if_needed()
     _render_main(persona)

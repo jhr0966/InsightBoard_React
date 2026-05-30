@@ -22,6 +22,17 @@
 - `_ctx_age_label` — ISO → "오늘"/"어제"/"N일 전"/"M월 D일" 친화 라벨.
 - `assets/v2/screens/sola.css` — `<a class="ws-ctx-edit">`, `<a class="ws-ctx-link">` 의 text-decoration·:visited 색 회복 (I-19).
 - `tests/test_sola_ctx_panel.py` (+7) — `_ctx_archive_summary` 5 케이스(empty / pending 노출+카운트+링크 / adopted·rejected 제외 / XSS / store 예외 폴백) + `_ctx_age_label` 2 케이스.
+### Added (글로벌 SOLA 채팅 + 화면별 안내 + SOLA workshop 좌측 fix)
+- **모든 화면 본문 하단에 SOLA 채팅 패널** — `ui/chat_panel.py` 신규. 활성 thread 의 최근 6개 메시지(역할별 버블) + Streamlit `st.chat_input`(화면 하단 자동 고정). 빈 thread 진입 시 area 별 **안내 카드**(headline + 추천 질문 5건 chip). SOLA workshop area 는 자체 풀스크린 채팅이라 미렌더.
+- LLM 호출 인프라는 `sola_workshop_v2` 의 `_consume_send_if_any` / `_build_llm_messages` / `_load_messages` 그대로 재사용 — chat_panel 입력→pending flag→다음 run 에서 LLM 호출+영구화→rerun (단일 thread/chat_key 공유).
+- **`ui/persona_page.py::chat_context_block`** 신규 — 페르소나 편집 화면의 채워진/비어있는 필드 + 관심 공정/작업을 LLM 컨텍스트로 packaging. 페르소나 설정 중에도 SOLA 가 "내 부서에 맞는 관심 공정 추천해줘" 같은 질문에 답 가능.
+- **`app.py`** — 페르소나 페이지 분기에 `_chat_context_for_sola` set 추가, 모든 area render 후 `chat_panel.render(persona, area_key)` 호출 (SOLA workshop 제외). `consume_send_if_any` 를 화면 분기 전 최상단에서 호출 → 어느 area 에서든 송신 처리.
+- **SOLA workshop 좌측 fix** — `app_shell.render_app_side()` 호출 제거. 좌측에 글로벌 `.app-side` (280px) + ws-threads (256px) 두 패널이 겹쳐 보이던 문제 해결. `assets/v2/streamlit-overrides.css` 에 `body:has(.ws-shell)` 분기 추가하여 block-container 의 padding-left 도 16px 로 축소. 다른 area 이동은 topbar / ⌘K 팔레트로.
+- **6 area 안내 정의** (`_AREA_INTROS`): 보드 / 데이터 관리 / 인사이트 분석 / SOLA 작업실 / 산출물 보관함 / 프로필 설정. 각 area 마다 headline + 추천 질문 3~5건 (XSS 방어 위해 모두 `html.escape`).
+- 보안 — `st.markdown(unsafe_allow_html=True)` 대신 `st.html` 사용 (CLAUDE.md §5, I-19, test_html_rendering 통과). 검색어 / area_key / 메시지 본문 / 페르소나 데이터 모두 escape.
+- `tests/test_chat_panel.py` (+10) — intro 카드 헤드라인·chip·XSS · 모든 area 정의 검증 · 메시지 렌더 cap·escape·역할 스타일 · `consume_send_if_any` 위임 · SOLA workshop area skip.
+- `tests/test_chat_context_blocks.py` (+2) — persona_page chat_context (채워진/빈 필드, 관심 공정·작업).
+
 
 ### Added (B.4 후속 2 — SOLA thread 검색 wire)
 - `ui/sola_workshop_v2.py::_filter_threads_by_query` 신규 — 제목 substring 매칭(대소문자 무시·공백 strip·빈 query 패스스루).
@@ -636,6 +647,18 @@
 
 ```md
 ## [Unreleased]
+
+### Added (글로벌 SOLA 채팅 + 화면별 안내 + SOLA workshop 좌측 fix)
+- **모든 화면 본문 하단에 SOLA 채팅 패널** — `ui/chat_panel.py` 신규. 활성 thread 의 최근 6개 메시지(역할별 버블) + Streamlit `st.chat_input`(화면 하단 자동 고정). 빈 thread 진입 시 area 별 **안내 카드**(headline + 추천 질문 5건 chip). SOLA workshop area 는 자체 풀스크린 채팅이라 미렌더.
+- LLM 호출 인프라는 `sola_workshop_v2` 의 `_consume_send_if_any` / `_build_llm_messages` / `_load_messages` 그대로 재사용 — chat_panel 입력→pending flag→다음 run 에서 LLM 호출+영구화→rerun (단일 thread/chat_key 공유).
+- **`ui/persona_page.py::chat_context_block`** 신규 — 페르소나 편집 화면의 채워진/비어있는 필드 + 관심 공정/작업을 LLM 컨텍스트로 packaging. 페르소나 설정 중에도 SOLA 가 "내 부서에 맞는 관심 공정 추천해줘" 같은 질문에 답 가능.
+- **`app.py`** — 페르소나 페이지 분기에 `_chat_context_for_sola` set 추가, 모든 area render 후 `chat_panel.render(persona, area_key)` 호출 (SOLA workshop 제외). `consume_send_if_any` 를 화면 분기 전 최상단에서 호출 → 어느 area 에서든 송신 처리.
+- **SOLA workshop 좌측 fix** — `app_shell.render_app_side()` 호출 제거. 좌측에 글로벌 `.app-side` (280px) + ws-threads (256px) 두 패널이 겹쳐 보이던 문제 해결. `assets/v2/streamlit-overrides.css` 에 `body:has(.ws-shell)` 분기 추가하여 block-container 의 padding-left 도 16px 로 축소. 다른 area 이동은 topbar / ⌘K 팔레트로.
+- **6 area 안내 정의** (`_AREA_INTROS`): 보드 / 데이터 관리 / 인사이트 분석 / SOLA 작업실 / 산출물 보관함 / 프로필 설정. 각 area 마다 headline + 추천 질문 3~5건 (XSS 방어 위해 모두 `html.escape`).
+- 보안 — `st.markdown(unsafe_allow_html=True)` 대신 `st.html` 사용 (CLAUDE.md §5, I-19, test_html_rendering 통과). 검색어 / area_key / 메시지 본문 / 페르소나 데이터 모두 escape.
+- `tests/test_chat_panel.py` (+10) — intro 카드 헤드라인·chip·XSS · 모든 area 정의 검증 · 메시지 렌더 cap·escape·역할 스타일 · `consume_send_if_any` 위임 · SOLA workshop area skip.
+- `tests/test_chat_context_blocks.py` (+2) — persona_page chat_context (채워진/빈 필드, 관심 공정·작업).
+
 
 ### Added
 - `.streamlit/config.toml` 추가 — Streamlit 테마/서버 실행 기본값 표준화.

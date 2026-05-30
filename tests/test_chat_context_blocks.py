@@ -208,3 +208,33 @@ def test_archive_chat_context_includes_screen_marker_and_counts():
     assert "X 제안" in ctx
     # 본문 발췌
     assert "설명1" in ctx or "기각 사유" in ctx
+
+
+# ── 페르소나 설정 화면 ───────────────────────────────────────
+
+def test_persona_page_chat_context_shows_filled_and_empty_fields():
+    from ui import persona_page
+
+    full = Persona(name="홍길동", dept="도장1팀", team="자동화1팀", job="검사관",
+                   interest_lv3=["비전 검사", "협동 로봇"])
+    ctx = persona_page.chat_context_block(full)
+    assert "현재 화면: 페르소나 / 프로필 편집" in ctx
+    assert "홍길동" in ctx
+    assert "도장1팀" in ctx
+    assert "비전 검사" in ctx
+    assert "비어있는 필드: (없음)" in ctx
+
+    empty = Persona()
+    ctx2 = persona_page.chat_context_block(empty)
+    assert "채워진 필드: (없음)" in ctx2
+    assert "관심 공정: 미설정" in ctx2
+    # 빈 필드 4개 (이름/팀/부서/직무)
+    for label in ("이름", "팀", "부서", "직무"):
+        assert label in ctx2
+
+
+def test_persona_page_chat_context_includes_interest_tasks_when_set():
+    from ui import persona_page
+    p = Persona(dept="도장", interest_tasks=["막두께 측정", "부스 환기"])
+    ctx = persona_page.chat_context_block(p)
+    assert "관심 작업: 막두께 측정, 부스 환기" in ctx

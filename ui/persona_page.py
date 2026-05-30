@@ -29,6 +29,32 @@ def _archive_stats() -> dict[str, int]:
     return {"match_today": 0, "opportunities": 0, "pending_adopt": pending}
 
 
+def chat_context_block(persona: Persona) -> str:
+    """페르소나 편집 화면이 보여주는 데이터를 LLM 컨텍스트로 packaging.
+
+    채워진 / 비어있는 필드, 관심 공정/작업 목록을 LLM 이 인식하도록.
+    사용자가 "내 부서에 맞는 관심 공정 추천해줘" 같은 질문을 하면 답 가능.
+    """
+    parts: list[str] = ["--- 현재 화면: 페르소나 / 프로필 편집 ---"]
+    filled, empty = [], []
+    for key, val in (
+        ("이름", persona.name),
+        ("팀", persona.team),
+        ("부서", persona.dept),
+        ("직무", persona.job),
+    ):
+        (filled if val else empty).append(f"{key}={val}" if val else key)
+    parts.append("채워진 필드: " + (", ".join(filled) if filled else "(없음)"))
+    parts.append("비어있는 필드: " + (", ".join(empty) if empty else "(없음)"))
+    if persona.interest_lv3:
+        parts.append("관심 공정 (Lv3, 최대 6개): " + ", ".join(persona.interest_lv3[:6]))
+    else:
+        parts.append("관심 공정: 미설정")
+    if persona.interest_tasks:
+        parts.append("관심 작업: " + ", ".join(persona.interest_tasks[:6]))
+    return "\n".join(parts)
+
+
 def _options(df, col: str) -> list[str]:
     if df.empty or col not in df.columns:
         return [""]
