@@ -21,13 +21,15 @@ from sola import client as sola_client
 from sola.preview import format_messages_preview
 from store import bookmarks as bookmarks_store
 from store import chat_log
+from store import sola_threads
 from ui import app_shell
 from ui.styles import inject_screen_css
 
 
-# 채팅 영구화 키 — Option α 미니멀: 단일 thread.
-# B.4 PR 에서 thread store 도입 시 chat_key 가 thread id 로 분기됨.
-_SOLA_CHAT_KEY = "sola_main"
+# 활성 thread id 의 session key — B.4 이후 chat_key 가 thread.id 로 분기됨.
+_ACTIVE_THREAD_KEY = "_sola_thread_id"
+# A.3 잔재 호환 — legacy 단일 thread id (chat_key="sola_main").
+_LEGACY_THREAD_ID = sola_threads.LEGACY_MAIN_THREAD_ID
 
 _SOLA_SYSTEM_PROMPT = (
     "당신은 SOLA, 조선소 작업 정의를 이해하는 AI 어시스턴트입니다. "
@@ -64,7 +66,10 @@ def render() -> None:
     persona = _load_persona()
 
     # ── pending 핸들러 (run 최상단, 위젯 인스턴스화 이전) ──
-    # _do_ask_prefill 이 _do_sola_send 를 set 하므로 ask 먼저 → send 순.
+    # 순서: 스레드 전환·생성·삭제 → URL switch → prefill ask → send
+    # (앞단 결과가 뒷단의 active_thread 를 바꿀 수 있어 이 순서 필수)
+    _consume_thread_actions_if_any()
+    _switch_thread_from_query_if_any()
     _consume_prefill_ask_if_any()
     _consume_send_if_any(persona)
 
@@ -281,30 +286,57 @@ def _composer_prefill() -> tuple[str, str, str]:
 
 # ── 채팅 메시지 영구화 + 렌더 ────────────────────────────────
 
+def _active_thread() -> "sola_threads.Thread":
+    """현재 활성 thread — 없으면 가장 최근, 그것도 없으면 새로 생성.
+
+    A.3 잔재(`chat_key="sola_main"`) 가 있고 thread 가 아직 없으면 자동 마이그.
+    """
+    sola_threads.migrate_legacy_main_if_needed()
+    active_id = st.session_state.get(_ACTIVE_THREAD_KEY)
+    th = sola_threads.ensure_active(active_id)
+    st.session_state[_ACTIVE_THREAD_KEY] = th.id
+    return th
+
+
 def _load_messages() -> list[dict]:
-    """세션에 메시지가 있으면 그걸 쓰고, 없으면 chat_log 에서 load 후 캐시."""
-    if "_sola_messages" in st.session_state:
-        return st.session_state["_sola_messages"]
+    """활성 thread 메시지 — 세션 캐시, 없으면 chat_log 에서 load."""
+    th = _active_thread()
+    cache_key = f"_sola_messages_{th.id}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
     try:
-        msgs = chat_log.load_history(_SOLA_CHAT_KEY)
+        msgs = chat_log.load_history(th.id)
     except Exception:
         msgs = []
-    st.session_state["_sola_messages"] = msgs
+    st.session_state[cache_key] = msgs
     return msgs
 
 
 def _append_message(role: str, content: str) -> None:
+    th = _active_thread()
+    cache_key = f"_sola_messages_{th.id}"
     msgs = _load_messages()
     msgs.append({
         "role": role,
         "content": content,
         "ts": datetime.now(timezone.utc).isoformat(),
     })
-    st.session_state["_sola_messages"] = msgs
+    st.session_state[cache_key] = msgs
     try:
-        chat_log.save_history(msgs, _SOLA_CHAT_KEY)
+        chat_log.save_history(msgs, th.id)
     except Exception:
         pass  # 영구화 실패해도 세션엔 남음
+
+    # 첫 user 메시지로 thread 제목 자동 설정 (제목이 기본값이면)
+    auto_title = None
+    if role == "user" and (not th.title or th.title == "새 대화"):
+        auto_title = sola_threads.title_from_first_user_message(content)
+    sola_threads.update(
+        th.id,
+        title=auto_title,
+        message_count=len(msgs),
+        touch=True,
+    )
 
 
 def _build_llm_messages(persona: Persona, history: list[dict]) -> list[dict]:
@@ -408,6 +440,148 @@ def _consume_send_if_any(persona: Persona) -> None:
     st.rerun()
 
 
+def _consume_thread_actions_if_any() -> None:
+    """Thread 관련 pending → 실행 후 rerun.
+
+    flag:
+      _do_new_thread        — 새 thread 생성 후 active 전환
+      _do_switch_thread     — value=thread_id, 그 thread 로 active 전환
+      _do_delete_thread     — value=thread_id, 삭제 후 active 재선정
+    """
+    if st.session_state.pop("_do_new_thread", False):
+        th = sola_threads.create()
+        st.session_state[_ACTIVE_THREAD_KEY] = th.id
+        st.rerun()
+
+    switch_id = st.session_state.pop("_do_switch_thread", None)
+    if switch_id:
+        if sola_threads.get(str(switch_id)):
+            st.session_state[_ACTIVE_THREAD_KEY] = str(switch_id)
+            st.rerun()
+
+    del_id = st.session_state.pop("_do_delete_thread", None)
+    if del_id:
+        sola_threads.delete(str(del_id))
+        # 활성 thread 가 지워졌다면 재선정
+        if st.session_state.get(_ACTIVE_THREAD_KEY) == str(del_id):
+            st.session_state.pop(_ACTIVE_THREAD_KEY, None)
+        st.rerun()
+
+
+def _group_label(iso: str) -> str:
+    """thread 갱신 시각 → '오늘'/'어제'/'이번 주'/'이전' 그룹 라벨."""
+    if not iso:
+        return "이전"
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except Exception:
+        return "이전"
+    now = datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    delta_days = (now.date() - dt.date()).days
+    if delta_days <= 0:
+        return "오늘"
+    if delta_days == 1:
+        return "어제"
+    if delta_days <= 7:
+        return "이번 주"
+    return "이전"
+
+
+def _hhmm(iso: str) -> str:
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        return dt.strftime("%H:%M")
+    except Exception:
+        return ""
+
+
+def _render_thread_list_html(threads: "list[sola_threads.Thread]", active_id: str) -> str:
+    """좌측 thread list — 시안 마크업과 호환되는 ul.ws-th-list 그룹 HTML."""
+    if not threads:
+        return (
+            '<div style="padding: 18px 14px; text-align: center; color: var(--text-muted);'
+            ' font-size: 13px; line-height: 1.6;">'
+            '아직 대화가 없어요.<br>'
+            '<span style="font-size:12px;">아래 입력창에 질문하면 첫 스레드가 만들어져요.</span>'
+            '</div>'
+        )
+
+    # 그룹별 묶기 (순서: 오늘 → 어제 → 이번 주 → 이전, pinned 는 별도 그룹)
+    groups: dict[str, list[sola_threads.Thread]] = {}
+    pinned: list[sola_threads.Thread] = []
+    for t in threads:
+        if t.pinned:
+            pinned.append(t)
+            continue
+        g = _group_label(t.updated_at or t.created_at)
+        groups.setdefault(g, []).append(t)
+
+    parts: list[str] = []
+
+    def _emit_group(label: str, items: "list[sola_threads.Thread]") -> None:
+        if not items:
+            return
+        parts.append(f'<div class="ws-th-grp">{_html.escape(label)}</div>')
+        parts.append('<ul class="ws-th-list">')
+        for t in items:
+            active_cls = " ws-th-active" if t.id == active_id else ""
+            time_label = _hhmm(t.updated_at or t.created_at)
+            pin_mark = " · ★ 고정" if t.pinned else ""
+            href = f"?app_area={_AREA_QUOTED}&switch_thread={t.id}"
+            parts.append(
+                f'<li class="ws-th-item{active_cls}">'
+                f'<a class="ws-th-l" href="{href}" target="_self" style="display:flex; align-items:center; gap:10px; flex:1; text-decoration:none; color:inherit;">'
+                f'<div class="ws-th-icon"><span style="font-size:11px;">💬</span></div>'
+                f'<div>'
+                f'<div class="ws-th-name">{_html.escape(t.title or "새 대화")}</div>'
+                f'<div class="ws-th-meta">{_html.escape(time_label)} · 메시지 {int(t.message_count)}{pin_mark}</div>'
+                f'</div>'
+                f'</a>'
+                f'</li>'
+            )
+        parts.append('</ul>')
+
+    if pinned:
+        _emit_group("★ 고정", pinned)
+    for label in ("오늘", "어제", "이번 주", "이전"):
+        _emit_group(label, groups.get(label, []))
+
+    return "\n".join(parts)
+
+
+def _render_thread_filters_html(threads: "list[sola_threads.Thread]") -> str:
+    """필터 chip (현재는 시각만, 정직 카운트). active 는 '전체'."""
+    total = len(threads)
+    pinned = sum(1 for t in threads if t.pinned)
+    return (
+        f'<span class="ws-th-filter ws-th-filter-active">전체 {total}</span>'
+        f'<span class="ws-th-filter" title="필터 wire 는 후속 PR" '
+        f'style="opacity:0.5; cursor:not-allowed;">★ 고정 {pinned}</span>'
+    )
+
+
+def _switch_thread_from_query_if_any() -> None:
+    """?switch_thread=<id> 가 URL 에 있으면 1회 소비 → active 전환 + query strip."""
+    tid = st.query_params.get("switch_thread")
+    if not tid:
+        return
+    if sola_threads.get(str(tid)):
+        st.session_state[_ACTIVE_THREAD_KEY] = str(tid)
+        # 다른 thread 의 메시지 캐시 — 정리하지 않아도 _active_thread() 가 새 키로 분기
+    if "switch_thread" in st.query_params:
+        del st.query_params["switch_thread"]
+    st.rerun()
+
+
+# 5-nav area_key 의 URL quote 캐시 (thread link 에 사용).
+from urllib.parse import quote as _urlquote
+_AREA_QUOTED = _urlquote("🤖 SOLA 작업실")
+
+
 def _consume_prefill_ask_if_any() -> None:
     """`?ask_prefill=1` (또는 pending flag) → composer prefill 텍스트로 즉시 전송."""
     if not st.session_state.pop("_do_ask_prefill", False):
@@ -433,6 +607,25 @@ def _render_main(persona: Persona) -> None:
     messages = _load_messages()
     messages_html = _render_messages_html(messages)
 
+    # Thread list — 활성 thread 강조 + 그룹별 묶기
+    active_th = _active_thread()
+    all_threads = sola_threads.list_threads()
+    thread_list_html = _render_thread_list_html(all_threads, active_th.id)
+    thread_filters_html = _render_thread_filters_html(all_threads)
+    # 새 스레드 버튼 — `<a href>` 로 만들면 query param 안 쓰고 Streamlit
+    # button (아래) 으로 일관 처리. 자리 표시용 정적 마크업만 placeholder 에 넣고
+    # 실 인터랙션은 _render_main 마지막에 Streamlit button 추가.
+    new_thread_btn_html = (
+        '<button class="ws-new" disabled '
+        'title="아래 +새 대화 버튼으로 생성">'
+        '<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'13\' '
+        "height='13' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' "
+        "stroke-linecap='round' stroke-linejoin='round'><line x1='12' y1='5' x2='12' y2='19'/>"
+        "<line x1='5' y1='12' x2='19' y2='12'/></svg>\" width=\"13\" height=\"13\" alt=\"\" />"
+        "새 스레드"
+        "</button>"
+    )
+
     template = _SOLA_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
         template
@@ -440,12 +633,33 @@ def _render_main(persona: Persona) -> None:
         .replace("{{PERSONA_INTERESTS}}", _html.escape(interests_label))
         .replace("{{PERSONA_TEAM_SIZE}}", "5–15명")
         .replace("{{KEYWORDS_COUNT}}", "8개")
+        .replace("{{NEW_THREAD_BTN}}", new_thread_btn_html)
+        .replace("{{THREAD_FILTERS}}", thread_filters_html)
+        .replace("{{THREAD_LIST}}", thread_list_html)
         .replace("{{WS_MESSAGES}}", messages_html)
         .replace("{{COMPOSER_PREFILL}}", _html.escape(prefill))
         .replace("{{COMPOSER_PLACEHOLDER}}", _html.escape(placeholder))
         .replace("{{COMPOSER_PINS}}", pins_html)
     )
     st.html(html_out)
+
+    # ── 새 대화 시작 버튼 (Streamlit native, 실 인터랙션) ──
+    # 시안의 좌측 <button class="ws-new"> 은 HTML 내부라 클릭 wire 불가 → 본문 위에
+    # Streamlit 버튼으로 새 대화 생성을 노출.
+    c1, c2, c3 = st.columns([1, 1, 6])
+    with c1:
+        if st.button("➕ 새 대화", key="sola_new_thread_btn",
+                     use_container_width=True,
+                     help="새 thread 시작 (현 대화는 좌측 목록에 보존됨)"):
+            st.session_state["_do_new_thread"] = True
+            st.rerun()
+    with c2:
+        # 현 thread 삭제 — 메시지 없을 때만 유효 (실수 방지)
+        if active_th.message_count == 0 and len(all_threads) > 1:
+            if st.button("🗑 빈 대화 정리", key="sola_del_thread_btn",
+                         use_container_width=True):
+                st.session_state["_do_delete_thread"] = active_th.id
+                st.rerun()
 
     # ── prefill 인계받았을 때 즉시 전송 CTA (composer 시안 위) ──
     if prefill.strip():

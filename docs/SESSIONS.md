@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-05-30 · B.4 — SOLA thread 영구화 + 좌측 list 실데이터
+
+**브랜치:** `feat-sola-thread-store` (main `e5c8aa0` 기준)
+**상태:** 구현 완료, PR 생성 예정
+
+**배경:** PR #52 까지는 모든 SOLA 대화가 `chat_key="sola_main"` 단일 파일에
+누적. 사용자가 여러 주제 대화하면 한 thread 에 섞임. thread 별 분리 + 좌측
+시안 24 thread 실데이터화.
+
+**변경:**
+- `store/sola_threads.py` 신규 — Thread CRUD + ensure_active + 자동 제목 + 마이그
+- `ui/sola_workshop_v2.py` — active thread 기반 메시지 load/save + 좌측 list 동적
+- 새 대화 / 전환 / 삭제 pending 핸들러 + URL `?switch_thread=` 1회 소비
+- A.3 잔재 (`sola_main`) 자동 마이그 (첫 user 메시지로 thread 제목 + msg_count)
+
+**검증:**
+- pytest **248/248** (233 + 15 신규)
+- 금지패턴 0
+- e2e: 첫 진입 → thread 자동 1개, [➕ 새 대화] → 추가, 메시지 전송 →
+  title 자동 ("도장 PoC 일정이 4개월이면 무리일까?") + msg_count=2
+- 브라우저: SOLA 좌측 thread list 실데이터로 렌더 확인
+
+**남은 작업 (별도 PR):**
+- thread 검색 wire (현재는 disabled)
+- thread pin 토글 (API 는 있지만 UI 미배선)
+- 보드/인사이트 카드 CTA → 새 thread 로 진입하도록 수정 (현재는 active thread 에 prefill)
+
+---
+
 ## 2026-05-29 · A.3 후속 — 화면 콘텐츠 자동 LLM 컨텍스트 주입 (Option 1)
 
 **브랜치:** `feat-sola-composer-llm` (PR #52 에 추가 커밋)

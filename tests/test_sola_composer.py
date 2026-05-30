@@ -116,35 +116,54 @@ def test_build_llm_messages_skips_invalid_history_entries():
 
 @pytest.fixture
 def clean_chat_log(tmp_path, monkeypatch):
-    """chat_log 가 임시 디렉토리를 쓰도록 — 실 데이터 격리."""
+    """SOLA 영구화(chat_log + threads) 가 임시 디렉토리를 쓰도록 격리.
+
+    B.4 이후 메시지는 활성 thread 의 chat_key 에 저장되므로 thread store 도 격리.
+    """
     import config
+    sola_dir = tmp_path / "sola"
+    sola_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(config, "DATA_ROOT", tmp_path)
-    from store import chat_log
-    monkeypatch.setattr(chat_log, "SOLA_DIR", tmp_path / "sola")
+    monkeypatch.setattr(config, "SOLA_DIR", sola_dir)
+    from store import chat_log, sola_threads
+    monkeypatch.setattr(chat_log, "SOLA_DIR", sola_dir)
+    monkeypatch.setattr(sola_threads, "SOLA_DIR", sola_dir)
     import streamlit as st
-    st.session_state.pop("_sola_messages", None)
+    # 모든 _sola_messages_* 캐시 + active thread id 초기화
+    for k in [k for k in list(st.session_state.keys()) if k.startswith("_sola_messages") or k == "_sola_thread_id"]:
+        st.session_state.pop(k, None)
     yield
-    st.session_state.pop("_sola_messages", None)
+    for k in [k for k in list(st.session_state.keys()) if k.startswith("_sola_messages") or k == "_sola_thread_id"]:
+        st.session_state.pop(k, None)
 
 
 def test_append_message_persists_to_chat_log(clean_chat_log):
-    import streamlit as st
-    st.session_state["_sola_messages"] = []
     sola_v2._append_message("user", "hello")
     sola_v2._append_message("assistant", "world")
-    from store import chat_log
-    saved = chat_log.load_history(sola_v2._SOLA_CHAT_KEY)
+    # 활성 thread id 로 chat_log 에 저장됨
+    from store import chat_log, sola_threads
+    import streamlit as st
+    active_id = st.session_state["_sola_thread_id"]
+    saved = chat_log.load_history(active_id)
     assert [m["role"] for m in saved] == ["user", "assistant"]
     assert [m["content"] for m in saved] == ["hello", "world"]
+    # thread message_count + title 자동
+    th = sola_threads.get(active_id)
+    assert th.message_count == 2
+    assert th.title == "hello"  # 첫 user 메시지로 자동 제목
 
 
 def test_load_messages_seeds_from_chat_log_when_session_empty(clean_chat_log):
-    """첫 진입 시 chat_log 에서 load."""
-    from store import chat_log
+    """첫 진입 시 활성 thread 의 chat_log 에서 load."""
+    from store import chat_log, sola_threads
+    # 미리 thread 만들고 그 chat_key 로 메시지 저장
+    th = sola_threads.create("이전 대화")
     chat_log.save_history(
-        [{"role": "user", "content": "이전 질문", "ts": ""}],
-        sola_v2._SOLA_CHAT_KEY,
+        [{"role": "user", "content": "이전 질문"}],
+        th.id,
     )
+    import streamlit as st
+    st.session_state["_sola_thread_id"] = th.id
     msgs = sola_v2._load_messages()
     assert len(msgs) == 1
     assert msgs[0]["content"] == "이전 질문"
@@ -152,14 +171,21 @@ def test_load_messages_seeds_from_chat_log_when_session_empty(clean_chat_log):
 
 # ── consume_send happy / 미설정 폴백 / 일반 예외 ─────────────
 
+def _active_msgs(st_module) -> list[dict]:
+    """B.4: 활성 thread 의 메시지 캐시 key (`_sola_messages_<id>`) 에서 읽기."""
+    tid = st_module.session_state.get("_sola_thread_id")
+    if not tid:
+        return []
+    return st_module.session_state.get(f"_sola_messages_{tid}", [])
+
+
 def test_consume_send_happy_path_appends_user_and_assistant(clean_chat_log):
     import streamlit as st
-    st.session_state["_sola_messages"] = []
     st.session_state["_do_sola_send"] = "테스트 질문"
     with patch("sola.client.chat", return_value="테스트 답변"), \
          patch("streamlit.rerun"):
         sola_v2._consume_send_if_any(Persona(name="홍길동"))
-    msgs = st.session_state["_sola_messages"]
+    msgs = _active_msgs(st)
     assert [m["role"] for m in msgs] == ["user", "assistant"]
     assert msgs[0]["content"] == "테스트 질문"
     assert msgs[1]["content"] == "테스트 답변"
@@ -169,12 +195,11 @@ def test_consume_send_happy_path_appends_user_and_assistant(clean_chat_log):
 
 def test_consume_send_llm_not_configured_falls_back_to_preview(clean_chat_log):
     import streamlit as st
-    st.session_state["_sola_messages"] = []
     st.session_state["_do_sola_send"] = "Q"
     with patch("sola.client.chat", side_effect=LLMNotConfigured("no key")), \
          patch("streamlit.rerun"):
         sola_v2._consume_send_if_any(Persona())
-    msgs = st.session_state["_sola_messages"]
+    msgs = _active_msgs(st)
     assert len(msgs) == 2
     # preview 마커 — sola.preview.format_messages_preview 의 typical 출력
     assert "LLM 미설정" in msgs[1]["content"] or "system" in msgs[1]["content"]
@@ -182,12 +207,11 @@ def test_consume_send_llm_not_configured_falls_back_to_preview(clean_chat_log):
 
 def test_consume_send_general_exception_yields_friendly_assistant_msg(clean_chat_log):
     import streamlit as st
-    st.session_state["_sola_messages"] = []
     st.session_state["_do_sola_send"] = "Q"
     with patch("sola.client.chat", side_effect=RuntimeError("network")), \
          patch("streamlit.rerun"):
         sola_v2._consume_send_if_any(Persona())
-    msgs = st.session_state["_sola_messages"]
+    msgs = _active_msgs(st)
     assert msgs[-1]["role"] == "assistant"
     assert "응답 생성 실패" in msgs[-1]["content"]
     assert "RuntimeError" in msgs[-1]["content"]
@@ -195,17 +219,15 @@ def test_consume_send_general_exception_yields_friendly_assistant_msg(clean_chat
 
 def test_consume_send_empty_payload_is_noop(clean_chat_log):
     import streamlit as st
-    st.session_state["_sola_messages"] = []
     st.session_state["_do_sola_send"] = "   "  # whitespace only
     with patch("sola.client.chat") as cli, patch("streamlit.rerun"):
         sola_v2._consume_send_if_any(Persona())
         cli.assert_not_called()
-    assert st.session_state["_sola_messages"] == []
+    assert _active_msgs(st) == []
 
 
 def test_consume_send_no_pending_is_noop(clean_chat_log):
     import streamlit as st
-    st.session_state["_sola_messages"] = []
     st.session_state.pop("_do_sola_send", None)
     with patch("sola.client.chat") as cli, patch("streamlit.rerun"):
         sola_v2._consume_send_if_any(Persona())

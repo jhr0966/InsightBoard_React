@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (B.4 — SOLA thread 영구화 + 좌측 thread list 실데이터)
+- `store/sola_threads.py` 신규 — `Thread` dataclass + CRUD (`create`/`get`/`update`/`delete`/`list_threads`) + `ensure_active` (id 없거나 미존재면 최근/신규로 폴백) + `title_from_first_user_message` (자동 제목, 36자 cap) + `migrate_legacy_main_if_needed` (A.3 의 `sola_main` chat_key 누적분을 첫 thread 로 자동 마이그). 메타데이터 단일 파일 `data/sola/threads.json`, 메시지는 기존 `chat_log` 의 `chat_key=thread.id` 활용 (chat_key 별 파일 분리는 기존 기능 재사용).
+- `ui/sola_workshop_v2.py` — `_load_messages`/`_append_message` 가 활성 thread (`session_state["_sola_thread_id"]`) 의 chat_key 로 작동. 좌측 thread list 시안 24블록을 `{{THREAD_LIST}}` placeholder 로 교체하고 `_render_thread_list_html` 가 그룹(★ 고정/오늘/어제/이번 주/이전) + active 강조 + thread item 링크(`?switch_thread=<id>`) 동적 생성. 본문 위에 [➕ 새 대화] Streamlit 버튼 + 빈 thread (메시지 0, 다른 thread 있음) 일 때만 [🗑 빈 대화 정리] 노출. 첫 user 메시지로 thread 제목 자동 설정.
+- pending 핸들러 추가: `_consume_thread_actions_if_any` (new/switch/delete), `_switch_thread_from_query_if_any` (URL `?switch_thread=` 1회 소비 + strip — 재방문 재실행 방지). 순서: thread 액션 → URL switch → prefill ask → send.
+- 마이그레이션: A.3 이후 `sola_main` chat_key 에 누적된 메시지가 있고 threads.json 이 비어있으면 첫 user 메시지 제목 + message_count 채워 자동 thread 1개 생성 (legacy 파일은 보존 — 안전).
+- `assets/v2/screens/sola_main.html` — 시안 미리보기 노트("B.4 PR") 제거. 검색 placeholder 는 disabled 유지 (검색 wire 는 후속 PR).
+- `tests/test_sola_threads.py` (+15) — CRUD / 정렬(pinned 우선·updated_at 내림차순) / 자동 제목 (줄바꿈 처리 + 36자 cap + 빈 입력 폴백) / `ensure_active` 3 분기 / 마이그 3 케이스 (happy / no legacy / threads 이미 있음).
+- `tests/test_sola_composer.py` — 기존 영구화 fixture + happy/미설정/예외 흐름을 B.4 thread 기반(`_sola_messages_<id>` cache key + active thread chat_log)으로 갱신. `test_append_message_persists_to_chat_log` 가 자동 제목·message_count 도 검증.
+
 ### Added (A.3 후속 — "보고있는 화면 콘텐츠" 자동 LLM 컨텍스트 주입)
 - 각 v2 area 모듈에 `chat_context_block(persona) -> str` 함수 신규: `ui/board_v2`(7섹션: KPI·브리핑·탑스토리·자동화 기회·트렌드·매트릭스·키워드), `ui/data_management_v2`(헤더 stats·14일 일별 추이·출처별 분포·뉴스 라이브러리 6), `ui/insights_v2`(헤더·트렌드 키워드·5주 series·매트릭스 8·공정 매핑), `ui/archive_v2`(헤더 stats·칸반 3컬럼 각 카드 제목/본문/연령/태그).
 - `app.py` — 각 area 의 render() 직후 그 area 의 `chat_context_block()` 호출 → `session_state["_chat_context_for_sola"]` 에 저장. SOLA 작업실 area 자체는 skip (chat history 가 이미 컨텍스트).
