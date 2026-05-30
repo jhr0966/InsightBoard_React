@@ -797,6 +797,13 @@ def _opp_card_html(row: pd.Series) -> str:
     tagline = " · ".join(sample_tasks) if sample_tasks else f"매칭 뉴스 {matched_news}건"
     tagline_safe = _html.escape(tagline[:60])
 
+    # 신엑셀 정의서의 objective (목표 한 줄) — 있으면 카드에 추가 노출
+    objective_raw = str(row.get("sample_objectives", "") or "").strip()
+    objective_html = ""
+    if objective_raw:
+        obj_safe = _html.escape(objective_raw[:80])
+        objective_html = f'<div class="db-prop-objective" style="font-size:12.5px; color:#1E3A8A; margin:4px 0 0; line-height:1.45;">🎯 {obj_safe}</div>'
+
     # 점수 표시 — score 자체가 추상적이라 0-100 범위로 매핑 (cell_score 는 누적)
     roi_score = min(int(cell_score), 99)
 
@@ -809,6 +816,7 @@ def _opp_card_html(row: pd.Series) -> str:
       </div>
       <h3 class="db-prop-h">{dept} · {lv3} 자동화 기회</h3>
       <div class="db-prop-tagline">{tagline_safe}</div>
+      {objective_html}
 
       <div class="db-prop-metrics">
         <div><b class="db-good">{roi_score}</b><span>점수</span></div>
@@ -1039,7 +1047,7 @@ def chat_context_block(persona: Persona) -> str:
         except Exception:
             pass
 
-        # ④ 자동화 기회 4
+        # ④ 자동화 기회 4 (objectives 포함 — Phase 2)
         try:
             cells = _score_cells(news, roadmap).head(4)
             if not cells.empty:
@@ -1054,6 +1062,33 @@ def chat_context_block(persona: Persona) -> str:
                     sample = str(r.get("sample_tasks", "") or "").split(" · ")[0][:60]
                     if sample:
                         parts.append(f"    샘플 작업: {sample}")
+                    obj = str(r.get("sample_objectives", "") or "").strip()
+                    if obj:
+                        parts.append(f"    목표: {obj[:100]}")
+        except Exception:
+            pass
+
+        # 1위 cell 의 작업 정의 (task_def_json) 상세 — SOLA 가 "1위의 품질
+        # 리스크/자동화 영역" 같은 깊은 질문에 답할 수 있게.
+        try:
+            cells = _score_cells(news, roadmap).head(1)
+            if not cells.empty and "task_def_json" in roadmap.columns:
+                top_cell = cells.iloc[0]
+                first_task = str(top_cell.get("sample_tasks", "") or "").split(" · ")[0]
+                if first_task:
+                    rm = roadmap[
+                        (roadmap["dept"] == top_cell["dept"])
+                        & (roadmap["lv3"] == top_cell["lv3"])
+                        & (roadmap.get("task", "") == first_task)
+                    ]
+                    if not rm.empty:
+                        from roadmap.task_def_json import parse as _parse_tdj
+                        from roadmap.task_def_json import to_chat_context_lines as _ctx_lines
+                        task = _parse_tdj(rm.iloc[0].get("task_def_json", ""))
+                        ctx_lines = _ctx_lines(task)
+                        if ctx_lines:
+                            parts.append("  1위 cell 작업 정의 상세:")
+                            parts.extend(ctx_lines)
         except Exception:
             pass
 

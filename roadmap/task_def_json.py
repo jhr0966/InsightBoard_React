@@ -158,3 +158,35 @@ def to_chat_context_lines(task: TaskDef, *, indent: str = "  ") -> list[str]:
     if task.automation_potential_areas:
         lines.append(f"{indent}  자동화 영역: " + " / ".join(a[:80] for a in task.automation_potential_areas[:3]))
     return lines
+
+
+def flatten_for_match(json_text: str | None) -> str:
+    """JSON 정의서 → 매칭용 평탄 텍스트.
+
+    `store.match._tokens` 가 한국어/영숫자 토큰 추출 후 set 교집합으로 점수화.
+    여기서는 매칭에 의미있는 textual signal (process_name, description,
+    objectives, risks, automation areas) 을 모두 합쳐 공백 join. 토큰 추출은
+    호출자(`score_matches`) 가 알아서.
+
+    빈 입력 → 빈 문자열.
+    """
+    t = parse(json_text)
+    if t.is_empty():
+        return ""
+    parts: list[str] = []
+    if t.process_name:
+        parts.append(t.process_name)
+    if t.process_description:
+        parts.append(t.process_description)
+    parts.extend(t.objectives)
+    parts.extend(t.overall_quality_risks)
+    parts.extend(t.automation_potential_areas)
+    return " ".join(p for p in parts if p)
+
+
+def first_objective(json_text: str | None) -> str:
+    """JSON 정의서의 첫 objective 한 줄 — 보드 카드 tagline 등에 노출."""
+    t = parse(json_text)
+    if t.objectives:
+        return t.objectives[0]
+    return ""

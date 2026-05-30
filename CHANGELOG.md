@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 엑셀 Phase 2 — 매칭 정확도↑ + 카드 objective + SOLA 컨텍스트)
+- `roadmap/task_def_json.py` — 신규 helper `flatten_for_match(json_text)` + `first_objective(json_text)`.
+- `store/match.py::score_matches` — roadmap_df 의 `task_def_json` 컬럼이 있으면 `flatten_for_match` 결과를 task_text 에 합산. 자동화 영역·품질 리스크·objectives 토큰이 매칭 정확도 향상. 예: "RFID OCR 부재번호 자동 인식" 뉴스 → "판넬 선별" 작업과 매칭 (이전엔 매칭 안 됨).
+- `sola/opportunity.py::score_cells` — `sample_objectives` 컬럼 추가. 각 cell 의 첫 매칭 task 의 `task_def_json` 에서 첫 objective 추출. 없으면 빈 값(호환).
+- `ui/board_v2.py::_opp_card_html` — 카드에 "🎯 목표 한 줄" 노출. XSS escape.
+- `ui/board_v2.py::chat_context_block` — 자동화 기회 top 4 에 목표 라인 + **1위 cell 의 작업 정의 상세** (process_id/name/desc/objectives/품질 리스크/자동화 영역) 첨부. SOLA 가 "1위 자동화 기회의 품질 리스크는?" 같은 질문에 답 가능.
+- `tests/test_roadmap_phase2.py` (+11) — flatten / first_objective / score_matches task_def_json 활용·미사용 호환 / sample_objectives 컬럼 / card HTML.
+
 ### Added (작업 정의 엑셀 Phase 1 — 신규 컬럼 + JSON 정의서 파서)
 - `roadmap/schema.py` — 신규 OPTIONAL 컬럼 `division`(분과) · `process`(공정) · `task_def_json`(Structured JSON 텍스트). `COLUMN_MAP` 에 한글 헤더 추가 (`분과 → division`, `공정 → process`, `공정정의서(줄글) → task_def`, `공정정의서(JSON) → task_def_json`). `RoadmapRow` dataclass 도 동기.
 - `roadmap/ingest.py::normalize_columns` — 신엑셀 호환 fallback. lv1/2/3 컬럼이 통째로 비어있으면 division/process/task 로 자동 채움 (기존 사용처: 보드 ④/⑥, 인사이트, persona interest_lv3 모두 호환). 부분 혼합 케이스에서도 안전.

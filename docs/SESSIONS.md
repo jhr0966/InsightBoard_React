@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-05-30 · 작업 정의 엑셀 Phase 2 — 매칭 정확도↑ + 카드 objective + SOLA 컨텍스트
+
+**브랜치:** `feat-roadmap-phase2` (main `ea98108` 기준 — 3개 PR 머지 후)
+
+**변경:**
+- `flatten_for_match` / `first_objective` helper 추가
+- `store.match.score_matches`: task_def_json 평탄 텍스트도 매칭 토큰화 (정확도↑)
+- `sola.opportunity.score_cells`: `sample_objectives` 컬럼 신규
+- `board_v2._opp_card_html`: 🎯 목표 한 줄 노출
+- `board_v2.chat_context_block`: 자동화 기회 + 1위 cell 작업 정의 상세
+
+**검증:**
+- pytest **308/308** (297 + 11 신규)
+- e2e: 합성 뉴스 "RFID OCR 부재번호" → "판넬 선별" 매칭 (점수 21.0) +
+  sample_objectives "BOM 기준 주판 수입 검수" 노출
+- 기존 사용처 호환 (task_def_json 없는 엑셀에도 정상 동작)
+
+**Phase 3 (별도 PR):**
+- 데이터관리 "내부 로드맵" 탭 wire (현재 disabled)
+- 작업 정의 검색 UI + JSON 정의서 카드 뷰
+
+---
+
 ## 2026-05-30 · 작업 정의 엑셀 Phase 1 — 신엑셀 컬럼 + JSON 파서
 
 **브랜치:** `feat-roadmap-task-def` (main `bfc3fd4` 기준)

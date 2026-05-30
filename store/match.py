@@ -40,12 +40,22 @@ def score_matches(
 
     news_cols = [c for c in ("title", "summary", "keywords") if c in news_df.columns]
     task_cols = [c for c in ("task", "sub_task", "task_def", "sws_name", "lv3") if c in roadmap_df.columns]
+    has_task_def_json = "task_def_json" in roadmap_df.columns
 
     news_tokens = [Counter(_tokens(_row_text(row, news_cols))) for _, row in news_df.iterrows()]
+
+    # task_def_json (신엑셀) 의 평탄 텍스트도 매칭에 합산 — 자동화 영역·품질
+    # 리스크·objectives 같은 풍부한 신호가 추가되어 정확도↑. JSON 파싱 비용은
+    # row 당 ~0.5ms 수준 (한 번만).
+    from roadmap.task_def_json import flatten_for_match
 
     rows: list[dict] = []
     for _, task_row in roadmap_df.iterrows():
         task_text = _row_text(task_row, task_cols)
+        if has_task_def_json:
+            extra = flatten_for_match(task_row.get("task_def_json", ""))
+            if extra:
+                task_text = task_text + " " + extra
         tk_counter = Counter(_tokens(task_text))
         if not tk_counter:
             continue
