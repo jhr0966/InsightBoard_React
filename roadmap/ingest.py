@@ -26,13 +26,39 @@ def _utc_stamp() -> str:
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """한국어 헤더를 snake_case로 변환. 알 수 없는 컬럼은 그대로 둔다."""
+    """한국어 헤더를 snake_case로 변환. 알 수 없는 컬럼은 그대로 둔다.
+
+    신버전 엑셀(2026-05+) 호환: lv1/lv2/lv3 가 없고 division/process/task 만
+    있으면 자동으로 fallback 채움 — 기존 사용처(보드 ④/⑥, 인사이트, persona
+    interest_lv3)가 그대로 동작하도록.
+
+      신엑셀 컬럼 분과 / 공정 / 작업 → division / process / task
+      자동 채움    lv1 = division
+                  lv2 = process
+                  lv3 = task   (lv3 가 비어있을 때만)
+
+    구버전 엑셀은 영향 없음 — lv1/lv2/lv3 가 이미 채워져 있으면 덮어쓰지 않음.
+    """
     renamed = df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in df.columns})
     # 누락된 선택 컬럼은 빈 값으로 채워 후속 조회 안정화
     for col in ALL_COLUMNS:
         if col not in renamed.columns:
             renamed[col] = ""
-    return renamed[list(ALL_COLUMNS)].copy()
+    renamed = renamed[list(ALL_COLUMNS)].copy()
+
+    # 신버전 fallback — lv1/lv2/lv3 가 모두 빈 값이고 division/process/task 가
+    # 채워진 경우 자동 채움. 부분만 비어있는 혼합 경우는 안전을 위해 건드리지 않음.
+    def _is_blank(series: pd.Series) -> bool:
+        return bool(series.astype(str).str.strip().eq("").all())
+
+    if _is_blank(renamed["lv1"]) and not _is_blank(renamed["division"]):
+        renamed["lv1"] = renamed["division"]
+    if _is_blank(renamed["lv2"]) and not _is_blank(renamed["process"]):
+        renamed["lv2"] = renamed["process"]
+    if _is_blank(renamed["lv3"]) and not _is_blank(renamed["task"]):
+        renamed["lv3"] = renamed["task"]
+
+    return renamed
 
 
 def validate(df: pd.DataFrame) -> list[str]:

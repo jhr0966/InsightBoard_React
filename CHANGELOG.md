@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 엑셀 Phase 1 — 신규 컬럼 + JSON 정의서 파서)
+- `roadmap/schema.py` — 신규 OPTIONAL 컬럼 `division`(분과) · `process`(공정) · `task_def_json`(Structured JSON 텍스트). `COLUMN_MAP` 에 한글 헤더 추가 (`분과 → division`, `공정 → process`, `공정정의서(줄글) → task_def`, `공정정의서(JSON) → task_def_json`). `RoadmapRow` dataclass 도 동기.
+- `roadmap/ingest.py::normalize_columns` — 신엑셀 호환 fallback. lv1/2/3 컬럼이 통째로 비어있으면 division/process/task 로 자동 채움 (기존 사용처: 보드 ④/⑥, 인사이트, persona interest_lv3 모두 호환). 부분 혼합 케이스에서도 안전.
+- `roadmap/task_def_json.py` 신규 — `TaskDef` dataclass + `parse(s)` (안전 파싱, 잘못된/빈/non-dict JSON 모두 빈 TaskDef 반환) + `automation_keywords(task, max_n)` (매칭용 키워드 추출) + `to_chat_context_lines(task)` (LLM 시스템 메시지 첨부용 다중 라인). `automation_potential_areas` / `overall_quality_risks` 의 dict 리스트 구조(`{area, technology, expected_effect}`, `{risk, consequence}`) 자동 평탄화 — head_keys 우선순위로.
+- `tests/fixtures/sample_task_def.xlsx` 추가 — 사용자 제공 샘플 (가공팀 32행, 신엑셀 형식).
+- `tests/test_roadmap_task_def.py` (+17) — schema 신규 컬럼 / COLUMN_MAP 한글 매핑 / round-trip ingest (32행) / lv fallback / 기존 lv 보존 / 부분 혼합 안전 / parser 빈·잘못된·non-dict 입력 안전 / dict 리스트 평탄화 / `automation_keywords` 토큰 분리·dedupe·max_n / `to_chat_context_lines` 전 필드 노출 / 32행 전체 안전 파싱.
+- 기존 `roadmap.query.load_latest` / `sola.opportunity.score_cells` 호출 호환 검증 — 신규 컬럼 추가에도 모든 사용처 동작.
+
 ### Added (B.4 후속 2 — SOLA thread 검색 wire)
 - `ui/sola_workshop_v2.py::_filter_threads_by_query` 신규 — 제목 substring 매칭(대소문자 무시·공백 strip·빈 query 패스스루).
 - `_render_thread_list_html(search_query="")` 시그니처 확장 — 검색 모드면 일반 그룹(★고정/오늘/어제/이번 주/이전) 우회하고 **단일 평탄 "검색 결과 N건" 그룹**으로. 0 매칭 시 친화 빈 카드 (검색어 escape 노출 + "지우면 전체로" 안내).
