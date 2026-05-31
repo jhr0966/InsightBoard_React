@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (인사이트 매트릭스 셀 클릭 wire — SVG 버블 → SOLA 작업실 인계 + 동적 PoC 리스트)
+- `ui/insights_v2.py::_ia_mx_select_href(dept, lv3)` — `?app_area=🔎+인사이트+분석&ia_mx_select=<dept>|<lv3>` 빌더. 빈 dept/lv3 → 토글 해제.
+- `ui/insights_v2.py::_ia_mx_selected_key()` — `?ia_mx_select=` 1회 stateless 읽기.
+- `ui/insights_v2.py::_ia_matrix_svg(selected_key=None)` — SVG 버블 8개 각각을 `<a xlink:href="?ia_mx_select=dept|lv3">` 로 wrap (SVG 표준 링크). `<title>` 으로 hover tooltip. selected_key 매칭 셀에 `ia-mtx-bubble-on` + halo + 두꺼운 stroke + 토글 해제 href. 미매칭 fallback → 1위. `xmlns:xlink` 네임스페이스 추가.
+- `ui/insights_v2.py::_ia_mtx_rank_html(selected_key=None)` — 우측 PoC 후보 리스트(5개 max)를 score_cells 로 동적 빌드. 옛 정적 mockup(도장 비전 검사 / 14명/일 / 9.2 등) 완전 제거. 각 항목 `<a class="ia-poc-link" href=...>` + `aria-current`. effort/impact 는 1-ease/eff norm 으로 高中低 자동 분류, score 는 max 기준 10점 만점 환산. 빈 상태 안내 `_ia_mtx_rank_empty`.
+- `assets/v2/screens/insights_main.html` — 5개 정적 `<li class="ia-poc">` + "7건 전체 보기" 버튼 블록을 `{{IA_MTX_RANK}}` 단일 플레이스홀더로 교체.
+- `ui/insights_v2.py::render()` — `selected_mx = _ia_mx_selected_key()` 읽어 `_ia_matrix_svg(selected_key=)` / `_ia_mtx_rank_html(selected_key=)` 전달.
+- `assets/v2/screens/insights.css` — `.ia-poc-link` flex grid + I-19 (`a:visited` 색 inherit) / `.ia-mtx-bubble` cursor + hover brightness.
+- `tests/test_insight_matrix_click.py` (+11) — URL 빌더(인코딩/토글) / `_ia_mx_selected_key` / SVG `<a>` wrap·`<title>`·disabled 자취 0·기본 1위 활성 / `selected_key` 활성 표시·토글 해제 href / 미지 키 fallback / PoC 리스트 동적 cells(5개 max)·기본 활성·옛 mockup 제거·실 score 10점 환산 / `selected_key` 매칭 항목 `ia-poc-on`·`aria-current` / 빈 상태 안내 / 템플릿 placeholder 존재 + 옛 mock `li` 자취 0.
+
 ### Added (커스텀 RSS 실 수집 wire — store.sources → scraping.run_daily 통합)
 - `scraping/rss.py` 신규 — 범용 RSS 2.0 / Atom 피드 파서. `scraping.http.build_session()` 단일 진입점(§4 유지). RFC822 / ISO 8601 날짜 모두 인식, 중복 링크 제거, `description` 에서 이미지 URL 추출, 잘못된 URL/파싱 실패/HTTP 오류 시 `RuntimeError`.
 - `scraping/run_daily.py::collect_batch(extra_feeds=None)` — 신규 인자. `(name, url)` 튜플 시퀀스를 받아 키워드와 무관하게 각 피드를 fetch → `save_articles(source=name)` 으로 별도 파일 저장(stamp 충돌 회피). 실패는 `errors` 에 누적.
