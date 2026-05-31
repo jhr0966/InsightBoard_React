@@ -5,7 +5,32 @@
 
 ---
 
-## 2026-05-31 · topbar 알림/설정 버튼 정직화
+## 2026-05-31 · 인사이트 트렌드 키워드 클릭 wire
+
+**브랜치:** `feat-insight-kw-click` (main `cd23856` 기준 · #63 머지 직후)
+
+**변경:**
+- `_tkw_list_html` 의 `<button disabled>` → `<a class="ia-tkw-item" href="?tkw=K">`
+- 활성 키워드 href 는 빈 tkw (토글 해제), 비활성은 새 선택
+- `_ia_process_map_html(selected_kw)` — 30일 뉴스를 키워드 substring 필터 → score_cells
+- `_news_filter_by_keyword` 신규 helper
+- `_ia_pmap_empty(selected_kw)` — 필터 0건 안내 + "전체 보기" 링크
+- `assets/v2/screens/insights.css` — `a.ia-tkw-item` I-19
+- +11 tests
+
+**검증:**
+- pytest **360/360** (349 + 11 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- URL stateless — area 이동 시 query 전체 재작성으로 자동 클리어
+
+**남은 추천 작업:**
+- 데이터관리 키워드/내부 출처 설정 본문(B.5)
+- 매트릭스 버블 클릭
+- 산출물 칸반 +N건 더 보기
+
+---
+
+## 2026-05-31 · topbar 알림/설정 버튼 정직화 ✅ merged (#63)
 
 **브랜치:** `feat-topbar-actions` (main `e92aa20` 기준 · #62 머지 직후)
 

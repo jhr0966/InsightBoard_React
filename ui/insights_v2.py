@@ -7,6 +7,7 @@ store/bookmarks). 트렌드 차트·매트릭스·키워드 리스트 시각은 
 from __future__ import annotations
 
 import html as _html
+from urllib.parse import quote
 
 import streamlit as st
 
@@ -25,9 +26,49 @@ from ui.styles import inject_screen_css
 # 트렌드 키워드 색상 팔레트 — rank 별
 _TKW_COLORS = ["#2563EB", "#14B8A6", "#F59E0B", "#6366F1", "#0EA5E9", "#94A3B8"]
 
+# 인사이트 분석 area 키 (트렌드 키워드 클릭 시 머무름)
+_IA_AREA_KEY = "🔎 인사이트 분석"
 
-def _tkw_list_html() -> str:
-    """ia-tkw-item 6개 동적 빌드. top_keywords + emergence 결합."""
+
+def _tkw_select_href(keyword: str = "") -> str:
+    """트렌드 키워드 클릭 → 같은 area + `?tkw=<keyword>` (빈 값이면 토글 해제).
+
+    URL 에 tkw 를 남겨두면 process map · 매트릭스 helper 가 필터 인자로 사용한다.
+    """
+    parts = [f"app_area={quote(_IA_AREA_KEY)}"]
+    if keyword:
+        parts.append(f"tkw={quote(keyword)}")
+    return "?" + "&".join(parts)
+
+
+def _news_filter_by_keyword(news_df, keyword: str):
+    """뉴스 DataFrame 을 키워드 substring(대소문자 무시) 으로 필터.
+
+    검색 컬럼: title, summary, summary_llm, keywords, keywords_llm, content.
+    빈 keyword 면 원본 반환. 컬럼 없으면 빈 결과(빈 df 와 동일 dtype).
+    """
+    if news_df is None or news_df.empty or not keyword:
+        return news_df
+    hay_cols = [c for c in ("title", "summary", "summary_llm", "keywords",
+                             "keywords_llm", "content") if c in news_df.columns]
+    if not hay_cols:
+        return news_df.iloc[0:0]
+    import pandas as _pd
+    mask = _pd.Series(False, index=news_df.index)
+    for col in hay_cols:
+        mask |= news_df[col].fillna("").astype(str).str.contains(
+            keyword, regex=False, case=False
+        )
+    return news_df[mask]
+
+
+def _tkw_list_html(selected_kw: str | None = None) -> str:
+    """ia-tkw-item 6개 동적 빌드. top_keywords + emergence 결합 + 클릭 wire.
+
+    Args:
+        selected_kw: 사용자가 선택한 트렌드 키워드. None 이면 rank 1 활성(기본).
+            매칭되는 키워드에 ia-tkw-on 활성 클래스 + href 는 토글 해제(빈 tkw).
+    """
     try:
         news_30 = _news_db.load_news_for_days(days=30)
     except Exception:
@@ -64,6 +105,7 @@ def _tkw_list_html() -> str:
 
     max_count = max(int(top_df["count"].max()), 1)
     parts = []
+    has_explicit_selection = bool(selected_kw)
     for i, (_, row) in enumerate(top_df.iterrows()):
         kw = str(row["keyword"])
         count = int(row["count"])
@@ -74,9 +116,16 @@ def _tkw_list_html() -> str:
         delta_label = f"+{delta}%" if delta > 0 else (f"−{abs(delta)}%" if delta < 0 else "0%")
         delta_cls = "ia-tkw-up" if delta > 0 else ("ia-tkw-down" if delta < 0 else "ia-tkw-flat")
         new_badge = ' <span class="ia-tkw-new">NEW</span>' if kw in new_set else ""
-        active_cls = " ia-tkw-on" if i == 0 else ""
+        is_active = (kw == selected_kw) if has_explicit_selection else (i == 0)
+        active_cls = " ia-tkw-on" if is_active else ""
+        # 활성 항목 클릭 → 해제(빈 tkw). 비활성 클릭 → 그 키워드 선택.
+        href = _tkw_select_href("" if is_active else kw)
+        aria = ' aria-current="true"' if is_active else ""
+        title = (f"필터 해제 — 전체 데이터 보기" if is_active
+                 else f"이 키워드로 매핑·매트릭스 필터")
         parts.append(
-            f'<button class="ia-tkw-item{active_cls}" disabled>'
+            f'<a class="ia-tkw-item{active_cls}" href="{href}" target="_self" '
+            f'title="{_html.escape(title)}"{aria}>'
             f'<span class="ia-tkw-rank">{rank}</span>'
             f'<span class="ia-tkw-body">'
             f'<span class="ia-tkw-name">{_html.escape(kw)}{new_badge}</span>'
@@ -84,7 +133,7 @@ def _tkw_list_html() -> str:
             f'</span>'
             f'<span class="ia-tkw-bar"><span style="width:{bar_pct}%; background:{color};"></span></span>'
             f'<span class="ia-tkw-delta {delta_cls}">{delta_label}</span>'
-            f'</button>'
+            f'</a>'
         )
     return "\n".join(parts)
 
@@ -377,11 +426,16 @@ _IA_PC_PALETTE = [
 
 
 @st.cache_data(ttl=60)
-def _ia_process_map_html() -> str:
+def _ia_process_map_html(selected_kw: str | None = None) -> str:
     """SECTION A 우측 — 선택 키워드 → 매칭 Lv3 공정 카드 3개.
 
+    Args:
+        selected_kw: 사용자가 선택한 트렌드 키워드. 지정 시 30일 뉴스를
+            해당 키워드 substring 으로 필터링하고 chip 도 그 값으로 표시.
+            None 이면 기존 동작(top trending 키워드).
+
     데이터:
-      from chip = top trending 키워드 (`_weekly_keyword_series` 1순위)
+      from chip = selected_kw (없으면 `_weekly_keyword_series` 1순위)
       cards    = `_score_cells` 상위 3개 (각 dept × lv3)
       fit %    = cell_score / max * 36 + 60 (60~96%)
       현재     = sample_tasks 첫 항목 (없으면 매칭 작업 N건)
@@ -398,9 +452,18 @@ def _ia_process_map_html() -> str:
     if news_30 is None or news_30.empty or roadmap_df is None or roadmap_df.empty:
         return _ia_pmap_empty()
 
-    # top trending kw
-    _labels, series = _weekly_keyword_series(weeks=5)
-    top_kw = series[0]["name"] if series else "—"
+    # 선택된 키워드로 뉴스 필터링 (지정 시) — 필터 후 비면 empty
+    if selected_kw:
+        news_30 = _news_filter_by_keyword(news_30, selected_kw)
+        if news_30 is None or news_30.empty:
+            return _ia_pmap_empty(selected_kw=selected_kw)
+
+    # from chip — 명시 선택이 우선, 없으면 top trending kw
+    if selected_kw:
+        top_kw = selected_kw
+    else:
+        _labels, series = _weekly_keyword_series(weeks=5)
+        top_kw = series[0]["name"] if series else "—"
     top_dot_color = _IA_PC_PALETTE[0][0]
 
     try:
@@ -408,7 +471,7 @@ def _ia_process_map_html() -> str:
     except Exception:
         return _ia_pmap_empty()
     if cells.empty:
-        return _ia_pmap_empty()
+        return _ia_pmap_empty(selected_kw=selected_kw)
 
     max_score = max(float(cells["cell_score"].max()), 1.0)
     avg_fit = int(round(cells["cell_score"].mean() / max_score * 36 + 60))
@@ -488,7 +551,19 @@ def _ia_process_map_html() -> str:
     </div>"""
 
 
-def _ia_pmap_empty() -> str:
+def _ia_pmap_empty(*, selected_kw: str | None = None) -> str:
+    if selected_kw:
+        clear_href = _tkw_select_href("")
+        return (
+            '<div style="padding:32px 18px; text-align:center; color:var(--text-muted);'
+            ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;">'
+            f"'<b>{_html.escape(selected_kw)}</b>' 키워드에 매핑되는 공정이 없어요.<br>"
+            f'<span style="font-size:12.5px;">다른 키워드 선택 또는 '
+            f'<a href="{clear_href}" target="_self" '
+            f'style="color:var(--accent-primary); text-decoration:none; font-weight:700;">'
+            f'전체 보기</a>.</span>'
+            '</div>'
+        )
     return ('<div style="padding:32px 18px; text-align:center; color:var(--text-muted);'
             ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;">'
             '아직 키워드 → 공정 매핑 결과가 없어요.<br>'
@@ -718,6 +793,9 @@ def render() -> None:
 
     app_shell.render_setup_banner_if_needed()
 
+    # 트렌드 키워드 클릭 필터 — `?tkw=` 1회 stateless 필터(URL 유지).
+    selected_kw = (st.query_params.get("tkw") or "").strip() or None
+
     template = _IA_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
         template
@@ -725,7 +803,7 @@ def render() -> None:
         .replace("{{IA_NEW_TRENDS}}", _html.escape(ia_stats["new_trends"]))
         .replace("{{IA_MATCHED_PROCESSES}}", _html.escape(ia_stats["matched_processes"]))
         .replace("{{IA_POC_CANDIDATES}}", _html.escape(ia_stats["poc_candidates"]))
-        .replace("{{IA_TKW_LIST}}", _tkw_list_html())
+        .replace("{{IA_TKW_LIST}}", _tkw_list_html(selected_kw=selected_kw))
     )
     chart = _ia_chart_parts()
     html_out = (
@@ -734,7 +812,7 @@ def render() -> None:
         .replace("{{IA_CHART_LEGEND}}", chart["legend"])
         .replace("{{IA_CHART_PILL}}", chart["pill"])
         .replace("{{IA_MATRIX_SVG}}", _ia_matrix_svg())
-        .replace("{{IA_PROCESS_MAP}}", _ia_process_map_html())
+        .replace("{{IA_PROCESS_MAP}}", _ia_process_map_html(selected_kw=selected_kw))
     )
     st.html(html_out)
 

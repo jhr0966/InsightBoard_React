@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (인사이트 트렌드 키워드 클릭 wire — 키워드 선택 → 공정 매핑 필터)
+- `ui/insights_v2.py::_tkw_select_href(keyword)` — `?app_area=🔎+인사이트+분석&tkw=<keyword>` URL 빌더. 빈 keyword 면 토글 해제(필터 클리어).
+- `ui/insights_v2.py::_tkw_list_html(selected_kw=None)` — `<button disabled>` → `<a class="ia-tkw-item">` 전환. `selected_kw` 지정 시 그 키워드만 `ia-tkw-on` + `aria-current` + href 는 토글 해제. 비활성 항목은 그 키워드로 새 선택. 미지정 시 기존 동작(rank 1 활성) 유지.
+- `ui/insights_v2.py::_ia_process_map_html(selected_kw=None)` — `selected_kw` 지정 시 30일 뉴스를 `_news_filter_by_keyword` 로 필터(title/summary/keywords/content substring · case-insensitive)한 뒤 `_score_cells` 에 전달. "선택된 키워드" chip 도 사용자 선택값으로 표시. 필터 후 0건이면 "X 키워드에 매핑되는 공정이 없어요" + 전체 보기 링크.
+- `ui/insights_v2.py::_news_filter_by_keyword(df, keyword)` — 신규 helper(다른 키워드 필터 화면도 재사용 가능).
+- `ui/insights_v2.py::render()` — `selected_kw = st.query_params.get("tkw")` 읽어 두 helper 에 전달. URL stateless 유지(area 이동 시 자동 클리어 — `<a href>` 가 query 전체 재작성).
+- `assets/v2/screens/insights.css` — `a.ia-tkw-item` I-19 패턴(text-decoration:none + `:visited` 색 회복).
+- `tests/test_insight_tkw_click.py` (+11) — URL 빌더 / `<a>` 전환·disabled 자취 0 / `selected_kw` 활성 클래스·aria-current·toggle off href / process map 필터 chip / 필터 0건 안내·전체 보기 링크 / `_news_filter_by_keyword` substring·case-insensitive·None·빈 df 가드.
+
 ### Changed (topbar 알림/설정 버튼 정직화 — disabled no-op → 실제 동작)
 - `ui/app_shell.py::render_topbar` — 알림/설정 `<button disabled>` 두 개를 `<a class="db-hdr-btn">` 로 전환.
   - 🔔 **알림** → `?app_area=📦+산출물+보관함`. `_notif_count()`(채택 대기 pending 제안서 수)가 0 보다 클 때만 빨간 점 + 개수 배지(99+ 캡) 노출 + 툴팁 "채택 대기 N건". 0 이면 점/배지 없이 "새 알림 없음" 툴팁 — 가짜 알림 표시 제거(정직).
