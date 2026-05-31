@@ -105,8 +105,9 @@ def _fresh_app():
 
 
 def test_data_mgmt_renders_upload_section_with_helpful_text(isolated_dirs):
-    """데이터관리 진입 시 업로드 섹션 노출."""
+    """데이터관리 진입 + 작업 정의 탭 선택 시 업로드 섹션 노출."""
     at = _fresh_app()
+    at.query_params["dm_tab"] = "task"
     at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
     assert "작업 정의 데이터 업로드" in htmls

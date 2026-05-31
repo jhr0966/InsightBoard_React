@@ -27,6 +27,43 @@
 - 데이터관리 키워드/내부 출처 설정 본문(B.5)
 - 매트릭스 버블 클릭
 - 산출물 칸반 +N건 더 보기
+## 2026-05-31 · B.5 데이터관리 4 탭 본문 (키워드 / 작업 정의 / 출처 설정)
+
+**브랜치:** `feat-data-mgmt-b5` (main `cd23856` 기준 · #63 머지 직후)
+**병행 작업:** `feat-insight-kw-click` (#64) 와 독립 — 충돌 영역 없음
+
+**변경:**
+- `data_management_main.html` — `<button disabled>` 4탭 → `{{DM_TABS}}` 동적 + `{{DM_MAIN_BODY_OPEN/CLOSE}}` 래퍼
+- `_dm_tabs_html` / `_dm_tab_href` / `_dm_tab_body_html` / `_dm_kw_body_html` / `_dm_task_body_html` / `_dm_src_body_html` 신규
+- `_render_main(selected_tab, persona)` — jobs 외 탭에서 dm-split 을 `display:none` 으로 숨기고 본문 inline
+- `render()`: `?dm_tab=` 읽기, task 탭에서만 `_render_task_def_upload()` 위젯 노출
+- CSS: `a.dm-tab` I-19 + dm-tab-body/chip/src-table 신규
+- 기존 task_def_upload 테스트는 `?dm_tab=task` 진입으로 업데이트
+- +14 tests
+
+**검증:**
+- pytest **363/363** (349 + 14 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- URL stateless — jobs 기본은 dm_tab 생략 깨끗
+
+**남은 추천 작업:**
+- 매트릭스 버블 클릭 wire
+- 산출물 칸반 +N건 더 보기
+- 출처 설정에 추가/제거 폼 (현재는 read-only)
+
+---
+
+## 2026-05-31 · 인사이트 트렌드 키워드 클릭 wire
+
+**브랜치:** `feat-insight-kw-click` (#64)
+
+**변경:**
+- 트렌드 키워드 `<button disabled>` → `<a>` 전환 + `?tkw=` 필터
+- `_ia_process_map_html(selected_kw)` 30일 뉴스 필터 후 score_cells
+- `_news_filter_by_keyword` 신규 helper
+- +11 tests
+
+**검증:** pytest **360/360**
 
 ---
 

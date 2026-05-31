@@ -498,11 +498,17 @@ def render() -> None:
     _render_refresh_toast_if_needed()
     _render_task_def_toast_if_needed()
 
-    # ── 3) 본문 main 템플릿 ──
-    _render_main(dm_stats)
+    # 활성 탭 — `?dm_tab=jobs|kw|task|src` (기본 jobs)
+    selected_tab = (st.query_params.get("dm_tab") or "jobs").strip()
+    if selected_tab not in _DM_TABS:
+        selected_tab = "jobs"
 
-    # ── 3.5) 작업 정의 데이터 업로드 섹션 ──
-    _render_task_def_upload()
+    # ── 3) 본문 main 템플릿 ──
+    _render_main(dm_stats, selected_tab=selected_tab, persona=persona)
+
+    # ── 3.5) 작업 정의 데이터 업로드 섹션 — task 탭에서만 ──
+    if selected_tab == "task":
+        _render_task_def_upload()
 
     # ── 4) 우측 .app-sola ──
     sources_n = dm_stats["active_sources"]
@@ -706,10 +712,287 @@ def _render_task_def_upload() -> None:
         st.rerun()
 
 
-def _render_main(dm_stats: dict[str, str | int]) -> None:
-    """data_management_main.html 템플릿 로드 + placeholder 치환."""
+# ── B.5 데이터관리 4 탭 wire (jobs / kw / task / src) ────────────
+_DM_TABS = ("jobs", "kw", "task", "src")
+_DM_TAB_LABEL = {
+    "jobs": "수집잡 · 뉴스 라이브러리",
+    "kw": "키워드",
+    "task": "작업 정의",
+    "src": "출처 설정",
+}
+_DM_TAB_ICON_SVG = {
+    # 24x24 stroke=#475569 패스 본문(<svg>는 _dm_tabs_html 에서 wrap)
+    "jobs": "<polyline points='23 4 23 10 17 10'/><path d='M3.51 9a9 9 0 0114.85-3.36L23 10'/>",
+    "kw": "<circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/>",
+    "task": "<path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11'/>",
+    "src": (
+        "<circle cx='12' cy='12' r='3'/><path d='M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15 1.65 1.65 0 003.09 14H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 4.6 1.65 1.65 0 009 3.09V3a2 2 0 014 0v.09A1.65 1.65 0 0014 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.16.5.66.91 1.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z'/>"
+    ),
+}
+
+
+def _dm_tab_href(tab: str) -> str:
+    """탭 선택 URL — `?app_area=🧱+데이터+관리&dm_tab=<tab>`."""
+    from urllib.parse import quote
+    parts = [f"app_area={quote('🧱 데이터 관리')}"]
+    if tab and tab != "jobs":
+        parts.append(f"dm_tab={quote(tab)}")
+    return "?" + "&".join(parts)
+
+
+def _dm_tabs_html(selected_tab: str, dm_stats: dict[str, str | int]) -> str:
+    """4 탭 동적 빌드 — <button disabled> → <a>. 활성 탭에 dm-tab-active."""
+    selected_tab = selected_tab if selected_tab in _DM_TABS else "jobs"
+    parts = ['<div class="dm-tabs">']
+    for tab in _DM_TABS:
+        active = " dm-tab-active" if tab == selected_tab else ""
+        href = _dm_tab_href(tab)
+        label = _DM_TAB_LABEL[tab]
+        icon = _DM_TAB_ICON_SVG[tab]
+        # 탭별 count 카운트(jobs 만 동적; 나머지는 비워둠)
+        if tab == "jobs":
+            cnt_html = (
+                f'<span class="dm-tab-cnt">'
+                f'{int(dm_stats.get("active_sources", 0) or 0)} 출처 · '
+                f'{int(dm_stats.get("today_count", 0) or 0)} 건/일'
+                f'</span>'
+            )
+        else:
+            cnt_html = ""
+        parts.append(
+            f'<a class="dm-tab{active}" href="{href}" target="_self" '
+            f'aria-current="{"true" if tab == selected_tab else "false"}">'
+            f'<span class="dm-tab-i">'
+            f"<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' "
+            f"viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2' "
+            f"stroke-linecap='round' stroke-linejoin='round'>{icon}</svg>"
+            f'</span>{label}{cnt_html}</a>'
+        )
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def _dm_tab_body_html(tab: str, *, persona: Persona | None,
+                      dm_stats: dict[str, str | int]) -> str:
+    """jobs 가 아닌 탭의 본문 HTML.
+
+    - kw: 페르소나 관심사 + 자동 추출 안내(보드 ⑦ 인계).
+    - task: 작업 정의 데이터 안내 카드(실 업로드 위젯은 외부에서 렌더).
+    - src: 출처 7일 수집 카운트 + 상태 표.
+    """
+    if tab == "kw":
+        return _dm_kw_body_html(persona)
+    if tab == "task":
+        return _dm_task_body_html()
+    if tab == "src":
+        return _dm_src_body_html(dm_stats)
+    return ""
+
+
+def _dm_kw_body_html(persona: Persona | None) -> str:
+    """키워드 탭 본문 — 페르소나 관심사 + 자동 추출 요약 + 보드 ⑦ 인계."""
+    from urllib.parse import quote
+    persona = persona or Persona()
+    user_terms = [
+        t for t in (list(persona.interest_tasks or []) + list(persona.interest_lv3 or []))
+        if t
+    ]
+    muted = [m for m in (persona.muted_keywords or []) if m]
+
+    # 자동 추출 top 6 (30일 빈도)
+    auto_chips: list[str] = []
+    try:
+        news_30 = _news_db.load_news_for_days(days=30)
+    except Exception:
+        news_30 = None
+    if news_30 is not None and not news_30.empty:
+        try:
+            from store import trends as _t
+            top_df = _t.top_keywords(news_30, top_n=6 + len(muted))
+            rows = [r for _, r in top_df.iterrows() if str(r["keyword"]) not in muted][:6]
+            for r in rows:
+                kw = str(r["keyword"])
+                c = int(r["count"])
+                auto_chips.append(
+                    f'<span class="dm-kw-chip">'
+                    f'<span class="dm-kw-chip-dot"></span>'
+                    f'{_html.escape(kw)}'
+                    f'<span class="dm-kw-chip-hits">{c}</span>'
+                    f'</span>'
+                )
+        except Exception:
+            pass
+
+    user_chips_html = (
+        "".join(
+            f'<span class="dm-kw-chip dm-kw-chip-user">{_html.escape(t)}</span>'
+            for t in user_terms
+        )
+        if user_terms
+        else '<span class="dm-kw-empty">페르소나 관심사가 비어 있어요. 설정에서 추가해 주세요.</span>'
+    )
+    muted_chips_html = (
+        "".join(
+            f'<span class="dm-kw-chip dm-kw-chip-muted">{_html.escape(t)}</span>'
+            for t in muted
+        )
+        if muted
+        else '<span class="dm-kw-empty">숨김 키워드 없음.</span>'
+    )
+    auto_chips_html = (
+        "".join(auto_chips) if auto_chips
+        else '<span class="dm-kw-empty">30일분 수집 후 자동 추출됩니다.</span>'
+    )
+
+    board_href = "?app_area=" + quote("📊 오늘의 보드")
+    persona_href = "?persona_editor=1"
+    return f"""<section class="dm-tab-body dm-kw-body">
+      <div class="dm-tb-head">
+        <div>
+          <div class="dm-sec-eye">키워드 관리</div>
+          <h2 class="dm-sec-t">자동 추출 + 페르소나 관심사 + 숨김</h2>
+          <p class="dm-tb-desc">
+            상세 편집(× 삭제, 즉시 수집)은
+            <a class="dm-tb-link" href="{board_href}" target="_self">오늘의 보드 ⑦ 카드</a>에서.
+            여기는 현황 요약 + 페르소나 진입.
+          </p>
+        </div>
+      </div>
+      <div class="dm-kw-section">
+        <div class="dm-kw-section-h">
+          ★ SOLA 자동 추출
+          <span class="dm-kw-section-meta">최근 30일 빈도 상위</span>
+        </div>
+        <div class="dm-kw-chips">{auto_chips_html}</div>
+      </div>
+      <div class="dm-kw-section">
+        <div class="dm-kw-section-h">
+          ◉ 내가 추가
+          <span class="dm-kw-section-meta">페르소나 관심사 기반</span>
+        </div>
+        <div class="dm-kw-chips">{user_chips_html}</div>
+        <a class="dm-tb-cta" href="{persona_href}" target="_self">관심사 편집 →</a>
+      </div>
+      <div class="dm-kw-section">
+        <div class="dm-kw-section-h">
+          🔕 숨김 키워드
+          <span class="dm-kw-section-meta">자동 추출에서 제외 — 보드 ⑦ × 로 추가</span>
+        </div>
+        <div class="dm-kw-chips">{muted_chips_html}</div>
+      </div>
+    </section>"""
+
+
+def _dm_task_body_html() -> str:
+    """작업 정의 탭 본문 — 안내 카드 (실 업로드 위젯은 _render_task_def_upload 가 렌더)."""
+    cur_count = 0
+    try:
+        cur_df = _load_roadmap()
+        cur_count = int(len(cur_df)) if cur_df is not None and not cur_df.empty else 0
+    except Exception:
+        pass
+    cur_label = f"{cur_count}건" if cur_count else "아직 없음"
+    return f"""<section class="dm-tab-body dm-task-body">
+      <div class="dm-tb-head">
+        <div>
+          <div class="dm-sec-eye">작업 정의 데이터</div>
+          <h2 class="dm-sec-t">엑셀 업로드 + 검증 + Parquet 저장</h2>
+          <p class="dm-tb-desc">
+            엑셀(.xlsx)을 올리면 정규화·검증 후 저장됩니다.
+            현재 저장: <b>{_html.escape(cur_label)}</b>.
+            업로드는 아래 섹션에서 진행해 주세요.
+          </p>
+        </div>
+      </div>
+    </section>"""
+
+
+def _dm_src_body_html(dm_stats: dict[str, str | int]) -> str:
+    """출처 설정 탭 본문 — 4 출처 × 7일 수집 카운트 + 상태."""
+    # 최근 7일 수집 출처별 카운트
+    try:
+        week = _news_db.load_news_for_days(days=7)
+    except Exception:
+        week = None
+    rows: list[tuple[str, int, str]] = []  # (source, count, last_iso)
+    if week is not None and not week.empty and "source" in week.columns:
+        grouped = week.groupby("source")
+        for src in sorted(grouped.groups.keys()):
+            sub = grouped.get_group(src)
+            cnt = int(len(sub))
+            last_iso = ""
+            for col in ("collected_at", "published_at"):
+                if col in sub.columns:
+                    last_iso = str(sub[col].dropna().max() or "")
+                    if last_iso:
+                        break
+            rows.append((str(src), cnt, last_iso))
+    # 누락 출처는 회색으로 노출 (기대 출처 목록)
+    expected = ["AI Times", "오토메이션월드", "Google RSS", "네이버 기술"]
+    seen_src = {r[0] for r in rows}
+    for exp in expected:
+        if exp not in seen_src:
+            rows.append((exp, 0, ""))
+
+    def _status(cnt: int) -> tuple[str, str]:
+        if cnt > 0:
+            return ("dm-src-st-ok", "OK")
+        return ("dm-src-st-warn", "7일 무수집")
+
+    def _gradient(src: str) -> str:
+        return _SOURCE_GRADIENTS.get(src, _DEFAULT_GRADIENT)
+
+    rows_html = []
+    for src, cnt, last_iso in rows:
+        st_cls, st_label = _status(cnt)
+        rows_html.append(
+            f'<li class="dm-src-row">'
+            f'<span class="dm-src-mark" style="background:{_gradient(src)};"></span>'
+            f'<span class="dm-src-name">{_html.escape(src)}</span>'
+            f'<span class="dm-src-cnt">{cnt}건/7일</span>'
+            f'<span class="dm-src-last">{_html.escape(last_iso[:16] if last_iso else "—")}</span>'
+            f'<span class="dm-src-st {st_cls}">{st_label}</span>'
+            f'</li>'
+        )
+
+    return f"""<section class="dm-tab-body dm-src-body">
+      <div class="dm-tb-head">
+        <div>
+          <div class="dm-sec-eye">출처 설정</div>
+          <h2 class="dm-sec-t">활성 출처 {dm_stats.get("active_sources", 0)}개 · 최근 7일</h2>
+          <p class="dm-tb-desc">
+            출처별 수집 카운트와 마지막 적재 시각.
+            추가/제거는 다음 PR에서 폼으로 제공 예정.
+          </p>
+        </div>
+      </div>
+      <ul class="dm-src-table">{"".join(rows_html)}</ul>
+    </section>"""
+
+
+def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
+                 persona: Persona | None = None) -> None:
+    """data_management_main.html 템플릿 로드 + placeholder 치환.
+
+    Args:
+        dm_stats: 헤더 4 stats 데이터.
+        selected_tab: 현재 활성 탭 — "jobs" / "kw" / "task" / "src".
+            "jobs" 가 아니면 기존 dm-split 은 display:none 으로 숨기고
+            탭별 본문 HTML 을 그 자리에 렌더한다.
+        persona: 키워드 탭 본문에서 사용 (관심사 chip).
+    """
     template = _DM_TEMPLATE.read_text(encoding="utf-8")
     hist = _hist_html()
+
+    if selected_tab == "jobs":
+        body_open = ""
+        body_close = ""
+    else:
+        # 기본 split 은 숨기고, 닫는 div 직후에 탭별 본문을 inline 으로 끼워넣는다.
+        body_open = '<div style="display:none;" aria-hidden="true">'
+        body_close = "</div>" + _dm_tab_body_html(selected_tab, persona=persona,
+                                                  dm_stats=dm_stats)
+
     html_out = (
         template
         .replace("{{LAST_UPDATE}}", _html.escape(str(dm_stats["last_update"])))
@@ -722,5 +1005,8 @@ def _render_main(dm_stats: dict[str, str | int]) -> None:
         .replace("{{HIST_HEAD}}", hist["head"])
         .replace("{{HIST_SVG}}", hist["svg"])
         .replace("{{HIST_X}}", hist["foot"])
+        .replace("{{DM_TABS}}", _dm_tabs_html(selected_tab, dm_stats))
+        .replace("{{DM_MAIN_BODY_OPEN}}", body_open)
+        .replace("{{DM_MAIN_BODY_CLOSE}}", body_close)
     )
     st.html(html_out)
