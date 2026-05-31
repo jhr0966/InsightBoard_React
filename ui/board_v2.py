@@ -228,13 +228,14 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
 
         elif action == "collect":
             kws = _collect_keywords_for_persona(persona)
-            if not kws:
+            extra_feeds = _collect_extra_feeds()
+            if not kws and not extra_feeds:
                 st.session_state["_kw_action_toast"] = (
                     "ok", "ℹ️ 수집할 키워드가 없어요. 페르소나 관심사를 먼저 추가해 주세요."
                 )
             else:
                 from scraping.run_daily import collect_batch
-                report = collect_batch(kws, max_results=10)
+                report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
                 n_files = report.total_files
                 n_articles = report.total_articles
                 n_err = len(report.errors)
@@ -276,6 +277,15 @@ def _collect_keywords_for_persona(persona: Persona) -> list[str]:
             seen.add(k)
             out.append(k)
     return out
+
+
+def _collect_extra_feeds() -> list[tuple[str, str]]:
+    """현재 등록된 커스텀 RSS 출처 — `collect_batch(extra_feeds=)` 형태."""
+    try:
+        from store import sources as _src_store
+        return [(c.name, c.url) for c in _src_store.custom_sources()]
+    except Exception:
+        return []
 
 
 def render_kw_action_toast_if_needed() -> None:

@@ -75,14 +75,17 @@ def collect_batch(
     sources: Sequence[str] = SOURCE_IDS,
     max_results: int = 10,
     on_step: Callable[[str, str, int], None] | None = None,
+    extra_feeds: Sequence[tuple[str, str]] | None = None,
 ) -> CollectionReport:
-    """키워드×소스 배치 수집.
+    """키워드×소스 배치 수집 + 커스텀 RSS 피드.
 
     Args:
         keywords: 검색어 리스트. 비어 있으면 키워드 기반 소스는 스킵.
         sources: 사용 소스 ID — {"naver", "google", "tech"} 부분집합.
         max_results: 키워드/사이트 당 최대 기사 수.
         on_step: (source, keyword, found_count) 진행 콜백 (저장 직전이 아닌 검색 직후).
+        extra_feeds: 커스텀 RSS 출처 — `(name, url)` 튜플 리스트. 키워드 무관하게
+            한 번씩 fetch 한다. 빈 리스트/None 이면 스킵.
 
     Returns:
         CollectionReport — 소스당 1 entry, 실패는 errors 에 별도 누적.
@@ -138,4 +141,30 @@ def collect_batch(
                 report.errors.append(
                     {"source": "tech", "keyword": "", "error": str(e)}
                 )
+
+    # 커스텀 RSS 피드 — 키워드 무관 (피드 자체가 콘텐츠 큐레이션)
+    if extra_feeds:
+        from scraping import rss as _rss
+        # 소스 ID 가 같은 파일에 저장되도록 source 별로 별도 호출 (stamp 충돌 회피
+        # — save_articles 가 초 단위 stamp 라 한 번에 여러 source 면 덮어쓰기 위험).
+        for name, url in extra_feeds:
+            try:
+                articles = _rss.fetch(url, source_name=name, max_results=max_results)
+                if articles:
+                    path = save_articles(articles, source=name)
+                    report.saved.append(
+                        {
+                            "source": name,
+                            "keywords": [],
+                            "count": len(articles),
+                            "path": str(path) if path else "",
+                        }
+                    )
+                if on_step:
+                    on_step(name, "", len(articles))
+            except Exception as e:  # noqa: BLE001
+                report.errors.append(
+                    {"source": name, "keyword": "", "error": str(e)}
+                )
+
     return report

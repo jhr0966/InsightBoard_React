@@ -5,7 +5,31 @@
 
 ---
 
-## 2026-05-31 · 보드 음성으로 듣기 (TTS) — Web Speech API
+## 2026-05-31 · 커스텀 RSS 실 수집 wire (store.sources → scraping)
+
+**브랜치:** `feat-custom-rss-scrape` (main `acec45cc` 기준 · #70 머지 직후)
+
+**변경:**
+- `scraping/rss.py` 신규 — 범용 RSS 2.0 / Atom 파서 (`build_session` 단일 진입점)
+- `collect_batch(extra_feeds=)` 인자 추가 — 키워드 무관 피드 fetch + 저장
+- `_collect_extra_feeds()` 헬퍼 (board_v2) — sources.custom_sources → (name, url) 튜플
+- 보드 ⑦ 즉시 수집 / 데이터관리 `?refresh=now` 모두 extra_feeds 전달
+- ok 토스트에 "RSS N건" 카운트
+- +14 tests
+
+**검증:**
+- pytest **449/449** (435 + 14 신규)
+- 금지 패턴: on_click 0 · requests 직접 0 (scraping.http 유지)
+- HTTP 단일 진입점 — `scraping/rss.py` 가 `build_session()` 만 사용
+
+**남은 추천 작업:**
+- 인사이트 매트릭스 셀 클릭 wire (보드 매트릭스와 동일 패턴)
+- 매일 06:00 cron 트리거 확인
+- LLM 기반 SOLA 브리핑 본문 강화 (요약/요점)
+
+---
+
+## 2026-05-31 · 보드 음성으로 듣기 (TTS) — Web Speech API ✅ merged (#70)
 
 **브랜치:** `feat-board-tts` (main `a33a0dd` 기준 · #69 머지 직후)
 

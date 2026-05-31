@@ -571,19 +571,20 @@ def _consume_refresh_if_any() -> bool:
         if hasattr(fn, "clear"):
             fn.clear()
 
-    # 수집 실행 — 페르소나 관심사 키워드
+    # 수집 실행 — 페르소나 관심사 키워드 + 등록된 커스텀 RSS 출처
     try:
-        from ui.board_v2 import _collect_keywords_for_persona
+        from ui.board_v2 import _collect_keywords_for_persona, _collect_extra_feeds
         from scraping.run_daily import collect_batch
         persona = _load_persona()
         kws = _collect_keywords_for_persona(persona)
-        if not kws:
+        extra_feeds = _collect_extra_feeds()
+        if not kws and not extra_feeds:
             st.session_state["_dm_refresh_toast"] = (
                 "warn",
                 "ℹ️ 페르소나 관심사가 비어 있어 수집은 건너뛰었어요 — 캐시만 새로 그렸습니다.",
             )
         else:
-            report = collect_batch(kws, max_results=10)
+            report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
             n_articles = report.total_articles
             n_files = report.total_files
             n_err = len(report.errors)
@@ -593,10 +594,14 @@ def _consume_refresh_if_any() -> bool:
                     f"⚠️ 수집 실패 — 첫 오류: {report.errors[0].get('error','unknown')}",
                 )
             else:
+                feeds_label = (
+                    f", RSS {len(extra_feeds)}건" if extra_feeds else ""
+                )
                 err_tail = f", 일부 오류 {n_err}건" if n_err else ""
                 st.session_state["_dm_refresh_toast"] = (
                     "ok",
-                    f"✓ {len(kws)}개 키워드로 {n_articles}건 수집 ({n_files}개 파일){err_tail}.",
+                    f"✓ {len(kws)}개 키워드{feeds_label}로 {n_articles}건 수집 "
+                    f"({n_files}개 파일){err_tail}.",
                 )
     except Exception as exc:
         st.session_state["_dm_refresh_toast"] = (
