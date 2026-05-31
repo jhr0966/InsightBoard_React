@@ -5,7 +5,31 @@
 
 ---
 
-## 2026-05-31 · 산출물 칸반 "+N건 더 보기" wire
+## 2026-05-31 · 출처 설정 CRUD (B.5 src 탭 read-only → CRUD)
+
+**브랜치:** `feat-src-crud` (main `42932521` 기준 · #67 머지 직후)
+
+**변경:**
+- `store/sources.py` 신규 — `data/sources/config.json` 영구화 (`disabled`, `custom`)
+- 기본 4 출처 toggle (URL `?src_action=toggle&src_name=`)
+- 커스텀 RSS 추가/제거 (URL `?src_action=remove&src_name=` + Streamlit 폼)
+- `_dm_src_body_html`: 기본+커스텀+기타(news ID) 3구분, 비활성 흐림, 토글/제거 링크
+- CSS: `.dm-src-row-off`, `.dm-src-st-off`, `.dm-src-act(-rm)`, `.dm-src-url-mini`
+- +18 tests
+
+**검증:**
+- pytest **415/415** (397 + 18 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- URL stateless — toggle 후 1회 소비 → 쿼리 정리
+
+**남은 추천 작업:**
+- 보드 음성으로 듣기 (TTS)
+- 수집 트리거 실 실행 (`?refresh=now` 가 캐시만 무효화 → `collect_batch` 호출)
+- 커스텀 RSS 실 수집 wire (scraping 모듈 통합)
+
+---
+
+## 2026-05-31 · 산출물 칸반 "+N건 더 보기" wire ✅ merged (#67)
 
 **브랜치:** `feat-archive-more` (main `2fabd7d` 기준 · #66 머지 직후)
 
