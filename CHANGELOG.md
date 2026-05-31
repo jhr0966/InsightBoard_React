@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (보드 ⑥ 매트릭스 버블 클릭 wire — 셀 선택 → 상세 패널 갱신)
+- `ui/board_v2.py::_mx_select_href(dept, lv3)` — `?app_area=📊+오늘의+보드&mx_select=<dept>|<lv3>` URL 빌더. 빈 값 → mx_select 생략(토글 해제).
+- `ui/board_v2.py::_mx_selected_key()` — `?mx_select=` 1회 stateless 읽기, 빈 값 → None.
+- `ui/board_v2.py::_board_matrix_html(selected_key=None)` — `<button disabled>` 6 버블 → `<a class="db-mx-bubble">` 전환. selected_key 가 셀 키(`"dept|lv3"`)와 매칭되면 그 셀에 `db-mx-on` 활성 + aria-current + href 는 토글 해제(빈 mx_select), 비활성 셀은 그 셀로 새 선택. 매칭 실패 시 1위 cell fallback. 상세 패널(`.db-mx-detail`) 의 eyebrow 가 `선택됨 · {rank}위` 로 동적, 통계·이유·CTA 도 선택 셀 기준.
+- `ui/board_v2.py::render()` — `_board_matrix_html(selected_key=_mx_selected_key())` 호출.
+- `assets/v2/screens/board.css` — `a.db-mx-bubble` I-19 패턴(text-decoration:none + `:visited` 색 inherit) + `.db-mx-on .db-mx-bsize` 강한 ring + `.db-mx-on .db-mx-blabel` 라벨 강조.
+- `tests/test_matrix_click.py` (+9) — URL 빌더(인코딩/토글 해제) / `_mx_selected_key` 읽기·None / `<a>` 전환·disabled 자취 0·기본 1위 / 선택 셀 표시(`db-mx-on` 1개·`aria-current` 1개)·상세 패널 갱신·rank 라벨 / 미지 선택값 fallback / 비선택 버블 href 정상.
+
 ### Added (인사이트 트렌드 키워드 클릭 wire — 키워드 선택 → 공정 매핑 필터)
 - `ui/insights_v2.py::_tkw_select_href(keyword)` — `?app_area=🔎+인사이트+분석&tkw=<keyword>` URL 빌더. 빈 keyword 면 토글 해제(필터 클리어).
 - `ui/insights_v2.py::_tkw_list_html(selected_kw=None)` — `<button disabled>` → `<a class="ia-tkw-item">` 전환. `selected_kw` 지정 시 그 키워드만 `ia-tkw-on` + `aria-current` + href 는 토글 해제. 비활성 항목은 그 키워드로 새 선택. 미지정 시 기존 동작(rank 1 활성) 유지.

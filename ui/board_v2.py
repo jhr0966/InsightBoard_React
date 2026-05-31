@@ -716,9 +716,31 @@ def _board_trend() -> dict[str, str]:
     }
 
 
+def _mx_selected_key() -> str | None:
+    """`?mx_select=<dept>|<lv3>` URL state 1회 읽기. 빈 값 → None."""
+    raw = (st.query_params.get("mx_select") or "").strip()
+    return raw or None
+
+
+def _mx_select_href(dept: str, lv3: str) -> str:
+    """⑥ 매트릭스 셀 선택 URL — 같은 area + `mx_select=<dept>|<lv3>`.
+
+    `_mx_select_href("도장", "비전 검사")` → "?app_area=📊+오늘의+보드&mx_select=도장%7C비전+검사"
+    Empty dept/lv3 → 토글 해제(빈 mx_select 생략).
+    """
+    parts = [f"app_area={quote('📊 오늘의 보드')}"]
+    if dept or lv3:
+        parts.append(f"mx_select={quote(f'{dept}|{lv3}')}")
+    return "?" + "&".join(parts)
+
+
 @st.cache_data(ttl=60)
-def _board_matrix_html() -> str:
+def _board_matrix_html(selected_key: str | None = None) -> str:
     """⑥ 기회 매트릭스 — score_cells 상위 6개를 ROI×난이도 좌표로 매핑.
+
+    Args:
+        selected_key: "dept|lv3" 형태로 선택된 셀. None 이면 1위 cell.
+            URL `?mx_select=` 1회 stateless 인자.
 
     좌표 휴리스틱 (cell metric 만 사용):
       - ROI 축 (top%) : matched_news 정규화 → 클수록 상단
@@ -726,6 +748,7 @@ def _board_matrix_html() -> str:
         작업 많음 = 실행 쉬움). X축 라벨 '← 실행 난이도' 와 일치.
       - 버블 크기 (px) : cell_score 정규화 → 14~32px
       - 우상단(쉬움+ROI높음) → db-mx-strong, 좌하단 → db-mx-soft 토글
+      - 선택된 버블 → db-mx-on 활성 클래스 + 상세 패널 그 셀로 갱신
     """
     try:
         news_df = _news_db.load_news_for_days(days=14)
@@ -748,9 +771,19 @@ def _board_matrix_html() -> str:
     max_tasks = max(int(cells["matched_tasks"].max()), 1)
     max_score = max(float(cells["cell_score"].max()), 1.0)
 
-    bubbles = []
+    # 선택된 셀 결정 — 명시 선택 매칭 우선, 없으면 1위
     detail_row = cells.iloc[0]
-    for _, row in cells.iterrows():
+    selected_idx = 0
+    if selected_key:
+        for i, (_, row) in enumerate(cells.iterrows()):
+            key = f"{row.get('dept', '') or ''}|{row.get('lv3', '') or ''}"
+            if key == selected_key:
+                detail_row = row
+                selected_idx = i
+                break
+
+    bubbles = []
+    for i, (_, row) in enumerate(cells.iterrows()):
         roi_norm = int(row.get("matched_news", 0) or 0) / max_news
         ease_norm = int(row.get("matched_tasks", 0) or 0) / max_tasks
         score_norm = float(row.get("cell_score", 0) or 0) / max_score
@@ -760,24 +793,34 @@ def _board_matrix_html() -> str:
         size_px = round(14 + score_norm * 18)
 
         label = str(row.get("lv3", "") or row.get("dept", "") or "—")
-        title = f"{row.get('dept', '')} · {label}"
+        dept_raw = str(row.get("dept", "") or "")
+        lv3_raw = str(row.get("lv3", "") or "")
+        title = f"{dept_raw} · {label}"
+        is_selected = (i == selected_idx)
 
         extra_cls = ""
         if left_pct >= 55 and top_pct <= 40:
             extra_cls = " db-mx-strong"
         elif left_pct <= 35 and top_pct >= 60:
             extra_cls = " db-mx-soft"
+        if is_selected:
+            extra_cls += " db-mx-on"
+
+        # 활성 셀 클릭 → 토글 해제(빈 mx_select), 비활성 → 그 셀 선택.
+        href = _mx_select_href("", "") if is_selected else _mx_select_href(dept_raw, lv3_raw)
+        aria = ' aria-current="true"' if is_selected else ""
 
         bubbles.append(
-            f'<button class="db-mx-bubble{extra_cls}" '
+            f'<a class="db-mx-bubble{extra_cls}" '
+            f'href="{href}" target="_self" '
             f'style="left:{left_pct:.0f}%; top:{top_pct:.0f}%;" '
-            f'title="{_html.escape(title)}" disabled>'
+            f'title="{_html.escape(title)}"{aria}>'
             f'<span class="db-mx-bsize" style="--s: {size_px}px;"></span>'
             f'<span class="db-mx-blabel">{_html.escape(label[:12] + ("…" if len(label) > 12 else ""))}</span>'
-            f'</button>'
+            f'</a>'
         )
 
-    # detail panel — 1위 cell
+    # detail panel — 선택된 셀(없으면 1위)
     detail_lv3_raw = str(detail_row.get("lv3", "") or "—")
     detail_dept_raw = str(detail_row.get("dept", "") or "")
     detail_label = _html.escape(detail_lv3_raw)
@@ -809,7 +852,7 @@ def _board_matrix_html() -> str:
           </div>
         </div>
         <aside class="db-mx-detail">
-          <div class="db-mx-detail-eye">선택됨 · 1위</div>
+          <div class="db-mx-detail-eye">선택됨 · {selected_idx + 1}위</div>
           <h4 class="db-mx-detail-h">{detail_dept} · {detail_label}</h4>
           <div class="db-mx-stats">
             <div><b class="db-good">{score_val}</b><span>종합 점수</span></div>
@@ -1450,7 +1493,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BOARD_STORIES}}", _board_stories_html())
         .replace("{{BOARD_OPPORTUNITIES}}", _opportunities_html())
         .replace("{{BOARD_TREND}}", _board_trend_block_html())
-        .replace("{{BOARD_MATRIX}}", _board_matrix_html())
+        .replace("{{BOARD_MATRIX}}", _board_matrix_html(selected_key=_mx_selected_key()))
         .replace("{{BOARD_KW_MGR}}", _board_kw_mgr_html(persona))
     )
     brief = _brief_html()

@@ -5,7 +5,30 @@
 
 ---
 
-## 2026-05-31 · 인사이트 트렌드 키워드 클릭 wire
+## 2026-05-31 · 보드 ⑥ 매트릭스 버블 클릭 wire
+
+**브랜치:** `feat-matrix-click` (main `3e9d1ff` 기준 · #65 머지 직후)
+
+**변경:**
+- 매트릭스 버블 `<button disabled>` → `<a href="?mx_select=dept|lv3">` 전환
+- `_mx_select_href` / `_mx_selected_key` / `_board_matrix_html(selected_key)` 신규·확장
+- 선택된 셀에 `db-mx-on` 활성 + 상세 패널 동적 갱신(`rank` 위)
+- 미지 선택값 fallback → 1위
+- CSS: `a.db-mx-bubble` I-19 + `.db-mx-on` 활성 스타일
+- +9 tests
+
+**검증:**
+- pytest **383/383** (374 + 9 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+
+**남은 추천 작업:**
+- 산출물 칸반 "+N건 더 보기"
+- 출처 설정 추가/제거 폼
+- 보드 음성으로 듣기 (TTS)
+
+---
+
+## 2026-05-31 · 인사이트 트렌드 키워드 클릭 wire ✅ merged (#64)
 
 **브랜치:** `feat-insight-kw-click` (main `cd23856` 기준 · #63 머지 직후)
 
