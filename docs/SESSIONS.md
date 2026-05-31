@@ -5,7 +5,32 @@
 
 ---
 
-## 2026-05-31 · 커스텀 RSS 실 수집 wire (store.sources → scraping)
+## 2026-05-31 · 인사이트 매트릭스 셀 클릭 wire
+
+**브랜치:** `feat-insight-matrix-click` (main `e726bd71` 기준 · #71 머지 직후)
+
+**변경:**
+- 매트릭스 SVG 버블 8개를 `<a xlink:href="?ia_mx_select=dept|lv3">` 로 wrap
+- 우측 ★ PoC 후보 정적 mockup 5건(도장 비전 검사 / 9.2 / 14명/일 등) → cells 기반 동적 5건
+- `_ia_mx_select_href` / `_ia_mx_selected_key` / `_ia_matrix_svg(selected_key)` / `_ia_mtx_rank_html(selected_key)` 신규·확장
+- 활성 셀(matching/1위) 에 halo + bubble-on + 토글 해제 href
+- 옛 mock 데이터 완전 제거 (실 score 10점 환산)
+- CSS: `.ia-poc-link` 그리드 + `.ia-mtx-bubble` cursor
+- +11 tests
+
+**검증:**
+- pytest **460/460** (449 + 11 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- I-16 / I-19 / XSS escape 준수
+
+**남은 추천 작업:**
+- LLM 기반 SOLA 브리핑 본문 강화 (현재 score_matches 상위 3건 나열)
+- 매일 06:00 cron 트리거 확인
+- 인사이트 SECTION C 공정 × 자동화 기술 히트맵 cell 클릭 wire
+
+---
+
+## 2026-05-31 · 커스텀 RSS 실 수집 wire (store.sources → scraping) ✅ merged (#71)
 
 **브랜치:** `feat-custom-rss-scrape` (main `acec45cc` 기준 · #70 머지 직후)
 

@@ -299,15 +299,36 @@ def _ia_chart_parts() -> dict[str, str]:
 # 색상 팔레트는 board_v2.MATRIX_DEPT_COLORS 공유 (단일 진실).
 
 
+def _ia_mx_select_href(dept: str, lv3: str) -> str:
+    """인사이트 매트릭스 셀 선택 URL — 같은 area + `?ia_mx_select=<dept>|<lv3>`.
+
+    빈 dept/lv3 → 토글 해제(파라미터 생략).
+    """
+    parts = [f"app_area={quote(_IA_AREA_KEY)}"]
+    if dept or lv3:
+        parts.append(f"ia_mx_select={quote(f'{dept}|{lv3}')}")
+    return "?" + "&".join(parts)
+
+
+def _ia_mx_selected_key() -> str | None:
+    """`?ia_mx_select=` 1회 읽기. 빈 값 → None."""
+    raw = (st.query_params.get("ia_mx_select") or "").strip()
+    return raw or None
+
+
 @st.cache_data(ttl=60)
-def _ia_matrix_svg() -> str:
+def _ia_matrix_svg(selected_key: str | None = None) -> str:
     """인사이트 매트릭스 — 600×420 viewBox, 좌상단 = PoC 후보.
+
+    Args:
+        selected_key: "dept|lv3" 형태로 선택된 셀. None 이면 1위.
 
     좌표 매핑:
       - x (left) = 40 + (1 - ease_norm) * 520 → ease 높을수록 좌측 = 쉬움
       - y (top)  = 20 + (1 - effect_norm) * 360 → effect 높을수록 상단
       - 버블 r = 14 + score_norm * 22
-      - 첫 cell = ★ selected (halo)
+      - 선택된 cell = ★ halo + 두꺼운 stroke
+      - 각 버블은 <a xlink:href="?ia_mx_select=..."> 로 wrap (SVG 링크)
     """
     try:
         news = _news_db.load_news_for_days(days=30)
@@ -329,7 +350,17 @@ def _ia_matrix_svg() -> str:
     max_tasks = max(int(cells["matched_tasks"].max()), 1)
     max_score = max(float(cells["cell_score"].max()), 1.0)
 
-    parts = ["<svg xmlns='http://www.w3.org/2000/svg' class='ia-mtx-svg' viewBox='0 0 600 420' preserveAspectRatio='xMidYMid meet'>"]
+    # 선택된 셀 인덱스 — selected_key 매칭 우선, 없으면 1위
+    selected_idx = 0
+    if selected_key:
+        for i, (_, row) in enumerate(cells.iterrows()):
+            key = f"{row.get('dept', '') or ''}|{row.get('lv3', '') or ''}"
+            if key == selected_key:
+                selected_idx = i
+                break
+
+    parts = ["<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' "
+             "class='ia-mtx-svg' viewBox='0 0 600 420' preserveAspectRatio='xMidYMid meet'>"]
 
     # quadrant bg
     parts.extend([
@@ -372,7 +403,6 @@ def _ia_matrix_svg() -> str:
                  "fill='#475569' font-weight='700'>적용 난이도 →  현장 통합 · 안전 인증 · 정확도 임계</text>")
 
     # bubbles
-    selected_idx = 0
     for i, (_, row) in enumerate(cells.iterrows()):
         ease_norm = int(row.get("matched_tasks", 0) or 0) / max_tasks
         eff_norm = int(row.get("matched_news", 0) or 0) / max_news
@@ -382,30 +412,134 @@ def _ia_matrix_svg() -> str:
         cy = 20 + (1 - eff_norm) * 360
         r = 14 + score_norm * 22
 
-        dept = str(row.get("dept", "") or "")
-        lv3 = str(row.get("lv3", "") or "")
+        dept_raw = str(row.get("dept", "") or "")
+        lv3_raw = str(row.get("lv3", "") or "")
         from ui.board_v2 import MATRIX_DEPT_COLORS, MATRIX_DEPT_FALLBACK
-        color = MATRIX_DEPT_COLORS.get(dept, MATRIX_DEPT_FALLBACK)
+        color = MATRIX_DEPT_COLORS.get(dept_raw, MATRIX_DEPT_FALLBACK)
         fill = f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.16)"
-        _raw_lbl = lv3 or dept or "—"
+        _raw_lbl = lv3_raw or dept_raw or "—"
         label = _html.escape(_raw_lbl[:12] + ("…" if len(_raw_lbl) > 12 else ""))
         meta = f"매칭 {int(row.get('matched_news', 0) or 0)}건"
+        is_selected = (i == selected_idx)
 
-        if i == selected_idx:
+        # 활성 셀 클릭 → 토글 해제(빈 ia_mx_select), 비활성 → 그 셀 선택
+        bubble_href = (_ia_mx_select_href("", "") if is_selected
+                       else _ia_mx_select_href(dept_raw, lv3_raw))
+        title_attr = _html.escape(f"{dept_raw} · {lv3_raw}", quote=True)
+        # SVG 링크로 wrap — 클릭 가능 영역(circle + label + meta)
+        parts.append(
+            f"<a xlink:href='{bubble_href}' href='{bubble_href}' target='_self' "
+            f"class='ia-mtx-bubble{' ia-mtx-bubble-on' if is_selected else ''}'>"
+        )
+        parts.append(f"<title>{title_attr}</title>")
+        if is_selected:
             # halo
             parts.append(f"<circle cx='{cx:.0f}' cy='{cy:.0f}' r='{r + 10:.0f}' "
                          f"fill='none' stroke='{color}' stroke-width='1.4' stroke-dasharray='3 3'/>")
         parts.append(f"<circle cx='{cx:.0f}' cy='{cy:.0f}' r='{r:.0f}' "
-                     f"fill='{fill}' stroke='{color}' stroke-width='{2.4 if i == selected_idx else 1.8}'/>")
+                     f"fill='{fill}' stroke='{color}' stroke-width='{2.4 if is_selected else 1.8}'/>")
         parts.append(f"<circle cx='{cx:.0f}' cy='{cy:.0f}' r='5' fill='{color}'/>")
         parts.append(f"<text x='{cx:.0f}' y='{cy + r + 14:.0f}' text-anchor='middle' "
                      f"font-family='Pretendard' font-size='11' font-weight='800' fill='#0F172A'>{label}</text>")
         parts.append(f"<text x='{cx:.0f}' y='{cy + r + 26:.0f}' text-anchor='middle' "
                      f"font-family='JetBrains Mono, monospace' font-size='9' fill='#475569' "
                      f"font-weight='700'>{meta}</text>")
+        parts.append("</a>")
 
     parts.append("</svg>")
     return "".join(parts)
+
+
+@st.cache_data(ttl=60)
+def _ia_mtx_rank_html(selected_key: str | None = None) -> str:
+    """매트릭스 우측 ★ PoC 후보 동적 리스트 — selected_key 셀에 ia-poc-on."""
+    try:
+        news = _news_db.load_news_for_days(days=30)
+        roadmap = _load_roadmap()
+    except Exception:
+        news = None
+        roadmap = None
+    if news is None or news.empty or roadmap is None or roadmap.empty:
+        return _ia_mtx_rank_empty()
+
+    try:
+        cells = _score_cells(news, roadmap).head(5)
+    except Exception:
+        return _ia_mtx_rank_empty()
+    if cells.empty:
+        return _ia_mtx_rank_empty()
+
+    max_score = max(float(cells["cell_score"].max()), 1.0)
+    # PoC 후보 = ease_norm 높음(매칭 작업 많음) + eff_norm 높음(매칭 뉴스 많음)
+    max_news = max(int(cells["matched_news"].max()), 1)
+    max_tasks = max(int(cells["matched_tasks"].max()), 1)
+
+    selected_idx = 0
+    if selected_key:
+        for i, (_, row) in enumerate(cells.iterrows()):
+            key = f"{row.get('dept', '') or ''}|{row.get('lv3', '') or ''}"
+            if key == selected_key:
+                selected_idx = i
+                break
+
+    def _level(norm: float) -> str:
+        if norm >= 0.66:
+            return "高"
+        if norm >= 0.33:
+            return "中"
+        return "低"
+
+    items = []
+    for i, (_, row) in enumerate(cells.iterrows()):
+        dept_raw = str(row.get("dept", "") or "")
+        lv3_raw = str(row.get("lv3", "") or "")
+        score = float(row.get("cell_score", 0) or 0)
+        ease_norm = int(row.get("matched_tasks", 0) or 0) / max_tasks
+        eff_norm = int(row.get("matched_news", 0) or 0) / max_news
+        is_sel = (i == selected_idx)
+        # ease 높을수록 난이도 低 (X축 inverted)
+        effort = _level(1 - ease_norm)
+        impact = _level(eff_norm)
+        score_10 = round(score / max_score * 10, 1)
+        sample_tasks = str(row.get("sample_tasks", "") or "").split(" · ")[:1]
+        why_raw = (sample_tasks[0] if sample_tasks and sample_tasks[0]
+                   else f"매칭 {int(row.get('matched_news', 0))}건 누적")
+        href = (_ia_mx_select_href("", "") if is_sel
+                else _ia_mx_select_href(dept_raw, lv3_raw))
+        items.append(
+            f'<li class="ia-poc{" ia-poc-on" if is_sel else ""}">'
+            f'<a class="ia-poc-link" href="{href}" target="_self" '
+            f'aria-current="{"true" if is_sel else "false"}">'
+            f'<span class="ia-poc-i">{i + 1:02d}</span>'
+            f'<div class="ia-poc-body">'
+            f'<div class="ia-poc-name">{_html.escape(dept_raw)} · {_html.escape(lv3_raw)}</div>'
+            f'<div class="ia-poc-meta">'
+            f'<span class="ia-poc-effort">난이도 <b>{effort}</b></span>'
+            f'<span class="ia-poc-impact">효과 <b>{impact}</b></span>'
+            f'</div>'
+            f'<div class="ia-poc-why">{_html.escape(why_raw[:60])}</div>'
+            f'</div>'
+            f'<span class="ia-poc-score">{score_10}</span>'
+            f'</a>'
+            f'</li>'
+        )
+
+    return f"""
+        <div class="ia-mtx-rank-head">
+          <span class="ia-mtx-rank-eye">★ PoC 후보 (좌상단)</span>
+          <span class="ia-mtx-rank-cnt">{len(cells)}건</span>
+        </div>
+        <ul class="ia-poc-list">{"".join(items)}</ul>"""
+
+
+def _ia_mtx_rank_empty() -> str:
+    return ('<div class="ia-mtx-rank-head">'
+            '<span class="ia-mtx-rank-eye">★ PoC 후보 (좌상단)</span>'
+            '<span class="ia-mtx-rank-cnt">0건</span>'
+            '</div>'
+            '<div style="padding:18px 14px; color:var(--text-muted); font-size:13px; '
+            'border:1px dashed var(--surface-divider); border-radius:10px; text-align:center;">'
+            '아직 매칭된 자동화 기회가 없어요.</div>')
 
 
 def _ia_matrix_empty() -> str:
@@ -795,6 +929,8 @@ def render() -> None:
 
     # 트렌드 키워드 클릭 필터 — `?tkw=` 1회 stateless 필터(URL 유지).
     selected_kw = (st.query_params.get("tkw") or "").strip() or None
+    # 매트릭스 셀 선택 — `?ia_mx_select=dept|lv3` 1회 stateless.
+    selected_mx = _ia_mx_selected_key()
 
     template = _IA_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
@@ -811,7 +947,8 @@ def render() -> None:
         .replace("{{IA_CHART_SVG}}", chart["svg"])
         .replace("{{IA_CHART_LEGEND}}", chart["legend"])
         .replace("{{IA_CHART_PILL}}", chart["pill"])
-        .replace("{{IA_MATRIX_SVG}}", _ia_matrix_svg())
+        .replace("{{IA_MATRIX_SVG}}", _ia_matrix_svg(selected_key=selected_mx))
+        .replace("{{IA_MTX_RANK}}", _ia_mtx_rank_html(selected_key=selected_mx))
         .replace("{{IA_PROCESS_MAP}}", _ia_process_map_html(selected_kw=selected_kw))
     )
     st.html(html_out)
