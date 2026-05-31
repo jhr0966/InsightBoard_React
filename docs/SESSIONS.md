@@ -5,7 +5,31 @@
 
 ---
 
-## 2026-05-31 · 수집 트리거 실 실행 (`?refresh=now` → collect_batch 호출)
+## 2026-05-31 · 보드 음성으로 듣기 (TTS) — Web Speech API
+
+**브랜치:** `feat-board-tts` (main `a33a0dd` 기준 · #69 머지 직후)
+
+**변경:**
+- `_tts_button_html` / `_tts_disabled_html` 신규 — `data-tts` + inline `onclick`, `SpeechSynthesisUtterance(ko-KR)`
+- 브리핑 패널 disabled 버튼 → 실재생 버튼 (요약+제목 N개)
+- 매트릭스 detail 패널에 작은 "듣기" 버튼 (dept · lv3 · 점수 · 매칭 · 이유)
+- 템플릿 `{{BRIEF_TTS_BTN}}` placeholder
+- CSS: `.db-act-tts`, `.db-mx-detail-actions`, `.db-mx-tts`
+- +9 신규 tests, 2개 갱신
+
+**검증:**
+- pytest **435/435** (426 + 9 신규)
+- 금지 패턴: Streamlit `on_click=` 0 (HTML `onclick` 은 별개) · `requests.*` 0
+- XSS: `json.dumps` + `html.escape(..., quote=True)` 로 data-tts 안전 인코딩
+
+**남은 추천 작업:**
+- 커스텀 RSS 실 수집 wire (scraping 모듈 통합)
+- 매일 06:00 cron 트리거 확인
+- 인사이트 SECTION B (매트릭스 클릭/상세) 도 매트릭스 셀 클릭 wire 후 TTS
+
+---
+
+## 2026-05-31 · 수집 트리거 실 실행 (`?refresh=now` → collect_batch 호출) ✅ merged (#69)
 
 **브랜치:** `feat-collect-trigger` (main `54ec5bc` 기준 · #68 머지 직후)
 
