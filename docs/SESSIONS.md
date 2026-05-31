@@ -5,7 +5,30 @@
 
 ---
 
-## 2026-05-31 · 보드 ⑥ 매트릭스 버블 클릭 wire
+## 2026-05-31 · 산출물 칸반 "+N건 더 보기" wire
+
+**브랜치:** `feat-archive-more` (main `2fabd7d` 기준 · #66 머지 직후)
+
+**변경:**
+- 칸반 "+N건 더 보기" `<button disabled>` → `<a>` 전환 + "− 접기" 토글
+- `?expand=pending,adopted` stateless 다중 컬럼 토글 (다른 컬럼 보존)
+- `_expanded_cols_from_query` / `_archive_expand_href` / `_build_cards_html` 확장 / `_oa_stats_and_cards(expanded_csv)`
+- CSS: `a.oa-col-more` I-19 + `.oa-col-more-collapse` 접기 강조
+- +14 tests
+
+**검증:**
+- pytest **397/397** (383 + 14 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- URL stateless — 다른 area 이동 시 expand 자동 클리어
+
+**남은 추천 작업:**
+- 출처 설정 추가/제거 폼 (B.5 src 탭 CRUD)
+- 보드 음성으로 듣기 (TTS)
+- 수집 트리거 실 실행
+
+---
+
+## 2026-05-31 · 보드 ⑥ 매트릭스 버블 클릭 wire ✅ merged (#66)
 
 **브랜치:** `feat-matrix-click` (main `3e9d1ff` 기준 · #65 머지 직후)
 

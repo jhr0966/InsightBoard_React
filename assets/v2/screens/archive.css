@@ -515,7 +515,18 @@ a.oa-act-warn, a.oa-act-warn:visited { color: var(--semantic-warning); }
   background: var(--surface-soft);
   color: var(--text-primary);
   border-color: rgba(37,99,235,0.30);
+  text-decoration: none;
 }
+/* <a> 로 정직화된 더 보기 / 접기 — text-decoration:none + :visited 색 회복 (I-19) */
+a.oa-col-more, a.oa-col-more:visited { color: var(--text-muted); text-decoration: none; }
+a.oa-col-more:hover { color: var(--text-primary); text-decoration: none; }
+.oa-col-more-collapse {
+  border-style: solid;
+  border-color: rgba(37,99,235,0.30);
+  background: rgba(37,99,235,0.04);
+  color: var(--accent-primary);
+}
+a.oa-col-more-collapse, a.oa-col-more-collapse:visited { color: var(--accent-primary); }
 
 .oa-card-rej-row {
   display: none;

@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (산출물 칸반 "+N건 더 보기" wire — 컬럼별 expand/collapse 토글)
+- `ui/archive_v2.py::_expanded_cols_from_query()` — `?expand=pending,adopted` CSV 파싱(유효 컬럼만 통과). 빈 frozenset 가드.
+- `ui/archive_v2.py::_archive_expand_href(col, current)` — 토글 URL 빌더. col 포함 시 제거(접기), 미포함 시 추가(펴기). expand 결과가 비면 파라미터 자체 생략(깨끗한 URL). 출력 순서는 항상 (pending, adopted, rejected).
+- `ui/archive_v2.py::_build_cards_html(..., col_key, expanded, expanded_set)` — `<button disabled>` "+N건 더 보기" → `<a class="oa-col-more">` 전환. expanded=True 면 모든 카드 + "− 접기 (N건)" 링크(4건 이하면 접기 링크 미노출). 토글 링크는 다른 컬럼 expand 상태 보존.
+- `ui/archive_v2.py::_oa_stats_and_cards(expanded_csv)` — CSV 인자 캐시 키. 컬럼별 expand 상태에 따라 visible 분기.
+- `ui/archive_v2.py::render()` — `expanded_csv = ",".join(sorted(_expanded_cols_from_query()))` 로 호출.
+- `assets/v2/screens/archive.css` — `a.oa-col-more` I-19 패턴(text-decoration:none + `:visited` 색 회복) + `.oa-col-more-collapse` 접기 강조(accent border/bg).
+- `tests/test_archive_more.py` (+14) — 쿼리 파서(CSV/유효성/빈 값) / 토글 URL(추가·제거·다른 컬럼 보존·정렬) / `<a>` 전환·disabled 자취 0 / expand 시 전체 노출·접기 링크 / 4건 이하 접기 미노출 / `_oa_stats_and_cards` CSV 캐시 키 + 컬럼별 분기 + 다른 컬럼 보존.
+
 ### Added (보드 ⑥ 매트릭스 버블 클릭 wire — 셀 선택 → 상세 패널 갱신)
 - `ui/board_v2.py::_mx_select_href(dept, lv3)` — `?app_area=📊+오늘의+보드&mx_select=<dept>|<lv3>` URL 빌더. 빈 값 → mx_select 생략(토글 해제).
 - `ui/board_v2.py::_mx_selected_key()` — `?mx_select=` 1회 stateless 읽기, 빈 값 → None.
