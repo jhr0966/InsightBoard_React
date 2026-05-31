@@ -537,7 +537,7 @@ def render() -> None:
 
 
 def _refresh_cta_html() -> str:
-    """수집잡 헤더의 "지금 실행" CTA — 캐시 무효화 + 안내 배너 트리거 링크."""
+    """수집잡 헤더의 "지금 실행" CTA — collect_batch 동기 호출 + 캐시 무효화."""
     from urllib.parse import quote
 
     href = (
@@ -546,7 +546,7 @@ def _refresh_cta_html() -> str:
     )
     return (
         f'<a class="dm-btn-primary" href="{href}" target="_self" '
-        f'title="캐시를 즉시 무효화해 새 데이터로 다시 그립니다 (실제 수집은 스케줄러가 06:00 에 실행)">'
+        f'title="페르소나 관심사 키워드로 지금 수집을 실행하고 캐시를 새로 그립니다.">'
         '<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'11\' '
         'height=\'11\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#fff\' stroke-width=\'2.4\' '
         'stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'23 4 23 10 17 10\'/>'
@@ -557,37 +557,80 @@ def _refresh_cta_html() -> str:
 
 
 def _consume_refresh_if_any() -> bool:
-    """`?refresh=now` 1회 소비 — 데이터 관리 캐시 무효화 + 토스트 플래그 set."""
+    """`?refresh=now` 1회 소비 — collect_batch 동기 호출 + 캐시 무효화 + 토스트.
+
+    수집 키워드는 페르소나 관심사(interest_tasks + interest_lv3).
+    키워드가 없으면 수집은 스킵하고 캐시만 무효화한다.
+    수집 실패 시 error 토스트(캐시는 안전하게 무효화 — 다음 렌더가 최신).
+    """
     if st.query_params.get("refresh") != "now":
         return False
+
     # 모든 dm 관련 캐시 무효화
     for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm):
         if hasattr(fn, "clear"):
             fn.clear()
-    st.session_state["_dm_refresh_toast"] = True
+
+    # 수집 실행 — 페르소나 관심사 키워드
+    try:
+        from ui.board_v2 import _collect_keywords_for_persona
+        from scraping.run_daily import collect_batch
+        persona = _load_persona()
+        kws = _collect_keywords_for_persona(persona)
+        if not kws:
+            st.session_state["_dm_refresh_toast"] = (
+                "warn",
+                "ℹ️ 페르소나 관심사가 비어 있어 수집은 건너뛰었어요 — 캐시만 새로 그렸습니다.",
+            )
+        else:
+            report = collect_batch(kws, max_results=10)
+            n_articles = report.total_articles
+            n_files = report.total_files
+            n_err = len(report.errors)
+            if n_err and n_articles == 0:
+                st.session_state["_dm_refresh_toast"] = (
+                    "error",
+                    f"⚠️ 수집 실패 — 첫 오류: {report.errors[0].get('error','unknown')}",
+                )
+            else:
+                err_tail = f", 일부 오류 {n_err}건" if n_err else ""
+                st.session_state["_dm_refresh_toast"] = (
+                    "ok",
+                    f"✓ {len(kws)}개 키워드로 {n_articles}건 수집 ({n_files}개 파일){err_tail}.",
+                )
+    except Exception as exc:
+        st.session_state["_dm_refresh_toast"] = (
+            "error", f"⚠️ 수집 처리 실패: {type(exc).__name__}: {exc}",
+        )
+
     if "refresh" in st.query_params:
         del st.query_params["refresh"]
     return True
 
 
 def _render_refresh_toast_if_needed() -> None:
-    """직전 새로고침 직후 한 번만 노출되는 inline toast (sticky 안 함)."""
-    if not st.session_state.pop("_dm_refresh_toast", False):
+    """직전 새로고침 직후 한 번만 노출되는 inline toast (sticky 안 함).
+
+    payload 는 (kind, message) 튜플 — kind in {"ok","warn","error"}.
+    """
+    payload = st.session_state.pop("_dm_refresh_toast", None)
+    if not payload:
         return
+    # 구버전 호환 — True 면 기본 ok 토스트
+    if payload is True:
+        kind, message = ("ok", "✓ 캐시를 새로 그렸어요.")
+    else:
+        kind, message = payload
+    bg, border, color = {
+        "ok":    ("#ECFDF5", "#A7F3D0", "#064E3B"),
+        "warn":  ("#FFFBEB", "#FDE68A", "#92400E"),
+        "error": ("#FEF2F2", "#FECACA", "#991B1B"),
+    }.get(kind, ("#F1F5F9", "#CBD5E1", "#0F172A"))
+    safe = _html.escape(message)
     st.html(
-        """
-        <style>
-          body:has(.db-topbar) .dm-refresh-toast {
-            margin: 0 24px 14px; padding: 10px 14px;
-            background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px;
-            font-size: 13px; color: #064E3B; font-weight: 600;
-          }
-        </style>
-        <div class="dm-refresh-toast">
-          ✓ 캐시를 새로 그렸어요 — 카운터/뉴스 카드/14일 sparkline 이 갱신됐습니다.
-          <span style="font-weight:500;color:#065F46;">(실제 수집은 매일 06:00 KST 스케줄러가 실행)</span>
-        </div>
-        """
+        f'<div style="margin: 0 24px 14px; padding: 10px 14px; '
+        f'background: {bg}; border: 1px solid {border}; border-radius: 8px; '
+        f'font-size: 13px; color: {color}; font-weight: 600;">{safe}</div>'
     )
 
 
