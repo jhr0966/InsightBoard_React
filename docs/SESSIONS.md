@@ -5,7 +5,31 @@
 
 ---
 
-## 2026-05-31 · 인사이트 매트릭스 셀 클릭 wire
+## 2026-05-31 · SOLA 오늘의 브리핑 LLM 강화
+
+**브랜치:** `feat-brief-llm` (main `4742eca7` 기준 · #72 머지 직후)
+
+**변경:**
+- `sola/board_brief.py` 신규 — LLM 1~2문장 압축 + 디스크 캐시 + 룰 fallback
+- `SYSTEM_BOARD_BRIEF` 프롬프트 신규 (sola/prompts.py)
+- `_brief_html(persona_label)` 가 LLM 결과를 summary 에 노출
+- `_md_bold_to_html` 안전 변환기 (LLM 의 `**키워드**` 만 `<b>` 처리)
+- render(): persona.label() 을 캐시 키로 전달
+- +15 tests
+
+**검증:**
+- pytest **475/475** (460 + 15 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- LLM 미설정·실패·빈 응답 → 룰 fallback (서버 다운/키 없음에도 화면 정상)
+
+**남은 추천 작업:**
+- 인사이트 SECTION C 공정×자동화 기술 히트맵 cell 클릭 wire
+- 매일 06:00 cron 트리거 확인
+- SOLA 작업실 좌측 thread 목록에 LLM 생성 제목 적용
+
+---
+
+## 2026-05-31 · 인사이트 매트릭스 셀 클릭 wire ✅ merged (#72)
 
 **브랜치:** `feat-insight-matrix-click` (main `e726bd71` 기준 · #71 머지 직후)
 
