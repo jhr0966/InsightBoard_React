@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (커스텀 RSS 실 수집 wire — store.sources → scraping.run_daily 통합)
+- `scraping/rss.py` 신규 — 범용 RSS 2.0 / Atom 피드 파서. `scraping.http.build_session()` 단일 진입점(§4 유지). RFC822 / ISO 8601 날짜 모두 인식, 중복 링크 제거, `description` 에서 이미지 URL 추출, 잘못된 URL/파싱 실패/HTTP 오류 시 `RuntimeError`.
+- `scraping/run_daily.py::collect_batch(extra_feeds=None)` — 신규 인자. `(name, url)` 튜플 시퀀스를 받아 키워드와 무관하게 각 피드를 fetch → `save_articles(source=name)` 으로 별도 파일 저장(stamp 충돌 회피). 실패는 `errors` 에 누적.
+- `ui/board_v2.py::_collect_extra_feeds()` — `store.sources.custom_sources()` 를 `(name, url)` 튜플 리스트로 변환. 실패 시 빈 리스트.
+- `ui/board_v2.py::consume_kw_action_if_any` (collect 분기) — `extra_feeds` 전달. 키워드/피드 모두 비면 안내, 둘 중 하나라도 있으면 실행.
+- `ui/data_management_v2.py::_consume_refresh_if_any` — `extra_feeds` 전달. ok 토스트에 "RSS N건" 카운트 노출.
+- `tests/test_custom_rss_scrape.py` (+14) — `rss.fetch` 단위(RSS 2.0/Atom/max_results/dedupe/잘못된 URL/파싱 실패/HTTP 오류) + `collect_batch` extra_feeds 통합(저장/오류/None 기본) + UI 통합(`_collect_extra_feeds` / dm refresh 가 extra_feeds 전달 / 토스트에 RSS 카운트).
+
 ### Added (보드 음성으로 듣기 (TTS) — Web Speech API 인라인 재생)
 - `ui/board_v2.py::_tts_button_html(text, label, cls)` — `data-tts` 속성에 `json.dumps` + HTML escape 로 안전 인코딩. 클릭 시 인라인 `onclick` 핸들러가 `SpeechSynthesisUtterance` (lang `ko-KR`) 로 즉시 재생. 새 재생은 직전 재생을 cancel. 빈 텍스트 → 버튼 미노출. HTML `onclick` 은 브라우저 JS 속성이라 Streamlit `on_click=` callback 금지 invariant 와 무관.
 - `ui/board_v2.py::_tts_disabled_html()` — 재생 대상 텍스트 없을 때 disabled 버튼.
