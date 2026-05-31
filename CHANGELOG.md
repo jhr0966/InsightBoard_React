@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (SOLA 오늘의 브리핑 LLM 강화 — 가짜 한 줄 → 실 1~2문장 압축)
+- `sola/board_brief.py` 신규 — `brief(items, persona_label, *, force=False)` API. 매칭 뉴스 top 3 + 부서 라벨을 `SYSTEM_BOARD_BRIEF` 시스템 프롬프트로 LLM 호출 → 1~2문장 평문 압축. `store.cache` 디스크 캐시 (sig = title@source 들 + persona_label + model). `LLMNotConfigured` / 일반 예외 / 빈 응답 → 룰 기반 fallback ("N건 두드러집니다").
+- `sola/prompts.py::SYSTEM_BOARD_BRIEF` 신규 프롬프트 — "30초 부서장 브리핑" 톤, 굵은 키워드(`**...**`) 1~2개, 입력 외 사실 금지, 평문 1~2문장.
+- `ui/board_v2.py::_brief_html(persona_label="")` — persona 라벨이 캐시 키. 매칭 items 에 news.summary 컬럼 보강(LLM 압축 품질↑) 후 `sola.board_brief.brief()` 호출. 빈 응답 fallback. LLM 응답의 `**굵은 키워드**` 마크다운만 `<b>` 로 변환.
+- `ui/board_v2.py::_md_bold_to_html(text)` 신규 — 안전 변환기. `**...**` 매치는 `<b>` 로, 그 외는 모두 `html.escape()`. 다른 마크다운(헤더/리스트/링크)은 처리 안 함(프롬프트가 금지).
+- `ui/board_v2.py::render()` — `_brief_html(persona_label=persona.label() or "")` 로 호출.
+- 모듈 상단 `import re` 추가 (`_md_bold_to_html` 용).
+- `tests/test_board_brief_llm.py` (+15) — `board_brief` 단위 8건: 빈 items / LLMNotConfigured fallback / 일반 예외 fallback / LLM 응답 사용 / 캐시 hit (1회 호출) / persona_label 분리 키 / force / 빈 응답 fallback. `_md_bold_to_html` 4건: `**` 변환 / HTML escape / 혼합 / 빈 문자열. `_brief_html` UI 통합 3건: LLM 응답이 summary 에 노출 + `<b>` 변환 / 빈 응답이면 룰 fallback / persona 라벨이 Streamlit 캐시 키.
+
 ### Added (인사이트 매트릭스 셀 클릭 wire — SVG 버블 → SOLA 작업실 인계 + 동적 PoC 리스트)
 - `ui/insights_v2.py::_ia_mx_select_href(dept, lv3)` — `?app_area=🔎+인사이트+분석&ia_mx_select=<dept>|<lv3>` 빌더. 빈 dept/lv3 → 토글 해제.
 - `ui/insights_v2.py::_ia_mx_selected_key()` — `?ia_mx_select=` 1회 stateless 읽기.

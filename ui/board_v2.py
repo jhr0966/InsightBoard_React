@@ -11,6 +11,8 @@ CLAUDE.md 규칙:
 from __future__ import annotations
 
 import html as _html
+import json as _json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -293,8 +295,25 @@ def render_kw_action_toast_if_needed() -> None:
     _render_inline_toast("_kw_action_toast")
 
 
+def _md_bold_to_html(text: str) -> str:
+    """`**키워드**` 마크다운만 `<b>` 로 변환, 그 외는 모두 HTML escape.
+
+    LLM 응답의 굵은 키워드 강조를 안전하게 렌더하기 위함. ** 외 다른 마크다운
+    (헤더·리스트·링크 등)은 처리하지 않는다 (시스템 프롬프트가 금지함).
+    """
+    if not text:
+        return ""
+    parts = re.split(r"(\*\*[^*\n]+\*\*)", text)
+    out: list[str] = []
+    for p in parts:
+        if p.startswith("**") and p.endswith("**") and len(p) > 4:
+            out.append(f"<b>{_html.escape(p[2:-2])}</b>")
+        else:
+            out.append(_html.escape(p))
+    return "".join(out)
+
+
 # ── 보드 음성으로 듣기 (TTS) — Web Speech API 인라인 재생 ───────
-import json as _json
 
 
 def _tts_button_html(text: str, *, label: str = "음성으로 듣기",
@@ -424,11 +443,12 @@ def _side_story_html(row: pd.Series) -> str:
 
 
 @st.cache_data(ttl=60)
-def _brief_html() -> dict[str, str]:
-    """SOLA 오늘의 브리핑 — 페르소나 매칭 top 3 뉴스.
+def _brief_html(persona_label: str = "") -> dict[str, str]:
+    """SOLA 오늘의 브리핑 — 페르소나 매칭 top 3 뉴스 + LLM 1~2문장 요약.
 
-    LLM 호출 없이 score_matches 상위 3건 + 인용 pill 만 만든다.
-    실제 LLM 요약/요점은 후속 PR (sola.summarize 연동).
+    summary 텍스트는 `sola.board_brief.brief()` (디스크 캐시 + LLM 미설정
+    시 룰 fallback) 가 생성. 그 외 list/cites/cta/tts_btn 은 score_matches
+    상위 3건 기반.
     """
     try:
         news_df = _news_db.load_news_for_days(days=3)
@@ -493,15 +513,33 @@ def _brief_html() -> dict[str, str]:
     # SOLA workshop 컨텍스트 인계용 — 다음 rerun 에서 from=brief 가 들어오면 소비
     st.session_state["_board_brief_items"] = items
 
-    # 한 줄 요약 — 키워드 추출 없이 토픽 추정
-    summary_text = (
-        f"최근 매칭된 뉴스 {len(items)}건이 두드러집니다."
-        if len(items) > 0 else "오늘 매칭된 뉴스가 없습니다."
-    )
+    # 한 줄 요약 — LLM 1~2문장 (sola.board_brief), 실패/미설정 시 룰 fallback
+    try:
+        # news_df 의 summary 컬럼이 있으면 items 에도 보강 — LLM 압축 품질↑
+        for item in items:
+            try:
+                row = news_df[news_df["link"] == item.get("link", "")].head(1) \
+                    if news_df is not None and "link" in news_df.columns else None
+                if row is not None and not row.empty and "summary" in row.columns:
+                    item["summary"] = str(row.iloc[0].get("summary", "") or "")
+            except Exception:
+                pass
+        from sola.board_brief import brief as _llm_brief
+        summary_text = _llm_brief(items, persona_label=persona_label or "").strip()
+    except Exception:
+        summary_text = ""
+    if not summary_text:
+        summary_text = (
+            f"최근 매칭된 뉴스 {len(items)}건이 두드러집니다."
+            if len(items) > 0 else "오늘 매칭된 뉴스가 없습니다."
+        )
+
+    # LLM 응답의 **굵은 키워드** 마크다운만 <b> 로 변환 (그 외는 escape)
+    summary_html_inner = _md_bold_to_html(summary_text)
     summary_html = (
         '<div class="db-brief-greet">'
         '<span class="db-brief-greet-tag">요약</span>'
-        f'{_html.escape(summary_text)}'
+        f'{summary_html_inner}'
         '</div>'
     )
 
@@ -1575,7 +1613,8 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BOARD_MATRIX}}", _board_matrix_html(selected_key=_mx_selected_key()))
         .replace("{{BOARD_KW_MGR}}", _board_kw_mgr_html(persona))
     )
-    brief = _brief_html()
+    # persona 라벨을 캐시 키로 — 부서·직무 바뀌면 브리핑 재생성
+    brief = _brief_html(persona_label=persona.label() or "")
     html_out = (
         html_out
         .replace("{{BRIEF_SUMMARY}}", brief["summary"])
