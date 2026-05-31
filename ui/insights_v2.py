@@ -542,6 +542,238 @@ def _ia_mtx_rank_empty() -> str:
             '아직 매칭된 자동화 기회가 없어요.</div>')
 
 
+# ── SECTION C 히트맵 (공정 × 자동화 기술) ─────────────────────
+
+# 자동화 기술 컬럼 — 조선소 도메인 지표 키워드(고정 셋, 7개)
+_HM_TECH_COLS: tuple[str, ...] = (
+    "비전", "협동 로봇", "예지보전", "디지털 트윈", "AGV", "AI", "외골격",
+)
+
+
+def _hm_select_href(process: str, tech: str) -> str:
+    """히트맵 셀 선택 URL — `?app_area=🔎+인사이트+분석&hm_select=<proc>|<tech>`.
+
+    빈 값 → hm_select 생략(토글 해제).
+    """
+    parts = [f"app_area={quote(_IA_AREA_KEY)}"]
+    if process or tech:
+        parts.append(f"hm_select={quote(f'{process}|{tech}')}")
+    return "?" + "&".join(parts)
+
+
+def _hm_selected_key() -> str | None:
+    """`?hm_select=` 1회 stateless 읽기. 빈 값 → None."""
+    raw = (st.query_params.get("hm_select") or "").strip()
+    return raw or None
+
+
+def _hm_count_in_news(news_df, process: str, tech: str) -> int:
+    """뉴스 df 에서 process 와 tech 가 둘 다 substring 으로 등장하는 row 수."""
+    if news_df is None or news_df.empty or not process or not tech:
+        return 0
+    cols = [c for c in ("title", "summary", "summary_llm", "keywords",
+                         "keywords_llm", "content") if c in news_df.columns]
+    if not cols:
+        return 0
+    import pandas as _pd
+    p_mask = _pd.Series(False, index=news_df.index)
+    t_mask = _pd.Series(False, index=news_df.index)
+    for c in cols:
+        col = news_df[c].fillna("").astype(str)
+        p_mask |= col.str.contains(process, regex=False, case=False)
+        t_mask |= col.str.contains(tech, regex=False, case=False)
+    return int((p_mask & t_mask).sum())
+
+
+def _hm_cell_class(v: int) -> str:
+    """수치 → 강도 클래스(none/low/normal/mid/strong)."""
+    if v <= 0:
+        return "ia-hm-c ia-hm-c-empty"
+    if v <= 3:
+        return "ia-hm-c ia-hm-c-low"
+    if v <= 7:
+        return "ia-hm-c"
+    if v <= 15:
+        return "ia-hm-c ia-hm-c-mid"
+    return "ia-hm-c ia-hm-c-strong"
+
+
+def _hm_top_news(news_df, process: str, tech: str, limit: int = 3) -> list[dict]:
+    """선택된 process × tech 셀에 매칭되는 뉴스 상위 N건."""
+    if news_df is None or news_df.empty or not process or not tech:
+        return []
+    cols = [c for c in ("title", "summary", "summary_llm", "keywords",
+                         "keywords_llm", "content") if c in news_df.columns]
+    if not cols:
+        return []
+    import pandas as _pd
+    p_mask = _pd.Series(False, index=news_df.index)
+    t_mask = _pd.Series(False, index=news_df.index)
+    for c in cols:
+        col = news_df[c].fillna("").astype(str)
+        p_mask |= col.str.contains(process, regex=False, case=False)
+        t_mask |= col.str.contains(tech, regex=False, case=False)
+    matched = news_df[p_mask & t_mask]
+    if matched.empty:
+        return []
+    if "collected_at" in matched.columns:
+        matched = matched.sort_values("collected_at", ascending=False)
+    out: list[dict] = []
+    for _, r in matched.head(limit).iterrows():
+        out.append({
+            "title": str(r.get("title", "") or "(제목 없음)"),
+            "source": str(r.get("source", "") or ""),
+            "link": str(r.get("link", "") or ""),
+        })
+    return out
+
+
+@st.cache_data(ttl=60)
+def _ia_heatmap_html(selected_key: str | None = None) -> str:
+    """공정×자동화 기술 히트맵 (동적 데이터 + 클릭 wire).
+
+    행 = score_cells 상위 7개 공정(lv3 unique 유지순서).
+    열 = `_HM_TECH_COLS` (고정 7개).
+    셀 = 30일 뉴스에서 process AND tech substring 둘 다 매치된 row 수.
+    """
+    try:
+        news_30 = _news_db.load_news_for_days(days=30)
+        roadmap = _load_roadmap()
+    except Exception:
+        news_30 = None
+        roadmap = None
+    if news_30 is None or news_30.empty or roadmap is None or roadmap.empty:
+        return _ia_heatmap_empty()
+
+    try:
+        cells = _score_cells(news_30, roadmap).head(20)
+    except Exception:
+        return _ia_heatmap_empty()
+    if cells.empty:
+        return _ia_heatmap_empty()
+
+    # 행 = unique lv3 (등장순), 최대 7개
+    seen: set[str] = set()
+    rows: list[str] = []
+    for _, r in cells.iterrows():
+        lv3 = str(r.get("lv3", "") or "").strip()
+        if lv3 and lv3 not in seen:
+            seen.add(lv3)
+            rows.append(lv3)
+        if len(rows) >= 7:
+            break
+    if not rows:
+        return _ia_heatmap_empty()
+
+    cols = _HM_TECH_COLS
+
+    # 셀 카운트
+    grid: dict[tuple[str, str], int] = {}
+    for proc in rows:
+        for tech in cols:
+            grid[(proc, tech)] = _hm_count_in_news(news_30, proc, tech)
+
+    # 합계 (legend)
+    total = sum(grid.values())
+
+    # 헤더
+    parts: list[str] = ['<div class="ia-hm">']
+    parts.append('<div class="ia-hm-cols">')
+    parts.append('<div></div>')
+    for tech in cols:
+        parts.append(f'<div class="ia-hm-col">{_html.escape(tech)}</div>')
+    parts.append('</div>')
+
+    # 데이터 행 — 각 셀은 클릭 가능 <a>
+    for proc in rows:
+        parts.append('<div class="ia-hm-row">')
+        parts.append(f'<div class="ia-hm-rh">{_html.escape(proc)}</div>')
+        for tech in cols:
+            v = grid[(proc, tech)]
+            cls = _hm_cell_class(v)
+            key = f"{proc}|{tech}"
+            is_sel = (selected_key == key)
+            if is_sel:
+                cls += " ia-hm-c-on"
+            label = str(v) if v > 0 else "·"
+            # 활성 셀 클릭 → 토글 해제, 비활성 → 새 선택
+            href = (_hm_select_href("", "") if is_sel
+                    else _hm_select_href(proc, tech))
+            title = f"{proc} × {tech} — 매칭 뉴스 {v}건"
+            parts.append(
+                f'<a class="{cls}" href="{href}" target="_self" '
+                f'title="{_html.escape(title, quote=True)}" '
+                f'aria-current="{"true" if is_sel else "false"}">{label}</a>'
+            )
+        parts.append('</div>')
+
+    # 범례
+    parts.append(
+        '<div class="ia-hm-legend">'
+        '<span>강도:</span>'
+        '<span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-empty">·</span>없음</span>'
+        '<span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-low">3</span>약(≤3)</span>'
+        '<span class="ia-hm-leg-i"><span class="ia-hm-leg-d">7</span>중(4-7)</span>'
+        '<span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-mid">15</span>강(8-15)</span>'
+        '<span class="ia-hm-leg-i"><span class="ia-hm-leg-d ia-hm-c-strong">16+</span>매우 강</span>'
+        '<span class="ia-hm-spacer"></span>'
+        f'<span class="ia-hm-total">합계 {total}건 / 30일</span>'
+        '</div>'
+    )
+
+    # 선택된 셀의 상세 strip — 상위 3 뉴스 + SOLA 인계 + 전체 보기
+    if selected_key and "|" in selected_key:
+        proc, tech = selected_key.split("|", 1)
+        top_news = _hm_top_news(news_30, proc, tech, limit=3)
+        if top_news:
+            from ui.board_v2 import _sola_handoff_href as _sh
+            sola_href = _sh("hm_cell", dept="", lv3=proc) + "&tech=" + quote(tech)
+            clear_href = _hm_select_href("", "")
+            news_items = []
+            for n in top_news:
+                src = _html.escape(n["source"] or "—")
+                title = _html.escape(n["title"][:120])
+                link = n["link"]
+                if link:
+                    news_items.append(
+                        f'<li><a href="{_html.escape(link, quote=True)}" target="_blank" '
+                        f'rel="noopener">{title}</a><small>{src}</small></li>'
+                    )
+                else:
+                    news_items.append(f'<li>{title}<small>{src}</small></li>')
+            parts.append(
+                '<div class="ia-hm-detail">'
+                f'<div class="ia-hm-detail-head">'
+                f'<b>{_html.escape(proc)} × {_html.escape(tech)}</b>'
+                f'<span class="ia-hm-detail-meta">매칭 뉴스 {len(top_news)}건 미리보기</span>'
+                f'<a class="ia-hm-detail-clear" href="{clear_href}" target="_self">× 닫기</a>'
+                f'</div>'
+                f'<ul class="ia-hm-news-list">{"".join(news_items)}</ul>'
+                f'<a class="ia-hm-detail-sola" href="{sola_href}" target="_self">'
+                f'SOLA 작업실에서 더 보기 →</a>'
+                '</div>'
+            )
+        else:
+            clear_href = _hm_select_href("", "")
+            parts.append(
+                f'<div class="ia-hm-detail ia-hm-detail-empty">'
+                f"'<b>{_html.escape(proc)} × {_html.escape(tech)}</b>' 매칭 뉴스가 없어요. "
+                f'<a class="ia-hm-detail-clear" href="{clear_href}" target="_self">× 닫기</a>'
+                f'</div>'
+            )
+
+    parts.append('</div>')
+    return "".join(parts)
+
+
+def _ia_heatmap_empty() -> str:
+    return ('<div class="ia-hm" style="padding:32px 18px; text-align:center;'
+            ' color:var(--text-muted); font-size:14px; border:1px dashed var(--surface-divider);'
+            ' border-radius:12px;">아직 공정 × 자동화 기술 매칭이 없어요.<br>'
+            '<span style="font-size:12.5px;">뉴스 30일분 + 작업 정의 데이터 업로드 후 자동으로 채워집니다.</span>'
+            '</div>')
+
+
 def _ia_matrix_empty() -> str:
     return ('<div style="padding:80px 18px; text-align:center; color:var(--text-muted);'
             ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;'
@@ -931,6 +1163,8 @@ def render() -> None:
     selected_kw = (st.query_params.get("tkw") or "").strip() or None
     # 매트릭스 셀 선택 — `?ia_mx_select=dept|lv3` 1회 stateless.
     selected_mx = _ia_mx_selected_key()
+    # 히트맵 셀 선택 — `?hm_select=proc|tech` 1회 stateless.
+    selected_hm = _hm_selected_key()
 
     template = _IA_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
@@ -949,6 +1183,7 @@ def render() -> None:
         .replace("{{IA_CHART_PILL}}", chart["pill"])
         .replace("{{IA_MATRIX_SVG}}", _ia_matrix_svg(selected_key=selected_mx))
         .replace("{{IA_MTX_RANK}}", _ia_mtx_rank_html(selected_key=selected_mx))
+        .replace("{{IA_HEATMAP}}", _ia_heatmap_html(selected_key=selected_hm))
         .replace("{{IA_PROCESS_MAP}}", _ia_process_map_html(selected_kw=selected_kw))
     )
     st.html(html_out)
