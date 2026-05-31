@@ -131,7 +131,12 @@ def consume_opp_action_if_any() -> tuple[str, str, str] | None:
 
 def render_opp_action_toast_if_needed() -> None:
     """직전 액션 직후 한 번만 노출되는 inline toast."""
-    payload = st.session_state.pop("_opp_action_toast", None)
+    _render_inline_toast("_opp_action_toast")
+
+
+def _render_inline_toast(session_key: str) -> None:
+    """공용 inline toast 렌더 — session_key 에서 (kind, message) 를 1회 소비."""
+    payload = st.session_state.pop(session_key, None)
     if not payload:
         return
     kind, message = payload
@@ -145,6 +150,137 @@ def render_opp_action_toast_if_needed() -> None:
         f'background: {bg}; border: 1px solid {border}; border-radius: 8px; '
         f'font-size: 13px; color: {color}; font-weight: 600;">{safe}</div>'
     )
+
+
+# ── ⑦ 키워드 관리 wire — × 삭제 + 즉시 수집 ──────────────────────
+_KW_ACTIONS = {"del_user", "mute", "collect"}
+
+
+def _kw_action_href(action: str, *, keyword: str = "") -> str:
+    """키워드 관리 액션 URL — 같은 area(보드) 머무름.
+
+    예) `_kw_action_href("mute", keyword="AI")`
+        → "?app_area=📊+오늘의+보드&kw_action=mute&keyword=AI"
+        `_kw_action_href("collect")`
+        → "?app_area=📊+오늘의+보드&kw_action=collect"
+    """
+    parts = [
+        f"app_area={quote('📊 오늘의 보드')}",
+        f"kw_action={quote(action)}",
+    ]
+    if keyword:
+        parts.append(f"keyword={quote(keyword)}")
+    return "?" + "&".join(parts)
+
+
+def consume_kw_action_if_any() -> tuple[str, str] | None:
+    """`?kw_action=del_user|mute|collect&keyword=` 1회 소비.
+
+    - del_user: persona.interest_lv3 / interest_tasks 에서 keyword 제거 → save
+    - mute:    persona.muted_keywords 에 keyword 추가(중복 제거) → save
+    - collect: persona 의 모든 키워드(자동 추출 제외) 로 collect_batch 실행
+
+    반환: 성공 시 (action, keyword), 알 수 없는 action 이면 None (쿼리 유지).
+    부수효과: persona save / scraping 실행 / session_state["_kw_action_toast"] /
+    query strip.
+    """
+    action = st.query_params.get("kw_action")
+    keyword = (st.query_params.get("keyword", "") or "").strip()
+
+    if action not in _KW_ACTIONS:
+        return None
+
+    try:
+        from persona import store as persona_store
+        persona = _load_persona()
+
+        if action == "del_user":
+            removed = False
+            if keyword in persona.interest_tasks:
+                persona.interest_tasks = [k for k in persona.interest_tasks if k != keyword]
+                removed = True
+            if keyword in persona.interest_lv3:
+                persona.interest_lv3 = [k for k in persona.interest_lv3 if k != keyword]
+                removed = True
+            persona_store.save(persona)
+            st.session_state["persona"] = persona
+            if removed:
+                st.session_state["_kw_action_toast"] = (
+                    "ok", f"✅ '{keyword}' 키워드를 관심사에서 제거했어요."
+                )
+            else:
+                st.session_state["_kw_action_toast"] = (
+                    "ok", f"ℹ️ '{keyword}' 은(는) 관심사에 없어요."
+                )
+
+        elif action == "mute":
+            if not keyword:
+                return (action, keyword)
+            muted = list(persona.muted_keywords or [])
+            if keyword not in muted:
+                muted.append(keyword)
+                persona.muted_keywords = muted
+                persona_store.save(persona)
+                st.session_state["persona"] = persona
+            st.session_state["_kw_action_toast"] = (
+                "ok", f"🔕 '{keyword}' 키워드를 자동 추출에서 숨겼어요."
+            )
+
+        elif action == "collect":
+            kws = _collect_keywords_for_persona(persona)
+            if not kws:
+                st.session_state["_kw_action_toast"] = (
+                    "ok", "ℹ️ 수집할 키워드가 없어요. 페르소나 관심사를 먼저 추가해 주세요."
+                )
+            else:
+                from scraping.run_daily import collect_batch
+                report = collect_batch(kws, max_results=10)
+                n_files = report.total_files
+                n_articles = report.total_articles
+                n_err = len(report.errors)
+                if n_err and n_articles == 0:
+                    st.session_state["_kw_action_toast"] = (
+                        "error",
+                        f"⚠️ 수집 실패: {report.errors[0].get('error','unknown')}",
+                    )
+                else:
+                    st.session_state["_kw_action_toast"] = (
+                        "ok",
+                        f"✅ {len(kws)}개 키워드로 {n_articles}건 수집 "
+                        f"({n_files}개 파일){f', 일부 오류 {n_err}건' if n_err else ''}.",
+                    )
+                try:
+                    _board_kpis.clear()
+                except Exception:
+                    pass
+    except Exception as exc:
+        st.session_state["_kw_action_toast"] = (
+            "error", f"⚠️ 처리 실패: {type(exc).__name__}: {exc}",
+        )
+
+    # query strip (재실행 방지)
+    for k in ("kw_action", "keyword"):
+        if k in st.query_params:
+            del st.query_params[k]
+    return (action, keyword)
+
+
+def _collect_keywords_for_persona(persona: Persona) -> list[str]:
+    """수집 대상 키워드 — 페르소나 관심사(중복 제거, 빈 값 제거)."""
+    raw = list(persona.interest_tasks or []) + list(persona.interest_lv3 or [])
+    seen: set[str] = set()
+    out: list[str] = []
+    for kw in raw:
+        k = (kw or "").strip()
+        if k and k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
+
+
+def render_kw_action_toast_if_needed() -> None:
+    """⑦ 키워드 관리 액션 직후 한 번만 노출되는 inline toast."""
+    _render_inline_toast("_kw_action_toast")
 
 _SOURCE_GRADIENTS = {
     "AI Times": "linear-gradient(135deg,#DC2626,#F87171)",
@@ -704,28 +840,34 @@ def _board_kw_mgr_html(persona: Persona) -> str:
         return _kw_mgr_empty_html()
 
     # Group 1
+    muted = {str(m).strip() for m in (persona.muted_keywords or []) if str(m).strip()}
     try:
-        top_df = _trends.top_keywords(news_30, top_n=6)
+        # 숨김 키워드를 고려해 여유롭게 가져온 뒤 필터링.
+        top_df = _trends.top_keywords(news_30, top_n=6 + len(muted))
     except Exception:
         top_df = None
     auto_chips: list[str] = []
     if top_df is not None and not top_df.empty:
-        max_c = max(int(top_df["count"].max()), 1)
-        for _, r in top_df.iterrows():
+        # 숨김 처리 + 상위 6개로 truncate
+        rows = [r for _, r in top_df.iterrows() if str(r["keyword"]) not in muted][:6]
+        max_c = max((int(r["count"]) for r in rows), default=1)
+        for r in rows:
             kw = str(r["keyword"])
             c = int(r["count"])
-            ratio = c / max_c
+            ratio = c / max_c if max_c else 0
             dot_cls = (
                 "db-good-dot" if ratio >= 0.5
                 else "db-mid-dot" if ratio >= 0.2
                 else "db-low-dot"
             )
+            x_href = _kw_action_href("mute", keyword=kw)
             auto_chips.append(
                 f'<span class="db-kchip">'
                 f'<span class="db-kchip-dot {dot_cls}"></span>'
                 f'{_html.escape(kw)}'
                 f'<span class="db-kchip-hits">{c}</span>'
-                f'<button class="db-kchip-x" disabled>×</button>'
+                f'<a class="db-kchip-x" href="{x_href}" target="_self" '
+                f'title="자동 추출에서 숨기기">×</a>'
                 f'</span>'
             )
 
@@ -748,11 +890,13 @@ def _board_kw_mgr_html(persona: Persona) -> str:
                         term, regex=False, case=False
                     )
                 hits = int(mask.sum())
+            x_href = _kw_action_href("del_user", keyword=term)
             user_chips.append(
                 f'<span class="db-kchip db-kchip-user">'
                 f'{_html.escape(term)}'
                 f'<span class="db-kchip-hits">{hits}</span>'
-                f'<button class="db-kchip-x" disabled>×</button>'
+                f'<a class="db-kchip-x" href="{x_href}" target="_self" '
+                f'title="관심사에서 제거">×</a>'
                 f'</span>'
             )
 
@@ -800,7 +944,8 @@ def _board_kw_mgr_html(persona: Persona) -> str:
         f'<div class="db-kw-sum-t">최근 30일 평균 <b>~ {daily_avg}건/일</b> 수집 · 출처 {n_sources}개</div>'
         f'<div class="db-kw-sum-s">희소(주황) 키워드는 시그널이 옅을 수 있어요 — 30일 모니터링 후 재평가됩니다.</div>'
         f'</div>'
-        f'<button class="db-kw-sum-cta" disabled>지금 즉시 수집 실행</button>'
+        f'<a class="db-kw-sum-cta" href="{_kw_action_href("collect")}" '
+        f'target="_self">지금 즉시 수집 실행</a>'
         f'</div>'
     )
 
@@ -1227,6 +1372,13 @@ def render() -> None:
         except Exception:
             pass
 
+    # ── 0.5) ⑦ 키워드 관리 액션(× 삭제 / mute / collect) 1회 소비 ──
+    if consume_kw_action_if_any():
+        try:
+            _board_kpis.clear()
+        except Exception:
+            pass
+
     persona = _load_persona()
     stats = _archive_stats()
     refresh = app_shell.refresh_label_now()
@@ -1249,6 +1401,7 @@ def render() -> None:
     # ── 2.5) LLM 미설정 안내 (설정 완료 시 no-op) ──
     app_shell.render_setup_banner_if_needed()
     render_opp_action_toast_if_needed()
+    render_kw_action_toast_if_needed()
 
     # ── 3) 본문 (main) — 템플릿 로드 후 placeholder 치환 ──
     _render_main(persona=persona, refresh_label=refresh)

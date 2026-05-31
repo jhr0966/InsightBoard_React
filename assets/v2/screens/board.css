@@ -1617,6 +1617,9 @@ a.db-mx-cta, a.db-mx-cta:visited { color: #fff; }
 }
 .db-kchip-x {
   width: 18px; height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   border: 0;
   background: transparent;
@@ -1625,8 +1628,15 @@ a.db-mx-cta, a.db-mx-cta:visited { color: #fff; }
   line-height: 1;
   cursor: pointer;
   padding: 0;
+  text-decoration: none;
 }
-.db-kchip-x:hover { background: rgba(185,28,28,0.10); color: var(--semantic-danger); }
+.db-kchip-x:hover {
+  background: rgba(185,28,28,0.10);
+  color: var(--semantic-danger);
+  text-decoration: none;
+}
+a.db-kchip-x, a.db-kchip-x:visited { color: var(--text-muted); }
+a.db-kchip-x:hover { color: var(--semantic-danger); }
 .db-kchip-user {
   background: rgba(37,99,235,0.05);
   border-color: rgba(37,99,235,0.22);
@@ -1698,7 +1708,10 @@ a.db-mx-cta, a.db-mx-cta:visited { color: #fff; }
   box-shadow: 0 2px 6px rgba(37,99,235,0.22);
   flex-shrink: 0;
 }
-.db-kw-sum-cta:hover { background: var(--accent-hover); }
+.db-kw-sum-cta:hover { background: var(--accent-hover); text-decoration: none; }
+/* <a> 로 전환된 즉시 수집 CTA — text-decoration 제거 + :visited 색 회복 (I-19) */
+.db-kw-sum-cta { text-decoration: none; }
+a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
 
 /* End footer */
 .db-footer-end {

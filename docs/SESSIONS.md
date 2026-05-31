@@ -5,7 +5,34 @@
 
 ---
 
-## 2026-05-31 · 자동화 기회 카드 보류/채택 wire (보관함 연동)
+## 2026-05-31 · 보드 ⑦ 키워드 관리 wire (× 삭제 + 즉시 수집)
+
+**브랜치:** `feat-keyword-mgmt-wire` (main `cee1bde` 기준 · #61 머지 직후)
+
+**변경:**
+- `persona/schema.py` — `muted_keywords` 필드 신규(자동 추출 숨김 목록).
+- 보드 ⑦ × 버튼 두 곳 모두 `<a href="?kw_action=del_user|mute&keyword=">`
+- 즉시 수집 CTA → `<a href="?kw_action=collect">` → `scraping.run_daily.collect_batch`
+- `_kw_action_href` / `consume_kw_action_if_any` / `render_kw_action_toast_if_needed`
+- `_board_kw_mgr_html`: muted 필터 + `<a>` 전환 (disabled 자취 제거)
+- 공용 `_render_inline_toast` 추출(opp/kw 공유)
+- CSS I-19 (.db-kchip-x, .db-kw-sum-cta)
+- +16 tests
+
+**검증:**
+- pytest **341/341** (325 + 16 신규)
+- 금지 패턴: on_click 0건 · requests 직접 호출 0건
+- e2e: persona 관심사 × → save → 카드 갱신 / mute → 자동 추출 필터 /
+  collect → collect_batch 호출 (mocked) → 토스트
+
+**남은 추천 작업:**
+- topbar 알림/설정 버튼 정직화
+- 데이터관리 키워드·출처 설정 본문 (B.5)
+- 인사이트 트렌드 키워드 클릭 wire
+
+---
+
+## 2026-05-31 · 자동화 기회 카드 보류/채택 wire (보관함 연동) ✅ merged (#61)
 
 **브랜치:** `feat-opp-actions` (main `4eb6dc7` 기준)
 
