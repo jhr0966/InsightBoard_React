@@ -51,6 +51,31 @@
 
 ---
 
+## 2026-05-31 · cron daily scrape 커스텀 RSS 통합
+
+**브랜치:** `feat-cron-rss` (main `29830c55` 기준, #74 머지 대기 중 병행 시작)
+
+**변경:**
+- `scripts/daily_scrape.py` — `_load_extra_feeds` 신규 + `--skip-custom-rss` 플래그 + collect_batch 에 extra_feeds 전달
+- `.github/workflows/scrape-daily.yml` — `skip_custom_rss` workflow_dispatch 입력 추가 + CLI 전달
+- `tests/test_run_daily.py` 기존 fake signature 갱신
+- +9 신규 tests
+
+**검증:**
+- pytest **499/499** (490 + 9 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- workflow yml 의 `on:` 키가 PyYAML 의 boolean alias 로 True 로 파싱되는 케이스 가드
+
+**점검 결과:**
+- cron `0 0 * * *` (UTC) = KST 09:00 — 출근 후 09:00 브리핑 시점. 사용자 요청한 06:00 으로 변경하려면 `21 0 * * *` 로 수정 (별도 PR).
+- 주의: GH Actions 환경에는 `data/sources/config.json` 이 없음(`.gitignore`). cron 의 커스텀 RSS 는 실질적으로 0건 — 사용자가 등록한 RSS 가 cron 에 반영되려면 `repo-level config` 로의 마이그레이션이 추가로 필요 (후속 PR 후보).
+
+**남은 추천 작업 (이번 묶음):**
+- (3) SOLA 작업실 thread 제목 LLM 생성 → 다음 진행
+
+---
+
+
 ## 2026-05-31 · SOLA 오늘의 브리핑 LLM 강화 ✅ merged (#73)
 
 **브랜치:** `feat-brief-llm` (main `4742eca7` 기준 · #72 머지 직후)

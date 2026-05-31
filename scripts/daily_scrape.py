@@ -3,10 +3,11 @@
 GH Actions workflow 또는 로컬에서 호출.
 
 Usage:
-    python -m scripts.daily_scrape                              # 기본 키워드 + 전체 소스
+    python -m scripts.daily_scrape                              # 기본 키워드 + 전체 소스 + 등록된 커스텀 RSS
     python -m scripts.daily_scrape --keywords "용접 로봇" "디지털 트윈"
     python -m scripts.daily_scrape --sources naver google       # tech 제외
     python -m scripts.daily_scrape --max-results 20
+    python -m scripts.daily_scrape --skip-custom-rss            # 커스텀 RSS 스킵
 
 Exit code: 항상 0 (네트워크 일시 오류로 cron 이 실패 처리되지 않도록).
 오류는 stdout 으로 보고하되 saved 0 건이면 stderr 경고만 남긴다.
@@ -24,7 +25,10 @@ from scraping.run_daily import SOURCE_IDS, collect_batch
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="daily_scrape",
-        description="조선소 도메인 키워드로 네이버/구글/테크 사이트 뉴스를 일일 수집·저장.",
+        description=(
+            "조선소 도메인 키워드로 네이버/구글/테크 사이트 + "
+            "등록된 커스텀 RSS 출처에서 뉴스를 일일 수집·저장."
+        ),
     )
     parser.add_argument(
         "--keywords",
@@ -45,7 +49,23 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=10,
         help="키워드/사이트당 최대 기사 수. 기본 10.",
     )
+    parser.add_argument(
+        "--skip-custom-rss",
+        action="store_true",
+        help="store.sources 에 등록된 커스텀 RSS 출처 수집을 건너뜁니다.",
+    )
     return parser.parse_args(argv)
+
+
+def _load_extra_feeds() -> list[tuple[str, str]]:
+    """`store.sources.custom_sources()` → `(name, url)` 튜플. 실패 시 빈 리스트."""
+    try:
+        from store import sources as src_store
+        return [(c.name, c.url) for c in src_store.custom_sources()]
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_scrape] WARN: custom_sources 로드 실패: {exc}",
+              file=sys.stderr, flush=True)
+        return []
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -53,8 +73,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     keywords = args.keywords if args.keywords else list(DEFAULT_DAILY_KEYWORDS)
 
     ensure_data_dirs()
+
+    extra_feeds = [] if args.skip_custom_rss else _load_extra_feeds()
     print(
-        f"[daily_scrape] 시작 — 키워드 {len(keywords)}개, 소스 {args.sources}, max={args.max_results}",
+        f"[daily_scrape] 시작 — 키워드 {len(keywords)}개, 소스 {args.sources}, "
+        f"max={args.max_results}, 커스텀 RSS {len(extra_feeds)}건",
         flush=True,
     )
 
@@ -67,9 +90,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         sources=tuple(args.sources),
         max_results=args.max_results,
         on_step=_on_step,
+        extra_feeds=extra_feeds or None,
     )
 
     print("[daily_scrape] " + report.summary_lines()[0], flush=True)
+    if report.errors:
+        print(f"[daily_scrape] 일부 오류 {len(report.errors)}건 — 첫 오류: "
+              f"{report.errors[0].get('source','?')} / "
+              f"{report.errors[0].get('error','')}", flush=True)
     if report.total_articles == 0:
         print(
             "[daily_scrape] WARN: 저장된 기사가 0건입니다.",

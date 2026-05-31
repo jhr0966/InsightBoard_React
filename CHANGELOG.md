@@ -25,6 +25,12 @@
 - `ui/insights_v2.py::render()` — `_hm_selected_key()` 읽어 `_ia_heatmap_html` 에 전달.
 - `assets/v2/screens/insights.css` — `a.ia-hm-c` I-19 + `.ia-hm-c-on` accent outline + `.ia-hm-total` / `.ia-hm-detail*` (head/clear/news-list/sola CTA/empty) 신규.
 - `tests/test_heatmap_click.py` (+15) — URL 빌더(인코딩/토글) / `_hm_selected_key` / count(case-insensitive·AND·empty 가드) / cell_class 5단계 / top_news 정렬·필터 / 히트맵 동적 셀 `<a>` 전환·옛 mockup 자취 0 / selected_key 활성 표시·detail strip / 토글 해제 href / detail 0건 안내 / 빈 데이터 / 합계 카운트 / 템플릿 placeholder 존재.
+### Changed (cron daily scrape — 커스텀 RSS 통합 + 입력/출력 강화)
+- `scripts/daily_scrape.py` — PR #71 의 커스텀 RSS 수집을 cron 경로에도 통합. `_load_extra_feeds()` 신규 (store.sources 로드, 실패 시 stderr 경고 + 빈 리스트). `--skip-custom-rss` 플래그 추가. `collect_batch(..., extra_feeds=...)` 호출에 반영. 시작 로그에 "커스텀 RSS N건" + 종료 로그에 일부 오류 첫 1건 출력.
+- `.github/workflows/scrape-daily.yml` — `workflow_dispatch.inputs.skip_custom_rss` 신규 입력. Run step 에서 `EXTRA_FLAGS` 변수로 CLI 에 전달. 주석에 cron 시간대(KST 09:00 = UTC 00:00) + 커스텀 RSS 통합 명시.
+- `tests/test_daily_scrape_rss.py` (+9) — `_load_extra_feeds`(빈/등록 N개/store 예외 swallow) / main 이 extra_feeds 를 collect_batch 에 전달 / `--skip-custom-rss` 가 None 전달 / errors 보고 / 0건 시 stderr 경고 / workflow yml 의 `skip_custom_rss` 입력 + `--skip-custom-rss` 전달 / cron 표현식 + KST 주석 검증.
+- `tests/test_run_daily.py::test_cli_default_keywords_used` — fake collect_batch signature 에 `extra_feeds` 인자 수용.
+
 
 ### Added (SOLA 오늘의 브리핑 LLM 강화 — 가짜 한 줄 → 실 1~2문장 압축)
 - `sola/board_brief.py` 신규 — `brief(items, persona_label, *, force=False)` API. 매칭 뉴스 top 3 + 부서 라벨을 `SYSTEM_BOARD_BRIEF` 시스템 프롬프트로 LLM 호출 → 1~2문장 평문 압축. `store.cache` 디스크 캐시 (sig = title@source 들 + persona_label + model). `LLMNotConfigured` / 일반 예외 / 빈 응답 → 룰 기반 fallback ("N건 두드러집니다").

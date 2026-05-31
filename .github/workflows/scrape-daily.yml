@@ -1,12 +1,14 @@
 name: scrape-daily
 
 # Phase 6-B: 매일 KST 09:00 (UTC 00:00) 일일 뉴스 수집.
+# - 네이버 / 구글 / 테크 사이트 키워드 검색
+# - + store/sources.py 에 등록된 커스텀 RSS 출처 (PR #71)
 # 결과 parquet 은 자동 브랜치에 commit 후 Draft PR 생성 — 사람이 머지 결정.
 # 수동 트리거: GitHub Actions UI → Run workflow (keywords/max_results override 가능).
 
 on:
   schedule:
-    - cron: "0 0 * * *"  # KST 09:00
+    - cron: "0 0 * * *"  # KST 09:00 — 출근 전 브리핑 자료 준비 시간 고려
   workflow_dispatch:
     inputs:
       keywords:
@@ -17,6 +19,10 @@ on:
         description: "키워드/사이트당 최대 건수"
         required: false
         default: "10"
+      skip_custom_rss:
+        description: "커스텀 RSS 출처 스킵 (true/false)"
+        required: false
+        default: "false"
 
 permissions:
   contents: write
@@ -46,11 +52,16 @@ jobs:
         run: |
           KEYWORDS_INPUT="${{ github.event.inputs.keywords }}"
           MAX_RESULTS="${{ github.event.inputs.max_results || '10' }}"
+          SKIP_RSS="${{ github.event.inputs.skip_custom_rss || 'false' }}"
+          EXTRA_FLAGS=""
+          if [ "$SKIP_RSS" = "true" ]; then
+            EXTRA_FLAGS="--skip-custom-rss"
+          fi
           if [ -n "$KEYWORDS_INPUT" ]; then
             # shellcheck disable=SC2086
-            python -m scripts.daily_scrape --max-results "$MAX_RESULTS" --keywords $KEYWORDS_INPUT
+            python -m scripts.daily_scrape --max-results "$MAX_RESULTS" $EXTRA_FLAGS --keywords $KEYWORDS_INPUT
           else
-            python -m scripts.daily_scrape --max-results "$MAX_RESULTS"
+            python -m scripts.daily_scrape --max-results "$MAX_RESULTS" $EXTRA_FLAGS
           fi
 
       - name: Check data changes
