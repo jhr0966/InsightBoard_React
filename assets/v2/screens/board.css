@@ -897,6 +897,41 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
 .db-act:hover { text-decoration: none; }
 a.db-act, a.db-act:visited { color: var(--text-secondary); }
 a.db-act-primary, a.db-act-primary:visited { color: #fff; }
+/* TTS 버튼 — Web Speech API 인라인 재생, button 형태 */
+.db-act-tts { cursor: pointer; }
+.db-act-tts:not(:disabled):hover {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: rgba(37,99,235,0.04);
+}
+.db-act-tts:disabled { cursor: not-allowed; opacity: 0.55; }
+
+/* 매트릭스 상세 패널 TTS — 작은 inline 아이콘 버튼 */
+.db-mx-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.db-mx-tts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: #fff;
+  border: 1px solid var(--surface-divider);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.db-mx-tts:hover {
+  color: var(--accent-primary);
+  border-color: rgba(37,99,235,0.30);
+  background: rgba(37,99,235,0.04);
+}
 
 /* ═════════════════════════════════════════════════════════
     ③ TOP STORIES

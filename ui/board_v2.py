@@ -282,6 +282,51 @@ def render_kw_action_toast_if_needed() -> None:
     """⑦ 키워드 관리 액션 직후 한 번만 노출되는 inline toast."""
     _render_inline_toast("_kw_action_toast")
 
+
+# ── 보드 음성으로 듣기 (TTS) — Web Speech API 인라인 재생 ───────
+import json as _json
+
+
+def _tts_button_html(text: str, *, label: str = "음성으로 듣기",
+                     cls: str = "db-act db-act-tts") -> str:
+    """간단 TTS 버튼 — onclick 에서 Web Speech API 호출 (서버 무관).
+
+    - 텍스트는 `json.dumps` 로 JS 안전 인코딩 → `data-tts` 속성에 escape
+    - 클릭 시 `JSON.parse(this.dataset.tts)` → `SpeechSynthesisUtterance(ko-KR)`
+    - 같은 페이지에 여러 버튼 가능, 새 재생 시 직전 재생 cancel
+    - 빈 텍스트면 빈 문자열 반환(버튼 미노출)
+    """
+    payload = (text or "").strip()
+    if not payload:
+        return ""
+    safe_attr = _html.escape(_json.dumps(payload, ensure_ascii=False), quote=True)
+    return (
+        f'<button class="{cls}" type="button" data-tts="{safe_attr}" '
+        f'onclick="(function(b){{var s=window.speechSynthesis;if(!s)return;'
+        f"s.cancel();var u=new SpeechSynthesisUtterance(JSON.parse(b.dataset.tts));"
+        f"u.lang='ko-KR';u.rate=1.0;u.pitch=1.0;s.speak(u);}})(this);\" "
+        f'title="이 문단을 음성으로 재생합니다 (브라우저 TTS)">'
+        f'<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' '
+        f'width=\'11\' height=\'11\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#475569\' '
+        f'stroke-width=\'2.4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'>'
+        f'<polygon points=\'11 5 6 9 2 9 2 15 6 15 11 19 11 5\'/>'
+        f'<path d=\'M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07\'/>'
+        f'</svg>" width="11" height="11" alt="" />{_html.escape(label)}</button>'
+    )
+
+
+def _tts_disabled_html(label: str = "음성으로 듣기") -> str:
+    """TTS 대상 텍스트가 없을 때 disabled 버튼."""
+    return (
+        f'<button class="db-act db-act-tts" disabled title="재생할 내용이 없어요">'
+        f'<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' '
+        f'width=\'11\' height=\'11\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#94A3B8\' '
+        f'stroke-width=\'2.4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'>'
+        f'<polygon points=\'11 5 6 9 2 9 2 15 6 15 11 19 11 5\'/>'
+        f'<path d=\'M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07\'/>'
+        f'</svg>" width="11" height="11" alt="" />{_html.escape(label)}</button>'
+    )
+
 _SOURCE_GRADIENTS = {
     "AI Times": "linear-gradient(135deg,#DC2626,#F87171)",
     "오토메이션월드": "linear-gradient(135deg,#D97706,#F59E0B)",
@@ -432,6 +477,7 @@ def _brief_html() -> dict[str, str]:
             "list": "",
             "cites": "",
             "cta": "",
+            "tts_btn": _tts_disabled_html(),
         }
 
     # SOLA workshop 컨텍스트 인계용 — 다음 rerun 에서 from=brief 가 들어오면 소비
@@ -488,7 +534,14 @@ def _brief_html() -> dict[str, str]:
         f'</a>'
     )
 
-    return {"summary": summary_html, "list": list_html, "cites": cites_html, "cta": cta_html}
+    # TTS — 요약 + 번호 매긴 제목 (서버 무관 인라인 재생)
+    tts_lines = [summary_text]
+    for i, item in enumerate(items, start=1):
+        tts_lines.append(f"{i}번. {item['title'][:160]}")
+    tts_btn_html = _tts_button_html(" ".join(tts_lines))
+
+    return {"summary": summary_html, "list": list_html, "cites": cites_html,
+            "cta": cta_html, "tts_btn": tts_btn_html}
 
 
 # 트렌드 차트 4 series 색상 (Azure/Teal/Amber/Indigo)
@@ -830,12 +883,25 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
     score_val = round(float(detail_row.get("cell_score", 0) or 0))
     sample_tasks = str(detail_row.get("sample_tasks", "") or "").split(" · ")[:1]
     detail_href = _sola_handoff_href("matrix", dept=detail_dept_raw, lv3=detail_lv3_raw)
+    # TTS 원문은 HTML escape 이전(원문)을 사용
+    why_text_raw = (
+        f"{detail_dept_raw} 영역의 {detail_lv3_raw} 작업과 매칭 뉴스 {roi_val}건이 누적, "
+        f"관련 작업 {ease_val}건이 잠재 적용 대상."
+        if not sample_tasks or not sample_tasks[0]
+        else f"{detail_dept_raw} · {sample_tasks[0][:80]} — 매칭 뉴스 {roi_val}건."
+    )
     why_text = (
         f"{detail_dept} 영역의 {detail_label} 작업과 매칭 뉴스 {roi_val}건이 누적, "
         f"관련 작업 {ease_val}건이 잠재 적용 대상."
         if not sample_tasks or not sample_tasks[0]
         else f"{detail_dept} · {_html.escape(sample_tasks[0])[:80]} — 매칭 뉴스 {roi_val}건."
     )
+    mx_tts_text = (
+        f"{detail_dept_raw} · {detail_lv3_raw}. 종합 점수 {score_val}점. "
+        f"매칭 뉴스 {roi_val}건. 매칭 작업 {ease_val}건. {why_text_raw}"
+    )
+    mx_tts_btn = _tts_button_html(mx_tts_text, label="듣기",
+                                  cls="db-mx-tts")
 
     return f"""<div class="db-matrix-wrap">
         <div class="db-matrix">
@@ -860,9 +926,12 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
             <div><b>{ease_val}</b><span>매칭 작업</span></div>
           </div>
           <p class="db-mx-why">{why_text}</p>
-          <a class="db-mx-cta" href="{detail_href}" target="_self">
-            제안서 작업장에서 보기 →
-          </a>
+          <div class="db-mx-detail-actions">
+            {mx_tts_btn}
+            <a class="db-mx-cta" href="{detail_href}" target="_self">
+              제안서 작업장에서 보기 →
+            </a>
+          </div>
         </aside>
       </div>"""
 
@@ -1503,6 +1572,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BRIEF_LIST}}", brief["list"])
         .replace("{{BRIEF_CITES}}", brief["cites"])
         .replace("{{BRIEF_CTA}}", brief["cta"])
+        .replace("{{BRIEF_TTS_BTN}}", brief.get("tts_btn", ""))
     )
     st.html(html_out)
 

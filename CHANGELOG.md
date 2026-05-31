@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### Added (보드 음성으로 듣기 (TTS) — Web Speech API 인라인 재생)
+- `ui/board_v2.py::_tts_button_html(text, label, cls)` — `data-tts` 속성에 `json.dumps` + HTML escape 로 안전 인코딩. 클릭 시 인라인 `onclick` 핸들러가 `SpeechSynthesisUtterance` (lang `ko-KR`) 로 즉시 재생. 새 재생은 직전 재생을 cancel. 빈 텍스트 → 버튼 미노출. HTML `onclick` 은 브라우저 JS 속성이라 Streamlit `on_click=` callback 금지 invariant 와 무관.
+- `ui/board_v2.py::_tts_disabled_html()` — 재생 대상 텍스트 없을 때 disabled 버튼.
+- `_brief_html` — 빈 키 `tts_btn` 추가. 본문 = "최근 매칭 N건…" + 번호 매긴 제목들. 빈 상태에는 disabled 버튼.
+- `_board_matrix_html` — detail 패널에 `mx_tts_text` 페이로드("dept · lv3. 종합 점수 N점. 매칭 뉴스 N건. 매칭 작업 N건. why_text") + `db-mx-tts` 버튼을 `db-mx-cta` 옆 `db-mx-detail-actions` flex 컨테이너에 노출.
+- `assets/v2/screens/board_main.html` — 기존 `<button class="db-act" disabled title="TTS 미구현 — 다음 PR">음성으로 듣기 · 준비 중</button>` 를 `{{BRIEF_TTS_BTN}}` 플레이스홀더로 교체.
+- `ui/board_v2.py::render()` — `brief.get("tts_btn", "")` 로 치환.
+- `assets/v2/screens/board.css` — `.db-act-tts` hover/disabled 스타일, `.db-mx-detail-actions` flex, `.db-mx-tts` 작은 inline TTS 버튼 스타일.
+- `tests/test_board_tts.py` (+9) — `_tts_button_html` XSS 안전 인코딩(`<script>` escape) / 빈 텍스트 / label escape / disabled HTML / `_brief_html` `tts_btn` 키 포함·빈 상태 disabled / 매트릭스 detail TTS 버튼 + dept·lv3·점수 페이로드 검증 / `board_main.html` 에 placeholder 존재 + 옛 disabled 자취 0.
+- `tests/test_v2_screens.py::test_board_empty_state_helpers_dont_raise` — brief 키 집합 검사에 `tts_btn` 포함.
+- `tests/test_matrix_click.py::test_matrix_each_bubble_has_clickable_href` — `_board_matrix_html.clear()` 추가로 캐시 격리.
+
 ### Changed (수집 트리거 실 실행 — `?refresh=now` 가 collect_batch 동기 호출)
 - `ui/data_management_v2.py::_consume_refresh_if_any` — 기존엔 캐시만 무효화하던 동작을 페르소나 관심사 키워드(`_collect_keywords_for_persona`)로 `scraping.run_daily.collect_batch` 동기 호출 후 캐시 무효화로 정직화. 결과는 토스트로 안내(`N개 키워드로 M건 수집`).
 - 분기 토스트 — ok(`saved>0`) / warn(키워드 없음 → 수집 스킵) / error(전부 실패 또는 예외). 캐시는 collect 실패와 무관하게 항상 무효화.

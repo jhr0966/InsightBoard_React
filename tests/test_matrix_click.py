@@ -129,6 +129,7 @@ def test_matrix_unknown_selected_key_falls_back_to_first():
 def test_matrix_each_bubble_has_clickable_href():
     """버블 3개 모두 클릭 가능한 href 보유."""
     from ui import board_v2
+    board_v2._board_matrix_html.clear()
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_load_roadmap",
