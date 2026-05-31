@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### Added (출처 설정 CRUD — 기본 출처 활성/비활성 토글 + 커스텀 RSS 추가/제거)
+- `store/sources.py` 신규 — `data/sources/config.json` 영구화. API: `disabled_set()`, `is_enabled()`, `toggle_disabled()`, `custom_sources()`, `add_custom()`, `remove_custom()`, `all_active()`. `DEFAULT_SOURCES` 4개(AI Times/오토메이션월드/Google RSS/네이버 기술)는 토글만, 커스텀은 add/remove.
+- `ui/data_management_v2.py::_src_action_href` — `?dm_tab=src&src_action=toggle|remove&src_name=` 빌더.
+- `ui/data_management_v2.py::_consume_src_action_if_any()` — toggle/remove 1회 소비 → store 호출 → toast set + query strip. 알 수 없는 action 은 무시(쿼리 유지).
+- `ui/data_management_v2.py::_consume_src_add_if_any()` — Streamlit 폼 pending(`_do_src_add`)으로부터 `add_custom` 실행. `ValueError` → error toast.
+- `ui/data_management_v2.py::_render_src_action_toast_if_needed()` — ok/error inline toast.
+- `ui/data_management_v2.py::_render_src_add_form()` — src 탭 전용 Streamlit `text_input` × 2 (이름/URL) + "출처 등록" 버튼.
+- `ui/data_management_v2.py::_dm_src_body_html` — 기본 출처 4행(토글 링크 포함) + 커스텀 출처 행(URL mini + 제거 링크) + 기타(news.source 의 미지 ID, 토글 불가) 행. 비활성 행은 흐림 + "비활성" 라벨.
+- `ui/data_management_v2.py::render()` — `_consume_src_action_if_any()` + `_consume_src_add_if_any()` + `_render_src_action_toast_if_needed()`. src 탭일 때 `_render_src_add_form()` 위젯 렌더.
+- `assets/v2/screens/data_management.css` — `.dm-src-row-off` 흐림, `.dm-src-st-off` 비활성 라벨, `.dm-src-act` 토글 링크, `.dm-src-act-rm` 제거 강조, `.dm-src-row-custom` accent bg, `.dm-src-url-mini` URL 보조 텍스트.
+- `tests/test_src_crud.py` (+18) — store 단위(default empty/toggle/unknown/add 검증·중복·duplicate/remove/all_active 결합) + URL 빌더 + consume(toggle·remove·noop) + add form(success/error) + body HTML(토글 링크·비활성 라벨·커스텀 행·제거 링크·활성 카운트).
+
 ### Added (산출물 칸반 "+N건 더 보기" wire — 컬럼별 expand/collapse 토글)
 - `ui/archive_v2.py::_expanded_cols_from_query()` — `?expand=pending,adopted` CSV 파싱(유효 컬럼만 통과). 빈 frozenset 가드.
 - `ui/archive_v2.py::_archive_expand_href(col, current)` — 토글 URL 빌더. col 포함 시 제거(접기), 미포함 시 추가(펴기). expand 결과가 비면 파라미터 자체 생략(깨끗한 URL). 출력 순서는 항상 (pending, adopted, rejected).
