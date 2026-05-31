@@ -157,7 +157,7 @@ def test_cli_default_keywords_used(monkeypatch):
     """scripts.daily_scrape main 이 인자 없이 호출 시 DEFAULT_DAILY_KEYWORDS 사용."""
     captured: dict = {}
 
-    def _fake_collect(keywords, *, sources, max_results, on_step=None):
+    def _fake_collect(keywords, *, sources, max_results, on_step=None, extra_feeds=None):
         captured["keywords"] = list(keywords)
         captured["sources"] = sources
         return run_daily.CollectionReport()
