@@ -405,7 +405,10 @@
   text-align: left;
   transition: all 120ms;
 }
-.ia-tkw-item:hover { background: var(--surface-soft); }
+.ia-tkw-item:hover { background: var(--surface-soft); text-decoration: none; }
+/* <a> 로 정직화된 트렌드 키워드 — 밑줄 제거 + :visited 색 회복 (I-19) */
+a.ia-tkw-item, a.ia-tkw-item:visited { color: inherit; text-decoration: none; }
+a.ia-tkw-item:hover { text-decoration: none; }
 .ia-tkw-on {
   background: rgba(37,99,235,0.06);
   border-color: rgba(37,99,235,0.30);
