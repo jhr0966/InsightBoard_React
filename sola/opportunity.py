@@ -15,6 +15,7 @@ from store.match import score_matches
 _EMPTY_COLS = (
     "dept", "lv3", "cell_score", "avg_score",
     "matched_news", "matched_tasks", "sample_tasks", "sample_news",
+    "sample_objectives",
 )
 
 
@@ -54,8 +55,15 @@ def score_cells(
         .reset_index()
     )
 
+    # roadmap_df 에 task_def_json (신엑셀 정의서) 이 있으면 셀별로 첫 task 의
+    # objective 한 줄을 함께 노출 → 보드 ④ 자동화 기회 카드의 tagline 강화.
+    has_tdj = "task_def_json" in roadmap_df.columns
+    if has_tdj:
+        from roadmap.task_def_json import first_objective
+
     sample_tasks: list[str] = []
     sample_news: list[str] = []
+    sample_objectives: list[str] = []
     for _, row in agg.iterrows():
         cell_matches = matches[
             (matches["dept"] == row["dept"]) & (matches[cell_level] == row[cell_level])
@@ -68,8 +76,21 @@ def score_cells(
         sample_tasks.append(" · ".join(tasks))
         sample_news.append(" · ".join(news))
 
+        # objective — 첫 매칭 task 의 task_def_json 에서
+        obj = ""
+        if has_tdj and tasks:
+            rm = roadmap_df[
+                (roadmap_df["dept"] == row["dept"])
+                & (roadmap_df[cell_level] == row[cell_level])
+                & (roadmap_df.get("task", "") == tasks[0])
+            ]
+            if not rm.empty:
+                obj = first_objective(rm.iloc[0].get("task_def_json", ""))
+        sample_objectives.append(obj)
+
     agg["sample_tasks"] = sample_tasks
     agg["sample_news"] = sample_news
+    agg["sample_objectives"] = sample_objectives
     return agg.sort_values("cell_score", ascending=False, ignore_index=True)
 
 
