@@ -484,27 +484,74 @@ def test_archive_consume_action_noop_when_action_missing():
 def test_data_management_refresh_clears_caches_and_sets_toast():
     from ui import data_management_v2
     from unittest.mock import patch
+    from scraping.run_daily import CollectionReport
     import streamlit as st
 
     st.query_params.clear()
     st.session_state.pop("_dm_refresh_toast", None)
     st.query_params["refresh"] = "now"
 
-    # 캐시 clear 가 호출되는지 — 일부 함수만 spy
+    # 캐시 clear 가 호출되는지 + collect_batch 가 호출되는지 mock
+    fake_report = CollectionReport(
+        saved=[{"source": "naver", "keywords": ["X"], "count": 3, "path": "x.parquet"}],
+        errors=[],
+    )
     targets = [
         data_management_v2._dm_stats,
         data_management_v2._ingest_jobs_html,
     ]
-    with patch.object(targets[0], "clear") as c1, patch.object(targets[1], "clear") as c2:
+    with patch.object(targets[0], "clear") as c1, \
+         patch.object(targets[1], "clear") as c2, \
+         patch("ui.board_v2._collect_keywords_for_persona", return_value=["AI 비전"]), \
+         patch("scraping.run_daily.collect_batch", return_value=fake_report) as mock_cb:
         assert data_management_v2._consume_refresh_if_any() is True
         c1.assert_called_once()
         c2.assert_called_once()
+        mock_cb.assert_called_once()
 
-    assert st.session_state.get("_dm_refresh_toast") is True
+    toast = st.session_state.get("_dm_refresh_toast")
+    assert isinstance(toast, tuple) and toast[0] == "ok"
+    assert "1개 키워드" in toast[1]
     assert "refresh" not in st.query_params
 
     # 재진입(쿼리 없음) 시 noop
     assert data_management_v2._consume_refresh_if_any() is False
+
+
+def test_refresh_warn_toast_when_persona_has_no_keywords():
+    """페르소나 관심사 없을 때 → collect 스킵 + warn 토스트."""
+    from ui import data_management_v2
+    from unittest.mock import patch
+    import streamlit as st
+
+    st.query_params.clear()
+    st.session_state.pop("_dm_refresh_toast", None)
+    st.query_params["refresh"] = "now"
+
+    with patch("ui.board_v2._collect_keywords_for_persona", return_value=[]), \
+         patch("scraping.run_daily.collect_batch") as mock_cb:
+        data_management_v2._consume_refresh_if_any()
+    mock_cb.assert_not_called()
+    toast = st.session_state.get("_dm_refresh_toast")
+    assert isinstance(toast, tuple) and toast[0] == "warn"
+
+
+def test_refresh_error_toast_on_collect_exception():
+    """collect_batch 가 예외를 던지면 error 토스트."""
+    from ui import data_management_v2
+    from unittest.mock import patch
+    import streamlit as st
+
+    st.query_params.clear()
+    st.session_state.pop("_dm_refresh_toast", None)
+    st.query_params["refresh"] = "now"
+
+    with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
+         patch("scraping.run_daily.collect_batch", side_effect=RuntimeError("net down")):
+        data_management_v2._consume_refresh_if_any()
+    toast = st.session_state.get("_dm_refresh_toast")
+    assert isinstance(toast, tuple) and toast[0] == "error"
+    assert "net down" in toast[1]
 
 
 def test_board_matrix_label_ellipsis_when_too_long():

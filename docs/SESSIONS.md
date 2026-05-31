@@ -5,7 +5,30 @@
 
 ---
 
-## 2026-05-31 · 출처 설정 CRUD (B.5 src 탭 read-only → CRUD)
+## 2026-05-31 · 수집 트리거 실 실행 (`?refresh=now` → collect_batch 호출)
+
+**브랜치:** `feat-collect-trigger` (main `54ec5bc` 기준 · #68 머지 직후)
+
+**변경:**
+- `_consume_refresh_if_any`: 페르소나 관심사 키워드로 `collect_batch` 동기 호출
+- 분기 토스트 — ok / warn(키워드 없음) / error(전부 실패 또는 예외)
+- `_render_refresh_toast_if_needed`: 튜플 분기 + warn 색 + True 호환
+- `_refresh_cta_html`: 툴팁이 실 수집을 안내
+- +9 신규 tests, 기존 1개 갱신·2개 추가
+
+**검증:**
+- pytest **426/426** (415 + 9 신규 + 2 추가)
+- 금지 패턴: on_click 0 · requests 직접 0 (`scraping.http` 단일 진입점 유지)
+- collect 실패해도 캐시 invalidate 는 항상 수행
+
+**남은 추천 작업:**
+- 보드 음성으로 듣기 (TTS)
+- 커스텀 RSS 실 수집 wire (scraping 모듈 통합)
+- 매일 06:00 cron 트리거(외부) 확인
+
+---
+
+## 2026-05-31 · 출처 설정 CRUD (B.5 src 탭 read-only → CRUD) ✅ merged (#68)
 
 **브랜치:** `feat-src-crud` (main `42932521` 기준 · #67 머지 직후)
 

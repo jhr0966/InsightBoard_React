@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (수집 트리거 실 실행 — `?refresh=now` 가 collect_batch 동기 호출)
+- `ui/data_management_v2.py::_consume_refresh_if_any` — 기존엔 캐시만 무효화하던 동작을 페르소나 관심사 키워드(`_collect_keywords_for_persona`)로 `scraping.run_daily.collect_batch` 동기 호출 후 캐시 무효화로 정직화. 결과는 토스트로 안내(`N개 키워드로 M건 수집`).
+- 분기 토스트 — ok(`saved>0`) / warn(키워드 없음 → 수집 스킵) / error(전부 실패 또는 예외). 캐시는 collect 실패와 무관하게 항상 무효화.
+- `_render_refresh_toast_if_needed` — `(kind, message)` 튜플 분기 + 구버전 `True` payload 호환. warn 색 추가(노란색).
+- `_refresh_cta_html` — 툴팁이 "캐시 무효화 (실제 수집은 06:00 스케줄러)" → "페르소나 관심사 키워드로 지금 수집 + 캐시 갱신" 으로 변경.
+- `tests/test_collect_trigger.py` (+9) — CTA 툴팁(수집 안내·"06:00" 제거) / collect_batch 호출 인자 검증 / 부분 실패 시 ok 토스트의 "일부 오류 N건" / 전부 실패 시 error 토스트 / 키워드 없을 때 collect 스킵·warn / collect 예외 시에도 캐시 clear · error 토스트 / 토스트 색상 (ok/warn) + True payload 호환.
+- `tests/test_v2_screens.py::test_data_management_refresh_clears_caches_and_sets_toast` — collect_batch mock 추가 + 토스트가 튜플 형식으로 갱신됐는지 검증. 추가 2 케이스(warn/error).
+
 ### Added (출처 설정 CRUD — 기본 출처 활성/비활성 토글 + 커스텀 RSS 추가/제거)
 - `store/sources.py` 신규 — `data/sources/config.json` 영구화. API: `disabled_set()`, `is_enabled()`, `toggle_disabled()`, `custom_sources()`, `add_custom()`, `remove_custom()`, `all_active()`. `DEFAULT_SOURCES` 4개(AI Times/오토메이션월드/Google RSS/네이버 기술)는 토글만, 커스텀은 add/remove.
 - `ui/data_management_v2.py::_src_action_href` — `?dm_tab=src&src_action=toggle|remove&src_name=` 빌더.
