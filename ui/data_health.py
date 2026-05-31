@@ -90,14 +90,14 @@ def data_quality_items(
 
     if roadmap.empty:
         items.append({
-            "title": "로드맵 DB 준비 필요",
-            "body": "로드맵 업로드 탭에서 Master_Table 엑셀을 저장해야 뉴스가 부서·공정 작업과 연결됩니다.",
+            "title": "작업 정의 DB 준비 필요",
+            "body": "작업 정의 데이터 업로드 탭에서 Master_Table 엑셀을 저장해야 뉴스가 부서·공정 작업과 연결됩니다.",
             "status": "warn",
             "icon": "🗂",
         })
     else:
         items.append({
-            "title": "로드맵 DB 준비됨",
+            "title": "작업 정의 DB 준비됨",
             "body": f"작업 {len(roadmap):,}건과 부서 {_dept_count(roadmap):,}개가 저장되어 인사이트 분석 매칭에 사용할 수 있습니다.",
             "status": "ok",
             "icon": "🗂",
@@ -128,7 +128,7 @@ def data_health_html(news: pd.DataFrame, roadmap: pd.DataFrame, *, llm_configure
     metrics = metric_grid([
         metric_card("오늘 뉴스", f"{len(news):,}건", caption=f"소스 {_source_count(news):,}개", icon="📰", tone="info"),
         metric_card("본문 확보율", f"{enrich_pct}%", caption=f"{enriched:,}/{len(news):,}건", icon="✨", tone="ok" if enrich_pct == 100 and len(news) else "warn"),
-        metric_card("로드맵 작업", f"{len(roadmap):,}건", caption=f"부서 {_dept_count(roadmap):,}개", icon="🗂", tone="teal" if len(roadmap) else "warn"),
+        metric_card("정의된 작업", f"{len(roadmap):,}건", caption=f"부서 {_dept_count(roadmap):,}개", icon="🗂", tone="teal" if len(roadmap) else "warn"),
         metric_card("LLM", "Ready" if llm_configured else "Check", caption="SOLA 분석 엔진", icon="🤖", tone="ok" if llm_configured else "warn"),
     ])
     cards = "".join(
@@ -143,7 +143,7 @@ def build_data_context(news: pd.DataFrame, roadmap: pd.DataFrame, *, llm_configu
     return "\n".join([
         "화면: 데이터 관리 준비 상태",
         f"오늘 뉴스: {len(news):,}건 / 본문 확보: {content_ready_count(news):,}건 ({enrich_percent(news)}%)",
-        f"로드맵 작업: {len(roadmap):,}건 / 부서: {_dept_count(roadmap):,}개",
+        f"정의된 작업: {len(roadmap):,}건 / 부서: {_dept_count(roadmap):,}개",
         f"LLM 설정: {'준비됨' if llm_configured else '확인 필요'}",
     ])
 

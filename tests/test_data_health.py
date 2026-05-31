@@ -25,7 +25,7 @@ def test_data_quality_items_warn_when_all_prerequisites_missing():
     assert [item["title"] for item in items] == [
         "뉴스 DB 준비 필요",
         "본문 Enrich 대기",
-        "로드맵 DB 준비 필요",
+        "작업 정의 DB 준비 필요",
         "LLM 설정 확인 필요",
     ]
     assert all(item["status"] == "warn" for item in items)
@@ -46,7 +46,7 @@ def test_data_quality_items_ok_when_data_ready():
     assert [item["title"] for item in items] == [
         "뉴스 DB 준비됨",
         "본문 Enrich 완료",
-        "로드맵 DB 준비됨",
+        "작업 정의 DB 준비됨",
         "LLM 연결 준비됨",
     ]
     assert all(item["status"] == "ok" for item in items)
@@ -78,5 +78,5 @@ def test_build_data_context_summarizes_status():
     ctx = data_health.build_data_context(news, roadmap, llm_configured=False)
 
     assert "오늘 뉴스: 2건 / 본문 확보: 1건 (50%)" in ctx
-    assert "로드맵 작업: 1건 / 부서: 1개" in ctx
+    assert "정의된 작업: 1건 / 부서: 1개" in ctx
     assert "LLM 설정: 확인 필요" in ctx

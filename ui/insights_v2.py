@@ -364,7 +364,7 @@ def _ia_matrix_empty() -> str:
             ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;'
             ' min-height:380px; display:flex; flex-direction:column; justify-content:center;">'
             '아직 매트릭스에 그릴 자동화 기회가 없어요.<br>'
-            '<span style="font-size:12.5px;">뉴스 + 로드맵 매칭 후 자동으로 채워집니다.</span>'
+            '<span style="font-size:12.5px;">뉴스 + 작업 정의 매칭 후 자동으로 채워집니다.</span>'
             '</div>')
 
 
@@ -492,7 +492,7 @@ def _ia_pmap_empty() -> str:
     return ('<div style="padding:32px 18px; text-align:center; color:var(--text-muted);'
             ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;">'
             '아직 키워드 → 공정 매핑 결과가 없어요.<br>'
-            '<span style="font-size:12.5px;">뉴스 30일분 + 로드맵 업로드 후 자동으로 채워집니다.</span>'
+            '<span style="font-size:12.5px;">뉴스 30일분 + 작업 정의 데이터 업로드 후 자동으로 채워집니다.</span>'
             '</div>')
 
 
@@ -622,7 +622,7 @@ def chat_context_block(persona: Persona) -> str:
     """
     parts: list[str] = ["--- 현재 화면: 인사이트 분석 (🔎) ---"]
 
-    # 30일 뉴스 + 로드맵 — 캐시된 helper 들이 같은 데이터 씀
+    # 30일 뉴스 + 작업 정의 데이터 — 캐시된 helper 들이 같은 데이터 씀
     try:
         news_30 = _news_db.load_news_for_days(days=30)
         roadmap = _load_roadmap()
