@@ -248,6 +248,20 @@ def render_command_palette() -> None:
     )
 
 
+def _notif_count() -> int:
+    """topbar 알림 배지 수 — 채택 대기(pending) 제안서 건수.
+
+    현재 유일하게 "사용자가 처리할 거리"인 신호. 0 이면 배지/점을 숨겨
+    빈 알림을 가짜로 표시하지 않는다(정직한 UI). 실패 시 0.
+    """
+    try:
+        from store import bookmarks as _bm
+        summary = _bm.summary_counts()
+        return int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
+    except Exception:
+        return 0
+
+
 def render_topbar(
     *,
     page_title: str,
@@ -262,6 +276,11 @@ def render_topbar(
         eyebrow_current: WORKFLOW / <이 부분>. 미지정 시 page_title 재사용.
         refresh_label: 우측 갱신 시각 라벨 (예: "06:24 갱신"). 빈 문자열이면 숨김.
         fresh_kind: "fresh"(녹) / "accent"(파랑) / "warn"(주황) / "" (배지 없음).
+
+    알림/설정 버튼은 정직화되어 실제 동작을 가진다:
+        - 🔔 알림 → 산출물 보관함. 채택 대기(pending) 건이 있을 때만 빨간 점 +
+          개수 노출. 0 이면 점 없이 "새 알림 없음" 툴팁.
+        - ⚙ 설정 → 프로필/페르소나 편집(`?persona_editor=1`).
     """
     page_title_safe = _html.escape(page_title)
     eyebrow_safe = _html.escape(eyebrow_current or page_title)
@@ -285,6 +304,19 @@ def render_topbar(
             f"{refresh_safe}"
             "</span>"
         )
+
+    # ── 알림: 채택 대기 건이 있을 때만 점 + 개수 (정직한 신호) ──
+    n_notif = _notif_count()
+    archive_href = "?app_area=" + quote("📦 산출물 보관함")
+    if n_notif > 0:
+        notif_title = _html.escape(f"채택 대기 {n_notif}건 · 산출물 보관함에서 확인")
+        notif_dot = (
+            f'<span class="db-hdr-dot"></span>'
+            f'<span class="db-hdr-badge">{n_notif if n_notif < 100 else "99+"}</span>'
+        )
+    else:
+        notif_title = "새 알림 없음 · 산출물 보관함 열기"
+        notif_dot = ""
 
     st.html(
         f"""
@@ -315,20 +347,20 @@ def render_topbar(
           </div>
 
           <div class="db-topbar-r">
-            <button class="db-hdr-btn" title="알림" disabled>
+            <a class="db-hdr-btn" href="{archive_href}" title="{notif_title}" target="_self" aria-label="알림">
               <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#475569'
                    stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
                 <path d='M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0'/>
               </svg>" width="16" height="16" alt="" />
-              <span class="db-hdr-dot"></span>
-            </button>
-            <button class="db-hdr-btn" title="설정" disabled>
+              {notif_dot}
+            </a>
+            <a class="db-hdr-btn" href="?persona_editor=1" title="설정 · 프로필 / 페르소나" target="_self" aria-label="설정">
               <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#475569'
                    stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
                 <circle cx='12' cy='12' r='3'/>
                 <path d='M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15 1.65 1.65 0 003.09 14H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 4.6 1.65 1.65 0 009 3.09V3a2 2 0 014 0v.09A1.65 1.65 0 0014 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.16.5.66.91 1.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z'/>
               </svg>" width="16" height="16" alt="" />
-            </button>
+            </a>
             <div class="db-topbar-divider"></div>
             <a class="db-topbar-avatar" href="?persona_editor=1" title="프로필 / 페르소나 편집" target="_self">{_avatar_letter(_get_persona())}</a>
           </div>
