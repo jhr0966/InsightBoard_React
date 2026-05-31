@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (보드 ⑦ 키워드 관리 wire — × 삭제 + 즉시 수집)
+- `persona/schema.py::Persona` — `muted_keywords: list[str]` 필드 추가. `to_dict`/`from_dict` 라운드트립. 기본 빈 리스트(기존 프로필 호환).
+- `ui/board_v2.py::_kw_action_href(action, keyword)` — `?app_area=📊+오늘의+보드&kw_action=del_user|mute|collect&keyword=` URL 빌더.
+- `ui/board_v2.py::consume_kw_action_if_any()` — 1회 소비. (a) `del_user` → persona.interest_tasks/lv3 에서 제거 + save, (b) `mute` → persona.muted_keywords 에 추가(중복 제거) + save, (c) `collect` → `scraping.run_daily.collect_batch(persona keywords)` 동기 실행. 토스트 set + query strip + `_board_kpis.clear()`. 알 수 없는 액션 무시(쿼리 유지).
+- `ui/board_v2.py::render_kw_action_toast_if_needed()` — ok/error inline toast (1회). 공용 `_render_inline_toast()` 추출(opp/kw 공유).
+- `ui/board_v2.py::_board_kw_mgr_html` — 자동 추출/사용자 그룹의 × 를 `<a class="db-kchip-x" href=...>` 로 wire. "지금 즉시 수집 실행" 버튼도 `<a class="db-kw-sum-cta" href=...>`. `persona.muted_keywords` 가 자동 추출 결과에서 필터링(여유 N+muted 만큼 가져온 뒤 top 6).
+- `ui/board_v2.py::render()` — 위젯 이전에 `consume_kw_action_if_any()` 호출 + 토스트 렌더.
+- `assets/v2/screens/board.css` — `.db-kchip-x` / `.db-kw-sum-cta` I-19 패턴(text-decoration:none + `a:visited` 색 회복). `.db-kchip-x` 를 inline-flex 정렬로 보정.
+- `tests/test_kw_actions.py` (+16) — URL 빌더 / persona muted_keywords 라운드트립 / del_user · mute · collect 3 경로 + dedup / 알 수 없는 액션 무시 / 키워드 없을 때 collect no-op / 카드 HTML `<a>` 전환 + muted 필터 / toast 렌더·clear.
+
 ### Added (자동화 기회 카드 보류/채택 wire — 산출물 보관함 연동)
 - `ui/board_v2.py::_opp_card_html` — `db-prop-hold` / `db-prop-accept` `<button disabled>` → `<a href>` 로 wire. URL 패턴 `?app_area=📊+오늘의+보드&opp_action=accept|hold&dept=&lv3=&title=` (CTA 인계와 일관). 시안 가운데 "SOLA와 검토 →" 는 그대로.
 - `ui/board_v2.py::_opp_action_href(action, dept, lv3, title)` 신규 — URL 빌더.
