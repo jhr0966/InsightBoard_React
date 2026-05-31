@@ -32,6 +32,36 @@ _ARCHIVE_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "archive_main.html"
 # 칸반 컬럼당 최대 노출 카드 수 — 초과분은 "+N건 더 보기" 로 표시
 _MAX_CARDS_PER_COL = 4
 
+# 칸반 컬럼 키 — `?expand=` 의 단위
+_COL_KEYS = ("pending", "adopted", "rejected")
+
+
+def _expanded_cols_from_query() -> frozenset[str]:
+    """`?expand=pending,adopted` → {"pending","adopted"}.
+
+    유효 값만 통과시킨다(미지 키 무시). 빈 값이면 빈 frozenset.
+    """
+    raw = (st.query_params.get("expand") or "").strip()
+    if not raw:
+        return frozenset()
+    toks = (t.strip() for t in raw.split(","))
+    return frozenset(t for t in toks if t in _COL_KEYS)
+
+
+def _archive_expand_href(col: str, current: frozenset[str]) -> str:
+    """현재 expanded set 을 기준으로 `col` 토글한 URL.
+
+    - col 이 이미 포함 → 제거 (접기)
+    - col 이 미포함 → 추가 (펴기)
+    빈 set 이면 `expand` 파라미터 자체를 생략(깨끗한 URL).
+    """
+    new_set = (current - {col}) if col in current else (current | {col})
+    parts = [f"app_area={quote('📦 산출물 보관함')}"]
+    if new_set:
+        ordered = [c for c in _COL_KEYS if c in new_set]
+        parts.append(f"expand={quote(','.join(ordered))}")
+    return "?" + "&".join(parts)
+
 # 카드 액션 URL 매핑 — `?action=...` 키를 set_status 의 값으로 변환.
 _ACTION_TO_STATUS: dict[str, str] = {
     "adopt": "adopted",
@@ -204,13 +234,27 @@ def _restore_action_html(bm: Bookmark) -> str:
 
 def _build_cards_html(items: list[Bookmark], *, status_label: str,
                       with_actions_first: bool = False,
-                      with_restore_first: bool = False) -> str:
-    """컬럼 카드 리스트 → HTML. 빈 리스트는 empty placeholder."""
+                      with_restore_first: bool = False,
+                      col_key: str = "",
+                      expanded: bool = False,
+                      expanded_set: frozenset[str] = frozenset()) -> str:
+    """컬럼 카드 리스트 → HTML. 빈 리스트는 empty placeholder.
+
+    Args:
+        col_key: 컬럼 키("pending"/"adopted"/"rejected"). "+N건 더 보기" /
+            "− 접기" 토글 링크 빌드에 사용.
+        expanded: True 면 모든 카드 노출 + "− 접기" 링크.
+        expanded_set: 다른 컬럼 expand 상태를 보존한 토글 URL 빌드에 사용.
+    """
     if not items:
         return _empty_col_html(status_label)
 
-    visible = items[:_MAX_CARDS_PER_COL]
-    overflow = len(items) - len(visible)
+    if expanded:
+        visible = items
+        overflow = 0
+    else:
+        visible = items[:_MAX_CARDS_PER_COL]
+        overflow = len(items) - len(visible)
 
     parts = []
     for idx, bm in enumerate(visible):
@@ -219,16 +263,35 @@ def _build_cards_html(items: list[Bookmark], *, status_label: str,
             # 카드 article 닫기 직전에 restore action 삽입
             card = card.replace("</article>", _restore_action_html(bm) + "</article>", 1)
         parts.append(card)
-    if overflow > 0:
+
+    if expanded and col_key and len(items) > _MAX_CARDS_PER_COL:
+        # 접기 토글 — 펴진 상태에서만 노출 (4건 이하면 굳이 노출 안 함)
+        href = _archive_expand_href(col_key, expanded_set)
         parts.append(
-            f'<button class="oa-col-more" disabled>+ {overflow}건 더 보기</button>'
+            f'<a class="oa-col-more oa-col-more-collapse" href="{href}" '
+            f'target="_self" aria-label="접기">− 접기 ({len(items)}건)</a>'
+        )
+    elif overflow > 0 and col_key:
+        href = _archive_expand_href(col_key, expanded_set)
+        parts.append(
+            f'<a class="oa-col-more" href="{href}" target="_self" '
+            f'aria-label="모두 보기">+ {overflow}건 더 보기</a>'
         )
     return "\n".join(parts)
 
 
 @st.cache_data(ttl=30)
-def _oa_stats_and_cards() -> dict[str, str]:
-    """헤더 4 stats + 칸반 3 컬럼 카드 HTML 일괄 계산."""
+def _oa_stats_and_cards(expanded_csv: str = "") -> dict[str, str]:
+    """헤더 4 stats + 칸반 3 컬럼 카드 HTML 일괄 계산.
+
+    Args:
+        expanded_csv: "pending,adopted" 같은 CSV. 빈 문자열이면 모든 컬럼 4건 노출.
+            캐시 키에 포함되므로 expand 토글마다 새 렌더.
+    """
+    expanded_set = frozenset(
+        c for c in expanded_csv.split(",") if c in _COL_KEYS
+    ) if expanded_csv else frozenset()
+
     items = bookmarks_store.list_all(type_="proposal")
     pending_items = [b for b in items if b.status == "pending"]
     adopted_items = [b for b in items if b.status == "adopted"]
@@ -248,9 +311,21 @@ def _oa_stats_and_cards() -> dict[str, str]:
         "pending": str(len(pending_items)),
         "rejected": str(len(rejected_items)),
         "adopted_pct": adopted_pct,
-        "cards_pending": _build_cards_html(pending_items, status_label="대기", with_actions_first=True),
-        "cards_adopted": _build_cards_html(adopted_items, status_label="채택", with_restore_first=True),
-        "cards_rejected": _build_cards_html(rejected_items, status_label="기각", with_restore_first=True),
+        "cards_pending": _build_cards_html(
+            pending_items, status_label="대기", with_actions_first=True,
+            col_key="pending", expanded=("pending" in expanded_set),
+            expanded_set=expanded_set,
+        ),
+        "cards_adopted": _build_cards_html(
+            adopted_items, status_label="채택", with_restore_first=True,
+            col_key="adopted", expanded=("adopted" in expanded_set),
+            expanded_set=expanded_set,
+        ),
+        "cards_rejected": _build_cards_html(
+            rejected_items, status_label="기각", with_restore_first=True,
+            col_key="rejected", expanded=("rejected" in expanded_set),
+            expanded_set=expanded_set,
+        ),
     }
 
 
@@ -345,7 +420,8 @@ def render() -> None:
 
     persona = _load_persona()
     stats = _archive_stats_oa()
-    oa = _oa_stats_and_cards()
+    expanded_csv = ",".join(sorted(_expanded_cols_from_query()))
+    oa = _oa_stats_and_cards(expanded_csv)
     refresh = app_shell.refresh_label_now()
 
     app_shell.render_topbar(
