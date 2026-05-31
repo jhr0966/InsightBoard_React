@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (topbar 알림/설정 버튼 정직화 — disabled no-op → 실제 동작)
+- `ui/app_shell.py::render_topbar` — 알림/설정 `<button disabled>` 두 개를 `<a class="db-hdr-btn">` 로 전환.
+  - 🔔 **알림** → `?app_area=📦+산출물+보관함`. `_notif_count()`(채택 대기 pending 제안서 수)가 0 보다 클 때만 빨간 점 + 개수 배지(99+ 캡) 노출 + 툴팁 "채택 대기 N건". 0 이면 점/배지 없이 "새 알림 없음" 툴팁 — 가짜 알림 표시 제거(정직).
+  - ⚙ **설정** → `?persona_editor=1` (프로필/페르소나 편집).
+- `ui/app_shell.py::_notif_count()` 신규 — `store.bookmarks.summary_counts()["proposal_status"]["pending"]`, 실패 시 0.
+- `assets/v2/shell.css`, `assets/v2/screens/board.css` — `a.db-hdr-btn` I-19 패턴(text-decoration:none + `:visited` 색 회복) + `.db-hdr-badge` 카운트 배지 스타일.
+- `tests/test_topbar_actions.py` (+8) — `_notif_count` 3 케이스(pending/0/예외) + `<a>` 전환·disabled 자취 0 / 알림→보관함·설정→persona_editor URL / pending>0 일 때만 점·배지·툴팁 / 0 이면 "새 알림 없음" / 99+ 캡.
+
 ### Added (보드 ⑦ 키워드 관리 wire — × 삭제 + 즉시 수집)
 - `persona/schema.py::Persona` — `muted_keywords: list[str]` 필드 추가. `to_dict`/`from_dict` 라운드트립. 기본 빈 리스트(기존 프로필 호환).
 - `ui/board_v2.py::_kw_action_href(action, keyword)` — `?app_area=📊+오늘의+보드&kw_action=del_user|mute|collect&keyword=` URL 빌더.

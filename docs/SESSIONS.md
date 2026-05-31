@@ -5,7 +5,31 @@
 
 ---
 
-## 2026-05-31 · 보드 ⑦ 키워드 관리 wire (× 삭제 + 즉시 수집)
+## 2026-05-31 · topbar 알림/설정 버튼 정직화
+
+**브랜치:** `feat-topbar-actions` (main `e92aa20` 기준 · #62 머지 직후)
+
+**변경:**
+- `ui/app_shell.py::render_topbar` — 알림/설정 `<button disabled>` → `<a class="db-hdr-btn">`
+  - 알림 → `?app_area=📦 산출물 보관함`, 채택 대기(pending)>0 일 때만 점+배지(99+ 캡)
+  - 설정 → `?persona_editor=1`
+- `_notif_count()` 신규 (bookmarks pending, 실패 0)
+- `assets/v2/shell.css` + `board.css`: `a.db-hdr-btn` I-19 + `.db-hdr-badge`
+- +8 tests
+
+**검증:**
+- pytest **349/349** (341 + 8 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- 가짜 알림 점 제거 — pending 0 이면 점/배지 미노출
+
+**남은 추천 작업:**
+- 데이터관리 키워드·출처 설정 본문 (B.5)
+- 인사이트 트렌드 키워드 클릭 wire
+- 매트릭스 버블 클릭
+
+---
+
+## 2026-05-31 · 보드 ⑦ 키워드 관리 wire (× 삭제 + 즉시 수집) ✅ merged (#62)
 
 **브랜치:** `feat-keyword-mgmt-wire` (main `cee1bde` 기준 · #61 머지 직후)
 
