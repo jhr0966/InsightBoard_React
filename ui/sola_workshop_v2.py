@@ -393,9 +393,14 @@ def _append_message(role: str, content: str) -> None:
         pass  # 영구화 실패해도 세션엔 남음
 
     # 첫 user 메시지로 thread 제목 자동 설정 (제목이 기본값이면)
+    # LLM 으로 5~12자 압축 제목 → 실패 시 truncation fallback
     auto_title = None
     if role == "user" and (not th.title or th.title == "새 대화"):
-        auto_title = sola_threads.title_from_first_user_message(content)
+        try:
+            from sola.thread_title import generate as _gen_title
+            auto_title = _gen_title(content)
+        except Exception:
+            auto_title = sola_threads.title_from_first_user_message(content)
     sola_threads.update(
         th.id,
         title=auto_title,
