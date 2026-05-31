@@ -116,18 +116,29 @@ def test_build_llm_messages_skips_invalid_history_entries():
 
 @pytest.fixture
 def clean_chat_log(tmp_path, monkeypatch):
-    """SOLA 영구화(chat_log + threads) 가 임시 디렉토리를 쓰도록 격리.
+    """SOLA 영구화(chat_log + threads + disk cache) 가 임시 디렉토리를 쓰도록 격리.
 
     B.4 이후 메시지는 활성 thread 의 chat_key 에 저장되므로 thread store 도 격리.
+    LLM 디스크 캐시(thread_title 등)도 격리해 다른 테스트의 캐시 오염 차단.
     """
     import config
     sola_dir = tmp_path / "sola"
     sola_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(config, "DATA_ROOT", tmp_path)
     monkeypatch.setattr(config, "SOLA_DIR", sola_dir)
-    from store import chat_log, sola_threads
+    from store import chat_log, sola_threads, cache as _cache
     monkeypatch.setattr(chat_log, "SOLA_DIR", sola_dir)
     monkeypatch.setattr(sola_threads, "SOLA_DIR", sola_dir)
+    monkeypatch.setattr(_cache, "_cache_dir", lambda: cache_dir)
+    # 다른 테스트(test_sola_client 등)에서 LRU 캐시에 남은 fake OpenAI 클라이언트
+    # 영향 차단 — _client() 가 매번 새로 평가되도록 캐시 클리어.
+    try:
+        from sola import client as _llm_client
+        _llm_client._client.cache_clear()
+    except Exception:
+        pass
     import streamlit as st
     # 모든 _sola_messages_* 캐시 + active thread id 초기화
     for k in [k for k in list(st.session_state.keys()) if k.startswith("_sola_messages") or k == "_sola_thread_id"]:

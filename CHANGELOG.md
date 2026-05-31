@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (SOLA workshop thread 제목 LLM 생성 — 단순 truncation → 5~12자 압축)
+- `sola/thread_title.py` 신규 — `generate(user_message, *, force=False)` API. 첫 user 메시지를 `SYSTEM_THREAD_TITLE` 프롬프트로 LLM 호출 → 5~12자 한국어 제목 압축. `store.cache` 디스크 캐시 (sig = 메시지 앞 100자 + 모델). `LLMNotConfigured` / 일반 예외 / 빈 또는 너무 짧은 응답 → `store.sola_threads.title_from_first_user_message` truncation fallback.
+- `sola/prompts.py::SYSTEM_THREAD_TITLE` 신규 프롬프트 — "한국어 5~12자, 따옴표/이모지/장식 금지, 입력 외 사실 만들지 말 것".
+- `sola/thread_title.py::_clean_title()` — 양끝 따옴표(`"'“”‘’`「」`)·코드 블록(\`)·마침표 제거, 첫 줄만, 이모지(U+1F300~U+1FAFF + Misc Symbols) 제거, `_MAX_LEN=20` 자르기.
+- `ui/sola_workshop_v2.py::_append_message` — 첫 user 메시지(thread 제목이 "새 대화" 또는 빈 값)일 때 `sola.thread_title.generate(content)` 호출, 실패 시 기존 `title_from_first_user_message` fallback.
+- `tests/test_thread_title_llm.py` (+16) — `_clean_title` 6건(quotes·첫 줄·trailing 구두점·길이 제한·이모지 제거·빈 입력) + `generate` 7건(LLM 응답 사용·`LLMNotConfigured` fallback·일반 예외 fallback·너무 짧은 응답 fallback·캐시 hit·force 우회·빈 메시지) + `_append_message` UI 통합 3건(첫 user 메시지에 generate 호출·assistant 메시지 skip·기존 제목이 있을 때 skip).
+- `tests/test_sola_composer.py::clean_chat_log` fixture — `store.cache._cache_dir` 격리 + `sola.client._client.cache_clear()` 추가로 LRU 캐시 오염 차단(다른 테스트의 fake OpenAI 잔여 영향 제거).
+
 ### Added (인사이트 SECTION C 히트맵 cell 클릭 wire — 정적 mockup → 동적 + 클릭)
 - `ui/insights_v2.py::_hm_select_href(process, tech)` — `?app_area=🔎+인사이트+분석&hm_select=<process>|<tech>` URL 빌더 (빈 값 → 토글 해제).
 - `ui/insights_v2.py::_hm_selected_key()` — `?hm_select=` 1회 stateless 읽기.

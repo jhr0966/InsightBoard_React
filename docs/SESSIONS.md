@@ -5,7 +5,31 @@
 
 ---
 
-## 2026-05-31 · 인사이트 SECTION C 히트맵 cell 클릭 wire
+## 2026-05-31 · SOLA workshop thread 제목 LLM 생성
+
+**브랜치:** `feat-thread-title-llm` (main `afa73400` 기준 · #74 머지 직후)
+
+**변경:**
+- `sola/thread_title.py` 신규 — LLM 5~12자 압축 + 디스크 캐시 + 룰 fallback
+- `SYSTEM_THREAD_TITLE` 프롬프트
+- `_clean_title` 안전 정제 (이모지/따옴표/마침표 제거, 길이 제한)
+- `ui/sola_workshop_v2.py::_append_message`: 첫 user 메시지에 generate 호출 (실패 시 기존 truncation)
+- `test_sola_composer.py::clean_chat_log` fixture: store.cache 격리 + sola.client._client 캐시 클리어 추가(다른 테스트의 fake OpenAI 잔여 차단)
+- +16 신규 tests
+
+**검증:**
+- pytest **506/506** (490 + 16 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+- LLM 미설정·예외·짧은 응답 → truncation fallback (서버 다운/키 없음에도 동작)
+
+**다음 추천 작업:**
+- 보드 KPI 카드 yesterday 비교 (현재는 빈 델타)
+- SOLA workshop 좌측 thread 목록 검색/필터
+- 산출물 보관함 카드 검색
+
+---
+
+## 2026-05-31 · 인사이트 SECTION C 히트맵 cell 클릭 wire ✅ merged (#74)
 
 **브랜치:** `feat-heatmap-click` (main `29830c55` 기준 · #73 머지 직후)
 
