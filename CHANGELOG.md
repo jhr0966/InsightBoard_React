@@ -15,6 +15,21 @@
 - `tests/test_insight_tkw_click.py` (+11) — URL 빌더 / `<a>` 전환·disabled 자취 0 / `selected_kw` 활성 클래스·aria-current·toggle off href / process map 필터 chip / 필터 0건 안내·전체 보기 링크 / `_news_filter_by_keyword` substring·case-insensitive·None·빈 df 가드.
 
 ### Changed (topbar 알림/설정 버튼 정직화 — disabled no-op → 실제 동작)
+### Added (B.5 데이터관리 4 탭 본문 — 키워드 / 작업 정의 / 출처 설정 wire)
+- `assets/v2/screens/data_management_main.html` — 4 `<button disabled>` 탭 바를 `{{DM_TABS}}` 플레이스홀더로, `<div class="dm-split">` 블록을 `{{DM_MAIN_BODY_OPEN}}` / `{{DM_MAIN_BODY_CLOSE}}` 마커로 래핑(탭 별 전환).
+- `ui/data_management_v2.py::_dm_tab_href(tab)` — `?app_area=🧱+데이터+관리&dm_tab=<tab>` 빌더. 기본(jobs)은 dm_tab 생략.
+- `ui/data_management_v2.py::_dm_tabs_html(selected_tab, dm_stats)` — `<a class="dm-tab">` 4개 동적 빌드. 활성 탭에 `dm-tab-active` + `aria-current`. jobs 탭에 활성 출처/오늘 수집 카운트 동적 노출.
+- `ui/data_management_v2.py::_dm_tab_body_html(tab, persona, dm_stats)` — 디스패치:
+  - `_dm_kw_body_html(persona)` — 키워드 탭: SOLA 자동 추출 top 6(muted 제외) + 내가 추가(페르소나 관심사) + 숨김 키워드 + "보드 ⑦ 카드"/"관심사 편집" 진입.
+  - `_dm_task_body_html()` — 작업 정의 탭: 안내 카드 + 현재 저장 건수.
+  - `_dm_src_body_html(dm_stats)` — 출처 설정 탭: 7일 출처별 수집 카운트 + 마지막 시각 + 상태(OK / 7일 무수집). 누락 출처(AI Times/오토메이션월드/Google RSS/네이버 기술)는 0건으로 회색 노출.
+- `ui/data_management_v2.py::_render_main(dm_stats, selected_tab, persona)` — jobs 외 탭에서 `dm-split` 블록을 `display:none` wrapper 로 숨기고 탭 본문 HTML 을 그 자리에 inline 렌더.
+- `ui/data_management_v2.py::render()` — `?dm_tab=` 읽어 `selected_tab` 결정. `_render_task_def_upload()` (Streamlit file_uploader) 는 `task` 탭에서만 렌더.
+- `assets/v2/screens/data_management.css` — `a.dm-tab` I-19 패턴 + `.dm-tab-body` / `.dm-tb-head` / `.dm-tb-desc` / `.dm-tb-link` / `.dm-tb-cta` / `.dm-kw-section*` / `.dm-kw-chip*` / `.dm-src-table` / `.dm-src-row` 신규.
+- `tests/test_dm_tabs.py` (+14) — URL 빌더 / `<a>` 전환·disabled 자취 0·"B.5 PR" 텍스트 0 / 활성 탭 마킹 + aria-current / 미지 탭 fallback / kw body 페르소나·muted·자동 추출 / task body 현재 카운트 / src body 출처별 카운트 + 누락 출처 회색 / 디스패치 4 분기 / `_render_main` jobs vs non-jobs 분기.
+- `tests/test_task_def_upload.py::test_data_mgmt_renders_upload_section_with_helpful_text` — task 탭 진입(`?dm_tab=task`) 후 업로드 섹션 확인하도록 업데이트.
+
+### Added (인사이트 트렌드 키워드 클릭 wire — 키워드 선택 → 공정 매핑 필터)
 - `ui/app_shell.py::render_topbar` — 알림/설정 `<button disabled>` 두 개를 `<a class="db-hdr-btn">` 로 전환.
   - 🔔 **알림** → `?app_area=📦+산출물+보관함`. `_notif_count()`(채택 대기 pending 제안서 수)가 0 보다 클 때만 빨간 점 + 개수 배지(99+ 캡) 노출 + 툴팁 "채택 대기 N건". 0 이면 점/배지 없이 "새 알림 없음" 툴팁 — 가짜 알림 표시 제거(정직).
   - ⚙ **설정** → `?persona_editor=1` (프로필/페르소나 편집).
