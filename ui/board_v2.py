@@ -58,6 +58,94 @@ def _sola_handoff_href(from_kind: str, **payload: str) -> str:
             parts.append(f"{k}={quote(str(v))}")
     return "?" + "&".join(parts)
 
+
+def _opp_action_href(action: str, *, dept: str, lv3: str, title: str = "") -> str:
+    """자동화 기회 카드 보류/채택 URL — 같은 area(보드) 머무름.
+
+    예) `_opp_action_href("accept", dept="도장", lv3="비전 검사", title="X")`
+        → "?app_area=📊+오늘의+보드&opp_action=accept&dept=&lv3=&title="
+    """
+    parts = [
+        f"app_area={quote('📊 오늘의 보드')}",
+        f"opp_action={quote(action)}",
+        f"dept={quote(dept or '')}",
+        f"lv3={quote(lv3 or '')}",
+    ]
+    if title:
+        parts.append(f"title={quote(title)}")
+    return "?" + "&".join(parts)
+
+
+# 자동화 기회 액션 → bookmark 상태 매핑
+_OPP_ACTION_TO_STATUS: dict[str, str] = {
+    "accept": "adopted",
+    "hold": "pending",
+}
+
+
+def consume_opp_action_if_any() -> tuple[str, str, str] | None:
+    """`?opp_action=accept|hold&dept=&lv3=&title=` 1회 소비 → bookmark 추가.
+
+    반환: 성공 시 (action, dept, lv3), 아니면 None.
+    부수효과: bookmarks_store.add + session_state["_opp_action_toast"] +
+    query strip (재실행 방지).
+    """
+    action = st.query_params.get("opp_action")
+    dept_q = st.query_params.get("dept", "")
+    lv3_q = st.query_params.get("lv3", "")
+    title_q = st.query_params.get("title", "")
+
+    if action not in _OPP_ACTION_TO_STATUS:
+        return None
+
+    status = _OPP_ACTION_TO_STATUS[action]
+    bm_title = title_q or f"{dept_q} · {lv3_q} 자동화 기회"
+    try:
+        from store.bookmarks import Bookmark
+        import uuid as _uuid
+        bm = Bookmark(
+            id="bm_" + _uuid.uuid4().hex[:12],
+            type="proposal",
+            title=bm_title,
+            content="",
+            tags=[dept_q, lv3_q] if (dept_q or lv3_q) else [],
+            created_at="",
+            status=status,
+        )
+        bookmarks_store.add(bm)
+        verb = "채택" if action == "accept" else "보류"
+        st.session_state["_opp_action_toast"] = (
+            "ok", f"✅ '{bm_title[:60]}' 을 {verb} 상태로 산출물 보관함에 추가했어요."
+        )
+    except Exception as exc:
+        st.session_state["_opp_action_toast"] = (
+            "error", f"⚠️ 처리 실패: {type(exc).__name__}: {exc}",
+        )
+
+    # query strip (재실행 방지)
+    for k in ("opp_action", "dept", "lv3", "title"):
+        if k in st.query_params:
+            del st.query_params[k]
+    return (action, dept_q, lv3_q)
+
+
+def render_opp_action_toast_if_needed() -> None:
+    """직전 액션 직후 한 번만 노출되는 inline toast."""
+    payload = st.session_state.pop("_opp_action_toast", None)
+    if not payload:
+        return
+    kind, message = payload
+    bg, border, color = {
+        "ok":    ("#ECFDF5", "#A7F3D0", "#064E3B"),
+        "error": ("#FEF2F2", "#FECACA", "#991B1B"),
+    }.get(kind, ("#F1F5F9", "#CBD5E1", "#0F172A"))
+    safe = _html.escape(message)
+    st.html(
+        f'<div style="margin: 0 24px 14px; padding: 10px 14px; '
+        f'background: {bg}; border: 1px solid {border}; border-radius: 8px; '
+        f'font-size: 13px; color: {color}; font-weight: 600;">{safe}</div>'
+    )
+
 _SOURCE_GRADIENTS = {
     "AI Times": "linear-gradient(135deg,#DC2626,#F87171)",
     "오토메이션월드": "linear-gradient(135deg,#D97706,#F59E0B)",
@@ -808,6 +896,8 @@ def _opp_card_html(row: pd.Series) -> str:
     roi_score = min(int(cell_score), 99)
 
     discuss_href = _sola_handoff_href("opp", dept=dept_raw, lv3=lv3_raw)
+    hold_href = _opp_action_href("hold", dept=dept_raw, lv3=lv3_raw, title=f"{dept_raw} · {lv3_raw} 자동화 기회")
+    accept_href = _opp_action_href("accept", dept=dept_raw, lv3=lv3_raw, title=f"{dept_raw} · {lv3_raw} 자동화 기회")
 
     return f"""<article class="db-prop">
       <div class="db-prop-top">
@@ -826,9 +916,9 @@ def _opp_card_html(row: pd.Series) -> str:
       </div>
 
       <div class="db-prop-actions">
-        <button class="db-prop-hold" disabled>보류</button>
+        <a class="db-prop-hold" href="{hold_href}" target="_self" title="보류 — 산출물 보관함에 대기 상태로 추가">보류</a>
         <a class="db-prop-discuss" href="{discuss_href}" target="_self">SOLA와 검토 →</a>
-        <button class="db-prop-accept" disabled>채택</button>
+        <a class="db-prop-accept" href="{accept_href}" target="_self" title="채택 — 산출물 보관함에 채택 상태로 추가">채택</a>
       </div>
     </article>"""
 
@@ -1128,6 +1218,15 @@ def render() -> None:
     # 보드 화면 전용 스타일 (.db-greet, .db-kpi, .db-stories, .db-trend 등)
     inject_screen_css("board")
 
+    # ── 0) 자동화 기회 보류/채택 액션 — 위젯 인스턴스화 이전 1회 소비 ──
+    # 영구화 + 캐시 invalidate (자동화 기회 카드/매트릭스/KPI 갱신 위해)
+    if consume_opp_action_if_any():
+        # bookmarks_store 변경 → 보드/SOLA 의 stats 캐시 새로고침 필요
+        try:
+            _archive_stats.clear()
+        except Exception:
+            pass
+
     persona = _load_persona()
     stats = _archive_stats()
     refresh = app_shell.refresh_label_now()
@@ -1149,6 +1248,7 @@ def render() -> None:
 
     # ── 2.5) LLM 미설정 안내 (설정 완료 시 no-op) ──
     app_shell.render_setup_banner_if_needed()
+    render_opp_action_toast_if_needed()
 
     # ── 3) 본문 (main) — 템플릿 로드 후 placeholder 치환 ──
     _render_main(persona=persona, refresh_label=refresh)

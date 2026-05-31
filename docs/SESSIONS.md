@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-05-31 · 자동화 기회 카드 보류/채택 wire (보관함 연동)
+
+**브랜치:** `feat-opp-actions` (main `4eb6dc7` 기준)
+
+**변경:**
+- 보드 ④ 카드의 보류/채택 `<button disabled>` → `<a href="?opp_action=...">`
+- consume_opp_action_if_any: 1회 소비 → Bookmark 추가 + query strip
+- render_opp_action_toast: ok/error 토스트
+- _archive_stats 캐시 invalidate
+- CSS I-19 (a.db-prop-hold/accept)
+- +10 tests
+
+**검증:**
+- pytest **325/325** (315 + 10 신규)
+- e2e: ?opp_action=accept&dept=도장1팀&lv3=비전 검사 → adopted bookmark
+  추가, toast 노출, query 정리 확인
+
+**남은 추천 작업:**
+- 키워드 관리 wire (보드 ⑦)
+- topbar 알림/설정 버튼
+
+---
+
 ## 2026-05-30 · 작업 정의 엑셀 Phase 3 — 업로드 UI + 용어 통일
 
 **브랜치:** `feat-task-def-upload` (main `2466962` 기준)

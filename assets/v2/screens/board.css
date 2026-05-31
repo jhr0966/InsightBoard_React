@@ -1220,6 +1220,11 @@ a.db-prop-discuss:visited { color: var(--accent-primary); }
   border: 1px solid var(--accent-primary);
 }
 .db-prop-accept:hover { background: var(--accent-hover); }
+/* <a> 로 전환된 보류/채택 — text-decoration 제거 + :visited 색상 회복 (I-19) */
+.db-prop-hold, .db-prop-accept { text-decoration: none; }
+.db-prop-hold:hover, .db-prop-accept:hover { text-decoration: none; }
+a.db-prop-hold, a.db-prop-hold:visited { color: var(--text-secondary); }
+a.db-prop-accept, a.db-prop-accept:visited { color: #fff; }
 
 /* ═════════════════════════════════════════════════════════
     ⑤ TREND

@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (자동화 기회 카드 보류/채택 wire — 산출물 보관함 연동)
+- `ui/board_v2.py::_opp_card_html` — `db-prop-hold` / `db-prop-accept` `<button disabled>` → `<a href>` 로 wire. URL 패턴 `?app_area=📊+오늘의+보드&opp_action=accept|hold&dept=&lv3=&title=` (CTA 인계와 일관). 시안 가운데 "SOLA와 검토 →" 는 그대로.
+- `ui/board_v2.py::_opp_action_href(action, dept, lv3, title)` 신규 — URL 빌더.
+- `ui/board_v2.py::consume_opp_action_if_any()` — 1회 소비. `Bookmark(type="proposal", status="adopted"/"pending", tags=[dept, lv3])` 추가 + 성공/실패 toast set + query strip (재실행 방지). 알 수 없는 action 무시.
+- `ui/board_v2.py::render_opp_action_toast_if_needed()` — ok/error inline toast (1회).
+- `ui/board_v2.py::render()` 최상단 — pending 소비 + `_archive_stats` 캐시 invalidate (KPI/사이드 통계 즉시 갱신).
+- `assets/v2/screens/board.css` — `<a class="db-prop-hold|accept">` text-decoration · :visited 색 회복 (I-19).
+- `tests/test_opp_actions.py` (+10) — URL 빌더 / consume accept→adopted / hold→pending / 알 수 없는 action 무시·query 유지 / 기본 title 자동 채움 / 카드 HTML `<a>` 전환 검증 (disabled 자취 0) / toast 렌더 + clear.
+
+
 ### Added (작업 정의 엑셀 Phase 3 — 업로드 UI + 용어 통일 "로드맵" → "작업 정의")
 - `ui/data_management_v2.py::_render_task_def_upload` 신규 — 본문 끝 "📂 작업 정의 데이터 업로드" 섹션. 컬럼 안내 + 현 저장 건수 + `st.file_uploader` + 시트 선택 + 5행 미리보기 + "✅ 이 파일로 업로드 + 저장" 버튼. 클릭 → `_do_task_def_ingest` pending flag → rerun.
 - `_consume_task_def_upload_if_any` — pending 1회 소비. `ingest_excel(BytesIO, sheet_name, save_raw=True)` → 성공 시 `_dm_stats`/`_ingest_jobs_html`/`_hist_html`/`_news_cards_html`/`_archive_stats_dm` + `load_latest` 캐시 invalidate + 성공 toast. 실패 시 error toast.
