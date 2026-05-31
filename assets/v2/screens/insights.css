@@ -1012,6 +1012,91 @@ a.ia-poc-link:hover { text-decoration: none; }
 }
 .ia-hm-trig:hover { background: rgba(180,83,9,0.12); }
 
+/* 히트맵 셀 클릭 wire — <a> 정직화 + 선택 표시 + 상세 strip (I-19) */
+a.ia-hm-c, a.ia-hm-c:visited { color: inherit; text-decoration: none; }
+a.ia-hm-c:hover { text-decoration: none; }
+.ia-hm-c-on {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.30);
+}
+.ia-hm-total {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.ia-hm-detail {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: rgba(37,99,235,0.04);
+  border: 1px solid rgba(37,99,235,0.20);
+  border-radius: 10px;
+}
+.ia-hm-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14.5px;
+}
+.ia-hm-detail-head b { color: var(--accent-primary); font-weight: 800; }
+.ia-hm-detail-meta { color: var(--text-muted); font-family: var(--font-mono); font-size: 13px; }
+.ia-hm-detail-clear, a.ia-hm-detail-clear, a.ia-hm-detail-clear:visited {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.ia-hm-detail-clear:hover { color: var(--semantic-danger); text-decoration: none; }
+.ia-hm-news-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ia-hm-news-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ia-hm-news-list li small {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ia-hm-news-list li a, .ia-hm-news-list li a:visited {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 700;
+}
+.ia-hm-news-list li a:hover { color: var(--accent-primary); text-decoration: underline; }
+.ia-hm-detail-sola, a.ia-hm-detail-sola, a.ia-hm-detail-sola:visited {
+  display: inline-block;
+  padding: 5px 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  border: 1px solid rgba(37,99,235,0.30);
+  border-radius: 6px;
+  text-decoration: none;
+}
+.ia-hm-detail-sola:hover { background: rgba(37,99,235,0.08); text-decoration: none; }
+.ia-hm-detail-empty {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ════════════════════════════════════════════════════════════
     SOLA SIDE PANEL
    ════════════════════════════════════════════════════════════ */

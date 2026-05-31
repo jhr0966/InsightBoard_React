@@ -5,7 +5,29 @@
 
 ---
 
-## 2026-05-31 · SOLA 오늘의 브리핑 LLM 강화
+## 2026-05-31 · 인사이트 SECTION C 히트맵 cell 클릭 wire
+
+**브랜치:** `feat-heatmap-click` (main `29830c55` 기준 · #73 머지 직후)
+
+**변경:**
+- 정적 mockup 95줄 → `{{IA_HEATMAP}}` placeholder + 동적 Python 빌드
+- `_hm_select_href` / `_hm_selected_key` / `_hm_count_in_news` / `_hm_cell_class` / `_hm_top_news` / `_ia_heatmap_html(selected_key)` / `_ia_heatmap_empty` 신규
+- 각 셀 `<a href>` + 선택 시 outline + 하단 detail strip(top 3 뉴스 + SOLA 인계)
+- 행 = unique lv3 7개, 열 = 고정 7 자동화 기술
+- CSS: `a.ia-hm-c` I-19 + `.ia-hm-c-on` + `.ia-hm-detail*` 신규
+- +15 tests
+
+**검증:**
+- pytest **490/490** (475 + 15 신규)
+- 금지 패턴: on_click 0 · requests 직접 0
+
+**남은 추천 작업 (이번 묶음):**
+- (2) 매일 06:00 cron 트리거 / GH Actions workflow 확인 → 진행 예정
+- (3) SOLA 작업실 thread 제목 LLM 생성 → 진행 예정
+
+---
+
+## 2026-05-31 · SOLA 오늘의 브리핑 LLM 강화 ✅ merged (#73)
 
 **브랜치:** `feat-brief-llm` (main `4742eca7` 기준 · #72 머지 직후)
 

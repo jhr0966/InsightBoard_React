@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+### Added (인사이트 SECTION C 히트맵 cell 클릭 wire — 정적 mockup → 동적 + 클릭)
+- `ui/insights_v2.py::_hm_select_href(process, tech)` — `?app_area=🔎+인사이트+분석&hm_select=<process>|<tech>` URL 빌더 (빈 값 → 토글 해제).
+- `ui/insights_v2.py::_hm_selected_key()` — `?hm_select=` 1회 stateless 읽기.
+- `ui/insights_v2.py::_hm_count_in_news(news_df, process, tech)` — title/summary/keywords/content 6 컬럼 substring(case-insensitive)으로 process AND tech 모두 매칭되는 row 수.
+- `ui/insights_v2.py::_hm_cell_class(v)` — 5단계 강도 분류 (empty 0 / low ≤3 / normal 4-7 / mid 8-15 / strong 16+).
+- `ui/insights_v2.py::_hm_top_news(news_df, process, tech, limit)` — 선택 셀의 매칭 뉴스 top N (collected_at desc).
+- `ui/insights_v2.py::_ia_heatmap_html(selected_key=None)` — 동적 히트맵 빌드. 행 = `_score_cells` 상위 7개 unique lv3(등장순), 열 = 고정 `_HM_TECH_COLS` 7개(비전/협동 로봇/예지보전/디지털 트윈/AGV/AI/외골격). 각 셀은 `<a class="ia-hm-c..." href="?hm_select=...">` — 토글 해제 href 포함. 선택 시 `ia-hm-c-on` outline + 하단 detail strip (top 3 뉴스 + SOLA 인계 + 닫기).
+- `ui/insights_v2.py::_ia_heatmap_empty()` — 빈 데이터 상태 안내.
+- `assets/v2/screens/insights_main.html` — 정적 mockup(7행 × 7열 + "빈 칸 클릭" 트리거) 약 95줄 → `{{IA_HEATMAP}}` 단일 placeholder.
+- `ui/insights_v2.py::render()` — `_hm_selected_key()` 읽어 `_ia_heatmap_html` 에 전달.
+- `assets/v2/screens/insights.css` — `a.ia-hm-c` I-19 + `.ia-hm-c-on` accent outline + `.ia-hm-total` / `.ia-hm-detail*` (head/clear/news-list/sola CTA/empty) 신규.
+- `tests/test_heatmap_click.py` (+15) — URL 빌더(인코딩/토글) / `_hm_selected_key` / count(case-insensitive·AND·empty 가드) / cell_class 5단계 / top_news 정렬·필터 / 히트맵 동적 셀 `<a>` 전환·옛 mockup 자취 0 / selected_key 활성 표시·detail strip / 토글 해제 href / detail 0건 안내 / 빈 데이터 / 합계 카운트 / 템플릿 placeholder 존재.
+
 ### Added (SOLA 오늘의 브리핑 LLM 강화 — 가짜 한 줄 → 실 1~2문장 압축)
 - `sola/board_brief.py` 신규 — `brief(items, persona_label, *, force=False)` API. 매칭 뉴스 top 3 + 부서 라벨을 `SYSTEM_BOARD_BRIEF` 시스템 프롬프트로 LLM 호출 → 1~2문장 평문 압축. `store.cache` 디스크 캐시 (sig = title@source 들 + persona_label + model). `LLMNotConfigured` / 일반 예외 / 빈 응답 → 룰 기반 fallback ("N건 두드러집니다").
 - `sola/prompts.py::SYSTEM_BOARD_BRIEF` 신규 프롬프트 — "30초 부서장 브리핑" 톤, 굵은 키워드(`**...**`) 1~2개, 입력 외 사실 금지, 평문 1~2문장.
