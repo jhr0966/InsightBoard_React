@@ -146,8 +146,8 @@ def render() -> None:
     )
     if no_roadmap:
         st.info(
-            "🗂 로드맵이 아직 업로드되지 않아 부서·팀·관심 공정 추천 목록이 비어있습니다. "
-            "일단 자유 입력으로 설정해도 OK — 로드맵을 올린 뒤 다시 들어오면 드롭다운으로 바뀝니다."
+            "🗂 작업 정의 데이터가 아직 업로드되지 않아 부서·팀·관심 공정 추천 목록이 비어있습니다. "
+            "일단 자유 입력으로 설정해도 OK — 작업 정의 데이터를 올린 뒤 다시 들어오면 드롭다운으로 바뀝니다."
         )
 
     with st.container(border=True):
@@ -167,7 +167,7 @@ def render() -> None:
                     value=persona.dept,
                     key="px_dept",
                     placeholder="예: 생산기술팀, 자동화기술팀",
-                    help="로드맵을 업로드하면 이 자리에 부서 추천 목록이 나타납니다.",
+                    help="작업 정의 데이터를 업로드하면 이 자리에 부서 추천 목록이 나타납니다.",
                 )
         with c2:
             if _has_roadmap_options(team_opts):
@@ -183,7 +183,7 @@ def render() -> None:
                     value=persona.team,
                     key="px_team",
                     placeholder="예: 자동화 1팀",
-                    help="로드맵을 업로드하면 이 자리에 팀 추천 목록이 나타납니다.",
+                    help="작업 정의 데이터를 업로드하면 이 자리에 팀 추천 목록이 나타납니다.",
                 )
             st.text_input(
                 "직무",
@@ -198,11 +198,11 @@ def render() -> None:
                 options=lv3_opts,
                 default=[v for v in persona.interest_lv3 if v in lv3_opts],
                 key="px_lv3",
-                help="관심 공정을 선택하면 오늘의 보드와 인사이트 분석이 그 공정 중심으로 정렬됩니다. (로드맵의 Lv3 항목 기준)",
+                help="관심 공정을 선택하면 오늘의 보드와 인사이트 분석이 그 공정 중심으로 정렬됩니다. (작업 정의의 공정 항목 기준)",
             )
         else:
             st.caption(
-                "관심 공정 선택은 로드맵 업로드 후 활성화됩니다. "
+                "관심 공정 선택은 작업 정의 데이터 업로드 후 활성화됩니다. "
                 "현재 저장된 관심 공정: " + (" · ".join(persona.interest_lv3) if persona.interest_lv3 else "없음")
             )
             # 입력 누락 시에도 _save_from_state 에서 빈 리스트가 들어가지 않도록 기존 값 유지.

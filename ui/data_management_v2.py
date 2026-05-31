@@ -14,6 +14,7 @@ import streamlit as st
 from config import ASSETS_DIR
 from persona.schema import Persona
 from roadmap.query import load_latest as _load_roadmap
+from roadmap import ingest as _ingest
 from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
 from store.match import score_matches as _score_matches
@@ -490,11 +491,18 @@ def render() -> None:
         stats=stats,
     )
 
+    # 업로드 송신 처리 (위젯 인스턴스화 이전, 최상단)
+    _consume_task_def_upload_if_any()
+
     app_shell.render_setup_banner_if_needed()
     _render_refresh_toast_if_needed()
+    _render_task_def_toast_if_needed()
 
     # ── 3) 본문 main 템플릿 ──
     _render_main(dm_stats)
+
+    # ── 3.5) 작업 정의 데이터 업로드 섹션 ──
+    _render_task_def_upload()
 
     # ── 4) 우측 .app-sola ──
     sources_n = dm_stats["active_sources"]
@@ -570,6 +578,132 @@ def _render_refresh_toast_if_needed() -> None:
         </div>
         """
     )
+
+
+def _consume_task_def_upload_if_any() -> None:
+    """`_do_task_def_ingest` pending → 업로드된 파일로 ingest 실행 → 결과 toast.
+
+    pending 페이로드:
+      (filename: str, sheet_name: str | int, bytes_data: bytes)
+    """
+    payload = st.session_state.pop("_do_task_def_ingest", None)
+    if not payload:
+        return
+    filename, sheet_name, data = payload
+    import io
+    bio = io.BytesIO(data)
+    try:
+        result = _ingest.ingest_excel(bio, sheet_name=sheet_name, save_raw=True)
+    except Exception as exc:
+        st.session_state["_task_def_toast"] = ("error", f"업로드 실패: {type(exc).__name__}: {exc}")
+        st.rerun()
+        return
+
+    if not result.ok:
+        st.session_state["_task_def_toast"] = ("error", " · ".join(result.errors)[:300])
+    else:
+        # 데이터 관리 캐시 + 보드/인사이트의 _load_roadmap 캐시도 invalidate
+        for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm):
+            if hasattr(fn, "clear"):
+                fn.clear()
+        try:
+            from roadmap.query import load_latest as _ll
+            if hasattr(_ll, "clear"):
+                _ll.clear()
+        except Exception:
+            pass
+        st.session_state["_task_def_toast"] = (
+            "ok",
+            f"✅ '{filename}' 업로드 완료 — {result.row_count}건 작업 정의 저장됨. 보드·인사이트가 곧 갱신됩니다.",
+        )
+    st.rerun()
+
+
+def _render_task_def_toast_if_needed() -> None:
+    """업로드 직후 한 번만 노출되는 inline toast."""
+    payload = st.session_state.pop("_task_def_toast", None)
+    if not payload:
+        return
+    kind, message = payload
+    bg, border, color = {
+        "ok":    ("#ECFDF5", "#A7F3D0", "#064E3B"),
+        "error": ("#FEF2F2", "#FECACA", "#991B1B"),
+    }.get(kind, ("#F1F5F9", "#CBD5E1", "#0F172A"))
+    safe = _html.escape(message)
+    st.html(
+        f"""
+        <div style="margin: 0 24px 14px; padding: 10px 14px;
+                    background: {bg}; border: 1px solid {border}; border-radius: 8px;
+                    font-size: 13px; color: {color}; font-weight: 600;">
+          {safe}
+        </div>
+        """
+    )
+
+
+def _render_task_def_upload() -> None:
+    """본문 끝에 추가되는 "📂 작업 정의 데이터 업로드" 섹션.
+
+    파일 업로드 + 시트 선택 + 미리보기 + 업로드 버튼.
+    """
+    st.html(
+        '<div style="margin: 24px 24px 4px; padding: 14px 18px; '
+        'background: #fff; border: 1px solid var(--surface-divider); border-radius: 12px;">'
+        '<div style="font-size: 18px; font-weight: 800; color: #0F172A; '
+        'letter-spacing: -0.01em; margin-bottom: 4px;">📂 작업 정의 데이터 업로드</div>'
+        '<div style="font-size: 13px; color: #64748B; line-height: 1.5;">'
+        '엑셀(.xlsx) 파일을 올리면 자동으로 정규화 + 검증 후 Parquet 으로 저장됩니다. '
+        '컬럼: <b>팀 · 부서 · 분과 · 공정 · 작업 · 세부작업 · 공정정의서(줄글) · 공정정의서(JSON)</b>'
+        '</div></div>'
+    )
+
+    cur_df = None
+    try:
+        cur_df = _load_roadmap()
+    except Exception:
+        cur_df = None
+    cur_count = int(len(cur_df)) if cur_df is not None and not cur_df.empty else 0
+    if cur_count > 0:
+        st.caption(f"📊 현재 저장된 작업 정의: **{cur_count}건** (가장 최근 업로드)")
+    else:
+        st.caption("📊 아직 업로드된 작업 정의가 없어요.")
+
+    uploaded = st.file_uploader(
+        "엑셀 파일 선택 (.xlsx)",
+        type=["xlsx"],
+        key="_task_def_uploader",
+        help="신엑셀 형식(분과/공정/JSON) 또는 구엑셀(lv1/lv2/lv3) 모두 자동 인식.",
+    )
+
+    if uploaded is None:
+        return
+
+    # 시트 미리보기
+    try:
+        import pandas as _pd
+        xl = _pd.ExcelFile(uploaded)
+        sheets = xl.sheet_names
+        col_a, col_b = st.columns([1, 3])
+        with col_a:
+            sheet = st.selectbox("시트", sheets, key="_task_def_sheet")
+        # 미리보기 5행
+        preview = _pd.read_excel(uploaded, sheet_name=sheet, nrows=5, dtype=str).fillna("")
+        with col_b:
+            st.caption(f"열: {len(preview.columns)}개 · 첫 5행 미리보기")
+        st.dataframe(preview, use_container_width=True, hide_index=True)
+    except Exception as exc:
+        st.error(f"엑셀 미리보기 실패: {exc}")
+        return
+
+    if st.button("✅ 이 파일로 업로드 + 저장", type="primary", key="_task_def_ingest_btn"):
+        try:
+            uploaded.seek(0)
+            data = uploaded.read()
+        except Exception as exc:
+            st.error(f"파일 읽기 실패: {exc}")
+            return
+        st.session_state["_do_task_def_ingest"] = (uploaded.name, sheet, data)
+        st.rerun()
 
 
 def _render_main(dm_stats: dict[str, str | int]) -> None:

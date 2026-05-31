@@ -735,7 +735,7 @@ def _matrix_empty_html() -> str:
     return ('<div style="padding: 32px 18px; text-align: center; color: var(--text-muted);'
             ' font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 12px;">'
             '아직 매트릭스에 그릴 자동화 기회가 없어요.<br>'
-            '<span style="font-size:12.5px;">뉴스 + 로드맵 매칭 후 자동으로 채워집니다.</span>'
+            '<span style="font-size:12.5px;">뉴스 + 작업 정의 매칭 후 자동으로 채워집니다.</span>'
             '</div>')
 
 
@@ -781,7 +781,7 @@ def _opp_empty_html() -> str:
         border: 1px dashed var(--surface-divider); border-radius: 12px;
         background: rgba(0,0,0,0.01);">
       아직 도출된 자동화 기회가 없어요.<br>
-      <span style="font-size:12.5px;">뉴스 수집 + 로드맵 업로드 후 자동으로 매칭됩니다.</span>
+      <span style="font-size:12.5px;">뉴스 수집 + 작업 정의 데이터 업로드 후 자동으로 매칭됩니다.</span>
     </div>"""
 
 

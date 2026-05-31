@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 엑셀 Phase 3 — 업로드 UI + 용어 통일 "로드맵" → "작업 정의")
+- `ui/data_management_v2.py::_render_task_def_upload` 신규 — 본문 끝 "📂 작업 정의 데이터 업로드" 섹션. 컬럼 안내 + 현 저장 건수 + `st.file_uploader` + 시트 선택 + 5행 미리보기 + "✅ 이 파일로 업로드 + 저장" 버튼. 클릭 → `_do_task_def_ingest` pending flag → rerun.
+- `_consume_task_def_upload_if_any` — pending 1회 소비. `ingest_excel(BytesIO, sheet_name, save_raw=True)` → 성공 시 `_dm_stats`/`_ingest_jobs_html`/`_hist_html`/`_news_cards_html`/`_archive_stats_dm` + `load_latest` 캐시 invalidate + 성공 toast. 실패 시 error toast.
+- `_render_task_def_toast_if_needed` — ok/error inline toast (녹/적) 1회.
+- **용어 일괄 변경 "로드맵" → "작업 정의"** (사용자 노출만): 데이터관리 탭 / 보드·인사이트 빈 안내 / 페르소나·온보딩 안내 / data_health / task_tree. 코드 식별자(`roadmap/`, `RoadmapRow`, `load_roadmap`)는 호환 유지.
+- `tests/test_task_def_upload.py` (+7) — consume 4 케이스 (noop/성공/잘못된 엑셀/validate 실패) + AppTest 업로드 섹션 렌더 + pending payload e2e + 회귀 가드 (사용자 노출에 "로드맵" 잔존 없음).
+- `tests/test_data_health.py` — wording 단언 갱신.
+
 ### Added (작업 정의 엑셀 Phase 2 — 매칭 정확도↑ + 카드 objective + SOLA 컨텍스트)
 - `roadmap/task_def_json.py` — 신규 helper `flatten_for_match(json_text)` + `first_objective(json_text)`.
 - `store/match.py::score_matches` — roadmap_df 의 `task_def_json` 컬럼이 있으면 `flatten_for_match` 결과를 task_text 에 합산. 자동화 영역·품질 리스크·objectives 토큰이 매칭 정확도 향상. 예: "RFID OCR 부재번호 자동 인식" 뉴스 → "판넬 선별" 작업과 매칭 (이전엔 매칭 안 됨).

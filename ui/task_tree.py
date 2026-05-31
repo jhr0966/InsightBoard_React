@@ -33,8 +33,8 @@ def render_drilldown(
     if roadmap_df.empty:
         render_html(
             status_card(
-                "로드맵 데이터가 없습니다",
-                "🧱 데이터 관리 → 로드맵 업로드에서 엑셀을 업로드하세요.",
+                "작업 정의 데이터가 없습니다",
+                "🧱 데이터 관리 → 작업 정의 데이터 업로드에서 엑셀을 업로드하세요.",
                 status="warn",
                 icon="🗂",
             ),

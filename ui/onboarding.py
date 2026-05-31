@@ -11,7 +11,7 @@
     1  이름
     2  부서 · 팀
     3  직무
-    4  관심 공정 (로드맵 있으면 multiselect, 없으면 안내) + [완료]
+    4  관심 공정 (작업 정의 데이터 있으면 multiselect, 없으면 안내) + [완료]
 
 CLAUDE.md 규칙:
   - on_click 금지 → `if st.button(): pending flag → st.rerun()` 패턴
@@ -269,7 +269,7 @@ def _render_step(step: int, persona: Persona) -> None:
                 st.text_input("팀", value=cur_team, key="onb_team",
                               placeholder="예: 자동화 1팀")
             if not dept_opts and not team_opts:
-                st.caption("🗂 로드맵을 아직 안 올려서 자유 입력이에요. 올린 뒤엔 추천 목록으로 바뀝니다.")
+                st.caption("🗂 작업 정의 데이터를 아직 안 올려서 자유 입력이에요. 올린 뒤엔 추천 목록으로 바뀝니다.")
 
         elif step == 3:
             st.html('<div class="onb-q">맡고 계신 직무는요?</div>'
@@ -287,7 +287,7 @@ def _render_step(step: int, persona: Persona) -> None:
                 st.multiselect("관심 공정", options=lv3_opts, default=default,
                                key="onb_lv3", label_visibility="collapsed")
             else:
-                st.caption("관심 공정 선택은 로드맵 업로드 후 활성화됩니다. 지금은 건너뛰고 나중에 추가할 수 있어요.")
+                st.caption("관심 공정 선택은 작업 정의 데이터 업로드 후 활성화됩니다. 지금은 건너뛰고 나중에 추가할 수 있어요.")
                 data["onb_lv3"] = list(persona.interest_lv3)
 
         st.write("")
