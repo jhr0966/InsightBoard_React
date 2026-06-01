@@ -501,10 +501,11 @@ def render() -> None:
     _render_task_def_toast_if_needed()
     _render_src_action_toast_if_needed()
 
-    # 활성 탭 — `?dm_tab=jobs|kw|task|src` (기본 jobs)
-    selected_tab = (st.query_params.get("dm_tab") or "jobs").strip()
-    if selected_tab not in _DM_TABS:
-        selected_tab = "jobs"
+    # 활성 그룹·탭 — `?dm_grp=news|tasks&dm_tab=jobs|kw|task|src` (기본 news/jobs).
+    # 기존 `?dm_tab=` 만 있는 북마크 URL 도 정상 동작 (그룹 자동 추론).
+    selected_grp, selected_tab = _dm_resolve_group_and_tab(
+        st.query_params.get("dm_grp"), st.query_params.get("dm_tab"),
+    )
 
     # ── 3) 본문 main 템플릿 ──
     _render_main(dm_stats, selected_tab=selected_tab, persona=persona)
@@ -766,6 +767,7 @@ def _render_task_def_upload() -> None:
 
 
 # ── B.5 데이터관리 4 탭 wire (jobs / kw / task / src) ────────────
+# PR-A: 2 그룹 × sub-탭 재편. 그룹은 segmented control, sub-탭은 그룹 내부에서만 렌더.
 _DM_TABS = ("jobs", "kw", "task", "src")
 _DM_TAB_LABEL = {
     "jobs": "수집잡 · 뉴스 라이브러리",
@@ -773,6 +775,49 @@ _DM_TAB_LABEL = {
     "task": "작업 정의",
     "src": "출처 설정",
 }
+
+# 2 그룹 정의 — PR-A.
+_DM_GROUPS = ("news", "tasks")
+_DM_GROUP_LABEL = {"news": "📰 뉴스 데이터", "tasks": "📋 작업 데이터"}
+_DM_GROUP_TABS: dict[str, tuple[str, ...]] = {
+    "news":  ("jobs", "kw", "src"),
+    "tasks": ("task",),  # PR-6 가 "manage" 추가 예정
+}
+_DM_GROUP_DEFAULT_TAB = {"news": "jobs", "tasks": "task"}
+
+
+def _dm_group_of(tab: str) -> str:
+    """sub-탭 → 속한 그룹. 알 수 없으면 'news'."""
+    for grp, tabs in _DM_GROUP_TABS.items():
+        if tab in tabs:
+            return grp
+    return "news"
+
+
+def _dm_resolve_group_and_tab(grp: str | None, tab: str | None) -> tuple[str, str]:
+    """URL query → (group, tab) 정규화.
+
+    호환성:
+      - tab 만 있고 grp 없으면 → tab 에서 grp 추론 (기존 URL 호환)
+      - grp 만 있고 tab 없으면 → 그룹 기본 탭
+      - 둘 다 없으면 → ('news', 'jobs')
+      - tab 이 grp 와 맞지 않으면 → tab 의 그룹으로 정정
+    """
+    tab = (tab or "").strip()
+    grp = (grp or "").strip()
+    if tab and tab not in _DM_TABS:
+        tab = ""
+    if grp and grp not in _DM_GROUPS:
+        grp = ""
+
+    if not tab and not grp:
+        return ("news", "jobs")
+    if tab and not grp:
+        return (_dm_group_of(tab), tab)
+    if grp and not tab:
+        return (grp, _DM_GROUP_DEFAULT_TAB[grp])
+    # 둘 다 있음 — tab 의 그룹이 진실 (사용자가 다른 그룹의 탭을 직접 명시한 경우)
+    return (_dm_group_of(tab), tab)
 _DM_TAB_ICON_SVG = {
     # 24x24 stroke=#475569 패스 본문(<svg>는 _dm_tabs_html 에서 wrap)
     "jobs": "<polyline points='23 4 23 10 17 10'/><path d='M3.51 9a9 9 0 0114.85-3.36L23 10'/>",
@@ -785,19 +830,51 @@ _DM_TAB_ICON_SVG = {
 
 
 def _dm_tab_href(tab: str) -> str:
-    """탭 선택 URL — `?app_area=🧱+데이터+관리&dm_tab=<tab>`."""
+    """탭 선택 URL — `?app_area=🧱+데이터+관리&dm_grp=<grp>&dm_tab=<tab>`.
+
+    그룹 기본 탭 (`jobs`/`task`) 은 `dm_tab` 생략, 그 외에는 명시.
+    `dm_grp` 는 항상 명시 (혼동 방지). 단 news 그룹 + jobs 탭은 둘 다 생략 (깨끗한 URL).
+    """
     from urllib.parse import quote
+    grp = _dm_group_of(tab)
     parts = [f"app_area={quote('🧱 데이터 관리')}"]
-    if tab and tab != "jobs":
-        parts.append(f"dm_tab={quote(tab)}")
+    is_default = (grp == "news" and tab == "jobs")
+    if not is_default:
+        parts.append(f"dm_grp={quote(grp)}")
+        if tab != _DM_GROUP_DEFAULT_TAB[grp]:
+            parts.append(f"dm_tab={quote(tab)}")
     return "?" + "&".join(parts)
 
 
+def _dm_group_href(grp: str) -> str:
+    """그룹 segmented 선택 URL — 그룹 기본 탭으로 이동."""
+    return _dm_tab_href(_DM_GROUP_DEFAULT_TAB.get(grp, "jobs"))
+
+
+def _dm_groups_html(selected_grp: str) -> str:
+    """2 그룹 segmented control — <a> 2개."""
+    parts = ['<div class="dm-groups" role="tablist" aria-label="데이터 그룹">']
+    for grp in _DM_GROUPS:
+        active = " dm-group-active" if grp == selected_grp else ""
+        href = _dm_group_href(grp)
+        label = _DM_GROUP_LABEL[grp]
+        aria_cur = "true" if grp == selected_grp else "false"
+        parts.append(
+            f'<a class="dm-group{active}" href="{href}" target="_self" '
+            f'role="tab" aria-selected="{aria_cur}">{label}</a>'
+        )
+    parts.append("</div>")
+    return "".join(parts)
+
+
 def _dm_tabs_html(selected_tab: str, dm_stats: dict[str, str | int]) -> str:
-    """4 탭 동적 빌드 — <button disabled> → <a>. 활성 탭에 dm-tab-active."""
+    """현재 그룹의 sub-탭만 렌더. 활성 탭에 dm-tab-active."""
     selected_tab = selected_tab if selected_tab in _DM_TABS else "jobs"
+    grp = _dm_group_of(selected_tab)
+    visible_tabs = _DM_GROUP_TABS[grp]
+
     parts = ['<div class="dm-tabs">']
-    for tab in _DM_TABS:
+    for tab in visible_tabs:
         active = " dm-tab-active" if tab == selected_tab else ""
         href = _dm_tab_href(tab)
         label = _DM_TAB_LABEL[tab]
@@ -1222,7 +1299,11 @@ def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
         .replace("{{HIST_HEAD}}", hist["head"])
         .replace("{{HIST_SVG}}", hist["svg"])
         .replace("{{HIST_X}}", hist["foot"])
-        .replace("{{DM_TABS}}", _dm_tabs_html(selected_tab, dm_stats))
+        .replace(
+            "{{DM_TABS}}",
+            _dm_groups_html(_dm_group_of(selected_tab))
+            + _dm_tabs_html(selected_tab, dm_stats),
+        )
         .replace("{{DM_MAIN_BODY_OPEN}}", body_open)
         .replace("{{DM_MAIN_BODY_CLOSE}}", body_close)
     )

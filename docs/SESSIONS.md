@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-01 · PR-A: 데이터 관리 area 2 그룹 segmented 재편
+
+**브랜치:** `feat-dm-area-2groups` (main `c1a2221` 기준 · M1 완료 후)
+
+**맥락:** `docs/TASK_DEF_PLAN.md` M2 / PR-A. PR-6 (작업 정의 관리 UI) 가 자리잡을 컨테이너를 먼저 만든다. 결정사항 §1 — 📰 뉴스 데이터 / 📋 작업 데이터 2 그룹 × 내부 sub-탭.
+
+**구현:**
+- `_DM_GROUPS`/`_DM_GROUP_TABS`/`_DM_GROUP_LABEL`/`_DM_GROUP_DEFAULT_TAB` 상수.
+- `_dm_resolve_group_and_tab(grp, tab)` — URL 정규화 + 기존 `?dm_tab=` 단독 북마크 호환 (자동 그룹 추론).
+- `_dm_tab_href` — `dm_grp` 자동 포함, news/jobs 는 깨끗한 URL 유지.
+- `_dm_group_href` / `_dm_groups_html` — segmented control (a role=tab × 2).
+- `_dm_tabs_html` — 현재 그룹의 sub-탭만 렌더 (news 3개 / tasks 1개).
+- CSS `.dm-groups/.dm-group/.dm-group-active` 추가.
+
+**검증:** pytest 596/596 · 금지 패턴 0 · 신규 14건 + 기존 1건 수정 (4 탭→3 탭).
+
+**다음:** PR-5 (엑셀 업로드 diff 미리보기 + 사용자 확인) 또는 PR-6 (작업 정의 관리 UI · 1차 완성). PR-6 가 사용자 가치가 가장 크지만 부피가 큼.
+
+---
+
 ## 2026-06-01 · PR-4: query.load_latest SQLite 우선 + Parquet fallback
 
 **브랜치:** `feat-query-sqlite-adapter` (main `bc2bcc0` 기준 · PR-3 #80 머지 후)

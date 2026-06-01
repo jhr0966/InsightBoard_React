@@ -28,9 +28,9 @@ def test_dm_tab_href_with_specific_tab():
 
 def test_dm_tabs_html_renders_anchors_not_disabled_buttons():
     from ui import data_management_v2 as dm
+    # PR-A 이후 news 그룹은 jobs/kw/src 3개만 sub-탭으로 노출 (task 는 tasks 그룹).
     html = dm._dm_tabs_html("jobs", {"active_sources": 4, "today_count": 32})
-    # 4개 탭 모두 <a class="dm-tab">
-    assert html.count('class="dm-tab"') + html.count('class="dm-tab dm-tab-active"') == 4
+    assert html.count('class="dm-tab"') + html.count('class="dm-tab dm-tab-active"') == 3
     # disabled 자취 없음
     assert "disabled" not in html
     # B.5 PR 안내 텍스트 사라짐
