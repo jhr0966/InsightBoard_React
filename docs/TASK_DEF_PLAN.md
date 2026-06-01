@@ -305,13 +305,13 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 - [x] 기존 4 탭 → news(jobs/kw/src) + tasks(task) 재배치 (PR-6 가 `tasks.manage` 추가)
 - [x] tests: 라우팅 14건 + 기존 호환 수정
 
-### PR-6: 작업 정의 관리 UI
-- [ ] sub-탭 "✏️ 작업 정의 관리" 추가
-- [ ] 검색창 + 매칭 리스트
-- [ ] 1건 expand/우측 패널 — 상세 보기
-- [ ] 폼 위젯: 구조화 입력 (외곽 메타 + objectives 리스트 + risks/automation 리스트)
-- [ ] 액션: 추가 / 수정 / 삭제 / history 보기
-- [ ] tests: 30건
+### PR-6: 작업 정의 관리 UI ✅ — **M3 1차 완성**
+- [x] sub-탭 "✏️ 작업 정의 관리" 추가 (`tasks` 그룹 기본 탭)
+- [x] 검색창 + 매칭 리스트 (`?td_q=` URL 동기화)
+- [x] 1건 상세 보기 (`?td_view=`) — org_meta · objectives · risks · automation · 액션 4종 (목록/수정/history/삭제)
+- [x] 폼 위젯: 구조화 입력 (외곽 메타 + objectives 텍스트영역 + risks/automation 한 줄 한 항목 포맷)
+- [x] 액션: 추가 (`?td_add=1`) / 수정 (`?td_edit=`) / 삭제 (`?td_action=delete&td_pid=` + JS confirm) / history (`?td_hist=`)
+- [x] tests: 41건 (round-trip · XSS · legacy URL · 유니코드 · CRUD consumer)
 
 ### PR-7: export (선택)
 - [ ] [🔽 JSON 다운로드] / [📊 엑셀 다운로드] 버튼

@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-06-01 · PR-6: 작업 정의 관리 UI — M3 **1차 완성** 🎉
+
+**브랜치:** `feat-task-def-manage-ui` (main `faf5a99` 기준 · PR-5 #83 머지 후)
+
+**맥락:** `docs/TASK_DEF_PLAN.md` M3 — **1차 완성 마일스톤**. 외부 도구 없이 작업 정의 CRUD + history. 시나리오 2 (1건 추가), 시나리오 3 (1건 수정), 부분적으로 시나리오 5 (일반 사용자 — 권한은 PR-8).
+
+**구현:**
+- `ui/task_def_manage.py` 신규 (~390 LOC) — 검색·리스트·상세·폼·history. stateless URL pattern. 단일 진입점 `render(query_params)`.
+- `roadmap/task_def_form.py` 신규 (~145 LOC) — `TaskDefForm` 데이터클래스. `from_db_row(row)` ↔ `to_json()` round-trip. add/remove helpers.
+- `ui/data_management_v2.py` — `manage` 탭 추가, tasks 그룹 기본 탭이 `task`→`manage` 로 변경. consume action/save 위젯 인스턴스화 전 호출.
+- CSS `.td-*` 약 60줄.
+
+**검증 (사용자 요구 "철저히"):**
+- pytest 654/654 (PR-6 +41 + 기존 5건 업데이트)
+- 금지 패턴 0 (`on_click=` 0, raw requests 0)
+- `py_compile` 통과 (3개 신규 + 1개 수정 모듈)
+- end-to-end smoke (모듈 import + 폼 round-trip + URL 빌더 동작 확인)
+- XSS escape 테스트 (`<script>` injection → `&lt;script&gt;`)
+- 한국어/이모지 유니코드 보존 검증
+- legacy URL 호환 (`?dm_tab=task` → tasks 그룹 자동 추론)
+- history 누적 검증 (create + update 2건)
+
+**다음:** **🎉 1차 완성 달성.** M4 (PR-7 export) 또는 M5 (PR-8 권한) 는 선택. 사용자 요구 시 진행.
+
+---
+
 ## 2026-06-01 · PR-5: 엑셀 업로드 diff 미리보기 + 사용자 확인
 
 **브랜치:** `feat-excel-diff-preview` (main `625d384` 기준 · PR-A #82 머지 후)
