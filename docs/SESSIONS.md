@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-06-01 · 전체 시스템 전수 점검 + 리팩토링 계획 수립
+
+**브랜치:** `docs-refactor-plan` (main `afa9e33` 기준 · 변수명 통일 #87 머지 후)
+
+**맥락:** 사용자 "기능 정상 동작·UI·모듈화·Claude Code 효율 전체 점검 후 단계적 리팩토링 계획". 천천히.
+
+**방법:** 병렬 에이전트 2개 (기능 end-to-end 검증 / 아키텍처·모듈화 감사) + 5화면 실구동 캡처 + 핵심 주장 직접 grep 검증.
+
+**핵심 발견 (전부 직접 확인):**
+- **F1 데드 모듈 4개**: `sola/{propose,summarize,insight,chat_ctx}` production 호출 0 (테스트 전용). 테스트가 "UI 가 버린 아키텍처" 를 검증 = 안심 착시.
+- **F2 제안서 단절**: 북마크 `content=""` 생성, `update_content` 데드 → 채울 경로 없음. 5대 기능 중 "제안서 작성" 미연결.
+- **F3 enrich 미반영**: `store/match.py:41` 이 `summary_llm/keywords_llm/content` 무시.
+- **F12 SOLA 가짜 통계**: `sola_workshop_v2._archive_stats` 하드코딩 `{32,4}`.
+- **모듈화**: `_load_persona` 6벌, 토스트 6곳, href 15개, `ui/components.py` 우회. 백엔드 계층은 비순환·깨끗.
+- **문서 드리프트**: ARCHITECTURE/CLAUDE/DEV_GUIDELINES/INVARIANTS 가 옛 `*_tab.py` 가리킴.
+
+**산출:** `docs/REFACTOR_PLAN.md` — F1~F12 · M1~M8 · D1~D4 + 결정 3건 + Phase 0~4.
+
+**결정 대기 (사용자):** ①빈 제안서 흐름 연결 vs 단순화 ②enrich→매칭 연결 ③데드 sola 모듈 살림 vs 삭제.
+
+**다음:** Phase 0(문서) + Phase 2(UI dedup) + Phase 1a(무논쟁 correctness) 는 결정 없이 착수 가능. 나머지는 결정 후.
+
+---
+
 ## 2026-06-01 · 변수명 통일 (roadmap_df → tasks_df) — 1차 완성 정리
 
 **브랜치:** `refactor-tasks-df-naming` (main `f121f29` 기준 · screen-CSS #86 머지 후)

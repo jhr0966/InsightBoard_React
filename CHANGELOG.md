@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Docs (전체 시스템 리팩토링 계획서 — 전수 점검 기반)
+- `docs/REFACTOR_PLAN.md` 신규 — 병렬 코드 감사 2건(기능 end-to-end / 아키텍처·모듈화) + 5화면 실구동 + 핵심 주장 직접 grep 검증 종합. 12개 기능 결함(F1~F12) · 8개 모듈화(M1~M8) · 4개 문서 드리프트(D1~D4) 발견, 3개 핵심 결정 사항, Phase 0~4 단계 계획, 시나리오별 동작 상태 표 포함.
+- 핵심 발견: 제안서/요약/인사이트 생성 모듈 4개(`sola/{propose,summarize,insight,chat_ctx}`) production 호출 0 (테스트 전용), 제안서 북마크 빈 content 로 생성·채울 경로 없음(`update_content` 데드), 핵심 매칭(`store/match.py`)이 enrich 산출물 미사용. 백엔드 계층은 비순환·깨끗.
+
 ### Changed (변수명 통일 — `roadmap_df`/`load_roadmap` → `tasks_df`/`load_tasks`)
 - UI 9파일 + 테스트 11파일에서 "로드맵" 잔여 변수·식별자를 "작업(tasks)" 으로 통일 (사용자 노출 라벨은 이미 "작업 정의" 로 통일됨, 이번엔 내부 코드 식별자 정리).
   - import alias: `load_latest as load_roadmap` / `_load_roadmap` → `load_tasks` / `_load_tasks`.
