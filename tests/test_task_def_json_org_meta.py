@@ -170,3 +170,24 @@ def test_validate_rejects_missing_required_org_meta_fields():
     js = json.dumps({"process_id": "X", "org_meta": {"dept": "D"}})
     with pytest.raises(TaskDefJsonError, match="team"):
         validate_task_def_json(js)
+
+
+def test_validate_rejects_whitespace_only_process_id():
+    """Codex P2 — whitespace-only process_id 가 truthy 로 통과되면 안 됨."""
+    for bad in ("   ", "\t", "\n", " \t\n "):
+        js = json.dumps({
+            "process_id": bad,
+            "org_meta": {"team": "T", "dept": "D"},
+        })
+        with pytest.raises(TaskDefJsonError, match="process_id"):
+            validate_task_def_json(js)
+
+
+def test_validate_rejects_non_string_process_id():
+    for bad in (123, None, [], {}):
+        js = json.dumps({
+            "process_id": bad,
+            "org_meta": {"team": "T", "dept": "D"},
+        })
+        with pytest.raises(TaskDefJsonError, match="process_id"):
+            validate_task_def_json(js)

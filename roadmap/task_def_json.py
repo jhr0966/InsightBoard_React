@@ -305,7 +305,8 @@ def validate_task_def_json(json_text: str) -> dict:
         raise TaskDefJsonError(f"invalid JSON: {exc}") from exc
     if not isinstance(obj, dict):
         raise TaskDefJsonError("JSON must be an object")
-    if not obj.get("process_id"):
+    pid_raw = obj.get("process_id")
+    if not isinstance(pid_raw, str) or not pid_raw.strip():
         raise TaskDefJsonError("process_id is required at top level")
     _normalize_org_meta(obj.get("org_meta") or {})  # raises if invalid
     return obj
