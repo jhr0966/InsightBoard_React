@@ -69,10 +69,11 @@
 - **XSS**: 사용자 입력 전부 `html.escape`. injection 테스트 통과.
 
 ### 검증 중 발견·수정한 이슈
-- **screen CSS 미적용**: `inject_screen_css()` 의 `st.html("<style>")` 가 mid-render 에서 DOM 에 주입되지 않음 (전역 `inject_global_styles` 는 정상). `data_management.css` 의 `.dm-*`/`.td-*` 클래스가 실제로 적용되지 않는 **기존 이슈**.
-  - **영향**: 데이터 관리 화면 전체 (jobs 탭 포함). PR-6 가 유발한 회귀 아님.
-  - **우회**: manage UI 의 동적 `st.html` 을 inline style 로 보강 (PR-5 diff·토스트와 동일 관행). 1차 완성 UI 는 screen-CSS 와 무관하게 정상 렌더.
-  - **후속 권장**: `inject_screen_css` 자체의 주입 실패를 근본 수정하면 board/insights/data 의 screen CSS 가 함께 복구됨 (별도 작업).
+- **screen CSS 미적용** (✅ 후속 PR 에서 근본 해결): `inject_screen_css()` 뿐 아니라 `inject_global_styles()` 의 `st.html("<style>")` 도 DOM 에 mount 되지 않았음. 전체 v2 CSS (`--accent-primary` 토큰 포함) 전부 누락 = board/data/insights/sola/archive 모든 v2 셸이 unstyled 였음.
+  - **근본 원인**: Streamlit `st.html()` 이 수만 자 `<style>` 블록을 sanitize/collapse. `st.markdown(unsafe_allow_html=True)` 는 다른 코드 경로로 보존.
+  - **해결**: `ui/styles.py` 의 두 inject 함수를 `st.markdown(unsafe_allow_html=True)` 로 전환. `tests/test_html_rendering.py` 에 `styles.py` 명시적 예외 (CSS 자산은 사용자 입력 아님).
+  - **검증**: 5 area 모두 `total_css ≥ 100KB`, v2 토큰 50~99회, screen 마커 8~25회 mount.
+  - **manage UI inline style 은 안전망으로 유지** — Streamlit 버전 회귀 시 fallback.
 
 ---
 
@@ -80,7 +81,7 @@
 
 | 항목 | 내용 | 우선도 |
 |---|---|---|
-| screen-CSS 근본 수정 | `inject_screen_css` 주입 실패 해결 → board/insights/data 일괄 복구 | 중 |
+| ~~screen-CSS 근본 수정~~ | ✅ 후속 PR 에서 해결 (`st.markdown(unsafe_allow_html=True)`) | 완료 |
 | 변수명 통일 | 호출처 `roadmap_df` → `tasks_df` (cosmetic, 8파일) | 낮 |
 | PR-7 export | 작업 정의 JSON/엑셀 내보내기 (범위·포맷 결정 필요) | 선택 |
 | PR-8 권한 | multi-user + team 권한 + 로그인 | 미래 |

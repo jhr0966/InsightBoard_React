@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Fixed (screen-CSS 근본 수정 — st.html → st.markdown(unsafe_allow_html) · v2 셸 전 화면 복구)
+- `ui/styles.py::inject_global_styles` / `inject_screen_css` — `st.html("<style>...")` 를 `st.markdown("<style>...", unsafe_allow_html=True)` 로 전환. `st.html` 이 수만 자 `<style>` 블록을 sanitize/collapse 해 DOM 에서 전체 누락되던 기존 이슈 근본 해결 (전역 v2 토큰부터 screen CSS 까지 모두 영향).
+- 검증 (playwright headless · 5 area): board/data/insights/sola/archive 모두 `total_css ≥ 100KB`, `--accent-primary` v2 토큰 50~99회, screen 마커 8~25회 mount 확인 (이전 0회). `.dm-tab` border-radius `0px → 8px`.
+- `tests/test_html_rendering.py` — `styles.py` 를 `st.markdown(unsafe_allow_html=True)` 금지 invariant 의 명시적 예외에 추가 (`components.py` 와 동일 패턴). CSS 자산은 사용자 입력이 아니라 안전.
+- `docs/MILESTONE_1.md` — screen-CSS 이슈를 ✅ 해결로 업데이트.
+- `ui/task_def_manage.py` 의 inline style 보강(이전 PR)은 **안전망으로 유지** — Streamlit 버전 회귀 시 fallback 으로 동작.
+
 ### Fixed (작업 정의 관리 UI 스타일 — inline style 보강 + 1차 완성 보고서)
 - `ui/task_def_manage.py` — 동적 `st.html` (카드·상세·버튼·history·메타) 에 inline style 박음. `inject_screen_css` 의 `st.html("<style>")` 가 mid-render 에서 DOM 에 주입되지 않아 `.td-*`/`.dm-*` screen CSS 클래스가 실제 적용되지 않는 **기존 이슈** 확인 (전역 `inject_global_styles` 는 정상) → PR-5 diff·토스트와 동일하게 inline style 사용으로 우회. 클래스도 유지 (screen-CSS 근본 수정 시 호환).
 - 실제 구동 검증 (playwright headless): 목록·검색·상세·추가폼 4화면 Python traceback 0, CRUD 액션 버튼 렌더 확인.
