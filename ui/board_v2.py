@@ -194,7 +194,7 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
 
     try:
         from persona import store as persona_store
-        persona = _load_persona()
+        persona = app_shell.get_persona()
 
         if action == "del_user":
             removed = False
@@ -1268,17 +1268,6 @@ def _board_stories_html() -> str:
 _BOARD_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "board_main.html"
 
 
-def _load_persona() -> Persona:
-    p = st.session_state.get("persona")
-    if isinstance(p, Persona):
-        return p
-    from persona import store as persona_store
-
-    p = persona_store.load()
-    st.session_state["persona"] = p
-    return p
-
-
 def _persona_greet(persona: Persona) -> str:
     """헤더 인사: '박정훈 책임' / '자동화기술팀' / '사용자' 우선순위."""
     if persona.name and persona.job:
@@ -1539,7 +1528,7 @@ def render() -> None:
         except Exception:
             pass
 
-    persona = _load_persona()
+    persona = app_shell.get_persona()
     stats = _archive_stats()
     refresh = app_shell.refresh_label_now()
 

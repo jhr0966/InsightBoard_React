@@ -42,21 +42,20 @@ _SOLA_SYSTEM_PROMPT = (
 _SOLA_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "sola_main.html"
 
 
-def _load_persona() -> Persona:
-    p = st.session_state.get("persona")
-    if isinstance(p, Persona):
-        return p
-    from persona import store as persona_store
-
-    p = persona_store.load()
-    st.session_state["persona"] = p
-    return p
-
-
 def _archive_stats() -> dict[str, int]:
-    summary = bookmarks_store.summary_counts()
-    pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
-    return {"match_today": 32, "opportunities": 4, "pending_adopt": pending}
+    """SOLA 좌측 통계 — 보드 KPI 실데이터(`board_v2._archive_stats`) 재사용.
+
+    이전엔 match_today/opportunities 가 하드코딩 상수(32/4)였다. 보드와 동일한
+    60초 캐시 소스(`_board_kpis`)를 공유해 실제 매칭/기회 수를 노출한다.
+    """
+    from ui import board_v2  # lazy — 모듈 로드 순환 회피
+
+    try:
+        return board_v2._archive_stats()
+    except Exception:
+        summary = bookmarks_store.summary_counts()
+        pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
+        return {"match_today": 0, "opportunities": 0, "pending_adopt": pending}
 
 
 def _ctx_archive_summary() -> tuple[int, str]:
@@ -129,7 +128,7 @@ def render() -> None:
     """SOLA 작업실 v2 — topbar + app-side + 3-열 ws-shell (app-sola 없음)."""
     inject_screen_css("sola")
 
-    persona = _load_persona()
+    persona = app_shell.get_persona()
 
     # ── pending 핸들러 (run 최상단, 위젯 인스턴스화 이전) ──
     # 순서: 스레드 전환·생성·삭제 → URL switch → prefill ask → send

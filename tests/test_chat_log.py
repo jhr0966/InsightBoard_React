@@ -53,6 +53,24 @@ def test_unsafe_chat_key_chars_slugified():
     assert "/" not in p.name
 
 
+def test_ts_round_trips_when_present():
+    """메시지에 ts 가 있으면 저장·로드에서 보존된다 (F7)."""
+    msgs = [{"role": "user", "content": "q", "ts": "2026-06-01T00:00:00+00:00"}]
+    chat_log.save_history(msgs, chat_key="ts")
+    loaded = chat_log.load_history("ts")
+    assert loaded == [
+        {"role": "user", "content": "q", "ts": "2026-06-01T00:00:00+00:00"}
+    ]
+
+
+def test_ts_omitted_stays_omitted():
+    """ts 없는 메시지는 ts 키 없이 그대로 (후방 호환)."""
+    chat_log.save_history([{"role": "assistant", "content": "a"}], chat_key="nots")
+    loaded = chat_log.load_history("nots")
+    assert loaded == [{"role": "assistant", "content": "a"}]
+    assert "ts" not in loaded[0]
+
+
 def test_main_and_chat_defaults_to_open():
     """채팅 패널이 첫 진입 시 펼쳐진 상태가 디폴트인지 시그니처로 확인."""
     import inspect

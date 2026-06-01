@@ -5,6 +5,79 @@
 
 ---
 
+## 2026-06-01 · PR #89 머지 직전 docs 정리
+
+**브랜치:** `claude/nice-bell-eEZLj` (PR #89 — Phase 0+1a+2)
+
+**한 일:**
+- `docs/REFACTOR_PLAN.md` 끝에 **"다음 세션 시작점"** 섹션 추가 — Phase 1b(`feat-sola-propose-summarize`) / 1c(`feat-enrich-match-weight`) 의 진입 파일·UX 안 3개·완료 기준·시작 명령. 다음 세션이 이 섹션만 읽고 즉시 착수 가능.
+- `docs/{DEVELOPMENT_PHASES,MILESTONE_1,TASK_DEF_PLAN,UX_QA_CHECKLIST,UX_REDESIGN_PLAN,VIBE_CODING_BLUEPRINT,WORKFLOW}.md` 7개에 redirect 헤더 1줄 추가 — 다음 세션이 stale 문서를 권위 문서로 오인하지 않도록.
+
+**다음:** PR #89 머지 → 사용자가 새 세션 시작 시 REFACTOR_PLAN 끝 섹션만 보면 됨.
+
+---
+
+## 2026-06-01 · Phase 2 UI dedup (`get_persona` 승격 + `app_side_stats` 단일화)
+
+**브랜치:** `claude/nice-bell-eEZLj` (PR #89 누적)
+
+**맥락:** 사용자 결정 — Phase 1b/1c 는 결정-1/2 (확정: 둘 다 A) 반영을 위한 더 큰 작업이라 게이트가 없는 Phase 2(순수 dedup)부터.
+
+**한 일:**
+- `ui/app_shell.get_persona()` 신설 → 5개 v2 화면의 `_load_persona` 일괄 교체·정의 제거.
+- `archive_v2._archive_stats_oa`/`insights_v2._archive_stats_ia`/`data_management_v2._archive_stats_dm` 세 사본 본문을 `board_v2._archive_stats()` 위임으로 교체(lazy import). board 의 60초 캐시(`_board_kpis`)가 단일 소스가 되어 좌측 nav 카운트와 보드 KPI 가 항상 일관.
+- 위 위임으로 unused 가 된 `_score_matches`/`_score_cells`/`_news_db`/`_load_tasks` import 제거(archive/data_management).
+- `ui/toast.py`/`ui/url_state.py` 는 사용처 1~2건이라 dedup 가치 적어 보류(REFACTOR_PLAN 기록).
+
+**주의/함정:** 내가 짠 `sed` 가 호출(`_load_persona()`)뿐 아니라 정의문(`def _load_persona()`)까지 치환해 4개 파일에서 `def app_shell.get_persona() -> Persona:` 가 만들어져 SyntaxError. 깨진 def 블록을 통째 제거하는 추가 패스로 복구.
+
+**검증:** pytest 656/656 · 금지 패턴 0 · py_compile OK · diff -114줄.
+
+**다음:** Phase 1b(결정-1: SOLA 작업실에 propose/summarize 액션 연결) → Phase 1c(결정-2: enrich keywords → 매칭 가중치) → Phase 3(데드 코드 삭제).
+
+---
+
+## 2026-06-01 · Phase 1a 무논쟁 correctness (F5·F7·F11·F12)
+
+**브랜치:** `claude/nice-bell-eEZLj` (Phase 0 와 동일 PR #89 — harness 단일 브랜치 제약)
+
+**맥락:** 사용자 "페이즈 순차적으로 진행해". Phase 0(문서) 직후 Phase 1a(코드 correctness) 착수. 단, `docs/REFACTOR_PLAN.md` 가 실재하지 않아(이전 세션 요약에만 존재) Phase 0 문서들이 dangling 참조 상태였음 → 본 작업에서 실제 코드 재확인 후 파일로 생성(참조 복구 + source of truth).
+
+**한 일:**
+- Explore 로 F3·F5·F7·F8·F9·F11·F12 전수 재확인 → **실재 4건(F5/F7/F11/F12)**, **기각 3건(F3/F8/F9, 과진단)**.
+- F5: `archive_v2` 액션 후 `st.toast`. F7: `chat_log` ts 영속+복원. F11: `upsert_many` docstring 정직화. F12: `sola_workshop._archive_stats` → `board_v2._archive_stats()` 위임(실데이터).
+- `tests/test_chat_log.py` ts round-trip 2건 추가.
+- `docs/REFACTOR_PLAN.md` 신규(결함 대장·데드 대장·Phase 로드맵·결정 대기).
+
+**주의/함정:** F12 위임은 `board_v2` 를 함수 내 lazy import(모듈 로드 순환 회피). F1·F2·F4·F6·F10 은 코드에서 재현 안 돼 대장 제외.
+
+**검증:** pytest 656/656 · 금지 패턴 0 · py_compile OK.
+
+**다음:** Phase 2(UI dedup — `app_side_stats`/`ui/toast.py`/`ui/url_state.py`/`get_persona` 승격) 또는 결정-1·2 사용자 확정 후 Phase 1b/1c.
+
+---
+
+## 2026-06-01 · Phase 0 문서 정합성 (REFACTOR_PLAN D1~D4)
+
+**브랜치:** `claude/nice-bell-eEZLj` (main `afa9e33` 기준 · 변수명 통일 #87 머지 후)
+
+**맥락:** `docs/REFACTOR_PLAN.md` (PR #88) 의 Phase 0 — 문서가 옛 5탭 라디오·`ui/*_tab.py`·Parquet-만 시대를 가리키고 있어 Claude Code 작업 효율 저하. 결정 1·2 (A·A) 확정 후 무논쟁 항목부터 착수.
+
+**한 일:**
+- `docs/ARCHITECTURE.md` 전면 재작성 (5영역 if/elif 디스패치, v2 셸 3축, SQLite task_defs, query.py SQLite 우선 fallback, 데드 코드 명시).
+- `CLAUDE.md` 라우팅 표 → 실제 `ui/*_v2.py` 경로. 절대 규칙 §2 의 `ui/*_tab.py` 문구 갱신.
+- `DEV_GUIDELINES.md §2·§3` CLAUDE 와 동기화.
+- `docs/INVARIANTS.md I-13` → `ui/chat_panel` 단일 진입점 (이전: 데드 `ui/layout.main_and_chat`).
+- Phase 0 는 문서만, 코드 변경 0.
+
+**주의/함정:** 지정 브랜치 `claude/nice-bell-eEZLj` 가 5/29에 갈라진 stale 상태(main 보다 38커밋 뒤, 고유 46커밋이 main 에서 이미 추월·포함). 사용자 결정에 따라 `git reset --hard origin/main` 후 작업 → force push.
+
+**검증:** 문서만 변경. `python -m py_compile` 대상 0. pytest 영향 없음.
+
+**다음:** Phase 1a (무논쟁 correctness: F5/F7/F8/F9/F11/F12) → Phase 2 (UI dedup) → 결정-1·결정-2 반영 Phase 1b/1c.
+
+---
+
 ## 2026-06-01 · 변수명 통일 (roadmap_df → tasks_df) — 1차 완성 정리
 
 **브랜치:** `refactor-tasks-df-naming` (main `f121f29` 기준 · screen-CSS #86 머지 후)

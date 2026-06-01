@@ -33,11 +33,18 @@ def _path(chat_key: str = _DEFAULT_KEY) -> Path:
 
 
 def save_history(messages: list[dict], chat_key: str = _DEFAULT_KEY) -> Path:
-    """전체 히스토리를 한 번에 덮어쓴다 (간단·재현성 우선)."""
+    """전체 히스토리를 한 번에 덮어쓴다 (간단·재현성 우선).
+
+    메시지에 `ts`(ISO 시각)가 있으면 함께 영속한다. 없으면 생략(후방 호환).
+    """
     p = _path(chat_key)
     with p.open("w", encoding="utf-8") as f:
         for m in messages:
-            f.write(json.dumps({"role": m["role"], "content": m["content"]}, ensure_ascii=False))
+            rec = {"role": m["role"], "content": m["content"]}
+            ts = m.get("ts")
+            if ts:
+                rec["ts"] = ts
+            f.write(json.dumps(rec, ensure_ascii=False))
             f.write("\n")
     return p
 
@@ -56,7 +63,11 @@ def load_history(chat_key: str = _DEFAULT_KEY) -> list[dict]:
         except json.JSONDecodeError:
             continue
         if isinstance(obj, dict) and obj.get("role") in {"user", "assistant", "system"}:
-            out.append({"role": obj["role"], "content": str(obj.get("content", ""))})
+            rec = {"role": obj["role"], "content": str(obj.get("content", ""))}
+            ts = obj.get("ts")
+            if ts:
+                rec["ts"] = str(ts)
+            out.append(rec)
     return out
 
 

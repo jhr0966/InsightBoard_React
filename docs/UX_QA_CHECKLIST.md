@@ -1,5 +1,10 @@
 # UX Redesign QA Checklist
 
+> ⚠️ **역사적 기록** — 5-menu UX 개편 QA(2026-05-18, 완료). 현재 진행 중인 정리·정합 작업의 source-of-truth 는
+> [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md). 새 작업을 시작하기 전 이 파일이 아니라
+> `REFACTOR_PLAN.md` 와 `CLAUDE.md` 를 먼저 확인할 것.
+
+
 > 목적: 5-menu UX 개편이 실제 사용자 흐름(`데이터 준비 → 인사이트 분석 → SOLA 산출물 생성 → 보관/재사용`)으로 정상 작동하는지 검증한다.
 >
 > 기준일: 2026-05-18

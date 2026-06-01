@@ -5,6 +5,36 @@
 
 ## [Unreleased]
 
+### Docs (다음 세션 준비)
+- `docs/REFACTOR_PLAN.md` 끝에 "다음 세션 시작점" 섹션 — Phase 1b/1c 의 브랜치명·진입 파일·UX 안 3개·완료 기준·시작 명령 명시.
+- 옛 계획·블루프린트 7건(`DEVELOPMENT_PHASES`/`MILESTONE_1`/`TASK_DEF_PLAN`/`UX_QA_CHECKLIST`/`UX_REDESIGN_PLAN`/`VIBE_CODING_BLUEPRINT`/`WORKFLOW`)에 역사적 기록 표식 + `REFACTOR_PLAN`/`CLAUDE.md` 로의 redirect 헤더.
+
+### Fixed (Phase 2 회귀 — Codex P2)
+- `ui/data_management_v2._consume_refresh_if_any` / 작업정의 업로드 후 캐시 무효화 루프에 `board_v2._board_kpis.clear()` 추가. Phase 2 에서 `_archive_stats_dm` 가 `board_v2._archive_stats()` 위임으로 바뀌면서 데이터 관리 새로고침 직후 좌측 nav 의 match/opportunity 카운트가 60초 TTL 만료까지 stale 로 남던 회귀 수정.
+
+### Changed (Phase 2 — UI 중복 제거: `get_persona` 승격 + `app_side_stats` 단일화)
+- `ui/app_shell.get_persona()` 신규 — 5개 v2 화면(`board`/`insights`/`archive`/`sola_workshop`/`data_management`)이 동일 구현하던 `_load_persona` 를 단일 진입점으로 통합. 호출처 일괄 교체.
+- `archive_v2._archive_stats_oa` / `insights_v2._archive_stats_ia` / `data_management_v2._archive_stats_dm` 세 사본을 `board_v2._archive_stats()` 위임으로 교체. `board_v2._board_kpis` 60초 캐시 단일 소스로 일원화 → 좌측 nav 카운트와 보드 KPI 가 항상 일관됨. 4중 캐시 → 1중 캐시.
+- 동반 정리: `archive_v2` 에서 `_load_tasks`/`_news_db`/`_score_matches`/`_score_cells` unused import 제거, `data_management_v2` 에서 `_score_matches`/`_score_cells` unused import 제거.
+- 효과: -114줄(161 삭제/47 추가) · 사용 가치가 낮아 `ui/toast.py`·`ui/url_state.py` 통합은 보류(REFACTOR_PLAN 기록).
+- 검증: pytest 656/656 · 금지 패턴(on_click/raw requests) 0 · py_compile OK.
+
+### Fixed (Phase 1a — 무논쟁 correctness: F5·F7·F11·F12)
+- **F5 토스트 부재** (`ui/archive_v2.py`): 북마크 채택/보류/복구(`?action=`) 소비 후 `st.toast` 미호출 → 액션 성공 피드백이 없던 문제. `_STATUS_TOAST` 맵 + `render()` 에서 `_consume_action_if_any()` 결과가 있으면 토스트 노출.
+- **F7 chat ts 미영속** (`store/chat_log.py`): `save_history`/`load_history` 가 role/content 만 처리해 `sola_workshop_v2` 가 메시지에 붙인 `ts`(timestamp)가 저장/복원되지 않던 문제. ts 가 있으면 함께 영속·복원(없으면 생략 — 후방 호환). 회귀 테스트 2건 추가(`tests/test_chat_log.py`).
+- **F11 거짓 원자성 주장** (`store/task_defs_db.py::upsert_many`): docstring 이 "개별 항목 실패 시 전체 rollback" 을 주장하나 실제로는 행마다 즉시 commit(부분 적용 가능). docstring 을 실제 동작으로 정정 + 진짜 트랜잭션은 호출부 책임 명시. (함수는 테스트 의존이라 보존 → 데드 여부는 Phase 3 재판정.)
+- **F12 하드코딩 통계** (`ui/sola_workshop_v2.py::_archive_stats`): `match_today=32, opportunities=4` 상수 → `board_v2._archive_stats()`(60초 캐시 `_board_kpis` 실데이터) 위임. 보드와 동일 소스 공유, 실패 시 0 폴백.
+- 과진단 기각: F3(news_cols 동적 필터)·F8(토큰 단위 교집합)·F9(데드 정렬 없음) — 코드 재확인 결과 결함 아님.
+- `docs/REFACTOR_PLAN.md` 신규 — 결함 대장(F-번호)·데드 코드 대장·Phase 0~3 로드맵·결정 대기 항목. Phase 0 문서들이 참조하던 source-of-truth 파일.
+- 검증: pytest 656/656(신규 2) · 금지 패턴 0 · py_compile OK.
+
+### Changed (문서 정합성 — Phase 0: ARCHITECTURE / CLAUDE / DEV_GUIDELINES / INVARIANTS v2 정렬)
+- `docs/ARCHITECTURE.md` 전면 재작성 — 5영역 디스패치(`app.py` if/elif), v2 셸(`app_shell`·`sidebar`·`chat_panel`), SQLite `task_defs` + Parquet news 이중 저장, `roadmap/query` SQLite 우선 fallback, 데이터 플로우 4단계, 알려진 데드 코드 목록. 옛 5탭 라디오·`ui/*_tab.py` 기술 전부 제거.
+- `CLAUDE.md` 읽기 라우팅 표 → 실제 `ui/*_v2.py` 경로. 절대 규칙 §2 의 `ui/*_tab.py` → v2 셸 모듈 명시.
+- `DEV_GUIDELINES.md §2·§3` 동기화. v2 셸 + 5영역 + 보조 모듈 라우팅으로 일원화. 데드 모듈 경고 추가.
+- `docs/INVARIANTS.md I-13` 정정 — `ui/layout.py::main_and_chat` (데드) → `ui/chat_panel.{render,consume_send_if_any}` 단일 진입점 + area_key 슬러그 + SOLA 작업실 풀스크린 예외 명시. 데드 인터페이스 경고로 마무리.
+- 코드 변경 0. `docs/REFACTOR_PLAN.md` 의 Phase 0 (D1~D4) 완수.
+
 ### Changed (변수명 통일 — `roadmap_df`/`load_roadmap` → `tasks_df`/`load_tasks`)
 - UI 9파일 + 테스트 11파일에서 "로드맵" 잔여 변수·식별자를 "작업(tasks)" 으로 통일 (사용자 노출 라벨은 이미 "작업 정의" 로 통일됨, 이번엔 내부 코드 식별자 정리).
   - import alias: `load_latest as load_roadmap` / `_load_roadmap` → `load_tasks` / `_load_tasks`.

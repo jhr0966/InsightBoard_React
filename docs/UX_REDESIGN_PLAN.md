@@ -1,5 +1,10 @@
 # UX Redesign Plan — 제조기술 로드맵 인사이트보드
 
+> ⚠️ **역사적 기록** — 5-menu UX 개편 계획(2026-05, 완료). 현재 진행 중인 정리·정합 작업의 source-of-truth 는
+> [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md). 새 작업을 시작하기 전 이 파일이 아니라
+> `REFACTOR_PLAN.md` 와 `CLAUDE.md` 를 먼저 확인할 것.
+
+
 > 목적: 첨부 구조도(데이터 입력 → 저장·정제 → SOLA 분석 → 서비스 UI → 최종 산출물)를 기준으로, 현재 Streamlit UI/UX를 사용자가 따라가기 쉬운 업무 흐름형 인사이트보드로 재구성한다.
 >
 > Codex가 UI 개편 작업을 진행할 때 이 문서를 기준 문서로 삼고, 실제 구현은 작은 PR 단위로 나누어 진행한다.

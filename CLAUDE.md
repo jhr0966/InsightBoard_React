@@ -16,7 +16,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 ## 절대 규칙 (반드시 지킬 것)
 
 1. **토큰 절약**: 수정 대상 파일만 읽어라. UI 작업에 `sola/` 전체를 읽지 마라. (`DEV_GUIDELINES.md` §1)
-2. **평탄 스크립트**: `app.py`는 위→아래 실행 흐름. 마크업/state 헬퍼는 도메인 모듈(`ui/*_tab.py`)로 빼라.
+2. **평탄 스크립트**: `app.py`는 위→아래 실행 흐름. 마크업/state 헬퍼는 도메인 모듈(`ui/*_v2.py`, `ui/app_shell.py`, `ui/chat_panel.py` 등)로 빼라.
 3. **on_click 금지**: `if st.button():` → `_do_*` pending flag → `st.rerun()` 패턴만.
 4. **HTTP 단일 진입점**: `scraping.http.build_session()` 외의 `requests.get/Session()` 금지.
 5. **XSS 방어**: 세션에 들어가거나 `st.markdown(unsafe_allow_html=True)`로 나가는 모든 사용자/외부 문자열은 `html.escape()`.
@@ -38,21 +38,36 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 
 ## 읽기 라우팅 (작업별 최소 파일)
 
+> v2 셸 기준. 화면 모듈은 모두 `ui/*_v2.py`. `ui/<name>_tab.py` 는 더 이상 존재하지 않는다.
+
 | 작업 | 읽을 파일 |
 |---|---|
 | 스크래퍼 셀렉터·HTTP | `scraping/<source>.py` (+ `scraping/http.py`) |
 | 본문 enrich / 키워드·요약 | `scraping/enrich.py` |
+| 일일 cron 수집 | `scraping/run_daily.py`, `scripts/daily_scrape.py` |
 | 로드맵 엑셀 적재·스키마 | `roadmap/ingest.py`, `roadmap/schema.py` |
+| 작업 정의 CRUD (SQLite) | `store/task_defs_db.py`, `roadmap/{task_def_form,task_def_json}.py` |
+| 로드맵 조회 (SQLite→Parquet) | `roadmap/query.py`, `roadmap/sqlite_sync.py` |
 | 뉴스↔작업 매칭 / 자동화 기회 | `store/match.py`, `sola/opportunity.py` |
-| 트렌드·캐시·북마크·채팅 영구화 | `store/{trends,cache,bookmarks,chat_log}.py` |
+| 트렌드·캐시·북마크·채팅 영구화 | `store/{trends,cache,bookmarks,chat_log,sola_threads,sources}.py` |
 | LLM 호출·프롬프트 | `sola/client.py`, `sola/prompts.py` |
-| 요약·제안서·채팅 컨텍스트 | `sola/{summarize,propose,chat_ctx,insight}.py` |
+| 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
 | 페르소나 | `persona/{schema,store,context}.py` |
-| UI 탭 (수집·로드맵·뉴스·보드·SOLA·홈·북마크) | `ui/<name>_tab.py` |
-| 사이드바·작업 트리 | `ui/sidebar.py`, `ui/task_tree.py` |
+| 📊 오늘의 보드 | `ui/board_v2.py` |
+| 🧱 데이터 관리 | `ui/data_management_v2.py` (+ `ui/task_def_manage.py`, `ui/data_health.py`) |
+| 🔎 인사이트 분석 | `ui/insights_v2.py` |
+| 🤖 SOLA 작업실 | `ui/sola_workshop_v2.py` |
+| 📦 산출물 보관함 | `ui/archive_v2.py` |
+| v2 셸 (topbar·좌측 nav·우측 SOLA 패널·⌘K) | `ui/app_shell.py` |
+| 사이드바 / 페르소나 모달 / 온보딩 | `ui/sidebar.py`, `ui/persona_page.py`, `ui/onboarding.py` |
+| 글로벌 채팅 패널 (본문 끝) | `ui/chat_panel.py` |
 | CSS·스타일 | `ui/styles.py` (+ `assets/styles.css`) |
+| HTML 컴포넌트 빌더 | `ui/components.py` |
 | 진입점·디스패치·세션 키 | `app.py` (+ `docs/INVARIANTS.md`) |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
+| 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
+
+> ⚠ 데드 (건드리기 전 `REFACTOR_PLAN` 확인): `ui/layout.py`, `ui/task_tree.py`, `sola/{propose,summarize,insight,chat_ctx}.py`.
 
 전체 라우팅 표는 [`DEV_GUIDELINES.md §3`](./DEV_GUIDELINES.md#3-라우팅-표).
 
