@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Docs (작업 정의 데이터 시스템 마이그 계획 — Parquet → SQLite + JSON)
+- `docs/TASK_DEF_PLAN.md` 신규 — 작업 정의 데이터 저장·관리·CRUD 마이그 plan. 결정사항 9개, 데이터 모델(엑셀 9 컬럼 / `task_def_json` `org_meta` 확장 / SQLite 스키마 + history), 8 PR 의존성 그래프 + 규모 추정, 화면 시뮬레이션 5 시나리오, 마일스톤 M1~M5, 리팩토링 시점 표 포함. 컨텍스트 압축 후에도 단일 source 로 복원 가능.
+- `docs/SESSIONS.md` — 중간 점검 세션 + 결정사항 요약 추가.
+
 ### Added (SOLA workshop thread 제목 LLM 생성 — 단순 truncation → 5~12자 압축)
 - `sola/thread_title.py` 신규 — `generate(user_message, *, force=False)` API. 첫 user 메시지를 `SYSTEM_THREAD_TITLE` 프롬프트로 LLM 호출 → 5~12자 한국어 제목 압축. `store.cache` 디스크 캐시 (sig = 메시지 앞 100자 + 모델). `LLMNotConfigured` / 일반 예외 / 빈 또는 너무 짧은 응답 → `store.sola_threads.title_from_first_user_message` truncation fallback.
 - `sola/prompts.py::SYSTEM_THREAD_TITLE` 신규 프롬프트 — "한국어 5~12자, 따옴표/이모지/장식 금지, 입력 외 사실 만들지 말 것".
