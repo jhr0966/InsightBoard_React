@@ -24,6 +24,10 @@ def inject_global_styles() -> None:
 
     순서 중요: tokens → card(components) → shell(v2 topbar) → streamlit overrides
     → legacy styles.css (점진 제거 대상, 마지막에 로드해 v2 토큰을 못 덮어쓰게 함).
+
+    Streamlit `st.html("<style>")` 는 큰 `<style>` 블록을 안정적으로 mount 하지
+    못함이 확인됨 (수만 자 누락). `st.markdown(unsafe_allow_html=True)` 가 다른
+    코드 경로로 보존하므로 그쪽 사용 — CSS 는 자체 자산이라 escape 불필요.
     """
     parts: list[str] = []
     for rel in _V2_CSS_FILES:
@@ -35,7 +39,7 @@ def inject_global_styles() -> None:
         parts.append(legacy.read_text(encoding="utf-8"))
     if not parts:
         return
-    st.html("<style>" + "\n".join(parts) + "</style>")
+    st.markdown("<style>" + "\n".join(parts) + "</style>", unsafe_allow_html=True)
 
 
 def inject_screen_css(name: str) -> None:
@@ -45,16 +49,16 @@ def inject_screen_css(name: str) -> None:
     을 화면 진입 시 한 번 주입한다. 같은 화면에 머무는 동안 매 rerun 마다
     재주입되지만 브라우저가 같은 텍스트를 중복 적용해도 시각적 변화는 없음.
 
-    ⚠️ 알려진 이슈 (2026-06): 이 `st.html("<style>")` 가 mid-render 에서
-    실제 DOM 에 주입되지 않는 경우가 확인됨 (전역 `inject_global_styles`
-    는 정상). 즉 screen CSS 클래스(.dm-*/.td-* 등)가 적용 안 될 수 있음.
-    동적 `st.html` 콘텐츠는 inline style 을 병행하는 게 안전 (예: PR-5
-    diff 미리보기, 작업 정의 관리 UI). 근본 수정은 별도 작업. → MILESTONE_1.md §3
+    `inject_global_styles` 와 동일 — `st.markdown(unsafe_allow_html=True)` 사용
+    (`st.html` 은 큰 `<style>` 블록 mount 실패).
     """
     path = ASSETS_DIR / "v2" / "screens" / f"{name}.css"
     if not path.exists():
         return
-    st.html(f"<style>{path.read_text(encoding='utf-8')}</style>")
+    st.markdown(
+        f"<style>{path.read_text(encoding='utf-8')}</style>",
+        unsafe_allow_html=True,
+    )
 
 
 def page_header(

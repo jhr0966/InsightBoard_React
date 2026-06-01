@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-06-01 · screen-CSS 근본 수정 — v2 셸 전 화면 복구 (제대로된 1차 완성)
+
+**브랜치:** `fix-screen-css-injection` (main `8abcaad` 기준 · 트랙 A #85 머지 후)
+
+**맥락:** 사용자 "css 문제 먼저 해결. 제대로된 1차 완성 목표". 트랙 A 가 우회였다면 이건 근본.
+
+**발견 (playwright probe):**
+- `st.html("<style>...")` 가 큰 `<style>` 블록을 sanitize/collapse → DOM 에 전혀 mount 되지 않음.
+- 전역 `inject_global_styles` 50KB+ + screen `inject_screen_css` 28KB **둘 다** 누락.
+- 데이터 관리 페이지 전체에 `--accent-primary` 토큰 0회, `.dm-tab` 0회.
+
+**해결:**
+- `ui/styles.py` 의 두 inject 함수 → `st.markdown(unsafe_allow_html=True)` (다른 코드 경로, sanitize 없음).
+- `tests/test_html_rendering.py` — `styles.py` 명시 예외 (CSS 자산이라 안전).
+
+**검증 (5 area):** total_css `2KB → 100~146KB`, v2 토큰 `0 → 50~99회`, `.dm-tab` radius `0px → 8px`.
+
+**부수효과:** PR #85 의 inline style 안전망은 그대로 유지. 향후 회귀 시 fallback.
+
+**검증:** pytest 654/654 · 금지 패턴 0 · 5 area 실구동 mount 확인.
+
+**다음 (선택):** 변수명 통일 / PR-7 export / PR-8 권한 / 또는 1차 완성 정리.
+
+---
+
 ## 2026-06-01 · 트랙 A: manage UI 검증 + 스타일 수정 + 1차 완성 보고서
 
 **브랜치:** `fix-manage-ui-inline-styles` (main `66ad760` 기준 · PR-6 #84 머지 후)
