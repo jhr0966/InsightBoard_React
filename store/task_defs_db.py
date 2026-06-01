@@ -330,7 +330,10 @@ def upsert_many(
     """대량 UPSERT — (process_id, json_str) 튜플 시퀀스.
 
     Returns: {"created": N, "updated": M}.
-    개별 항목 실패 시 ValueError 를 전체 rollback 으로 전파.
+
+    ⚠ 원자성 없음: 각 항목을 `upsert()` 로 개별 처리하며 행마다 즉시 commit 한다.
+    중간 항목에서 예외가 나면 그대로 전파되지만 **이미 처리된 앞 항목은 롤백되지
+    않는다**(부분 적용 가능). 전체 트랜잭션이 필요하면 호출부에서 보장할 것.
     """
     created = 0
     updated = 0

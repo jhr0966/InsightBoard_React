@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Fixed (Phase 1a — 무논쟁 correctness: F5·F7·F11·F12)
+- **F5 토스트 부재** (`ui/archive_v2.py`): 북마크 채택/보류/복구(`?action=`) 소비 후 `st.toast` 미호출 → 액션 성공 피드백이 없던 문제. `_STATUS_TOAST` 맵 + `render()` 에서 `_consume_action_if_any()` 결과가 있으면 토스트 노출.
+- **F7 chat ts 미영속** (`store/chat_log.py`): `save_history`/`load_history` 가 role/content 만 처리해 `sola_workshop_v2` 가 메시지에 붙인 `ts`(timestamp)가 저장/복원되지 않던 문제. ts 가 있으면 함께 영속·복원(없으면 생략 — 후방 호환). 회귀 테스트 2건 추가(`tests/test_chat_log.py`).
+- **F11 거짓 원자성 주장** (`store/task_defs_db.py::upsert_many`): docstring 이 "개별 항목 실패 시 전체 rollback" 을 주장하나 실제로는 행마다 즉시 commit(부분 적용 가능). docstring 을 실제 동작으로 정정 + 진짜 트랜잭션은 호출부 책임 명시. (함수는 테스트 의존이라 보존 → 데드 여부는 Phase 3 재판정.)
+- **F12 하드코딩 통계** (`ui/sola_workshop_v2.py::_archive_stats`): `match_today=32, opportunities=4` 상수 → `board_v2._archive_stats()`(60초 캐시 `_board_kpis` 실데이터) 위임. 보드와 동일 소스 공유, 실패 시 0 폴백.
+- 과진단 기각: F3(news_cols 동적 필터)·F8(토큰 단위 교집합)·F9(데드 정렬 없음) — 코드 재확인 결과 결함 아님.
+- `docs/REFACTOR_PLAN.md` 신규 — 결함 대장(F-번호)·데드 코드 대장·Phase 0~3 로드맵·결정 대기 항목. Phase 0 문서들이 참조하던 source-of-truth 파일.
+- 검증: pytest 656/656(신규 2) · 금지 패턴 0 · py_compile OK.
+
 ### Changed (문서 정합성 — Phase 0: ARCHITECTURE / CLAUDE / DEV_GUIDELINES / INVARIANTS v2 정렬)
 - `docs/ARCHITECTURE.md` 전면 재작성 — 5영역 디스패치(`app.py` if/elif), v2 셸(`app_shell`·`sidebar`·`chat_panel`), SQLite `task_defs` + Parquet news 이중 저장, `roadmap/query` SQLite 우선 fallback, 데이터 플로우 4단계, 알려진 데드 코드 목록. 옛 5탭 라디오·`ui/*_tab.py` 기술 전부 제거.
 - `CLAUDE.md` 읽기 라우팅 표 → 실제 `ui/*_v2.py` 경로. 절대 규칙 §2 의 `ui/*_tab.py` → v2 셸 모듈 명시.

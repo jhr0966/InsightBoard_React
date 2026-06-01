@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-01 · Phase 1a 무논쟁 correctness (F5·F7·F11·F12)
+
+**브랜치:** `claude/nice-bell-eEZLj` (Phase 0 와 동일 PR #89 — harness 단일 브랜치 제약)
+
+**맥락:** 사용자 "페이즈 순차적으로 진행해". Phase 0(문서) 직후 Phase 1a(코드 correctness) 착수. 단, `docs/REFACTOR_PLAN.md` 가 실재하지 않아(이전 세션 요약에만 존재) Phase 0 문서들이 dangling 참조 상태였음 → 본 작업에서 실제 코드 재확인 후 파일로 생성(참조 복구 + source of truth).
+
+**한 일:**
+- Explore 로 F3·F5·F7·F8·F9·F11·F12 전수 재확인 → **실재 4건(F5/F7/F11/F12)**, **기각 3건(F3/F8/F9, 과진단)**.
+- F5: `archive_v2` 액션 후 `st.toast`. F7: `chat_log` ts 영속+복원. F11: `upsert_many` docstring 정직화. F12: `sola_workshop._archive_stats` → `board_v2._archive_stats()` 위임(실데이터).
+- `tests/test_chat_log.py` ts round-trip 2건 추가.
+- `docs/REFACTOR_PLAN.md` 신규(결함 대장·데드 대장·Phase 로드맵·결정 대기).
+
+**주의/함정:** F12 위임은 `board_v2` 를 함수 내 lazy import(모듈 로드 순환 회피). F1·F2·F4·F6·F10 은 코드에서 재현 안 돼 대장 제외.
+
+**검증:** pytest 656/656 · 금지 패턴 0 · py_compile OK.
+
+**다음:** Phase 2(UI dedup — `app_side_stats`/`ui/toast.py`/`ui/url_state.py`/`get_persona` 승격) 또는 결정-1·2 사용자 확정 후 Phase 1b/1c.
+
+---
+
 ## 2026-06-01 · Phase 0 문서 정합성 (REFACTOR_PLAN D1~D4)
 
 **브랜치:** `claude/nice-bell-eEZLj` (main `afa9e33` 기준 · 변수명 통일 #87 머지 후)

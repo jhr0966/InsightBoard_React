@@ -63,6 +63,12 @@ def _archive_expand_href(col: str, current: frozenset[str]) -> str:
     return "?" + "&".join(parts)
 
 # 카드 액션 URL 매핑 — `?action=...` 키를 set_status 의 값으로 변환.
+_STATUS_TOAST: dict[str, str] = {
+    "adopted": "✅ 채택함으로 옮겼습니다",
+    "rejected": "🗂 보류함으로 옮겼습니다",
+    "pending": "↩ 대기로 되돌렸습니다",
+}
+
 _ACTION_TO_STATUS: dict[str, str] = {
     "adopt": "adopted",
     "reject": "rejected",
@@ -416,7 +422,10 @@ def render() -> None:
     """
     inject_screen_css("archive")
 
-    _consume_action_if_any()
+    _acted = _consume_action_if_any()
+    if _acted is not None:
+        _new_status, _ = _acted
+        st.toast(_STATUS_TOAST.get(_new_status, "상태를 변경했습니다"))
 
     persona = _load_persona()
     stats = _archive_stats_oa()

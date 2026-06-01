@@ -54,9 +54,19 @@ def _load_persona() -> Persona:
 
 
 def _archive_stats() -> dict[str, int]:
-    summary = bookmarks_store.summary_counts()
-    pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
-    return {"match_today": 32, "opportunities": 4, "pending_adopt": pending}
+    """SOLA 좌측 통계 — 보드 KPI 실데이터(`board_v2._archive_stats`) 재사용.
+
+    이전엔 match_today/opportunities 가 하드코딩 상수(32/4)였다. 보드와 동일한
+    60초 캐시 소스(`_board_kpis`)를 공유해 실제 매칭/기회 수를 노출한다.
+    """
+    from ui import board_v2  # lazy — 모듈 로드 순환 회피
+
+    try:
+        return board_v2._archive_stats()
+    except Exception:
+        summary = bookmarks_store.summary_counts()
+        pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
+        return {"match_today": 0, "opportunities": 0, "pending_adopt": pending}
 
 
 def _ctx_archive_summary() -> tuple[int, str]:
