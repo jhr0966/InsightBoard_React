@@ -5,7 +5,41 @@
 
 ---
 
-## 2026-05-31 · SOLA workshop thread 제목 LLM 생성
+## 2026-06-01 · 중간 점검 + 작업 정의 데이터 마이그 계획 확정
+
+**브랜치:** `feat-task-def-plan` (main `fc0a577` 기준 · #75/76 머지 직후)
+
+**맥락:** 사용자의 "전체 시스템 중간점검" 요청. 핵심 결정사항 확정 후 별도 plan 문서로 분리.
+
+**결정 (`docs/TASK_DEF_PLAN.md` 참조)**:
+1. 데이터 관리 화면: 2 그룹 × sub-탭 (뉴스 / 작업)
+2. 엑셀 폼: 9 컬럼 (`process_id` 추가)
+3. 입력: 엑셀(대량) + UI 폼(1건). JSON 업로드 ❌
+4. 재업로드: UPSERT + 미리보기 + 사용자 확인 (같은 id 대체, 새 id 추가, 없는 id 보존)
+5. 저장: SQLite + JSON 컬럼 + history 테이블 (무한 누적)
+6. process_id: UNIQUE PK
+7. 권한: 관리자(all) / 사용자(자기 팀만) — 미래
+
+**작업 분할 (8 PR · 약 2700 LOC · 2~3주)**:
+- PR-1: SQLite store + 스키마
+- PR-2: task_def_json `org_meta` 확장
+- PR-3: 마이그 도구 + ingest 리팩토링
+- PR-4: query.load_latest 어댑터
+- PR-5: 엑셀 업로드 diff 미리보기 + 확인
+- PR-A: 데이터관리 area 2 그룹 재편 (병행)
+- PR-6: 작업 정의 관리 UI (← 1차 완성)
+- PR-7: export (선택)
+- PR-8: 권한 (미래)
+
+**1차 완성 시점:** PR-6 (M3) 완료 — 외부 도구 없이 작업 정의 관리 가능.
+
+**리팩토링 시점:** PR-4 직후 (변수명 통일) · PR-6 후 (선택적 패키지 rename) · PR-7 후 (Parquet 폐기 청소).
+
+**다음 작업:** PR-1 (SQLite store + 스키마) — 가장 위험 낮고 의존성 없음.
+
+---
+
+## 2026-05-31 · SOLA workshop thread 제목 LLM 생성 ✅ merged (#76)
 
 **브랜치:** `feat-thread-title-llm` (main `afa73400` 기준 · #74 머지 직후)
 
