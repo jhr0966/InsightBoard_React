@@ -535,8 +535,12 @@ def _consume_refresh_if_any() -> bool:
     if st.query_params.get("refresh") != "now":
         return False
 
-    # 모든 dm 관련 캐시 무효화
-    for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm):
+    # 모든 dm 관련 캐시 무효화 — `_archive_stats_dm` 는 이제 `board_v2._archive_stats()`
+    # 위임이므로 그 내부의 `_board_kpis` 60초 캐시도 함께 비워야 좌측 nav 카운트가
+    # 즉시 새 수집 결과로 갱신된다 (Phase 2 dedup 회귀 방지).
+    from ui import board_v2 as _bv2  # lazy
+
+    for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm, _bv2._board_kpis):
         if hasattr(fn, "clear"):
             fn.clear()
 
@@ -630,8 +634,10 @@ def _consume_task_def_upload_if_any() -> None:
     if not result.ok:
         st.session_state["_task_def_toast"] = ("error", " · ".join(result.errors)[:300])
     else:
-        # 데이터 관리 캐시 + 보드/인사이트의 _load_tasks 캐시도 invalidate
-        for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm):
+        # 데이터 관리 캐시 + 보드/인사이트의 _load_tasks 캐시도 invalidate.
+        # `_archive_stats_dm` 는 `board_v2._archive_stats()` 위임이라 board 의 _board_kpis 도 비움.
+        from ui import board_v2 as _bv2  # lazy
+        for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm, _bv2._board_kpis):
             if hasattr(fn, "clear"):
                 fn.clear()
         try:

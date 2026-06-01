@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Fixed (Phase 2 회귀 — Codex P2)
+- `ui/data_management_v2._consume_refresh_if_any` / 작업정의 업로드 후 캐시 무효화 루프에 `board_v2._board_kpis.clear()` 추가. Phase 2 에서 `_archive_stats_dm` 가 `board_v2._archive_stats()` 위임으로 바뀌면서 데이터 관리 새로고침 직후 좌측 nav 의 match/opportunity 카운트가 60초 TTL 만료까지 stale 로 남던 회귀 수정.
+
 ### Changed (Phase 2 — UI 중복 제거: `get_persona` 승격 + `app_side_stats` 단일화)
 - `ui/app_shell.get_persona()` 신규 — 5개 v2 화면(`board`/`insights`/`archive`/`sola_workshop`/`data_management`)이 동일 구현하던 `_load_persona` 를 단일 진입점으로 통합. 호출처 일괄 교체.
 - `archive_v2._archive_stats_oa` / `insights_v2._archive_stats_ia` / `data_management_v2._archive_stats_dm` 세 사본을 `board_v2._archive_stats()` 위임으로 교체. `board_v2._board_kpis` 60초 캐시 단일 소스로 일원화 → 좌측 nav 카운트와 보드 KPI 가 항상 일관됨. 4중 캐시 → 1중 캐시.
