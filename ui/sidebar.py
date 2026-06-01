@@ -11,7 +11,7 @@ from ui.components import render_html
 from config import llm_backend, llm_model
 from persona import store as persona_store
 from persona.schema import Persona
-from roadmap.query import load_latest as load_roadmap
+from roadmap.query import load_latest as load_tasks
 from sola.client import is_configured as llm_ready
 
 
@@ -161,7 +161,7 @@ def _sidebar_nav_html(current_area: str) -> str:
     return '<nav class="sidebar-nav" aria-label="업무 흐름">' + "".join(items) + "</nav>"
 
 
-def _render_persona_block(persona: Persona, _roadmap_df) -> None:
+def _render_persona_block(persona: Persona, _tasks_df) -> None:
     """Render a clickable profile summary; editing happens on the main page."""
     _consume_persona_editor_query()
     render_html(_persona_card_html(persona), unsafe_allow_html=True)
@@ -174,11 +174,11 @@ def _render_persona_block(persona: Persona, _roadmap_df) -> None:
 
 def render() -> str:
     """사이드바 렌더링 후 현재 선택된 영역(string) 반환."""
-    roadmap_df = load_roadmap()
+    tasks_df = load_tasks()
     persona = _load_persona_into_state()
 
     # 최상단 사용자 프로필
-    _render_persona_block(persona, roadmap_df)
+    _render_persona_block(persona, tasks_df)
 
     # 브랜드
     render_html(

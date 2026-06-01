@@ -55,7 +55,7 @@ def test_board_chat_context_includes_opportunities_and_matrix_top():
     fake_news = pd.DataFrame([{"title": "x", "source": "y", "collected_at": "2026-05-29T00:00:00+00:00"}])
     fake_roadmap = pd.DataFrame([{"a": 1}])
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=fake_news), \
-         patch.object(board_v2, "_load_roadmap", return_value=fake_roadmap), \
+         patch.object(board_v2, "_load_tasks", return_value=fake_roadmap), \
          patch.object(board_v2, "_score_cells", return_value=cells), \
          patch.object(board_v2, "_board_kpis", return_value={"collect": 0, "match": 0, "opp": 0, "pending": 0}):
         ctx = board_v2.chat_context_block(Persona())
@@ -97,7 +97,7 @@ def test_board_chat_context_empty_state_does_not_crash():
     from ui import board_v2
 
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame()), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame()), \
          patch.object(board_v2, "_weekly_keyword_series", return_value=([], [])):
         ctx = board_v2.chat_context_block(Persona())
     assert "현재 화면: 오늘의 보드" in ctx
@@ -152,7 +152,7 @@ def test_insights_chat_context_includes_screen_marker_and_top_keywords():
         {"keyword": "협동 로봇", "count": 88},
     ])
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"x": 1}])), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame()), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame()), \
          patch.object(insights_v2._trends, "top_keywords", return_value=top), \
          patch.object(insights_v2._trends, "keyword_emergence",
                       return_value={"new": pd.DataFrame(columns=["keyword"])}):
@@ -170,7 +170,7 @@ def test_insights_chat_context_includes_matrix_cells():
          "matched_news": 40, "matched_tasks": 18, "sample_tasks": "", "sample_news": "현대重 PoC 사례"},
     ])
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"x": 1}])), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"y": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"y": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells), \
          patch.object(insights_v2._trends, "top_keywords", return_value=pd.DataFrame(columns=["keyword","count"])), \
          patch.object(insights_v2._trends, "keyword_emergence",

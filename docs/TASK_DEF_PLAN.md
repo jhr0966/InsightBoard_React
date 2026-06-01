@@ -260,7 +260,7 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 
 | 시점 | 항목 | 이유 |
 |---|---|---|
-| **PR-4 직후** | `_load_roadmap()` 호출처 (보드/인사이트/데이터관리/매칭) 의 변수 이름 통일 (`roadmap_df` → `tasks_df`) | "로드맵" 잔여 변수명 정리 (사용자 노출은 이미 "작업 정의" 로 통일됨) |
+| ~~PR-4 직후~~ ✅ 완료 | `_load_roadmap()` 호출처 변수 이름 통일 (`roadmap_df`→`tasks_df`, `load_roadmap`→`load_tasks`) — UI 9 + 테스트 11 파일. 모듈 경로 보존 | "로드맵" 잔여 변수명 정리 (사용자 노출은 이미 "작업 정의" 로 통일됨) |
 | **PR-6 완료 후** | `roadmap/` 패키지를 `tasks/` 로 rename (선택) | 코드 식별자도 "작업 정의" 로 통일. 비용 큼 — 다른 모듈 import 다 수정 |
 | **PR-7 직후** | `data/` 디렉토리 구조 정리 (`data/roadmap/*.parquet` 제거 또는 `data/archive/`로 이동) | Parquet 폐기 후 잔여 청소 |
 | **PR-8 (권한)** | persona 모델 확장 — 현재 single-user → multi-user. login 추가 | 권한 도입 전제 |

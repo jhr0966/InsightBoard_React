@@ -72,12 +72,12 @@ def test_chat_ctx_build_includes_news_and_roadmap():
     news = pd.DataFrame([
         {"title": "용접 자동화", "press": "AITimes"},
     ])
-    roadmap = pd.DataFrame([
+    tasks = pd.DataFrame([
         {"dept": "가공부", "lv3": "전처리"},
         {"dept": "가공부", "lv3": "가공"},
         {"dept": "조립부", "lv3": "가공"},
     ])
-    block = chat_ctx.build_context_block(news, roadmap)
+    block = chat_ctx.build_context_block(news, tasks)
     assert "오늘 뉴스 헤드라인" in block
     assert "용접 자동화" in block
     assert "로드맵 요약" in block

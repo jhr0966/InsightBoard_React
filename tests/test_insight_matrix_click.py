@@ -64,7 +64,7 @@ def test_ia_matrix_svg_bubbles_wrapped_in_a_links():
     insights_v2._ia_matrix_svg.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap",
+         patch.object(insights_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=_synthetic_cells()):
         svg = insights_v2._ia_matrix_svg()
@@ -84,7 +84,7 @@ def test_ia_matrix_svg_selected_key_marks_that_bubble():
     insights_v2._ia_matrix_svg.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap",
+         patch.object(insights_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=_synthetic_cells()):
         svg = insights_v2._ia_matrix_svg(selected_key="용접팀|비드 검사")
@@ -102,7 +102,7 @@ def test_ia_matrix_svg_unknown_key_falls_back_to_first():
     insights_v2._ia_matrix_svg.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap",
+         patch.object(insights_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=_synthetic_cells()):
         svg = insights_v2._ia_matrix_svg(selected_key="없는|셀")
@@ -119,7 +119,7 @@ def test_ia_mtx_rank_html_renders_from_cells():
     insights_v2._ia_mtx_rank_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap",
+         patch.object(insights_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=_synthetic_cells()):
         html = insights_v2._ia_mtx_rank_html()
@@ -139,7 +139,7 @@ def test_ia_mtx_rank_html_marks_selected():
     insights_v2._ia_mtx_rank_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap",
+         patch.object(insights_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=_synthetic_cells()):
         html = insights_v2._ia_mtx_rank_html(selected_key="조립팀|조립 정합")
@@ -154,7 +154,7 @@ def test_ia_mtx_rank_html_empty_state():
     from ui import insights_v2
     insights_v2._ia_mtx_rank_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame()):
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame()):
         html = insights_v2._ia_mtx_rank_html()
     assert "0건" in html
     assert "ia-poc-link" not in html

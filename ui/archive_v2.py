@@ -17,7 +17,7 @@ from urllib.parse import quote
 
 from config import ASSETS_DIR
 from persona.schema import Persona
-from roadmap.query import load_latest as _load_roadmap
+from roadmap.query import load_latest as _load_tasks
 from store import bookmarks as bookmarks_store
 from store.bookmarks import Bookmark
 from store import news_db as _news_db
@@ -337,24 +337,24 @@ def _archive_stats_oa() -> dict[str, int]:
     except Exception:
         news_df = None
     try:
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
-        roadmap_df = None
+        tasks_df = None
 
     match_count = 0
     opp_count = 0
     if (
         news_df is not None and not news_df.empty
-        and roadmap_df is not None and not roadmap_df.empty
+        and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, roadmap_df, top_k=3)
+            matches = _score_matches(news_df, tasks_df, top_k=3)
             if not matches.empty:
                 match_count = int(matches[matches["score"] > 0]["link"].nunique())
         except Exception:
             pass
         try:
-            cells = _score_cells(news_df, roadmap_df)
+            cells = _score_cells(news_df, tasks_df)
             opp_count = int(len(cells))
         except Exception:
             pass

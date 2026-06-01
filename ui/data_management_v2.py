@@ -13,7 +13,7 @@ import streamlit as st
 
 from config import ASSETS_DIR
 from persona.schema import Persona
-from roadmap.query import load_latest as _load_roadmap
+from roadmap.query import load_latest as _load_tasks
 from roadmap import ingest as _ingest
 from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
@@ -366,24 +366,24 @@ def _archive_stats_dm() -> dict[str, int]:
     except Exception:
         news_df = None
     try:
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
-        roadmap_df = None
+        tasks_df = None
 
     match_count = 0
     opp_count = 0
     if (
         news_df is not None and not news_df.empty
-        and roadmap_df is not None and not roadmap_df.empty
+        and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, roadmap_df, top_k=3)
+            matches = _score_matches(news_df, tasks_df, top_k=3)
             if not matches.empty:
                 match_count = int(matches[matches["score"] > 0]["link"].nunique())
         except Exception:
             pass
         try:
-            cells = _score_cells(news_df, roadmap_df)
+            cells = _score_cells(news_df, tasks_df)
             opp_count = int(len(cells))
         except Exception:
             pass
@@ -669,7 +669,7 @@ def _consume_task_def_upload_if_any() -> None:
     if not result.ok:
         st.session_state["_task_def_toast"] = ("error", " · ".join(result.errors)[:300])
     else:
-        # 데이터 관리 캐시 + 보드/인사이트의 _load_roadmap 캐시도 invalidate
+        # 데이터 관리 캐시 + 보드/인사이트의 _load_tasks 캐시도 invalidate
         for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html, _archive_stats_dm):
             if hasattr(fn, "clear"):
                 fn.clear()
@@ -726,7 +726,7 @@ def _render_task_def_upload() -> None:
 
     cur_df = None
     try:
-        cur_df = _load_roadmap()
+        cur_df = _load_tasks()
     except Exception:
         cur_df = None
     cur_count = int(len(cur_df)) if cur_df is not None and not cur_df.empty else 0
@@ -1130,7 +1130,7 @@ def _dm_task_body_html() -> str:
     """작업 정의 탭 본문 — 안내 카드 (실 업로드 위젯은 _render_task_def_upload 가 렌더)."""
     cur_count = 0
     try:
-        cur_df = _load_roadmap()
+        cur_df = _load_tasks()
         cur_count = int(len(cur_df)) if cur_df is not None and not cur_df.empty else 0
     except Exception:
         pass

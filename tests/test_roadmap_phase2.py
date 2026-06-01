@@ -16,7 +16,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "sample_task_def.xlsx"
 
 
 @pytest.fixture
-def sample_roadmap_df():
+def sample_tasks_df():
     """샘플 엑셀 → 정규화된 DataFrame (32행, task_def_json 포함)."""
     df_raw = pd.read_excel(FIXTURE)
     return ingest.normalize_columns(df_raw)
@@ -54,14 +54,14 @@ def test_first_objective_returns_first_or_empty():
 
 # ── store.match — task_def_json 텍스트가 매칭에 영향 ─────────
 
-def test_score_matches_uses_task_def_json_keywords(sample_roadmap_df):
+def test_score_matches_uses_task_def_json_keywords(sample_tasks_df):
     """JSON 정의서의 자동화 영역 키워드 ("RFID OCR 부재번호") 가 뉴스와 매칭."""
     news = pd.DataFrame([
         {"title": "RFID OCR 부재번호 자동 인식 도입 사례",
          "summary": "검수 오류 방지", "keywords": "RFID OCR",
          "source": "AI Times", "link": "http://x/1"},
     ])
-    matches = score_matches(news, sample_roadmap_df, top_k=3)
+    matches = score_matches(news, sample_tasks_df, top_k=3)
     # task_def_json 의 automation area "부재번호 자동 인식 · RFID·OCR" 이
     # 매칭 토큰에 포함되어야 — 판넬 선별 작업과 매칭
     assert not matches.empty
@@ -85,12 +85,12 @@ def test_score_matches_works_without_task_def_json():
 
 # ── sola.opportunity — sample_objectives 컬럼 추가 ──────────
 
-def test_score_cells_includes_sample_objectives_column(sample_roadmap_df):
+def test_score_cells_includes_sample_objectives_column(sample_tasks_df):
     news = pd.DataFrame([
         {"title": "RFID OCR 부재번호 자동 인식", "summary": "검수 오류 방지",
          "keywords": "RFID", "source": "x", "link": "http://x/1"},
     ])
-    cells = score_cells(news, sample_roadmap_df)
+    cells = score_cells(news, sample_tasks_df)
     assert "sample_objectives" in cells.columns
     # 매칭된 cell 의 objective 가 채워짐 (sample_objective 가 비어있을 수도
     # 있지만 컬럼은 항상 존재)

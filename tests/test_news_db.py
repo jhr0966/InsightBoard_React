@@ -44,13 +44,13 @@ def test_save_empty_returns_none():
 
 def test_score_matches_finds_overlap():
     news = pd.DataFrame(_sample_articles())
-    roadmap = pd.DataFrame([
+    tasks = pd.DataFrame([
         {"dept": "가공부", "lv1": "실행분과", "lv2": "구조내업", "lv3": "전처리",
          "task": "강재선별", "sub_task": "크레인", "task_def": "", "sws_no": "", "sws_name": "강재 하역"},
         {"dept": "가공부", "lv1": "실행분과", "lv2": "구조내업", "lv3": "가공",
          "task": "절단", "sub_task": "강재 절단", "task_def": "", "sws_no": "", "sws_name": "절단 작업"},
     ])
-    matches = score_matches(news, roadmap, top_k=2)
+    matches = score_matches(news, tasks, top_k=2)
     assert not matches.empty
     cutting = matches[matches["task"] == "절단"]
     assert not cutting.empty

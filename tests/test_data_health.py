@@ -36,12 +36,12 @@ def test_data_quality_items_ok_when_data_ready():
         {"content": "x" * 80, "source": "naver"},
         {"content": "y" * 90, "source": "google"},
     ])
-    roadmap = pd.DataFrame([
+    tasks = pd.DataFrame([
         {"dept": "생산기술", "lv3": "용접", "task": "용접 자동화"},
         {"dept": "품질", "lv3": "검사", "task": "검사 자동화"},
     ])
 
-    items = data_health.data_quality_items(news, roadmap, llm_configured=True)
+    items = data_health.data_quality_items(news, tasks, llm_configured=True)
 
     assert [item["title"] for item in items] == [
         "뉴스 DB 준비됨",
@@ -56,11 +56,11 @@ def test_data_health_html_escapes_dynamic_values():
     news = pd.DataFrame([
         {"content": "x" * 80, "source": '<script>alert("x")</script>'},
     ])
-    roadmap = pd.DataFrame([
+    tasks = pd.DataFrame([
         {"dept": "생산기술<script>", "lv3": "용접", "task": "자동화"},
     ])
 
-    html = data_health.data_health_html(news, roadmap, llm_configured=False)
+    html = data_health.data_health_html(news, tasks, llm_configured=False)
 
     assert '<script>' not in html
     assert "data-quality-grid" in html
@@ -73,9 +73,9 @@ def test_build_data_context_summarizes_status():
         {"content": "x" * 80, "source": "naver"},
         {"content": "", "source": "google"},
     ])
-    roadmap = pd.DataFrame([{"dept": "생산기술"}])
+    tasks = pd.DataFrame([{"dept": "생산기술"}])
 
-    ctx = data_health.build_data_context(news, roadmap, llm_configured=False)
+    ctx = data_health.build_data_context(news, tasks, llm_configured=False)
 
     assert "오늘 뉴스: 2건 / 본문 확보: 1건 (50%)" in ctx
     assert "정의된 작업: 1건 / 부서: 1개" in ctx
