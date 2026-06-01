@@ -112,13 +112,15 @@ I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 
 
 
 
-## I-13 — 사이드 채팅 패널은 `main_and_chat` 단일 진입점
+## I-13 — 글로벌 채팅 패널은 `ui/chat_panel.py` 단일 진입점
 
-`ui/layout.py::main_and_chat(chat_key, ...)` 가 우측 채팅 패널의 표준 컨텍스트 매니저. 새 탭 추가 시 동일 패턴으로 호출.
+v2 셸에서 본문 끝 채팅 expander 는 `ui/chat_panel.render(persona, area_key=...)` 단 한 곳에서 마운트한다. 어느 area 에서든 사용자가 채팅 입력에 전송한 텍스트는 render 직전 `chat_panel.consume_send_if_any(persona)` 가 단일 처리한다.
 
-- **금지**: 메인 영역에 별도 `st.chat_input` / `st.chat_message` 로 LLM 채팅 UI 를 다시 만들기. (Phase 4 에서 `sola_tab._render_chat` 제거로 일관성 확보 — `ui/proposal_workbench` 의 모드 채팅은 좌측 MD 와 1:1 매칭되는 작업장 전용 패턴으로 예외)
-- **chat_key 네임스페이스**: 페이지마다 고유 문자열. session_state 키(`_chat_open_{key}`, `_sidechat_{key}`, …)와 영구화 파일(`data/sola/chat/{key}.jsonl`)이 이 키로 분리됨.
-- **default_open**: `True` 가 디폴트. 사용자 선호는 `session_state[_chat_open_{key}]` 에 저장되어 페이지마다 독립적으로 보존.
+- **app.py 규약**: SOLA 작업실 area 제외한 모든 area 렌더 직후 `chat_panel.render(_persona, area_key=area)` 호출. SOLA 작업실은 자체 풀스크린 채팅을 가지므로 글로벌 패널 미렌더 (중복 방지).
+- **금지**: 메인 영역에 별도 `st.chat_input` / `st.chat_message` 로 LLM 채팅 UI 를 다시 만들기. SOLA 작업실 풀스크린 채팅은 area 전용 예외.
+- **area_key 네임스페이스**: area 슬러그(이모지 포함 문자열)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 로 분리 저장 (I-15).
+- **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 임시 저장돼 다음 send 에서 사용된다.
+- **데드 인터페이스**: `ui/layout.py::main_and_chat` 는 과거 컨텍스트매니저 패턴이지만 production 호출이 없다. v2 화면 신규/수정 시 사용하지 말 것 (REFACTOR_PLAN Phase 4 에서 삭제 예정).
 
 ## I-14 — LLM 설정은 `config._env_or_secret()` 경유
 

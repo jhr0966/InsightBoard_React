@@ -21,7 +21,7 @@
 | `store/` | 뉴스 Parquet · 매칭 · 트렌드 · 캐시 · 채팅·북마크 영구화 | 데이터 저장·조회·집계 작업 시 |
 | `sola/` | LLM 호출 · 프롬프트 · 요약·제안서·채팅·인사이트·자동화 기회 | LLM 호출·프롬프트·결과 포맷 작업 시 |
 | `persona/` | 사용자 부서·직무·관심 공정 (JSON 영구화) | 페르소나 UI/컨텍스트 주입 작업 시 |
-| `ui/` | 탭 모듈(수집/로드맵/뉴스/보드/SOLA/홈/북마크) · 사이드바 · 작업트리 | UI 변경 시 (해당 `<name>_tab.py` 만 읽기) |
+| `ui/` | v2 셸(`app_shell`·`sidebar`·`chat_panel`·`styles`) + 5영역 화면(`*_v2.py`) + 보조(`onboarding`·`persona_page`·`task_def_manage`·`data_health`) | UI 변경 시 (해당 v2 파일만 읽기) |
 | `config.py` | `.env` 로딩 · LLM 백엔드 라우팅 · 데이터 경로 상수 | 환경/백엔드/경로 작업 시 |
 | `assets/styles.css` | 전역 CSS 토큰·컴포넌트 스타일 | CSS 수정 시에만 |
 | `docs/INVARIANTS.md` | state/위젯 불변식 | state·widget·세션키 작업 시에만 |
@@ -32,26 +32,41 @@
 
 ## 3. 라우팅 표
 
+> v2 셸 기준. CLAUDE.md 의 라우팅 표와 동일. 화면 모듈은 모두 `ui/*_v2.py`.
+
 | 작업 | 읽을 파일 (이것만) |
 |---|---|
 | 스크래퍼 셀렉터·HTTP 버그 | `scraping/<source>.py` (+ `scraping/http.py`) |
 | 새 사이트 추가 (도메인 휴리스틱) | `scraping/tech_sites.py` |
 | 본문 enrich / 키워드·요약 | `scraping/enrich.py` |
-| 로드맵 엑셀 스키마/적재 | `roadmap/{schema,ingest,query}.py` |
+| 일일 cron 수집 | `scraping/run_daily.py`, `scripts/daily_scrape.py` |
+| 로드맵 엑셀 스키마/적재 | `roadmap/{schema,ingest}.py` |
+| 작업 정의 CRUD (SQLite) | `store/task_defs_db.py`, `roadmap/{task_def_form,task_def_json}.py` |
+| 로드맵 조회 (SQLite→Parquet) | `roadmap/{query,sqlite_sync}.py` |
 | 뉴스↔작업 매칭 | `store/match.py` |
 | 자동화 기회 매트릭스 | `sola/opportunity.py` |
-| 트렌드·캐시·북마크·채팅 영구화 | `store/{trends,cache,bookmarks,chat_log}.py` |
+| 트렌드·캐시·북마크·채팅 영구화 | `store/{trends,cache,bookmarks,chat_log,sola_threads,sources}.py` |
 | LLM 호출·프롬프트 | `sola/client.py` + `sola/prompts.py` |
-| 요약·제안서·채팅 컨텍스트·인사이트 | `sola/{summarize,propose,chat_ctx,insight}.py` |
+| 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
 | 페르소나 | `persona/{schema,store,context}.py` |
-| UI 탭 변경 | `ui/<name>_tab.py` |
-| 사이드바·작업 트리 | `ui/sidebar.py`, `ui/task_tree.py` |
-| 영역/탭/세션 상태 | `app.py` + `docs/INVARIANTS.md` |
+| 📊 오늘의 보드 화면 | `ui/board_v2.py` |
+| 🧱 데이터 관리 화면 | `ui/data_management_v2.py` (+ `ui/task_def_manage.py`, `ui/data_health.py`) |
+| 🔎 인사이트 분석 화면 | `ui/insights_v2.py` |
+| 🤖 SOLA 작업실 화면 | `ui/sola_workshop_v2.py` |
+| 📦 산출물 보관함 화면 | `ui/archive_v2.py` |
+| v2 셸 (topbar·좌측 nav·우측 SOLA 패널·⌘K) | `ui/app_shell.py` |
+| 사이드바 / 페르소나 모달 / 온보딩 | `ui/sidebar.py`, `ui/persona_page.py`, `ui/onboarding.py` |
+| 글로벌 채팅 패널 (본문 끝) | `ui/chat_panel.py` |
+| 영역/디스패치/세션 상태 | `app.py` + `docs/INVARIANTS.md` |
 | CSS만 수정 | `ui/styles.py`, `assets/styles.css` |
+| HTML 컴포넌트 빌더 | `ui/components.py` |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
+| 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
 | 이전 세션 복원 | `docs/SESSIONS.md` (상단 1개) |
 | 릴리스/버전 | `CHANGELOG.md` |
 | 단순 문답 | **CLAUDE.md 만으로 충분** |
+
+> ⚠ 데드 (`docs/REFACTOR_PLAN.md` Phase 4 에서 정리): `ui/layout.py`, `ui/task_tree.py`, `sola/{propose,summarize,insight,chat_ctx}.py`, `store/task_defs_db.upsert_many`.
 
 ## 4. 불변 규칙 요약
 

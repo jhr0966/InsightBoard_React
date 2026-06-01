@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (문서 정합성 — Phase 0: ARCHITECTURE / CLAUDE / DEV_GUIDELINES / INVARIANTS v2 정렬)
+- `docs/ARCHITECTURE.md` 전면 재작성 — 5영역 디스패치(`app.py` if/elif), v2 셸(`app_shell`·`sidebar`·`chat_panel`), SQLite `task_defs` + Parquet news 이중 저장, `roadmap/query` SQLite 우선 fallback, 데이터 플로우 4단계, 알려진 데드 코드 목록. 옛 5탭 라디오·`ui/*_tab.py` 기술 전부 제거.
+- `CLAUDE.md` 읽기 라우팅 표 → 실제 `ui/*_v2.py` 경로. 절대 규칙 §2 의 `ui/*_tab.py` → v2 셸 모듈 명시.
+- `DEV_GUIDELINES.md §2·§3` 동기화. v2 셸 + 5영역 + 보조 모듈 라우팅으로 일원화. 데드 모듈 경고 추가.
+- `docs/INVARIANTS.md I-13` 정정 — `ui/layout.py::main_and_chat` (데드) → `ui/chat_panel.{render,consume_send_if_any}` 단일 진입점 + area_key 슬러그 + SOLA 작업실 풀스크린 예외 명시. 데드 인터페이스 경고로 마무리.
+- 코드 변경 0. `docs/REFACTOR_PLAN.md` 의 Phase 0 (D1~D4) 완수.
+
 ### Changed (변수명 통일 — `roadmap_df`/`load_roadmap` → `tasks_df`/`load_tasks`)
 - UI 9파일 + 테스트 11파일에서 "로드맵" 잔여 변수·식별자를 "작업(tasks)" 으로 통일 (사용자 노출 라벨은 이미 "작업 정의" 로 통일됨, 이번엔 내부 코드 식별자 정리).
   - import alias: `load_latest as load_roadmap` / `_load_roadmap` → `load_tasks` / `_load_tasks`.

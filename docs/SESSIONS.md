@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-06-01 · Phase 0 문서 정합성 (REFACTOR_PLAN D1~D4)
+
+**브랜치:** `claude/nice-bell-eEZLj` (main `afa9e33` 기준 · 변수명 통일 #87 머지 후)
+
+**맥락:** `docs/REFACTOR_PLAN.md` (PR #88) 의 Phase 0 — 문서가 옛 5탭 라디오·`ui/*_tab.py`·Parquet-만 시대를 가리키고 있어 Claude Code 작업 효율 저하. 결정 1·2 (A·A) 확정 후 무논쟁 항목부터 착수.
+
+**한 일:**
+- `docs/ARCHITECTURE.md` 전면 재작성 (5영역 if/elif 디스패치, v2 셸 3축, SQLite task_defs, query.py SQLite 우선 fallback, 데드 코드 명시).
+- `CLAUDE.md` 라우팅 표 → 실제 `ui/*_v2.py` 경로. 절대 규칙 §2 의 `ui/*_tab.py` 문구 갱신.
+- `DEV_GUIDELINES.md §2·§3` CLAUDE 와 동기화.
+- `docs/INVARIANTS.md I-13` → `ui/chat_panel` 단일 진입점 (이전: 데드 `ui/layout.main_and_chat`).
+- Phase 0 는 문서만, 코드 변경 0.
+
+**주의/함정:** 지정 브랜치 `claude/nice-bell-eEZLj` 가 5/29에 갈라진 stale 상태(main 보다 38커밋 뒤, 고유 46커밋이 main 에서 이미 추월·포함). 사용자 결정에 따라 `git reset --hard origin/main` 후 작업 → force push.
+
+**검증:** 문서만 변경. `python -m py_compile` 대상 0. pytest 영향 없음.
+
+**다음:** Phase 1a (무논쟁 correctness: F5/F7/F8/F9/F11/F12) → Phase 2 (UI dedup) → 결정-1·결정-2 반영 Phase 1b/1c.
+
+---
+
 ## 2026-06-01 · 변수명 통일 (roadmap_df → tasks_df) — 1차 완성 정리
 
 **브랜치:** `refactor-tasks-df-naming` (main `f121f29` 기준 · screen-CSS #86 머지 후)
