@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-01 · PR-3: 로드맵 Parquet → SQLite 동기화 + 마이그 CLI
+
+**브랜치:** `feat-ingest-sqlite` (main `832b099` 기준 · PR-1 #78 + PR-2 #79 머지 후)
+
+**맥락:** `docs/TASK_DEF_PLAN.md` M1 / PR-3. 엑셀 ingest 와 1회성 마이그에서 작업 정의를 SQLite 로 적재. Parquet 흐름은 유지 (PR-4 가 reader 전환).
+
+**구현:**
+- `roadmap/sqlite_sync.py` — `row_to_task_def` + `sync_dataframe` (`SyncResult`).
+- `roadmap/ingest.py` — `to_sqlite=True` best-effort UPSERT, `IngestResult.sqlite_*`.
+- `roadmap/schema.py` — `공정ID` → `process_id` 매핑 + 컬럼.
+- `scripts/migrate_roadmap_to_sqlite.py` — 마이그 CLI (`--file/--dry-run`).
+- process_id: 컬럼 우선 → JSON 내부 fallback. team/dept 없으면 skip.
+
+**검증:** pytest 573/573 · 금지 패턴 0 · 신규 16건. 샘플 엑셀 32행 중 31건 적재(1건 JSON 빈 행 skip — 정상).
+
+**다음:** PR-4 (`roadmap/query.py::load_latest` → SQLite SELECT, DataFrame 반환 유지) — 호출처(보드/인사이트/매칭/데이터관리) 무변경 보장.
+
+---
+
 ## 2026-06-01 · PR-1: 작업 정의 SQLite 저장소 + CRUD
 
 **브랜치:** `feat-task-defs-db` (main `3b2455b` 기준 · #77 머지 직후)

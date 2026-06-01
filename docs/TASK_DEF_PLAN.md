@@ -279,12 +279,13 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 - [x] `org_meta_of(json_text)` + `validate_task_def_json(json_text)` + `TaskDefJsonError` 추가
 - [x] tests: 단위 18건
 
-### PR-3: 마이그 도구 + ingest 리팩토링
-- [ ] `scripts/migrate_roadmap_to_sqlite.py` — Parquet → SQLite
-- [ ] `roadmap/ingest.py::ingest_excel` 수정 — UPSERT to SQLite
-- [ ] 엑셀 9 컬럼 폼 검증 (`process_id` 컬럼 강제)
-- [ ] 폴백 읽기: SQLite 없으면 Parquet 시도
-- [ ] tests: 통합 15건
+### PR-3: 마이그 도구 + ingest 리팩토링 ✅
+- [x] `scripts/migrate_roadmap_to_sqlite.py` — Parquet → SQLite (`--file/--dry-run/--changed-by`)
+- [x] `roadmap/ingest.py::ingest_excel` 수정 — `to_sqlite=True` best-effort UPSERT
+- [x] `roadmap/sqlite_sync.py` — `row_to_task_def` + `sync_dataframe`
+- [x] 엑셀 9 컬럼 폼 — `공정ID` → `process_id` 매핑 (없으면 JSON 내부 fallback)
+- [~] 폴백 읽기 (SQLite 없으면 Parquet): PR-4 의 reader 전환 시점으로 이관
+- [x] tests: 통합 16건
 
 ### PR-4: query 어댑터
 - [ ] `roadmap/query.py::load_latest` → SQL SELECT 로 변경 (DataFrame 반환 유지)

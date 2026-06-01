@@ -37,6 +37,10 @@ COLUMN_MAP: dict[str, str] = {
     "작업": "task",
     "세부 작업": "sub_task",
     "세부작업": "sub_task",
+    # 공정 고유 ID (신버전 9 컬럼 폼 — SQLite PK)
+    "공정ID": "process_id",
+    "공정 ID": "process_id",
+    "공정아이디": "process_id",
     # 작업 정의 (줄글 / 구조화 JSON)
     "작업 정의": "task_def",
     "작업정의": "task_def",
@@ -60,6 +64,7 @@ OPTIONAL_COLUMNS: tuple[str, ...] = (
     "task_def_json",   # 신버전 구조화 JSON
     "division",        # 신버전 "분과"
     "process",         # 신버전 "공정"
+    "process_id",      # 신버전 "공정ID" — SQLite PK (없으면 JSON 내부에서 추출)
     "sws_no",
     "sws_name",
 )
@@ -80,5 +85,6 @@ class RoadmapRow:
     task_def_json: str = ""   # 신규 — Structured JSON 원본 텍스트
     division: str = ""         # 신규 — 분과
     process: str = ""          # 신규 — 공정
+    process_id: str = ""       # 신규 — 공정ID (SQLite PK)
     sws_no: str = ""
     sws_name: str = ""
