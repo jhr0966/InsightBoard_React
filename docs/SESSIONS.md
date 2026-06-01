@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-01 · UI Phase A — 셸 v3 3영역 네이티브 재건
+
+**브랜치:** `claude/charming-sagan-REsgM`
+
+**맥락:** 사용자 UI/UX 전면 재검토 지시(6개 항목: 화면 역할·연계, 모든 화면 좌측 사이드바+우측 채팅, 3영역 겹침, 죽은 버튼, 컨텐츠 정리, 폰트·테마 설정). 전수 분석 결과 — UI 가 "디자인 시안을 반쯤만 배선한 프로토타입"(우측 `.app-sola` 패널 전체 disabled 목업, 좌측 패널 이중화, 매직 패딩, 제안서 루프 단절, 정적 가짜 데이터 다수). 재수립 계획 Phase A~G 합의 후 **Phase A(셸 재건, 네이티브 방식)부터** 착수.
+
+**한 일:**
+- `app.py` 가 레이아웃 소유 — `with st.sidebar: sidebar.render()`(네이티브 좌측 nav 단일 소스) + `st.columns([2.7,1])` main/chat. 우측 `chat_panel.render_side()` = 실제 작동 채팅(form). SOLA 작업실만 풀폭(자체 셸).
+- `app_shell.render_app_side`/`render_app_sola` → no-op(Phase C 삭제 예정). `render_topbar` fixed→static.
+- `sidebar.py` 통계 3칸 추가(구 app-side 정보 보존). CSS 3종(overrides/shell/scale) 매직패딩·고정패널 제거 + 우측 컬럼 sticky.
+- INVARIANTS I-13 · ARCHITECTURE 셸 도식 갱신.
+
+**주의/함정:** `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 못 담음 → `render_side` 는 `st.form`(text_area+submit)으로 우회. 컬럼 sticky 는 `.side-chat-marker` + `[data-testid="stColumn"]:has()` 훅. 화면 템플릿에 내장된 가짜 우측 패널(insights ia-sola, archive 하단)은 Phase C 정리 대상(이번엔 셸만).
+
+**검증:** pytest 656/656 · 금지 패턴 0 · py_compile OK · playwright 5화면 캡처로 3영역 분리·겹침 없음·SOLA 일관 육안 확인.
+
+**다음:** Phase B(제안서 엔진 복원) → Phase C(화면별 컨텐츠 정리·죽은 버튼 와이어/삭제) → Phase D(설정: 테마·폰트) → E(매칭 가중치) → F(위생/관측성) → G(고도화).
+
+---
+
 ## 2026-06-01 · PR #89 머지 직전 docs 정리
 
 **브랜치:** `claude/nice-bell-eEZLj` (PR #89 — Phase 0+1a+2)

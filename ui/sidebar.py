@@ -161,6 +161,40 @@ def _sidebar_nav_html(current_area: str) -> str:
     return '<nav class="sidebar-nav" aria-label="업무 흐름">' + "".join(items) + "</nav>"
 
 
+def _side_stats_html(stats: dict) -> str:
+    """좌측 사이드바 통계 3칸 (오늘 매칭 / 자동화 기회 / 채택 대기).
+
+    이전 고정 HTML `.app-side` 의 통계 블록을 네이티브 사이드바로 이전 (Phase A).
+    값은 `board_v2._archive_stats()` (60초 캐시 실데이터) 위임 — 보드 KPI 와 일관.
+    """
+    cells = (
+        ("오늘 매칭", int(stats.get("match_today", 0))),
+        ("자동화 기회", int(stats.get("opportunities", 0))),
+        ("채택 대기", int(stats.get("pending_adopt", 0))),
+    )
+    inner = "".join(
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="font-size:21px; font-weight:800; color:#0F172A; line-height:1.1;">{v}</div>'
+        f'<div style="font-size:11px; color:#64748B; margin-top:2px;">{_html.escape(lbl)}</div>'
+        f'</div>'
+        for lbl, v in cells
+    )
+    return (
+        '<div style="display:flex; gap:6px; margin:10px 0 4px; padding:11px 10px; '
+        'background:#F5F7FB; border:1px solid #E5E7EB; border-radius:10px;">'
+        f'{inner}</div>'
+    )
+
+
+def _load_side_stats() -> dict:
+    """board 의 실데이터 통계 위임 — 실패 시 0 폴백 (사이드바가 죽지 않게)."""
+    try:
+        from ui import board_v2
+        return board_v2._archive_stats()
+    except Exception:
+        return {"match_today": 0, "opportunities": 0, "pending_adopt": 0}
+
+
 def _render_persona_block(persona: Persona, _tasks_df) -> None:
     """Render a clickable profile summary; editing happens on the main page."""
     _consume_persona_editor_query()
@@ -179,6 +213,9 @@ def render() -> str:
 
     # 최상단 사용자 프로필
     _render_persona_block(persona, tasks_df)
+
+    # 실데이터 통계 3칸 (보드 KPI 와 동일 소스)
+    render_html(_side_stats_html(_load_side_stats()), unsafe_allow_html=True)
 
     # 브랜드
     render_html(

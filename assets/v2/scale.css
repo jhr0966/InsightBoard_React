@@ -39,22 +39,10 @@ body:has(.db-topbar) h4 {
 }
 
 /* ════════════════════════════════════════════════════════════
-   3) Panel widths
+   3) (Phase A 제거) 본문 매직 패딩 — fixed 패널 폭에 수동 정합하던 규칙.
+      네이티브 사이드바 + st.columns 가 폭을 관리하므로 더 이상 필요 없다.
+      block-container 좌우 패딩은 streamlit-overrides.css 가 28px 로 통일.
    ════════════════════════════════════════════════════════════ */
-body:has(.db-topbar) .app-side  { width: 304px !important; }
-body:has(.db-topbar) .app-sola  { width: 440px !important; }
-
-body:has(.db-topbar) .main .block-container,
-body:has(.db-topbar) [data-testid="stMain"] .block-container {
-  padding-left: 344px !important;
-  padding-right: 480px !important;
-}
-
-/* SOLA 작업실: app-sola 없는 화면 — 우측 패딩 축소 */
-body:has(.ws-shell) .main .block-container,
-body:has(.ws-shell) [data-testid="stMain"] .block-container {
-  padding-right: 32px !important;
-}
 
 /* ════════════════════════════════════════════════════════════
    4) 사이드바 + SOLA 패널 상단/하단 여유 — top 80px (시안 72px → 8px 더)

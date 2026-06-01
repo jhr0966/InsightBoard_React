@@ -1,79 +1,55 @@
 /* ──────────────────────────────────────────────────────────────
-   v2 design: Streamlit chrome 무력화 + 본문 컨테이너 패딩 조정
+   v2 design (Phase A) — 네이티브 사이드바 기반 3영역 레이아웃
    ──────────────────────────────────────────────────────────────
-   v2 는 fixed 풀폭 헤더 (.db-topbar) + fixed 좌/우 패널 (.app-side, .app-sola)
-   을 직접 그린다. Streamlit 의 기본 헤더·사이드바·기본 패딩이 이 레이아웃과
-   충돌하므로 여기서 무력화.
+   Phase A 재건: 좌측은 Streamlit 네이티브 사이드바(st.sidebar)가 nav 단일 소스,
+   우측 채팅은 st.columns 컬럼(.side-chat-marker)이 담당. 이전의 fixed 좌/우 패널
+   (.app-side/.app-sola)과 본문 매직 패딩(344/480px)을 제거해 영역 겹침을 없앤다.
 
-   v2 셸 활성 여부는 `body:has(.db-topbar)` 로 분기 — 화면이 v2 셸을 그리면
-   자동 적용, 아닐 땐 Streamlit 기본 크롬 유지. JS 토글 없이 화면별 점진 마이그
-   레이션 가능. */
+   v2 셸 활성 여부는 `body:has(.db-topbar)` 로 분기 — in-flow 페이지 헤더(.db-topbar)
+   가 있으면 적용. */
 
-/* ── v2 셸이 그려진 화면에서만 적용 ─────────────────────────── */
+/* Streamlit 기본 상단 헤더만 숨김 (페이지 헤더는 in-flow .db-topbar 가 대체).
+   네이티브 사이드바는 이제 좌측 nav 의 단일 소스라 숨기지 않는다. */
 body:has(.db-topbar) [data-testid="stHeader"] {
   display: none !important;
 }
 
-body:has(.db-topbar) [data-testid="stSidebar"],
-body:has(.db-topbar) [data-testid="stSidebarCollapsedControl"] {
-  display: none !important;
-}
-
-/* 본문 컨테이너 — topbar 80.4px + 16px gap = 96px 부터 콘텐츠 시작 */
+/* 본문 컨테이너 — 네이티브 사이드바가 좌측 폭을 자동 확보하고, 우측 채팅은
+   컬럼이 담당하므로 매직 패딩 불필요. 좌우 균일한 여백만 준다. */
 body:has(.db-topbar) [data-testid="stAppViewContainer"] > .main,
 body:has(.db-topbar) [data-testid="stMain"] {
-  padding-top: 96px !important;     /* 패널 top: 96px 와 일치 */
+  padding-top: 8px !important;
 }
-
-/* Streamlit element wrapper 들이 자체 margin / gap 으로 첫 콘텐츠를 아래로
-   밀어내는 문제. v2 화면은 셸이 자체 레이아웃을 그리므로 Streamlit 의 default
-   gap (1rem) 과 element margin 을 모두 0 으로 강제. */
-body:has(.db-topbar) [data-testid="stMain"] [data-testid="stVerticalBlock"] {
-  gap: 0 !important;
-}
-body:has(.db-topbar) [data-testid="stMain"] [data-testid="stElementContainer"],
-body:has(.db-topbar) [data-testid="stMain"] [data-testid="stMarkdownContainer"],
-body:has(.db-topbar) [data-testid="stMain"] [data-testid="stHtml"] {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-/* block-container 가 본문 폭을 잡음. v2 패널 폭 + 16px outer + 24px gap 확보 */
 body:has(.db-topbar) .main .block-container,
 body:has(.db-topbar) [data-testid="stMain"] .block-container {
   max-width: none !important;
   padding-top: 0 !important;
-  padding-left: 280px !important;     /* 16 outer + 240 side + 24 gap */
-  padding-right: 384px !important;    /* 16 outer + 344 SOLA + 24 gap */
-  padding-bottom: 32px !important;
+  padding-left: 28px !important;
+  padding-right: 28px !important;
+  padding-bottom: 36px !important;
 }
 
-/* 사이드바 접힘 / SOLA 접힘 시 본문 좌·우 패딩 축소 */
-body.app-side-collapsed:has(.db-topbar) .main .block-container,
-body.app-side-collapsed:has(.db-topbar) [data-testid="stMain"] .block-container {
-  padding-left: 80px !important;
-}
-body.app-sola-collapsed:has(.db-topbar) .main .block-container,
-body.app-sola-collapsed:has(.db-topbar) [data-testid="stMain"] .block-container {
-  padding-right: 80px !important;
-}
-
-/* SOLA workshop — .app-side 미렌더이므로 좌측 패딩 제거 (ws-threads 가 좌측 자리).
-   우측은 ws-ctx 가 본문 안에 있으므로 별도 처리 불필요. */
-body:has(.ws-shell) .main .block-container,
-body:has(.ws-shell) [data-testid="stMain"] .block-container {
-  padding-left: 16px !important;
+/* ── 우측 채팅 컬럼 (chat_panel.render_side) — sticky 패널화 ──────────
+   컬럼 안에 렌더된 `.side-chat-marker` 를 :has() 로 잡아 컬럼 자체를 패널로. */
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker) {
+  position: sticky;
+  top: 12px;
+  align-self: flex-start;
+  background: #FFFFFF;
+  border: 1px solid var(--surface-divider, #E5E7EB);
+  border-radius: 14px;
+  padding: 12px 14px 14px;
+  box-shadow: var(--shadow-2, 0 4px 12px rgba(15,23,42,0.06));
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
 }
 
-/* Streamlit 기본 토스트 / 시스템 메시지 위치 조정 (헤더 가림 방지) */
+/* Streamlit 기본 토스트 위치 (in-flow 헤더라 상단 가림 없음) */
 body:has(.db-topbar) [data-testid="stToast"] {
-  top: 76px !important;
+  top: 12px !important;
 }
 
-/* v2 가 활성일 때 stApp 배경을 v2 page-bg 로 — card.css 가 unconditionally
-   stApp 에 #F3F5F8 을 깔지만 명시적으로 v2 셸과 같이 묶어 둔다. */
+/* v2 활성 시 앱 배경 */
 body:has(.db-topbar) .stApp {
   background: #F3F5F8 !important;
 }

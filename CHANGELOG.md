@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Changed (UI Phase A — 셸 v3: 3영역 레이아웃 네이티브 재건)
+- **레이아웃 소유권을 `app.py` 로 이전**: 좌측은 Streamlit 네이티브 `st.sidebar`(nav 단일 소스), 본문은 `st.columns([2.7, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `chat_panel.render_side()` 가 **실제 작동하는** 채팅(form text_area + 보내기 → `_do_sola_send` → `consume_send_if_any`)을 렌더. SOLA 작업실만 자체 풀스크린(스레드+채팅+ctx)이라 우측 컬럼 없이 풀폭.
+- **제거된 근본 원인**: ① 좌측 패널 이중화(네이티브 `st.sidebar` 를 CSS 로 숨기고 고정 HTML `.app-side` 를 따로 그리던 구조 → nav 정의 2벌) ② 본문 매직 패딩(`padding-left:344px`/`padding-right:480px` 가 고정 패널 폭에 수동 정합 → 어긋나면 겹침) ③ 우측 `.app-sola` 패널 전체가 `disabled` 목업(입력창·보내기·빠른질문 전부 비활성)이라 진짜 채팅은 본문 끝에 따로 있던 이중 채팅.
+- `ui/app_shell.render_app_side` / `render_app_sola` → **no-op**(호출부 호환 유지, 본문은 Phase C 에서 함수째 삭제). `render_topbar` 는 in-flow 페이지 헤더로 전환(fixed → static), `.v2-scroll-fade` 숨김.
+- `ui/sidebar.py` — 네이티브 사이드바에 통계 3칸(오늘 매칭/자동화 기회/채택 대기, `board_v2._archive_stats` 실데이터 위임) 추가해 구 `.app-side` 정보 보존.
+- CSS: `streamlit-overrides.css` 네이티브 사이드바 노출 + 매직 패딩 제거 + 우측 채팅 컬럼 sticky(`[data-testid="stColumn"]:has(.side-chat-marker)`). `shell.css` `.db-topbar` static 화. `scale.css` 패널 폭/본문 패딩 규칙 제거.
+- `docs/INVARIANTS.md I-13` · `docs/ARCHITECTURE.md` — 네이티브 셸 기준으로 갱신.
+- **검증**: pytest 656/656 · 금지 패턴(on_click/raw requests) 0 · py_compile OK · playwright 5화면 캡처 — 3영역(사이드바·본문·채팅) 겹침 없이 분리 확인, SOLA 작업실도 동일 네이티브 사이드바로 일관.
+
 ### Docs (다음 세션 준비)
 - `docs/REFACTOR_PLAN.md` 끝에 "다음 세션 시작점" 섹션 — Phase 1b/1c 의 브랜치명·진입 파일·UX 안 3개·완료 기준·시작 명령 명시.
 - 옛 계획·블루프린트 7건(`DEVELOPMENT_PHASES`/`MILESTONE_1`/`TASK_DEF_PLAN`/`UX_QA_CHECKLIST`/`UX_REDESIGN_PLAN`/`VIBE_CODING_BLUEPRINT`/`WORKFLOW`)에 역사적 기록 표식 + `REFACTOR_PLAN`/`CLAUDE.md` 로의 redirect 헤더.
