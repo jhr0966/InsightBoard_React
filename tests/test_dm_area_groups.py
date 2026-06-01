@@ -40,7 +40,8 @@ def test_resolve_defaults_when_both_missing():
 
 
 def test_resolve_grp_only_uses_group_default_tab():
-    assert dm._dm_resolve_group_and_tab("tasks", None) == ("tasks", "task")
+    # PR-6: tasks 그룹 기본 탭 → manage (1차 완성 UI).
+    assert dm._dm_resolve_group_and_tab("tasks", None) == ("tasks", "manage")
     assert dm._dm_resolve_group_and_tab("news", None) == ("news", "jobs")
 
 
@@ -48,7 +49,7 @@ def test_resolve_invalid_grp_or_tab_is_ignored():
     # 잘못된 grp → 무시
     assert dm._dm_resolve_group_and_tab("nope", "kw") == ("news", "kw")
     # 잘못된 tab → 빈 취급
-    assert dm._dm_resolve_group_and_tab("tasks", "nope") == ("tasks", "task")
+    assert dm._dm_resolve_group_and_tab("tasks", "nope") == ("tasks", "manage")
 
 
 def test_resolve_grp_corrected_to_match_tab():
@@ -72,10 +73,15 @@ def test_dm_tab_href_includes_dm_grp_for_non_default():
     assert "dm_grp=news" in href_kw
     assert "dm_tab=kw" in href_kw
 
+    # PR-6: manage 가 tasks 그룹 기본 탭 → dm_tab 생략
+    href_manage = dm._dm_tab_href("manage")
+    assert "dm_grp=tasks" in href_manage
+    assert "dm_tab=" not in href_manage
+
     href_task = dm._dm_tab_href("task")
     assert "dm_grp=tasks" in href_task
-    # task 는 tasks 그룹의 기본 탭이므로 dm_tab 생략
-    assert "dm_tab=" not in href_task
+    # task 는 기본 탭 아님 → dm_tab 명시
+    assert "dm_tab=task" in href_task
 
     href_src = dm._dm_tab_href("src")
     assert "dm_grp=news" in href_src
@@ -86,7 +92,8 @@ def test_dm_tab_href_includes_dm_grp_for_non_default():
 
 def test_dm_group_href_points_to_group_default_tab():
     assert dm._dm_group_href("news") == dm._dm_tab_href("jobs")
-    assert dm._dm_group_href("tasks") == dm._dm_tab_href("task")
+    # PR-6: tasks 기본 탭은 manage
+    assert dm._dm_group_href("tasks") == dm._dm_tab_href("manage")
 
 
 def test_dm_groups_html_renders_both_groups_and_marks_active():
@@ -128,10 +135,11 @@ def test_dm_tabs_html_news_group_shows_only_news_tabs():
     assert "작업 정의" not in html
 
 
-def test_dm_tabs_html_tasks_group_shows_only_task_tab():
-    """tasks 그룹에서는 task 만."""
-    html = dm._dm_tabs_html("task", {"active_sources": 0, "today_count": 0})
-    assert "작업 정의" in html
+def test_dm_tabs_html_tasks_group_shows_tasks_tabs():
+    """tasks 그룹: task (엑셀 업로드) + manage (작업 정의 관리) — 2개."""
+    html = dm._dm_tabs_html("manage", {"active_sources": 0, "today_count": 0})
+    assert "엑셀 업로드" in html
+    assert "작업 정의 관리" in html
     assert "수집잡 · 뉴스 라이브러리" not in html
     assert "키워드" not in html
     assert "출처 설정" not in html

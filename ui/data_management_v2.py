@@ -495,6 +495,10 @@ def render() -> None:
     _consume_task_def_upload_if_any()
     _consume_src_action_if_any()
     _consume_src_add_if_any()
+    # PR-6: 작업 정의 관리 액션/저장 — toast 는 manage 본문에서 직접 노출
+    from ui import task_def_manage as _tdm
+    _tdm.consume_td_action_if_any()
+    _tdm.consume_td_save_if_any()
 
     app_shell.render_setup_banner_if_needed()
     _render_refresh_toast_if_needed()
@@ -513,6 +517,9 @@ def render() -> None:
     # ── 3.5) 탭 전용 Streamlit 위젯 ──
     if selected_tab == "task":
         _render_task_def_upload()
+    elif selected_tab == "manage":
+        from ui import task_def_manage as tdm
+        tdm.render(st.query_params)
     elif selected_tab == "src":
         _render_src_add_form()
 
@@ -867,11 +874,13 @@ def _render_task_def_diff_preview(pending: dict) -> None:
 
 # ── B.5 데이터관리 4 탭 wire (jobs / kw / task / src) ────────────
 # PR-A: 2 그룹 × sub-탭 재편. 그룹은 segmented control, sub-탭은 그룹 내부에서만 렌더.
-_DM_TABS = ("jobs", "kw", "task", "src")
+# PR-6: tasks 그룹에 manage sub-탭 추가 (작업 정의 관리 UI).
+_DM_TABS = ("jobs", "kw", "task", "manage", "src")
 _DM_TAB_LABEL = {
     "jobs": "수집잡 · 뉴스 라이브러리",
     "kw": "키워드",
-    "task": "작업 정의",
+    "task": "📊 엑셀 업로드",
+    "manage": "✏️ 작업 정의 관리",
     "src": "출처 설정",
 }
 
@@ -880,9 +889,9 @@ _DM_GROUPS = ("news", "tasks")
 _DM_GROUP_LABEL = {"news": "📰 뉴스 데이터", "tasks": "📋 작업 데이터"}
 _DM_GROUP_TABS: dict[str, tuple[str, ...]] = {
     "news":  ("jobs", "kw", "src"),
-    "tasks": ("task",),  # PR-6 가 "manage" 추가 예정
+    "tasks": ("task", "manage"),  # PR-6 — manage 신규
 }
-_DM_GROUP_DEFAULT_TAB = {"news": "jobs", "tasks": "task"}
+_DM_GROUP_DEFAULT_TAB = {"news": "jobs", "tasks": "manage"}
 
 
 def _dm_group_of(tab: str) -> str:
@@ -922,6 +931,7 @@ _DM_TAB_ICON_SVG = {
     "jobs": "<polyline points='23 4 23 10 17 10'/><path d='M3.51 9a9 9 0 0114.85-3.36L23 10'/>",
     "kw": "<circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/>",
     "task": "<path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11'/>",
+    "manage": "<path d='M12 20h9'/><path d='M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z'/>",
     "src": (
         "<circle cx='12' cy='12' r='3'/><path d='M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15 1.65 1.65 0 003.09 14H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 4.6 1.65 1.65 0 009 3.09V3a2 2 0 014 0v.09A1.65 1.65 0 0014 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.16.5.66.91 1.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z'/>"
     ),
@@ -1013,6 +1023,10 @@ def _dm_tab_body_html(tab: str, *, persona: Persona | None,
         return _dm_kw_body_html(persona)
     if tab == "task":
         return _dm_task_body_html()
+    if tab == "manage":
+        # PR-6: 본문은 Streamlit 위젯(검색·리스트·폼)으로 render 단계에서 채워짐.
+        # 여기서는 헤더 영역만 비워둠 (placeholder div).
+        return '<div class="td-manage-placeholder" style="margin: 0 24px;"></div>'
     if tab == "src":
         return _dm_src_body_html(dm_stats)
     return ""

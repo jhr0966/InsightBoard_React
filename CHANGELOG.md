@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 관리 UI — PR-6: M3 1차 완성)
+- `ui/task_def_manage.py` 신규 — 검색 / 1건 상세 / 추가·수정·삭제 폼 / history 패널. 평탄 모듈 분리 (`data_management_v2` 평탄 디스패치 유지).
+- `roadmap/task_def_form.py` 신규 — `TaskDefForm` 데이터클래스. `from_db_row(row)` (`task_defs_db.get` 결과 → 폼), `to_json()` (검증 + `ingest_org_meta` 직렬화). objectives/risks/automation 리스트 [+추가][-삭제] 헬퍼. 빈 값/공백 자동 제거.
+- `ui/data_management_v2.py` — `tasks` 그룹에 `manage` sub-탭 추가 (기본 탭이 `task`→`manage` 로 이동, **PR-6 가 1차 완성 UI**). `_consume_td_action_if_any` / `_consume_td_save_if_any` 위젯 인스턴스화 전에 호출. `task` 탭 라벨도 "작업 정의" → "📊 엑셀 업로드"로 명확화.
+- URL (stateless): `?dm_grp=tasks&dm_tab=manage&td_q=<검색어>&td_view=<pid>&td_edit=<pid>&td_add=1&td_hist=<pid>&td_action=delete&td_pid=<pid>`. 기존 `?dm_tab=task` 북마크는 그대로 동작 (PR-A 의 그룹 추론).
+- 삭제 확인: `<a onclick="return confirm(...)">` 브라우저 JS (Streamlit `on_click=` 금지 invariant 준수).
+- XSS 방어: 모든 사용자 입력 (process_name/description/objectives/risks/automation) `_html.escape()` 후 렌더.
+- `assets/v2/screens/data_management.css` — `.td-list/.td-card/.td-detail/.td-meta/.td-actions/.td-btn-{primary,secondary,danger}/.td-history` 스타일 추가.
+- `tests/test_task_def_manage.py` (+41) — `TaskDefForm` 9건 (defaults, from_db_row 정상/None/str-risk 정규화, to_json round-trip, 검증 실패 2종, 빈 값 제거, add/remove helpers) · URL 빌더 3건 · 검색·리스트 5건 (empty 2종, 매칭, 카드 렌더) · 상세 4건 (전 섹션·XSS escape·history empty·history 다회 누적) · 액션 consumer 6건 (delete 성공/missing/noop, save create/update/검증 실패) · manage 탭 통합 5건 (등록/기본 탭/resolve/body placeholder/active 마킹) · **end-to-end round-trip 8건** (create→load→modify→save→reload, 한국어/이모지 보존, 빈 필드 제거, URL 인코딩, 카드 링크, legacy URL 호환, redirect 분리).
+- `tests/test_dm_area_groups.py` — `tasks` 기본 탭이 `task` → `manage` 로 변경된 것에 맞춰 5건 업데이트.
+
 ### Added (엑셀 업로드 diff 미리보기 + 사용자 확인 — PR-5)
 - `roadmap/sqlite_sync.py::DiffPreview` 신규 dataclass — `added/updated/unchanged/kept/skipped` + `total_apply` 프로퍼티. `kept` 는 DB 에는 있지만 이번 업로드에 없는 (유지될) 항목 — 결정사항 §4.
 - `roadmap/sqlite_sync.py::compute_diff(df) -> DiffPreview` — read-only. 행마다 `row_to_task_def` → DB 와 비교해 added/updated/unchanged 분류. DB 의 잔여는 kept, pid/team/dept 누락 행은 skipped.
