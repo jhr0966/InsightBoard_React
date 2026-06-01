@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-06-01 · PR #89 머지 직전 docs 정리
+
+**브랜치:** `claude/nice-bell-eEZLj` (PR #89 — Phase 0+1a+2)
+
+**한 일:**
+- `docs/REFACTOR_PLAN.md` 끝에 **"다음 세션 시작점"** 섹션 추가 — Phase 1b(`feat-sola-propose-summarize`) / 1c(`feat-enrich-match-weight`) 의 진입 파일·UX 안 3개·완료 기준·시작 명령. 다음 세션이 이 섹션만 읽고 즉시 착수 가능.
+- `docs/{DEVELOPMENT_PHASES,MILESTONE_1,TASK_DEF_PLAN,UX_QA_CHECKLIST,UX_REDESIGN_PLAN,VIBE_CODING_BLUEPRINT,WORKFLOW}.md` 7개에 redirect 헤더 1줄 추가 — 다음 세션이 stale 문서를 권위 문서로 오인하지 않도록.
+
+**다음:** PR #89 머지 → 사용자가 새 세션 시작 시 REFACTOR_PLAN 끝 섹션만 보면 됨.
+
+---
+
 ## 2026-06-01 · Phase 2 UI dedup (`get_persona` 승격 + `app_side_stats` 단일화)
 
 **브랜치:** `claude/nice-bell-eEZLj` (PR #89 누적)

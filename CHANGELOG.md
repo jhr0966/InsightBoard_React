@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Docs (다음 세션 준비)
+- `docs/REFACTOR_PLAN.md` 끝에 "다음 세션 시작점" 섹션 — Phase 1b/1c 의 브랜치명·진입 파일·UX 안 3개·완료 기준·시작 명령 명시.
+- 옛 계획·블루프린트 7건(`DEVELOPMENT_PHASES`/`MILESTONE_1`/`TASK_DEF_PLAN`/`UX_QA_CHECKLIST`/`UX_REDESIGN_PLAN`/`VIBE_CODING_BLUEPRINT`/`WORKFLOW`)에 역사적 기록 표식 + `REFACTOR_PLAN`/`CLAUDE.md` 로의 redirect 헤더.
+
 ### Fixed (Phase 2 회귀 — Codex P2)
 - `ui/data_management_v2._consume_refresh_if_any` / 작업정의 업로드 후 캐시 무효화 루프에 `board_v2._board_kpis.clear()` 추가. Phase 2 에서 `_archive_stats_dm` 가 `board_v2._archive_stats()` 위임으로 바뀌면서 데이터 관리 새로고침 직후 좌측 nav 의 match/opportunity 카운트가 60초 TTL 만료까지 stale 로 남던 회귀 수정.
 

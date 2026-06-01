@@ -1,5 +1,10 @@
 # DEVELOPMENT PHASES — Streamlit + Local First
 
+> ⚠️ **역사적 기록** — 초기 단계별 계획(2026-05). 현재 진행 중인 정리·정합 작업의 source-of-truth 는
+> [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md). 새 작업을 시작하기 전 이 파일이 아니라
+> `REFACTOR_PLAN.md` 와 `CLAUDE.md` 를 먼저 확인할 것.
+
+
 본 문서는 현재 합의된 방향(회사 정책: Streamlit, 초기 저장소: Local)을 기준으로
 개발 단계를 고정하고, 바로 실행 가능한 시작 계획을 제공한다.
 

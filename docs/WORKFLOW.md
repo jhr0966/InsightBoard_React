@@ -1,5 +1,10 @@
 # WORKFLOW — 작업 진행 규칙
 
+> ⚠️ **역사적 기록** — 작업 진행 규칙(현재는 CLAUDE.md 가 권위 문서). 현재 진행 중인 정리·정합 작업의 source-of-truth 는
+> [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md). 새 작업을 시작하기 전 이 파일이 아니라
+> `REFACTOR_PLAN.md` 와 `CLAUDE.md` 를 먼저 확인할 것.
+
+
 > 여러 에이전트/사람이 겹쳐 작업할 때 어떤 순서로 움직이는지.
 
 ## 0. 작업 시작 전

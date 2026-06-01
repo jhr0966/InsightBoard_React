@@ -1,5 +1,10 @@
 # VIBE CODING BLUEPRINT — Streamlit 기반 뉴스+자동화 과제 시스템
 
+> ⚠️ **역사적 기록** — 초기 비전·블루프린트(2026-05 이전). 현재 진행 중인 정리·정합 작업의 source-of-truth 는
+> [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md). 새 작업을 시작하기 전 이 파일이 아니라
+> `REFACTOR_PLAN.md` 와 `CLAUDE.md` 를 먼저 확인할 것.
+
+
 ## 1) 제품 비전
 
 본 시스템의 목적은 다음 두 축을 하나의 흐름으로 연결하는 것이다.

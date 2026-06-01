@@ -1,5 +1,10 @@
 # 1차 완성 보고서 (Milestone 1 — 작업 정의 데이터 시스템)
 
+> ⚠️ **역사적 기록** — M1 완료 보고(2026-06-01). 현재 진행 중인 정리·정합 작업의 source-of-truth 는
+> [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md). 새 작업을 시작하기 전 이 파일이 아니라
+> `REFACTOR_PLAN.md` 와 `CLAUDE.md` 를 먼저 확인할 것.
+
+
 > 작성: 2026-06-01 · 범위: `docs/TASK_DEF_PLAN.md` M1~M3 (PR-1 ~ PR-6 + PR-A).
 > 목적: "사용자가 외부 도구 없이 작업 정의를 관리"하는 minimum viable 달성 보고.
 

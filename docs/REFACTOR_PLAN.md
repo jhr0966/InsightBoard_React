@@ -94,3 +94,47 @@ correctness 영향 없는 순수 dedup. PR #89 에 누적.
 ## Phase 3 — 데드 코드 삭제 (예정)
 
 결정-1·1b 완료 후. `ui/layout.py`·`ui/task_tree.py` + 결정-1 에서 부활 안 된 sola 모듈 + 테스트 정리. 삭제마다 `grep -rn` 으로 잔여 import 0 재확인.
+
+---
+
+## 다음 세션 시작점
+
+> PR #89 (Phase 0+1a+2) 머지 직후 새 세션을 시작할 때 이 섹션만 보면 됨. 두 단계는 서로 독립 → 병렬 가능.
+
+### Phase 1b — SOLA 작업실에 `propose`·`summarize` 액션 연결 (결정-1 A)
+
+**브랜치명:** `feat-sola-propose-summarize`
+
+**진입 파일 (읽을 것만):**
+- `ui/sola_workshop_v2.py` — `_render_main` / ws-ctx 패널 영역 (액션 버튼 추가 위치)
+- `sola/propose.py` — 자동화 제안서 생성기 (현재 데드). 시그니처·LLM 호출 형태 파악.
+- `sola/summarize.py` — 뉴스 요약기 (현재 데드).
+- `store/sola_threads.py` — 결과 메시지 저장 방식 (assistant 메시지로 thread 에 append).
+
+**UX 안 (첫 메시지로 사용자에게 2~3개 제시 후 합의):**
+1. **ws-ctx 우측 패널 카드** — "📝 제안서 생성"·"📰 요약" 버튼이 우측 컨텍스트 패널 상단에 카드로 노출. 클릭 시 현재 thread context(`?from=` payload 또는 최근 메시지) 로 LLM 실행, 결과를 assistant 메시지로 채팅에 append. **추천(기존 인계 흐름과 자연스러움).**
+2. **채팅 입력창 toolbar** — 입력창 위에 `[ 제안서 ] [ 요약 ]` 빠른 액션 칩. 빈 thread 에서도 즉시 사용 가능.
+3. **topbar 액션 메뉴** — `app_shell.render_topbar` 우측에 드롭다운으로. 화면 어디서나 호출 가능하나 UI 변경 폭이 큼.
+
+**완료 기준:** propose/summarize 가 ws-ctx 카드(또는 합의된 위치)에서 실행되어 결과가 thread 의 assistant 메시지로 append · `?from=opp|matrix` 인계 페이로드와도 호환 · 회귀 테스트 1~2건.
+
+### Phase 1c — `scraping/enrich` keywords → `store/match.score_matches` 가중치 (결정-2 A)
+
+**브랜치명:** `feat-enrich-match-weight`
+
+**진입 파일:**
+- `scraping/enrich.py` — `enrich_article(...)` 의 출력 스키마 (`keywords` 필드 확인).
+- `store/match.py` — `score_matches(...)` 의 가중치 계산 로직 (현재 기사 title/desc 토큰만 사용?).
+- `store/news_db.py` — 저장 시 `keywords` 컬럼이 보존되는지 (Parquet schema).
+
+**작업 요지:** `score_matches` 가 기사의 enrich 된 `keywords` (LLM 추출) 를 매칭 점수에 가중치로 추가. enrich 안 된 기사는 현행 fallback.
+
+**완료 기준:** enrich keywords 가 있는 기사가 그렇지 않은 기사보다 동일 작업 정의에 대해 더 높은 score → 테스트로 검증.
+
+### 공통 — 시작 직전 체크
+
+```bash
+git fetch origin main && git checkout main && git pull
+git checkout -b feat-sola-propose-summarize   # 또는 feat-enrich-match-weight
+python -m pytest -q                            # 656/656 baseline 확인
+```
