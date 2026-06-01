@@ -19,6 +19,10 @@ class IngestResult:
     row_count: int = 0
     parquet_path: str | None = None
     raw_path: str | None = None
+    # PR-3 — SQLite 동기화 결과 (best-effort; Parquet 저장 성공이 ok 의 기준).
+    sqlite_created: int = 0
+    sqlite_updated: int = 0
+    sqlite_skipped: int = 0
 
 
 def _utc_stamp() -> str:
@@ -81,8 +85,14 @@ def ingest_excel(
     *,
     sheet_name: str | int = "Master_Table",
     save_raw: bool = True,
+    to_sqlite: bool = True,
 ) -> IngestResult:
-    """엑셀 → 정규화 DataFrame → Parquet 저장. 원본 .xlsx도 별도 보관."""
+    """엑셀 → 정규화 DataFrame → Parquet 저장. 원본 .xlsx도 별도 보관.
+
+    to_sqlite=True (기본): Parquet 저장 후 `store.task_defs_db` 에도 행 단위
+    UPSERT (best-effort). SQLite 동기화 실패는 ingest 전체를 실패시키지 않는다
+    (M1 단계에서 Parquet 이 여전히 SOT).
+    """
     try:
         df_raw = pd.read_excel(fileobj, sheet_name=sheet_name, dtype=str).fillna("")
     except ValueError:
@@ -115,10 +125,23 @@ def ingest_excel(
         except Exception:
             raw_path = None
 
-    return IngestResult(
+    result = IngestResult(
         ok=True,
         errors=[],
         row_count=len(df),
         parquet_path=str(parquet_path),
         raw_path=str(raw_path) if raw_path else None,
     )
+
+    if to_sqlite:
+        try:
+            from roadmap.sqlite_sync import sync_dataframe
+
+            sync = sync_dataframe(df, source="excel_upload")
+            result.sqlite_created = sync.created
+            result.sqlite_updated = sync.updated
+            result.sqlite_skipped = sync.skipped
+        except Exception:  # noqa: BLE001 — SQLite 동기화는 best-effort
+            pass
+
+    return result

@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (로드맵 Parquet → SQLite 동기화 + 마이그 도구 — PR-3)
+- `roadmap/sqlite_sync.py` 신규 — 정규화된 로드맵 DataFrame → `store.task_defs_db` UPSERT. `row_to_task_def(row)` (행 → `(process_id, json)` 또는 None), `sync_dataframe(df, *, changed_by=, source=)` → `SyncResult(created/updated/skipped/errors)`.
+- process_id 결정 우선순위: `process_id` 컬럼(신 9 컬럼 폼 "공정ID") → 없으면 `task_def_json` 내부 `process_id`. 둘 다 없으면 skip. org_meta(team/dept/division/process/task/sub_task/lv1~3) 자동 주입, team/dept 없는 행은 skip.
+- `roadmap/ingest.py::ingest_excel` — `to_sqlite=True` (기본) 시 Parquet 저장 후 SQLite 에도 UPSERT (best-effort, 실패해도 ingest 성공 유지 — M1 단계에서 Parquet 이 SOT). `IngestResult` 에 `sqlite_created/updated/skipped` 추가.
+- `roadmap/schema.py` — `공정ID`/`공정 ID`/`공정아이디` → `process_id` COLUMN_MAP 추가, `OPTIONAL_COLUMNS`·`RoadmapRow` 에 `process_id` 필드.
+- `scripts/migrate_roadmap_to_sqlite.py` 신규 — 1회성 마이그 CLI. `--file`/`--dry-run`/`--changed-by` 옵션. 최신 Parquet → SQLite, 1건 이상 쓰면 exit 0.
+- `tests/test_roadmap_sqlite_sync.py` (+16) — schema 9 컬럼·`row_to_task_def` 5건(컬럼 우선/JSON fallback/org_meta 주입/process_id 없음/team 없음)·`sync_dataframe` 4건(create+update/skip invalid/empty/source 기록)·`ingest_excel`→SQLite 3건·마이그 CLI 3건.
+
 ### Added (작업 정의 SQLite 저장소 — PR-1: schema + CRUD API)
 - `store/task_defs_db.py` 신규 — sqlite3 기반 작업 정의 저장소. `task_defs` (process_id PK + JSON SOT + scalar 미러 + created/updated 메타) + `task_def_history` (json_before/after + action + source) 2 테이블 자동 생성, conftest 의 `ROADMAP_DIR` 격리 그대로 호환.
 - API: `get(process_id)`, `upsert(process_id, json_str, *, task_def_text=, changed_by=, source=)`, `delete(process_id, *, changed_by=, source=)`, `list_all(*, team=, dept=, process=, limit=)`, `search(query, *, limit=50)`, `history(process_id, *, limit=)`, `count()`, `upsert_many(items, *, changed_by=, source="excel_upload")`.
