@@ -10,6 +10,13 @@
 - API: `get(process_id)`, `upsert(process_id, json_str, *, task_def_text=, changed_by=, source=)`, `delete(process_id, *, changed_by=, source=)`, `list_all(*, team=, dept=, process=, limit=)`, `search(query, *, limit=50)`, `history(process_id, *, limit=)`, `count()`, `upsert_many(items, *, changed_by=, source="excel_upload")`.
 - 검증: invalid JSON, non-object JSON, missing `org_meta`, missing `org_meta.team/dept`, `process_id` mismatch (인자 vs JSON 내) 모두 `ValueError` 로 거부. upsert 1회마다 history 1건 자동 기록 (history 는 무한 누적).
 - `tests/test_task_defs_db.py` (+23) — schema 자동 생성·upsert 신규/갱신·validation 6건·get/delete·list_all 필터·search (process_id/JSON 본문)·history 누적·upsert_many.
+### Added (작업 정의 JSON `org_meta` 확장 — PR-2: v1.0 스키마 + helper)
+- `roadmap/task_def_json.py` 확장 — `SCHEMA_VERSION="1.0"`, `ORG_META_KEYS` 9개(`team/dept/division/process/task/sub_task/lv1/lv2/lv3`), `ORG_META_REQUIRED=("team","dept")` 상수 공개. 기존 `parse/TaskDef/automation_keywords/to_chat_context_lines/flatten_for_match/first_objective` API 무변경.
+- `ingest_org_meta(json_text, org_meta, *, process_id=None, version="1.0")` — 기존 JSON 에 `org_meta` 주입. 빈/깨진 입력은 새 dict 로 시작, unknown key silent drop, 빈 값 자동 누락, `process_id` 인자로 top-level 동기화, `version` setdefault (기존 값 보존).
+- `org_meta_of(json_text)` — JSON 에서 `org_meta` 만 안전 추출. 알려진 키만 strip 해서 반환, 빈 값/타입 미스매치는 모두 빈 dict.
+- `validate_task_def_json(json_text)` — `store.task_defs_db.upsert` 입력 사전 검증 (top-level `process_id` + `org_meta.team/dept`). 통과 시 파싱된 dict 반환.
+- 새 예외 `TaskDefJsonError(ValueError)` — 모든 검증 실패가 이 타입 (호출자가 `ValueError` 로도 잡을 수 있음).
+- `tests/test_task_def_json_org_meta.py` (+18) — 상수 sanity / `ingest_org_meta` 9건 (신규 주입·빈 입력·깨진 JSON·process_id 덮어쓰기·version 보존·strip+drop·unknown ignore·team 누락·dept 누락·non-dict) / `org_meta_of` 2건 / `validate_task_def_json` 4건.
 
 ### Docs (작업 정의 데이터 시스템 마이그 계획 — Parquet → SQLite + JSON)
 - `docs/TASK_DEF_PLAN.md` 신규 — 작업 정의 데이터 저장·관리·CRUD 마이그 plan. 결정사항 9개, 데이터 모델(엑셀 9 컬럼 / `task_def_json` `org_meta` 확장 / SQLite 스키마 + history), 8 PR 의존성 그래프 + 규모 추정, 화면 시뮬레이션 5 시나리오, 마일스톤 M1~M5, 리팩토링 시점 표 포함. 컨텍스트 압축 후에도 단일 source 로 복원 가능.
