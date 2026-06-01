@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (엑셀 업로드 diff 미리보기 + 사용자 확인 — PR-5)
+- `roadmap/sqlite_sync.py::DiffPreview` 신규 dataclass — `added/updated/unchanged/kept/skipped` + `total_apply` 프로퍼티. `kept` 는 DB 에는 있지만 이번 업로드에 없는 (유지될) 항목 — 결정사항 §4.
+- `roadmap/sqlite_sync.py::compute_diff(df) -> DiffPreview` — read-only. 행마다 `row_to_task_def` → DB 와 비교해 added/updated/unchanged 분류. DB 의 잔여는 kept, pid/team/dept 누락 행은 skipped.
+- `roadmap/sqlite_sync.py::_display_name(json, pid)` — `process_name` 우선, 없으면 `process_id` (diff 카드 표시용).
+- `ui/data_management_v2.py::_render_task_def_diff_preview(pending)` 신규 — 추가/수정/유지/제외 카운트 요약 + 각 카테고리별 expand (최대 200개, 초과 시 "외 N건") + [← 취소] / [✅ N건 적용] 버튼. apply=0 이면 버튼 disabled.
+- `ui/data_management_v2.py::_render_task_def_upload` 변경 — 직접 ingest 대신 `[📊 변경 사항 미리보기]` 버튼 → `_task_def_pending` 페이로드 저장 → 다음 rerun 에서 미리보기 카드 노출. 적용 클릭 시 기존 `_do_task_def_ingest` 경로 재사용 (이중 코드 없음).
+- `ui/data_management_v2.py::_compute_pending_diff(data, sheet)` — 바이트 → 정규화 DF → `compute_diff` 한 단계 헬퍼. 예외는 `(None, msg)` 로 안전 반환.
+- `tests/test_excel_diff_preview.py` (+17) — `DiffPreview` 데이터클래스 2건 / `compute_diff` 7건 (전부 신규·updated·unchanged·kept·skipped·빈 업로드·read-only) / `_display_name` 2건 / `_compute_pending_diff` 2건 (fixture / invalid bytes) / UI 3건 (버튼 라벨 변경·적용→ingest 페이로드·취소→pending 제거·apply=0 disabled).
+
 ### Changed (데이터 관리 area 2 그룹 segmented 재편 — PR-A)
 - `ui/data_management_v2.py` — `_DM_GROUPS=("news","tasks")` + `_DM_GROUP_TABS` (news: jobs/kw/src · tasks: task) + `_DM_GROUP_LABEL` (📰 뉴스 데이터 / 📋 작업 데이터). PR-6 에서 `tasks` 그룹에 `manage` 추가 예정.
 - `_dm_resolve_group_and_tab(grp, tab)` — URL 정규화 헬퍼. 기존 `?dm_tab=` 단독 북마크 URL 도 자동 그룹 추론으로 호환 (예: `?dm_tab=task` → `(tasks, task)`). grp/tab 어긋나면 `tab` 의 그룹이 진실.

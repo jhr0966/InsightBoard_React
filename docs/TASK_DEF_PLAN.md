@@ -292,11 +292,12 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 - [x] 호출처 검증 — 8곳 (board_v2/insights_v2/data_management_v2/persona_page/data_health/sidebar/onboarding/archive_v2) 무변경
 - [x] tests: 호환성 7건
 
-### PR-5: 엑셀 업로드 diff 미리보기
-- [ ] `ui/data_management_v2.py::_render_excel_diff_preview` 신규
-- [ ] pending 패턴 — preview → confirm → apply
-- [ ] diff 화면: 추가/수정/유지 카운트 + 상세 expand
-- [ ] tests: e2e 20건
+### PR-5: 엑셀 업로드 diff 미리보기 ✅
+- [x] `roadmap/sqlite_sync.py::DiffPreview` + `compute_diff(df)` (read-only)
+- [x] `ui/data_management_v2.py::_render_task_def_diff_preview(pending)` 신규
+- [x] pending 패턴 — `_task_def_pending` → 미리보기 → `_do_task_def_ingest` 재사용
+- [x] diff 화면: 추가/수정/유지/제외 카운트 + 카테고리별 expand (200건 + "외 N건")
+- [x] tests: 17건
 
 ### PR-A: 데이터 관리 2 그룹 재편 ✅
 - [x] 2 그룹 segmented control (📰 뉴스 / 📋 작업) + CSS

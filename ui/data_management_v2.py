@@ -755,15 +755,114 @@ def _render_task_def_upload() -> None:
         st.error(f"엑셀 미리보기 실패: {exc}")
         return
 
-    if st.button("✅ 이 파일로 업로드 + 저장", type="primary", key="_task_def_ingest_btn"):
+    # PR-5: pending diff 미리보기 단계가 활성화돼있으면 그쪽을 우선 렌더.
+    pending = st.session_state.get("_task_def_pending")
+    if pending and pending.get("filename") == uploaded.name and pending.get("sheet") == sheet:
+        _render_task_def_diff_preview(pending)
+        return
+
+    if st.button("📊 변경 사항 미리보기", type="primary", key="_task_def_diff_btn"):
         try:
             uploaded.seek(0)
             data = uploaded.read()
         except Exception as exc:
             st.error(f"파일 읽기 실패: {exc}")
             return
-        st.session_state["_do_task_def_ingest"] = (uploaded.name, sheet, data)
+        st.session_state["_task_def_pending"] = {
+            "filename": uploaded.name, "sheet": sheet, "data": data,
+        }
         st.rerun()
+
+
+def _compute_pending_diff(data: bytes, sheet: str | int):
+    """업로드 바이트 → 정규화 DataFrame → DiffPreview. 모든 예외는 (None, msg)."""
+    import io
+    import pandas as _pd
+    from roadmap.ingest import normalize_columns
+    from roadmap.sqlite_sync import compute_diff
+
+    try:
+        df_raw = _pd.read_excel(io.BytesIO(data), sheet_name=sheet, dtype=str).fillna("")
+    except Exception as exc:
+        return None, f"엑셀 읽기 실패: {exc}"
+    df = normalize_columns(df_raw)
+    for col in df.columns:
+        df[col] = df[col].astype(str).str.strip()
+    return compute_diff(df), None
+
+
+def _render_task_def_diff_preview(pending: dict) -> None:
+    """업로드 적용 전 변경 사항 미리보기 카드 (PR-5).
+
+    pending 구조: {"filename": str, "sheet": str|int, "data": bytes}.
+    [취소] / [✅ N건 적용] 버튼 노출. 적용 시 기존 _do_task_def_ingest 경로 재사용.
+    """
+    diff, err = _compute_pending_diff(pending["data"], pending["sheet"])
+    if err:
+        st.error(err)
+        if st.button("← 다시 선택", key="_task_def_diff_back_btn"):
+            st.session_state.pop("_task_def_pending", None)
+            st.rerun()
+        return
+
+    n_add = len(diff.added)
+    n_upd = len(diff.updated)
+    n_keep = len(diff.kept)
+    n_skip = diff.skipped
+    n_apply = diff.total_apply
+
+    # 헤더 카드 — 카운트 요약
+    summary_html = (
+        '<div style="margin: 18px 24px 8px; padding: 14px 18px; background: #fff; '
+        'border: 1px solid var(--surface-divider); border-radius: 12px;">'
+        '<div style="font-size: 16px; font-weight: 800; color: #0F172A; '
+        'letter-spacing: -0.01em; margin-bottom: 8px;">📊 업로드 미리보기 — 변경 사항</div>'
+        f'<div style="font-size: 14px; color: #334155; line-height: 1.8;">'
+        f'✅ <b>추가:</b> {n_add}건 &nbsp;·&nbsp; '
+        f'⚠️ <b>수정:</b> {n_upd}건 &nbsp;·&nbsp; '
+        f'ℹ️ <b>유지 (엑셀에 없는 기존):</b> {n_keep}건'
+    )
+    if n_skip:
+        summary_html += f' &nbsp;·&nbsp; ⛔ <b>제외:</b> {n_skip}건 (공정ID 없음)'
+    summary_html += '</div></div>'
+    st.html(summary_html)
+
+    # 상세 expand — 적용 대상만 (추가/수정)
+    if n_add:
+        with st.expander(f"➕ 추가 {n_add}건 보기", expanded=False):
+            for pid, name in diff.added[:200]:
+                st.markdown(f"- `{_html.escape(pid)}` — {_html.escape(name)}")
+            if n_add > 200:
+                st.caption(f"… (외 {n_add - 200}건)")
+    if n_upd:
+        with st.expander(f"✏️ 수정 {n_upd}건 보기", expanded=False):
+            for pid, name in diff.updated[:200]:
+                st.markdown(f"- `{_html.escape(pid)}` — {_html.escape(name)}")
+            if n_upd > 200:
+                st.caption(f"… (외 {n_upd - 200}건)")
+    if n_keep:
+        with st.expander(f"📦 유지될 기존 {n_keep}건 보기", expanded=False):
+            st.caption("이번 엑셀에 없지만 그대로 유지됩니다. 삭제하려면 UI 에서 개별 삭제하세요.")
+            for pid, name in diff.kept[:200]:
+                st.markdown(f"- `{_html.escape(pid)}` — {_html.escape(name)}")
+            if n_keep > 200:
+                st.caption(f"… (외 {n_keep - 200}건)")
+
+    # 액션 버튼 — 취소 / 적용
+    col_a, col_b = st.columns([1, 2])
+    with col_a:
+        if st.button("← 취소", key="_task_def_diff_cancel_btn"):
+            st.session_state.pop("_task_def_pending", None)
+            st.rerun()
+    with col_b:
+        label = f"✅ {n_apply}건 적용" if n_apply else "변경 사항 없음"
+        if st.button(label, type="primary", key="_task_def_diff_apply_btn",
+                     disabled=(n_apply == 0)):
+            st.session_state["_do_task_def_ingest"] = (
+                pending["filename"], pending["sheet"], pending["data"],
+            )
+            st.session_state.pop("_task_def_pending", None)
+            st.rerun()
 
 
 # ── B.5 데이터관리 4 탭 wire (jobs / kw / task / src) ────────────
