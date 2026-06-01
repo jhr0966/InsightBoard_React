@@ -287,10 +287,10 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 - [~] 폴백 읽기 (SQLite 없으면 Parquet): PR-4 의 reader 전환 시점으로 이관
 - [x] tests: 통합 16건
 
-### PR-4: query 어댑터
-- [ ] `roadmap/query.py::load_latest` → SQL SELECT 로 변경 (DataFrame 반환 유지)
-- [ ] 호출처 검증 (`boards/insights/data_management/match/opportunity`)
-- [ ] tests: 호환성 8건
+### PR-4: query 어댑터 ✅
+- [x] `roadmap/query.py::load_latest(*, prefer="sqlite")` — SQLite 우선, Parquet fallback (DataFrame 반환 유지)
+- [x] 호출처 검증 — 8곳 (board_v2/insights_v2/data_management_v2/persona_page/data_health/sidebar/onboarding/archive_v2) 무변경
+- [x] tests: 호환성 7건
 
 ### PR-5: 엑셀 업로드 diff 미리보기
 - [ ] `ui/data_management_v2.py::_render_excel_diff_preview` 신규

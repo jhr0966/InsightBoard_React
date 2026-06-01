@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-01 · PR-4: query.load_latest SQLite 우선 + Parquet fallback
+
+**브랜치:** `feat-query-sqlite-adapter` (main `bc2bcc0` 기준 · PR-3 #80 머지 후)
+
+**맥락:** `docs/TASK_DEF_PLAN.md` M1 / PR-4. **M1 마지막**. reader 를 SQLite 로 전환해 보드/인사이트/데이터관리/매칭이 자연스럽게 SQLite 데이터를 보게 한다. DataFrame 시그니처/컬럼 셋 무변경.
+
+**구현:**
+- `roadmap/query.py::load_latest(*, prefer="sqlite")` — SQLite 비어있지 않으면 `task_defs` → DataFrame, 비면 Parquet fallback. `prefer="parquet"` 옵션 (마이그/회귀).
+- 빌드 시 `org_meta` 우선, scalar 미러 보강, lv1/2/3 가 없으면 division/process/task fallback.
+- 마이그 CLI 는 `prefer="parquet"` 명시 (자기 자신을 채우는 도구).
+
+**검증:** pytest 580/580 · 금지 패턴 0 · 신규 7건. 호출처 8곳 (board_v2/insights_v2/data_management_v2/persona_page/data_health/sidebar/onboarding/archive_v2) 무변경.
+
+**다음:** **M1 완료.** M2 시작 — PR-A (데이터관리 area 2 그룹 재편) 또는 PR-5 (엑셀 업로드 diff 미리보기). PR-A 가 비교적 가벼우니 먼저 권장.
+
+---
+
 ## 2026-06-01 · PR-3: 로드맵 Parquet → SQLite 동기화 + 마이그 CLI
 
 **브랜치:** `feat-ingest-sqlite` (main `832b099` 기준 · PR-1 #78 + PR-2 #79 머지 후)
