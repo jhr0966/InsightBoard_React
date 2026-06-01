@@ -273,10 +273,11 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 - [x] CRUD API: `get(process_id)`, `upsert(...)`, `delete(process_id)`, `list_all(filters)`, `search(query)`, `history(process_id)`, `count()`, `upsert_many(...)`
 - [x] tests: 단위 23건
 
-### PR-2: task_def_json org_meta 확장
-- [ ] `roadmap/task_def_json.py` 스키마 정의 (v1.0)
-- [ ] `ingest_org_meta(json_str, org_meta_dict)` helper
-- [ ] tests: 단위 10건
+### PR-2: task_def_json org_meta 확장 ✅
+- [x] `roadmap/task_def_json.py` 스키마 정의 (v1.0) — `SCHEMA_VERSION`, `ORG_META_KEYS` 9개, `ORG_META_REQUIRED`
+- [x] `ingest_org_meta(json_text, org_meta, *, process_id=None, version="1.0")` helper
+- [x] `org_meta_of(json_text)` + `validate_task_def_json(json_text)` + `TaskDefJsonError` 추가
+- [x] tests: 단위 18건
 
 ### PR-3: 마이그 도구 + ingest 리팩토링
 - [ ] `scripts/migrate_roadmap_to_sqlite.py` — Parquet → SQLite

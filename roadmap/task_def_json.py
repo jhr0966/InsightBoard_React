@@ -40,6 +40,17 @@ TOP_LEVEL_KEYS: tuple[str, ...] = (
 )
 
 
+# v1.0 — `org_meta` 도입 (PR-2). ingest 가 엑셀 외곽 컬럼을 JSON 안으로 주입.
+SCHEMA_VERSION: str = "1.0"
+
+ORG_META_KEYS: tuple[str, ...] = (
+    "team", "dept", "division", "process", "task", "sub_task",
+    "lv1", "lv2", "lv3",
+)
+
+ORG_META_REQUIRED: tuple[str, ...] = ("team", "dept")
+
+
 @dataclass(frozen=True)
 class TaskDef:
     """파싱된 작업 정의 — JSON 원본을 dict 로. 비어있으면 모든 필드 빈 값."""
@@ -190,3 +201,112 @@ def first_objective(json_text: str | None) -> str:
     if t.objectives:
         return t.objectives[0]
     return ""
+
+
+# ── v1.0 org_meta 확장 (PR-2) ──────────────────────────────
+
+class TaskDefJsonError(ValueError):
+    """task_def_json 스키마/주입 검증 실패."""
+
+
+def _normalize_org_meta(meta: dict) -> dict:
+    """입력 dict 에서 ORG_META_KEYS 만 추려 정규화 (빈 값 → 누락 처리).
+
+    - 알려진 키만 통과 (unknown key 는 silent 무시)
+    - 값은 str 로 강제 + strip. 빈 문자열은 None 으로
+    - team/dept 가 비면 TaskDefJsonError
+    """
+    if not isinstance(meta, dict):
+        raise TaskDefJsonError("org_meta must be an object")
+    out: dict = {}
+    for k in ORG_META_KEYS:
+        v = meta.get(k)
+        if v is None:
+            continue
+        sv = str(v).strip()
+        if sv:
+            out[k] = sv
+    for k in ORG_META_REQUIRED:
+        if not out.get(k):
+            raise TaskDefJsonError(f"org_meta.{k} is required")
+    return out
+
+
+def ingest_org_meta(
+    json_text: str | None,
+    org_meta: dict,
+    *,
+    process_id: str | None = None,
+    version: str = SCHEMA_VERSION,
+) -> str:
+    """기존 task_def JSON 텍스트에 `org_meta` + `version` + `process_id` 를 주입.
+
+    - 입력 JSON 이 비어있거나 파싱 실패 → 새 dict 로 시작
+    - `org_meta` 는 `_normalize_org_meta` 거쳐 알려진 키만 보존
+    - `process_id` 인자가 주어지면 JSON 의 그 필드를 덮어쓰기 (외부 source-of-truth)
+    - 항상 `version` 을 보장 (없으면 추가, 다르면 덮어쓰지 않음 — 호환성)
+    Returns: 직렬화된 JSON 문자열 (ensure_ascii=False).
+    Raises: TaskDefJsonError — org_meta 검증 실패 시.
+    """
+    base: dict
+    if not json_text or not isinstance(json_text, str) or not json_text.strip():
+        base = {}
+    else:
+        try:
+            loaded = json.loads(json_text)
+        except (json.JSONDecodeError, ValueError):
+            base = {}
+        else:
+            base = loaded if isinstance(loaded, dict) else {}
+
+    base["org_meta"] = _normalize_org_meta(org_meta)
+    base.setdefault("version", version)
+    if process_id:
+        base["process_id"] = str(process_id).strip()
+
+    return json.dumps(base, ensure_ascii=False)
+
+
+def org_meta_of(json_text: str | None) -> dict:
+    """JSON 에서 `org_meta` 딕셔너리만 안전 추출. 없으면 빈 dict."""
+    if not json_text or not isinstance(json_text, str):
+        return {}
+    try:
+        obj = json.loads(json_text)
+    except (json.JSONDecodeError, ValueError):
+        return {}
+    if not isinstance(obj, dict):
+        return {}
+    meta = obj.get("org_meta")
+    if not isinstance(meta, dict):
+        return {}
+    # 알려진 키만, 빈 값 제외
+    return {
+        k: str(meta[k]).strip()
+        for k in ORG_META_KEYS
+        if meta.get(k) is not None and str(meta[k]).strip()
+    }
+
+
+def validate_task_def_json(json_text: str) -> dict:
+    """`store.task_defs_db.upsert` 입력으로 사용 가능한지 검증.
+
+    - JSON 파싱 성공 + dict
+    - `org_meta` 존재 + team/dept 비지 않음
+    - `process_id` 존재 (top-level)
+    Returns: 파싱된 dict (정상).
+    Raises: TaskDefJsonError.
+    """
+    if not json_text or not isinstance(json_text, str):
+        raise TaskDefJsonError("empty json_text")
+    try:
+        obj = json.loads(json_text)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise TaskDefJsonError(f"invalid JSON: {exc}") from exc
+    if not isinstance(obj, dict):
+        raise TaskDefJsonError("JSON must be an object")
+    pid_raw = obj.get("process_id")
+    if not isinstance(pid_raw, str) or not pid_raw.strip():
+        raise TaskDefJsonError("process_id is required at top level")
+    _normalize_org_meta(obj.get("org_meta") or {})  # raises if invalid
+    return obj

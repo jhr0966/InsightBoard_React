@@ -22,6 +22,22 @@
 **검증:** pytest 538/538 · 금지 패턴 0 · `task_defs_db` 23/23.
 
 **다음:** PR-2 (`task_def_json` `org_meta` 확장 helper) — 독립적이라 PR-1 와 병행 가능했지만, 순차 진행하면 ingest 리팩토링 (PR-3) 의 입력이 자연스럽게 정리됨.
+## 2026-06-01 · PR-2: 작업 정의 JSON `org_meta` 확장
+
+**브랜치:** `feat-task-def-json` (main `3b2455b` 기준 · PR-1 #78 와 병행)
+
+**맥락:** `docs/TASK_DEF_PLAN.md` PR-2 — `task_def_json` v1.0 스키마 도입. PR-3(ingest 리팩토링) 의 입력 형식 정리. PR-1 와 독립적.
+
+**구현 (append-only · 기존 API 무변경):**
+- `roadmap/task_def_json.py` 에 `SCHEMA_VERSION/ORG_META_KEYS/ORG_META_REQUIRED` 상수.
+- `ingest_org_meta(json_text, org_meta, *, process_id=None, version="1.0")` — JSON 에 `org_meta` 주입 + `version` setdefault + `process_id` 동기화.
+- `org_meta_of(json_text)` — 안전 추출.
+- `validate_task_def_json(json_text)` — `task_defs_db.upsert` 입력 사전 검증.
+- 새 예외 `TaskDefJsonError(ValueError)`.
+
+**검증:** pytest 532/532 · 금지 패턴 0 · 신규 18건.
+
+**다음:** PR-3 (`scripts/migrate_roadmap_to_sqlite.py` + `roadmap/ingest.py` UPSERT 리팩토링) — PR-1 머지 후 시작.
 
 ---
 
