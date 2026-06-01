@@ -22,7 +22,7 @@ import streamlit as st
 
 from config import ASSETS_DIR
 from persona.schema import Persona
-from roadmap.query import load_latest as _load_roadmap
+from roadmap.query import load_latest as _load_tasks
 from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
 from store import trends as _trends
@@ -455,17 +455,17 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
     except Exception:
         news_df = None
     try:
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
-        roadmap_df = None
+        tasks_df = None
 
     items: list[dict] = []
     if (
         news_df is not None and not news_df.empty
-        and roadmap_df is not None and not roadmap_df.empty
+        and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, roadmap_df, top_k=3)
+            matches = _score_matches(news_df, tasks_df, top_k=3)
             if not matches.empty and "score" in matches.columns:
                 top = (
                     matches[matches["score"] > 0]
@@ -853,16 +853,16 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
     """
     try:
         news_df = _news_db.load_news_for_days(days=14)
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
         news_df = None
-        roadmap_df = None
+        tasks_df = None
 
-    if news_df is None or news_df.empty or roadmap_df is None or roadmap_df.empty:
+    if news_df is None or news_df.empty or tasks_df is None or tasks_df.empty:
         return _matrix_empty_html()
 
     try:
-        cells = _score_cells(news_df, roadmap_df).head(6)
+        cells = _score_cells(news_df, tasks_df).head(6)
     except Exception:
         return _matrix_empty_html()
     if cells.empty:
@@ -1144,18 +1144,18 @@ def _opportunities_html() -> str:
     except Exception:
         news_df = None
     try:
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
-        roadmap_df = None
+        tasks_df = None
 
     if (
         news_df is None or news_df.empty
-        or roadmap_df is None or roadmap_df.empty
+        or tasks_df is None or tasks_df.empty
     ):
         return _opp_empty_html()
 
     try:
-        cells = _score_cells(news_df, roadmap_df)
+        cells = _score_cells(news_df, tasks_df)
     except Exception:
         return _opp_empty_html()
     if cells.empty:
@@ -1344,9 +1344,9 @@ def _board_kpis() -> dict[str, int]:
     except Exception:
         news_df = None
     try:
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
-        roadmap_df = None
+        tasks_df = None
 
     collect = int(len(news_df)) if news_df is not None else 0
 
@@ -1354,16 +1354,16 @@ def _board_kpis() -> dict[str, int]:
     opp_count = 0
     if (
         news_df is not None and not news_df.empty
-        and roadmap_df is not None and not roadmap_df.empty
+        and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, roadmap_df, top_k=3)
+            matches = _score_matches(news_df, tasks_df, top_k=3)
             if not matches.empty:
                 match_count = int(matches[matches["score"] > 0]["link"].nunique())
         except Exception:
             pass
         try:
-            cells = _score_cells(news_df, roadmap_df)
+            cells = _score_cells(news_df, tasks_df)
             opp_count = int(len(cells))
         except Exception:
             pass
@@ -1422,13 +1422,13 @@ def chat_context_block(persona: Persona) -> str:
     # ③ + ④ + ⑤ + ⑥ — 매칭/기회 데이터 재사용
     try:
         news = _news_db.load_news_for_days(days=14)
-        roadmap = _load_roadmap()
+        tasks = _load_tasks()
     except Exception:
         news = None
-        roadmap = None
+        tasks = None
 
     # ③ 탑스토리 — 최근 3일 매칭 강한 뉴스 헤드라인
-    if news is not None and not news.empty and roadmap is not None and not roadmap.empty:
+    if news is not None and not news.empty and tasks is not None and not tasks.empty:
         try:
             recent = _news_db.load_news_for_days(days=3)
             if not recent.empty:
@@ -1444,7 +1444,7 @@ def chat_context_block(persona: Persona) -> str:
 
         # ④ 자동화 기회 4 (objectives 포함 — Phase 2)
         try:
-            cells = _score_cells(news, roadmap).head(4)
+            cells = _score_cells(news, tasks).head(4)
             if not cells.empty:
                 parts.append("④ 자동화 기회 top 4:")
                 for _, r in cells.iterrows():
@@ -1466,15 +1466,15 @@ def chat_context_block(persona: Persona) -> str:
         # 1위 cell 의 작업 정의 (task_def_json) 상세 — SOLA 가 "1위의 품질
         # 리스크/자동화 영역" 같은 깊은 질문에 답할 수 있게.
         try:
-            cells = _score_cells(news, roadmap).head(1)
-            if not cells.empty and "task_def_json" in roadmap.columns:
+            cells = _score_cells(news, tasks).head(1)
+            if not cells.empty and "task_def_json" in tasks.columns:
                 top_cell = cells.iloc[0]
                 first_task = str(top_cell.get("sample_tasks", "") or "").split(" · ")[0]
                 if first_task:
-                    rm = roadmap[
-                        (roadmap["dept"] == top_cell["dept"])
-                        & (roadmap["lv3"] == top_cell["lv3"])
-                        & (roadmap.get("task", "") == first_task)
+                    rm = tasks[
+                        (tasks["dept"] == top_cell["dept"])
+                        & (tasks["lv3"] == top_cell["lv3"])
+                        & (tasks.get("task", "") == first_task)
                     ]
                     if not rm.empty:
                         from roadmap.task_def_json import parse as _parse_tdj
@@ -1489,7 +1489,7 @@ def chat_context_block(persona: Persona) -> str:
 
         # ⑥ 매트릭스 1위 cell 상세
         try:
-            cells = _score_cells(news, roadmap).head(6)
+            cells = _score_cells(news, tasks).head(6)
             if not cells.empty:
                 top = cells.iloc[0]
                 parts.append(

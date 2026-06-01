@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (변수명 통일 — `roadmap_df`/`load_roadmap` → `tasks_df`/`load_tasks`)
+- UI 9파일 + 테스트 11파일에서 "로드맵" 잔여 변수·식별자를 "작업(tasks)" 으로 통일 (사용자 노출 라벨은 이미 "작업 정의" 로 통일됨, 이번엔 내부 코드 식별자 정리).
+  - import alias: `load_latest as load_roadmap` / `_load_roadmap` → `load_tasks` / `_load_tasks`.
+  - 지역 변수: `roadmap_df`/`_roadmap_df` → `tasks_df`/`_tasks_df`, DataFrame 변수 `roadmap` → `tasks` (attr/index 접근 `roadmap.empty`·`roadmap["dept"]` 포함).
+  - **모듈 경로는 보존**: `from roadmap.query import ...`, `roadmap.task_def_json`, `ROADMAP_DIR`, `roadmap/` 데이터 디렉토리(디스크상 실명) 모두 그대로. `roadmap/` 패키지 rename 은 별도 작업.
+  - 테스트의 `patch.object(..., "_load_roadmap")` 등도 lockstep 업데이트.
+- 검증: pytest 654/654 · 금지 패턴 0 · 변경 23파일 (170/170 균형).
+
 ### Fixed (screen-CSS 근본 수정 — st.html → st.markdown(unsafe_allow_html) · v2 셸 전 화면 복구)
 - `ui/styles.py::inject_global_styles` / `inject_screen_css` — `st.html("<style>...")` 를 `st.markdown("<style>...", unsafe_allow_html=True)` 로 전환. `st.html` 이 수만 자 `<style>` 블록을 sanitize/collapse 해 DOM 에서 전체 누락되던 기존 이슈 근본 해결 (전역 v2 토큰부터 screen CSS 까지 모두 영향).
 - 검증 (playwright headless · 5 area): board/data/insights/sola/archive 모두 `total_css ≥ 100KB`, `--accent-primary` v2 토큰 50~99회, screen 마커 8~25회 mount 확인 (이전 0회). `.dm-tab` border-radius `0px → 8px`.

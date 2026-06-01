@@ -65,7 +65,7 @@ def test_matrix_renders_a_hrefs_for_bubbles_not_disabled_buttons():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap",
+         patch.object(board_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         html = board_v2._board_matrix_html()
@@ -82,7 +82,7 @@ def test_matrix_selected_key_marks_that_bubble_on_and_updates_detail():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap",
+         patch.object(board_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         # 2위 셀(용접팀|비드 검사) 선택
@@ -101,7 +101,7 @@ def test_matrix_selected_bubble_href_toggles_off():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap",
+         patch.object(board_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         html = board_v2._board_matrix_html(selected_key="도장1팀|비전 검사")
@@ -117,7 +117,7 @@ def test_matrix_unknown_selected_key_falls_back_to_first():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap",
+         patch.object(board_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         html = board_v2._board_matrix_html(selected_key="없는|셀")
@@ -132,7 +132,7 @@ def test_matrix_each_bubble_has_clickable_href():
     board_v2._board_matrix_html.clear()
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap",
+         patch.object(board_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         html = board_v2._board_matrix_html()

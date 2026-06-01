@@ -128,7 +128,7 @@ def test_heatmap_renders_cells_as_anchors_not_divs():
     cells = _synthetic_cells()
     insights_v2._ia_heatmap_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells):
         html = insights_v2._ia_heatmap_html()
 
@@ -147,7 +147,7 @@ def test_heatmap_marks_selected_cell():
     cells = _synthetic_cells()
     insights_v2._ia_heatmap_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells):
         html = insights_v2._ia_heatmap_html(selected_key="비전 검사|비전")
 
@@ -168,7 +168,7 @@ def test_heatmap_selected_cell_href_toggles_off():
     cells = _synthetic_cells()
     insights_v2._ia_heatmap_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells):
         html = insights_v2._ia_heatmap_html(selected_key="비전 검사|비전")
     # 다른 (비활성) 셀의 href 는 그 셀 키로
@@ -184,7 +184,7 @@ def test_heatmap_detail_zero_matches_shows_empty_strip():
     cells = _synthetic_cells()
     insights_v2._ia_heatmap_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells):
         html = insights_v2._ia_heatmap_html(selected_key="없는공정|없는기술")
     assert "ia-hm-detail-empty" in html
@@ -195,7 +195,7 @@ def test_heatmap_empty_data_returns_empty_state():
     from ui import insights_v2
     insights_v2._ia_heatmap_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame()):
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame()):
         html = insights_v2._ia_heatmap_html()
     assert "공정 × 자동화 기술 매칭이 없어요" in html
 
@@ -206,7 +206,7 @@ def test_heatmap_includes_total_count_in_legend():
     cells = _synthetic_cells()
     insights_v2._ia_heatmap_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells):
         html = insights_v2._ia_heatmap_html()
     assert "합계" in html

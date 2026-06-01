@@ -147,7 +147,7 @@ def test_no_legacy_term_in_main_screens():
         if not p.exists():
             continue
         for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
-            # 코드 식별자 (Roadmap*, roadmap_dir, load_roadmap 등)는 허용
+            # 코드 식별자 (Roadmap*, roadmap_dir, load_tasks 등)는 허용
             if "로드맵" in line:
                 offenders.append(f"{p}:{i}: {line.strip()[:100]}")
     assert offenders == [], "사용자 노출 '로드맵' 잔존:\n" + "\n".join(offenders)

@@ -116,7 +116,7 @@ def test_process_map_with_selected_kw_uses_it_as_from_chip():
     from ui import insights_v2
     news = _synthetic_news_30d()  # 'AI' 포함
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=_synthetic_cells()), \
          patch("ui.board_v2._weekly_keyword_series",
                return_value=(["W1"], [{"name": "다른 키워드", "counts": [1]}])):
@@ -134,7 +134,7 @@ def test_process_map_filters_news_by_selected_kw():
     news = _synthetic_news_30d()  # 'AI', '로봇', '비전' 만 포함
     insights_v2._ia_process_map_html.clear()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=_synthetic_cells()):
         html = insights_v2._ia_process_map_html(selected_kw="없는키워드XYZ")
     # 필터 후 0건 → 키워드별 빈 안내

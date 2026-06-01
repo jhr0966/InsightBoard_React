@@ -13,7 +13,7 @@ import streamlit as st
 
 from persona import store as persona_store
 from persona.schema import Persona
-from roadmap.query import load_latest as load_roadmap
+from roadmap.query import load_latest as load_tasks
 from store import bookmarks as _bookmarks_store
 from ui import app_shell
 from ui.styles import inject_screen_css, page_header, section_label
@@ -106,7 +106,7 @@ def _handle_pending(persona: Persona) -> None:
 def render() -> None:
     """Render the main-content persona editor page (v2 셸 적용)."""
     persona: Persona = st.session_state.get("persona") or persona_store.load()
-    roadmap = load_roadmap()
+    tasks = load_tasks()
 
     # ── v2 글로벌 셸 — 다른 화면과 동일한 topbar + 좌측 네비 ──
     inject_screen_css("board")  # 공통 토큰만 필요 (.db-* 미사용이나 안전)
@@ -136,9 +136,9 @@ def render() -> None:
     _handle_pending(persona)
 
     section_label("기본 정보")
-    dept_opts = _options(roadmap, "dept")
-    team_opts = _options(roadmap, "team")
-    lv3_opts = _lv3_options(roadmap)
+    dept_opts = _options(tasks, "dept")
+    team_opts = _options(tasks, "team")
+    lv3_opts = _lv3_options(tasks)
     no_roadmap = (
         not _has_roadmap_options(dept_opts)
         and not _has_roadmap_options(team_opts)

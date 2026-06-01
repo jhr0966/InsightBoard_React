@@ -150,7 +150,7 @@ def _matches_fixture():
 def test_brief_html_summary_uses_llm_response():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=_news_fixture()), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_matches", return_value=_matches_fixture()), \
          patch("sola.board_brief.brief", return_value="**AI 비전 검사**가 부서 핵심 시그널입니다."):
         board_v2._brief_html.clear()
@@ -164,7 +164,7 @@ def test_brief_html_summary_falls_back_to_text_when_llm_empty():
     """sola.board_brief 가 빈 문자열 반환 시에도 기존 fallback 텍스트 노출."""
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=_news_fixture()), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_matches", return_value=_matches_fixture()), \
          patch("sola.board_brief.brief", return_value=""):
         board_v2._brief_html.clear()
@@ -176,7 +176,7 @@ def test_brief_html_cache_key_includes_persona_label():
     """다른 persona → 캐시 분리 → LLM 두 번 호출."""
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=_news_fixture()), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_matches", return_value=_matches_fixture()), \
          patch("sola.board_brief.brief", side_effect=["응답A", "응답B"]) as mock_brief:
         board_v2._brief_html.clear()

@@ -25,7 +25,7 @@ import streamlit as st
 
 from persona import store as persona_store
 from persona.schema import Persona
-from roadmap.query import load_latest as _load_roadmap
+from roadmap.query import load_latest as _load_tasks
 
 
 _TOTAL_INPUT_STEPS = 4  # 이름 / 부서·팀 / 직무 / 관심 공정
@@ -234,7 +234,7 @@ def _render_welcome() -> None:
 
 
 def _render_step(step: int, persona: Persona) -> None:
-    roadmap = _load_roadmap()
+    tasks = _load_tasks()
     data = _onb_data()
     st.html(_progress_html(step))
 
@@ -248,8 +248,8 @@ def _render_step(step: int, persona: Persona) -> None:
         elif step == 2:
             st.html('<div class="onb-q">어느 부서·팀에서 일하시나요?</div>'
                     '<div class="onb-q-help">매칭·자동화 기회가 이 부서 기준으로 정렬됩니다.</div>')
-            dept_opts = _options(roadmap, "dept")
-            team_opts = _options(roadmap, "team")
+            dept_opts = _options(tasks, "dept")
+            team_opts = _options(tasks, "team")
             cur_dept = data.get("onb_dept", persona.dept)
             cur_team = data.get("onb_team", persona.team)
             if dept_opts:
@@ -280,7 +280,7 @@ def _render_step(step: int, persona: Persona) -> None:
         elif step == 4:
             st.html('<div class="onb-q">관심 있는 공정을 골라주세요</div>'
                     '<div class="onb-q-help">선택한 공정 중심으로 트렌드·자동화 기회가 정렬됩니다.</div>')
-            lv3_opts = _options(roadmap, "lv3")
+            lv3_opts = _options(tasks, "lv3")
             if lv3_opts:
                 seed = data.get("onb_lv3", persona.interest_lv3)
                 default = [v for v in seed if v in lv3_opts]

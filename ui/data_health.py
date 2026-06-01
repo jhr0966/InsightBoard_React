@@ -1,6 +1,6 @@
 """Data management health dashboard for the workflow shell.
 
-Phase 4 UX: show whether news, roadmap, enrich, and LLM prerequisites are
+Phase 4 UX: show whether news, tasks, enrich, and LLM prerequisites are
 ready before users enter the detailed collection/upload tabs.
 """
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from roadmap.query import load_latest as load_roadmap
+from roadmap.query import load_latest as load_tasks
 from sola.client import is_configured as llm_ready
 from store.news_db import load_all_today
 from ui.components import render_html, metric_card, metric_grid, status_card
@@ -28,10 +28,10 @@ def _source_count(news: pd.DataFrame) -> int:
     return int(news["source"].nunique())
 
 
-def _dept_count(roadmap: pd.DataFrame) -> int:
-    if roadmap.empty or "dept" not in roadmap.columns:
+def _dept_count(tasks: pd.DataFrame) -> int:
+    if tasks.empty or "dept" not in tasks.columns:
         return 0
-    return int(roadmap["dept"].nunique())
+    return int(tasks["dept"].nunique())
 
 
 def enrich_percent(news: pd.DataFrame) -> int:
@@ -43,7 +43,7 @@ def enrich_percent(news: pd.DataFrame) -> int:
 
 def data_quality_items(
     news: pd.DataFrame,
-    roadmap: pd.DataFrame,
+    tasks: pd.DataFrame,
     *,
     llm_configured: bool,
 ) -> list[dict[str, str]]:
@@ -88,7 +88,7 @@ def data_quality_items(
             "icon": "✨",
         })
 
-    if roadmap.empty:
+    if tasks.empty:
         items.append({
             "title": "작업 정의 DB 준비 필요",
             "body": "작업 정의 데이터 업로드 탭에서 Master_Table 엑셀을 저장해야 뉴스가 부서·공정 작업과 연결됩니다.",
@@ -98,7 +98,7 @@ def data_quality_items(
     else:
         items.append({
             "title": "작업 정의 DB 준비됨",
-            "body": f"작업 {len(roadmap):,}건과 부서 {_dept_count(roadmap):,}개가 저장되어 인사이트 분석 매칭에 사용할 수 있습니다.",
+            "body": f"작업 {len(tasks):,}건과 부서 {_dept_count(tasks):,}개가 저장되어 인사이트 분석 매칭에 사용할 수 있습니다.",
             "status": "ok",
             "icon": "🗂",
         })
@@ -121,29 +121,29 @@ def data_quality_items(
     return items
 
 
-def data_health_html(news: pd.DataFrame, roadmap: pd.DataFrame, *, llm_configured: bool) -> str:
+def data_health_html(news: pd.DataFrame, tasks: pd.DataFrame, *, llm_configured: bool) -> str:
     """Render the data readiness dashboard as escaped component HTML."""
     enriched = content_ready_count(news)
     enrich_pct = enrich_percent(news)
     metrics = metric_grid([
         metric_card("오늘 뉴스", f"{len(news):,}건", caption=f"소스 {_source_count(news):,}개", icon="📰", tone="info"),
         metric_card("본문 확보율", f"{enrich_pct}%", caption=f"{enriched:,}/{len(news):,}건", icon="✨", tone="ok" if enrich_pct == 100 and len(news) else "warn"),
-        metric_card("정의된 작업", f"{len(roadmap):,}건", caption=f"부서 {_dept_count(roadmap):,}개", icon="🗂", tone="teal" if len(roadmap) else "warn"),
+        metric_card("정의된 작업", f"{len(tasks):,}건", caption=f"부서 {_dept_count(tasks):,}개", icon="🗂", tone="teal" if len(tasks) else "warn"),
         metric_card("LLM", "Ready" if llm_configured else "Check", caption="SOLA 분석 엔진", icon="🤖", tone="ok" if llm_configured else "warn"),
     ])
     cards = "".join(
         status_card(item["title"], item["body"], status=item["status"], icon=item["icon"])
-        for item in data_quality_items(news, roadmap, llm_configured=llm_configured)
+        for item in data_quality_items(news, tasks, llm_configured=llm_configured)
     )
     return metrics + '<div class="data-quality-grid">' + cards + "</div>"
 
 
-def build_data_context(news: pd.DataFrame, roadmap: pd.DataFrame, *, llm_configured: bool) -> str:
+def build_data_context(news: pd.DataFrame, tasks: pd.DataFrame, *, llm_configured: bool) -> str:
     """Compact text context for future chat/diagnostics usage."""
     return "\n".join([
         "화면: 데이터 관리 준비 상태",
         f"오늘 뉴스: {len(news):,}건 / 본문 확보: {content_ready_count(news):,}건 ({enrich_percent(news)}%)",
-        f"정의된 작업: {len(roadmap):,}건 / 부서: {_dept_count(roadmap):,}개",
+        f"정의된 작업: {len(tasks):,}건 / 부서: {_dept_count(tasks):,}개",
         f"LLM 설정: {'준비됨' if llm_configured else '확인 필요'}",
     ])
 
@@ -151,9 +151,9 @@ def build_data_context(news: pd.DataFrame, roadmap: pd.DataFrame, *, llm_configu
 def render() -> None:
     """Render the Phase 4 data readiness overview above detailed data tabs."""
     news = load_all_today()
-    roadmap = load_roadmap()
+    tasks = load_tasks()
     section_label("데이터 준비 상태")
     render_html(
-        data_health_html(news, roadmap, llm_configured=llm_ready()),
+        data_health_html(news, tasks, llm_configured=llm_ready()),
         unsafe_allow_html=True,
     )

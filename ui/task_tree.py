@@ -21,7 +21,7 @@ def _select(label: str, df: pd.DataFrame, col: str, key: str) -> str | None:
 
 
 def render_drilldown(
-    roadmap_df: pd.DataFrame,
+    tasks_df: pd.DataFrame,
     *,
     key_prefix: str = "tt",
     show_task_picker: bool = False,
@@ -30,7 +30,7 @@ def render_drilldown(
       selection — {dept, lv1, lv2, lv3, task}
       filtered  — selection 적용된 DataFrame
     """
-    if roadmap_df.empty:
+    if tasks_df.empty:
         render_html(
             status_card(
                 "작업 정의 데이터가 없습니다",
@@ -40,12 +40,12 @@ def render_drilldown(
             ),
             unsafe_allow_html=True,
         )
-        return {}, roadmap_df
+        return {}, tasks_df
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        dept = _select("부서", roadmap_df, "dept", f"{key_prefix}_dept")
-    df = roadmap_df if not dept else roadmap_df[roadmap_df["dept"] == dept]
+        dept = _select("부서", tasks_df, "dept", f"{key_prefix}_dept")
+    df = tasks_df if not dept else tasks_df[tasks_df["dept"] == dept]
 
     with c2:
         lv1 = _select("분류(Lv1)", df, "lv1", f"{key_prefix}_lv1")

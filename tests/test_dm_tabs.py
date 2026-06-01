@@ -137,7 +137,7 @@ def test_dm_src_body_empty_news():
 
 def test_dm_task_body_renders_section_card():
     from ui import data_management_v2 as dm
-    with patch.object(dm, "_load_roadmap", return_value=pd.DataFrame()):
+    with patch.object(dm, "_load_tasks", return_value=pd.DataFrame()):
         html = dm._dm_task_body_html()
     assert "작업 정의 데이터" in html
     assert "엑셀" in html
@@ -147,7 +147,7 @@ def test_dm_task_body_renders_section_card():
 def test_dm_task_body_shows_current_count():
     from ui import data_management_v2 as dm
     fake_df = pd.DataFrame([{"a": i} for i in range(42)])
-    with patch.object(dm, "_load_roadmap", return_value=fake_df):
+    with patch.object(dm, "_load_tasks", return_value=fake_df):
         html = dm._dm_task_body_html()
     assert "42건" in html
 
@@ -159,7 +159,7 @@ def test_dm_tab_body_html_dispatches_by_tab():
     from persona.schema import Persona
     stats = {"active_sources": 4, "today_count": 1}
     with patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(dm, "_load_roadmap", return_value=pd.DataFrame()):
+         patch.object(dm, "_load_tasks", return_value=pd.DataFrame()):
         kw_html = dm._dm_tab_body_html("kw", persona=Persona(), dm_stats=stats)
         task_html = dm._dm_tab_body_html("task", persona=Persona(), dm_stats=stats)
         src_html = dm._dm_tab_body_html("src", persona=Persona(), dm_stats=stats)
@@ -181,7 +181,7 @@ def test_render_main_hides_split_for_non_jobs_tab():
     captured = []
     with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
          patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(dm, "_load_roadmap", return_value=pd.DataFrame()), \
+         patch.object(dm, "_load_tasks", return_value=pd.DataFrame()), \
          patch.object(dm, "_news_cards_html", return_value=""), \
          patch.object(dm, "_ingest_jobs_html", return_value=""), \
          patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": ""}):

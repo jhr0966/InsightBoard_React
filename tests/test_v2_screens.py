@@ -22,7 +22,7 @@ def test_board_empty_state_helpers_dont_raise():
     from ui import board_v2
 
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame()):
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame()):
         # cache clear (other tests can populate)
         for fn in (
             board_v2._opportunities_html,
@@ -52,7 +52,7 @@ def test_insights_empty_state_helpers_dont_raise():
     from ui import insights_v2
 
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame()):
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame()):
         for fn in (
             insights_v2._tkw_list_html,
             insights_v2._ia_chart_parts,
@@ -121,7 +121,7 @@ def test_board_matrix_with_data_emits_6_bubbles():
     from ui import board_v2
 
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         board_v2._board_matrix_html.clear()
         html = board_v2._board_matrix_html()
@@ -147,7 +147,7 @@ def test_insights_process_map_with_data_emits_top_card():
 
     cells = _synthetic_cells()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells), \
          patch(
              "ui.board_v2._weekly_keyword_series",
@@ -220,7 +220,7 @@ def test_matrix_detail_cta_links_to_sola_with_from_matrix():
 
     cells = _synthetic_cells()
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=cells):
         board_v2._board_matrix_html.clear()
         html = board_v2._board_matrix_html()
@@ -235,7 +235,7 @@ def test_ia_process_map_detail_links_to_sola_with_from_ia_map():
 
     cells = _synthetic_cells()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells), \
          patch(
              "ui.board_v2._weekly_keyword_series",
@@ -256,7 +256,7 @@ def test_board_brief_cta_routes_to_sola_with_from_brief():
 
     news = _synthetic_news_30d()
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_matches", return_value=pd.DataFrame()):
         board_v2._brief_html.clear() if hasattr(board_v2._brief_html, "clear") else None
         brief = board_v2._brief_html()
@@ -562,7 +562,7 @@ def test_board_matrix_label_ellipsis_when_too_long():
          "matched_news": 40, "matched_tasks": 18, "sample_tasks": "", "sample_news": ""},
     ])
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=cells):
         board_v2._board_matrix_html.clear()
         html = board_v2._board_matrix_html()
@@ -584,7 +584,7 @@ def test_insights_matrix_with_data_emits_halo():
 
     cells = _synthetic_cells()
     with patch.object(insights_v2._news_db, "load_news_for_days", return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(insights_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(insights_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(insights_v2, "_score_cells", return_value=cells):
         insights_v2._ia_matrix_svg.clear()
         svg = insights_v2._ia_matrix_svg()

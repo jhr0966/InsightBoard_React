@@ -64,7 +64,7 @@ def test_brief_html_includes_tts_button_when_items_exist():
         "score": 0.9,
     }])
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=news), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame([{"a": 1}])), \
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_matches", return_value=matches):
         board_v2._brief_html.clear()
         brief = board_v2._brief_html()
@@ -81,7 +81,7 @@ def test_brief_html_includes_tts_button_when_items_exist():
 def test_brief_html_empty_state_returns_disabled_tts_button():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(board_v2, "_load_roadmap", return_value=pd.DataFrame()):
+         patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame()):
         board_v2._brief_html.clear()
         brief = board_v2._brief_html()
     assert "tts_btn" in brief
@@ -105,7 +105,7 @@ def test_matrix_detail_includes_tts_button():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap",
+         patch.object(board_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         board_v2._board_matrix_html.clear()
@@ -128,7 +128,7 @@ def test_matrix_detail_tts_payload_includes_selected_cell_info():
     from ui import board_v2
     with patch.object(board_v2._news_db, "load_news_for_days",
                       return_value=pd.DataFrame([{"a": 1}])), \
-         patch.object(board_v2, "_load_roadmap",
+         patch.object(board_v2, "_load_tasks",
                       return_value=pd.DataFrame([{"a": 1}])), \
          patch.object(board_v2, "_score_cells", return_value=_synthetic_cells()):
         board_v2._board_matrix_html.clear()

@@ -13,7 +13,7 @@ import streamlit as st
 
 from config import ASSETS_DIR
 from persona.schema import Persona
-from roadmap.query import load_latest as _load_roadmap
+from roadmap.query import load_latest as _load_tasks
 from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
 from store import trends as _trends
@@ -332,15 +332,15 @@ def _ia_matrix_svg(selected_key: str | None = None) -> str:
     """
     try:
         news = _news_db.load_news_for_days(days=30)
-        roadmap = _load_roadmap()
+        tasks = _load_tasks()
     except Exception:
         news = None
-        roadmap = None
-    if news is None or news.empty or roadmap is None or roadmap.empty:
+        tasks = None
+    if news is None or news.empty or tasks is None or tasks.empty:
         return _ia_matrix_empty()
 
     try:
-        cells = _score_cells(news, roadmap).head(8)
+        cells = _score_cells(news, tasks).head(8)
     except Exception:
         return _ia_matrix_empty()
     if cells.empty:
@@ -455,15 +455,15 @@ def _ia_mtx_rank_html(selected_key: str | None = None) -> str:
     """매트릭스 우측 ★ PoC 후보 동적 리스트 — selected_key 셀에 ia-poc-on."""
     try:
         news = _news_db.load_news_for_days(days=30)
-        roadmap = _load_roadmap()
+        tasks = _load_tasks()
     except Exception:
         news = None
-        roadmap = None
-    if news is None or news.empty or roadmap is None or roadmap.empty:
+        tasks = None
+    if news is None or news.empty or tasks is None or tasks.empty:
         return _ia_mtx_rank_empty()
 
     try:
-        cells = _score_cells(news, roadmap).head(5)
+        cells = _score_cells(news, tasks).head(5)
     except Exception:
         return _ia_mtx_rank_empty()
     if cells.empty:
@@ -638,15 +638,15 @@ def _ia_heatmap_html(selected_key: str | None = None) -> str:
     """
     try:
         news_30 = _news_db.load_news_for_days(days=30)
-        roadmap = _load_roadmap()
+        tasks = _load_tasks()
     except Exception:
         news_30 = None
-        roadmap = None
-    if news_30 is None or news_30.empty or roadmap is None or roadmap.empty:
+        tasks = None
+    if news_30 is None or news_30.empty or tasks is None or tasks.empty:
         return _ia_heatmap_empty()
 
     try:
-        cells = _score_cells(news_30, roadmap).head(20)
+        cells = _score_cells(news_30, tasks).head(20)
     except Exception:
         return _ia_heatmap_empty()
     if cells.empty:
@@ -811,11 +811,11 @@ def _ia_process_map_html(selected_kw: str | None = None) -> str:
 
     try:
         news_30 = _news_db.load_news_for_days(days=30)
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
         news_30 = None
-        roadmap_df = None
-    if news_30 is None or news_30.empty or roadmap_df is None or roadmap_df.empty:
+        tasks_df = None
+    if news_30 is None or news_30.empty or tasks_df is None or tasks_df.empty:
         return _ia_pmap_empty()
 
     # 선택된 키워드로 뉴스 필터링 (지정 시) — 필터 후 비면 empty
@@ -833,7 +833,7 @@ def _ia_process_map_html(selected_kw: str | None = None) -> str:
     top_dot_color = _IA_PC_PALETTE[0][0]
 
     try:
-        cells = _score_cells(news_30, roadmap_df).head(3)
+        cells = _score_cells(news_30, tasks_df).head(3)
     except Exception:
         return _ia_pmap_empty()
     if cells.empty:
@@ -967,9 +967,9 @@ def _ia_stats() -> dict[str, str]:
     except Exception:
         news_7d = None
     try:
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
-        roadmap_df = None
+        tasks_df = None
 
     n_30d = int(len(news_30d)) if news_30d is not None else 0
 
@@ -991,10 +991,10 @@ def _ia_stats() -> dict[str, str]:
     matched_processes = 0
     if (
         news_7d is not None and not news_7d.empty
-        and roadmap_df is not None and not roadmap_df.empty
+        and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_7d, roadmap_df, top_k=3)
+            matches = _score_matches(news_7d, tasks_df, top_k=3)
             if not matches.empty and "lv3" in matches.columns:
                 matched_processes = int(matches[matches["score"] > 0]["lv3"].nunique())
         except Exception:
@@ -1004,10 +1004,10 @@ def _ia_stats() -> dict[str, str]:
     poc_candidates = 0
     if (
         news_7d is not None and not news_7d.empty
-        and roadmap_df is not None and not roadmap_df.empty
+        and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            cells = _score_cells(news_7d, roadmap_df)
+            cells = _score_cells(news_7d, tasks_df)
             poc_candidates += int(len(cells))
         except Exception:
             pass
@@ -1030,24 +1030,24 @@ def _archive_stats_ia() -> dict[str, int]:
     except Exception:
         news_df = None
     try:
-        roadmap_df = _load_roadmap()
+        tasks_df = _load_tasks()
     except Exception:
-        roadmap_df = None
+        tasks_df = None
 
     match_count = 0
     opp_count = 0
     if (
         news_df is not None and not news_df.empty
-        and roadmap_df is not None and not roadmap_df.empty
+        and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, roadmap_df, top_k=3)
+            matches = _score_matches(news_df, tasks_df, top_k=3)
             if not matches.empty:
                 match_count = int(matches[matches["score"] > 0]["link"].nunique())
         except Exception:
             pass
         try:
-            cells = _score_cells(news_df, roadmap_df)
+            cells = _score_cells(news_df, tasks_df)
             opp_count = int(len(cells))
         except Exception:
             pass
@@ -1066,10 +1066,10 @@ def chat_context_block(persona: Persona) -> str:
     # 30일 뉴스 + 작업 정의 데이터 — 캐시된 helper 들이 같은 데이터 씀
     try:
         news_30 = _news_db.load_news_for_days(days=30)
-        roadmap = _load_roadmap()
+        tasks = _load_tasks()
     except Exception:
         news_30 = None
-        roadmap = None
+        tasks = None
 
     # 트렌드 키워드 top 6 (빈도 + emergence)
     if news_30 is not None and not news_30.empty:
@@ -1105,9 +1105,9 @@ def chat_context_block(persona: Persona) -> str:
         pass
 
     # 매트릭스 8 cells
-    if news_30 is not None and not news_30.empty and roadmap is not None and not roadmap.empty:
+    if news_30 is not None and not news_30.empty and tasks is not None and not tasks.empty:
         try:
-            cells = _score_cells(news_30, roadmap).head(8)
+            cells = _score_cells(news_30, tasks).head(8)
             if not cells.empty:
                 parts.append("기회 매트릭스 top 8 (효과×난이도):")
                 for _, r in cells.iterrows():
@@ -1122,7 +1122,7 @@ def chat_context_block(persona: Persona) -> str:
 
         # 공정 매핑 카드 (트렌드 → 공정)
         try:
-            cells3 = _score_cells(news_30, roadmap).head(3)
+            cells3 = _score_cells(news_30, tasks).head(3)
             if not cells3.empty:
                 parts.append("공정 매핑 카드 (top 트렌드 키워드와 매칭되는 공정 3건):")
                 for _, r in cells3.iterrows():

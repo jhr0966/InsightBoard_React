@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-06-01 · 변수명 통일 (roadmap_df → tasks_df) — 1차 완성 정리
+
+**브랜치:** `refactor-tasks-df-naming` (main `f121f29` 기준 · screen-CSS #86 머지 후)
+
+**맥락:** 사용자 "변수명 통일 → 1차 완성 정리 → 안정화". `docs/TASK_DEF_PLAN.md` 리팩토링 시점 (PR-4 직후 예약분).
+
+**한 일:**
+- import alias `load_roadmap`/`_load_roadmap` → `load_tasks`/`_load_tasks`.
+- 지역 변수 `roadmap_df` → `tasks_df`, DataFrame `roadmap` → `tasks` (attr 접근 포함).
+- **모듈 경로 보존**: `from roadmap.query`, `roadmap.task_def_json`, `ROADMAP_DIR`, `roadmap/` 디렉토리.
+- 테스트 patch 타깃 lockstep 업데이트.
+
+**주의/함정:** 1차 sed 가 `roadmap.empty`(DataFrame attr)를 모듈 참조로 오인해 건너뜀 → insights/board/data_health 18건 실패. 2차 패스로 import 라인 제외 `roadmap.`/`roadmap[` 변수 접근만 추가 rename 해 해결. conftest 의 `roadmap` 디렉토리 path 변수는 scope 밖이라 revert.
+
+**검증:** pytest 654/654 · 금지 패턴 0 · compile OK · 23파일 (170/170).
+
+**다음:** export(PR-7, WIP 브랜치 `feat-task-def-export` 보존) 또는 추가 안정화. `roadmap/`→`tasks/` 패키지 rename 은 import 광범위 영향이라 보류.
+
+**참고:** PR-7 export 모듈 (`roadmap/task_def_export.py`) 은 `feat-task-def-export` 브랜치에 WIP 커밋으로 보존됨 (JSON/엑셀 export, 재업로드 호환 9컬럼).
+
+---
+
 ## 2026-06-01 · screen-CSS 근본 수정 — v2 셸 전 화면 복구 (제대로된 1차 완성)
 
 **브랜치:** `fix-screen-css-injection` (main `8abcaad` 기준 · 트랙 A #85 머지 후)
