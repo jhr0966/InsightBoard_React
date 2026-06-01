@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (Phase 2 — UI 중복 제거: `get_persona` 승격 + `app_side_stats` 단일화)
+- `ui/app_shell.get_persona()` 신규 — 5개 v2 화면(`board`/`insights`/`archive`/`sola_workshop`/`data_management`)이 동일 구현하던 `_load_persona` 를 단일 진입점으로 통합. 호출처 일괄 교체.
+- `archive_v2._archive_stats_oa` / `insights_v2._archive_stats_ia` / `data_management_v2._archive_stats_dm` 세 사본을 `board_v2._archive_stats()` 위임으로 교체. `board_v2._board_kpis` 60초 캐시 단일 소스로 일원화 → 좌측 nav 카운트와 보드 KPI 가 항상 일관됨. 4중 캐시 → 1중 캐시.
+- 동반 정리: `archive_v2` 에서 `_load_tasks`/`_news_db`/`_score_matches`/`_score_cells` unused import 제거, `data_management_v2` 에서 `_score_matches`/`_score_cells` unused import 제거.
+- 효과: -114줄(161 삭제/47 추가) · 사용 가치가 낮아 `ui/toast.py`·`ui/url_state.py` 통합은 보류(REFACTOR_PLAN 기록).
+- 검증: pytest 656/656 · 금지 패턴(on_click/raw requests) 0 · py_compile OK.
+
 ### Fixed (Phase 1a — 무논쟁 correctness: F5·F7·F11·F12)
 - **F5 토스트 부재** (`ui/archive_v2.py`): 북마크 채택/보류/복구(`?action=`) 소비 후 `st.toast` 미호출 → 액션 성공 피드백이 없던 문제. `_STATUS_TOAST` 맵 + `render()` 에서 `_consume_action_if_any()` 결과가 있으면 토스트 노출.
 - **F7 chat ts 미영속** (`store/chat_log.py`): `save_history`/`load_history` 가 role/content 만 처리해 `sola_workshop_v2` 가 메시지에 붙인 `ts`(timestamp)가 저장/복원되지 않던 문제. ts 가 있으면 함께 영속·복원(없으면 생략 — 후방 호환). 회귀 테스트 2건 추가(`tests/test_chat_log.py`).

@@ -937,17 +937,6 @@ def _ia_pmap_empty(*, selected_kw: str | None = None) -> str:
             '</div>')
 
 
-def _load_persona() -> Persona:
-    p = st.session_state.get("persona")
-    if isinstance(p, Persona):
-        return p
-    from persona import store as persona_store
-
-    p = persona_store.load()
-    st.session_state["persona"] = p
-    return p
-
-
 @st.cache_data(ttl=60)
 def _ia_stats() -> dict[str, str]:
     """인사이트 분석 헤더 4 stats.
@@ -1024,36 +1013,15 @@ def _ia_stats() -> dict[str, str]:
 
 @st.cache_data(ttl=60)
 def _archive_stats_ia() -> dict[str, int]:
-    """app-side 좌측 — 보드와 동일 소스."""
-    try:
-        news_df = _news_db.load_news_for_days(days=1)
-    except Exception:
-        news_df = None
-    try:
-        tasks_df = _load_tasks()
-    except Exception:
-        tasks_df = None
+    """app-side 좌측 — 보드와 동일 소스. `board_v2._archive_stats` 60초 캐시 위임."""
+    from ui import board_v2  # lazy
 
-    match_count = 0
-    opp_count = 0
-    if (
-        news_df is not None and not news_df.empty
-        and tasks_df is not None and not tasks_df.empty
-    ):
-        try:
-            matches = _score_matches(news_df, tasks_df, top_k=3)
-            if not matches.empty:
-                match_count = int(matches[matches["score"] > 0]["link"].nunique())
-        except Exception:
-            pass
-        try:
-            cells = _score_cells(news_df, tasks_df)
-            opp_count = int(len(cells))
-        except Exception:
-            pass
-    summary = bookmarks_store.summary_counts()
-    pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
-    return {"match_today": match_count, "opportunities": opp_count, "pending_adopt": pending}
+    try:
+        return board_v2._archive_stats()
+    except Exception:
+        summary = bookmarks_store.summary_counts()
+        pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
+        return {"match_today": 0, "opportunities": 0, "pending_adopt": pending}
 
 
 def chat_context_block(persona: Persona) -> str:
@@ -1140,7 +1108,7 @@ def render() -> None:
     """인사이트 분석 v2 — topbar + app-side + main + app-sola."""
     inject_screen_css("insights")
 
-    persona = _load_persona()
+    persona = app_shell.get_persona()
     stats = _archive_stats_ia()
     ia_stats = _ia_stats()
     refresh = app_shell.refresh_label_now()

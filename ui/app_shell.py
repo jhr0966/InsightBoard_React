@@ -21,6 +21,23 @@ from persona.schema import Persona
 from sola.client import is_configured as llm_ready
 
 
+def get_persona() -> Persona:
+    """`session_state["persona"]` → 없으면 `persona.store.load()` → 캐시 후 반환.
+
+    Phase 2 dedup: board/insights/archive/sola_workshop/data_management 의 동일
+    구현(`_load_persona`)을 단일 진입점으로 통합. session_state 키 `persona` 는
+    `app.py` 가 항상 갱신해두므로 통상 첫 분기에서 반환된다.
+    """
+    p = st.session_state.get("persona")
+    if isinstance(p, Persona):
+        return p
+    from persona import store as persona_store
+
+    p = persona_store.load()
+    st.session_state["persona"] = p
+    return p
+
+
 # ── 패널 접기/펴기 — query-param 기반 상태 ────────────────────────────────
 # `<a href>` 클릭이 full page reload 를 일으켜 session_state 가 유지 안 됨.
 # URL 의 ?side=c / ?sola=c 를 단일 진실로 사용. 토글 링크는 현재 상태에서

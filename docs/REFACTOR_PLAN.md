@@ -12,7 +12,7 @@
 |---|---|---|
 | **0** | 문서 정합 (ARCHITECTURE/CLAUDE/DEV_GUIDELINES/INVARIANTS + 본 문서) | ✅ 완료 (PR #89) |
 | **1a** | 무논쟁 correctness — F5·F7·F11·F12 | ✅ 완료 (PR #89) |
-| **2** | UI 중복 제거 — stats/toast/url-state 단일화 | ⏳ 예정 |
+| **2** | UI 중복 제거 — `get_persona` 승격 + `app_side_stats` 단일화 | ✅ 완료 (PR #89) |
 | **1b** | 결정-1 반영 (제안서 흐름) | ⏸ 결정 대기 |
 | **1c** | 결정-2 반영 (enrich→매칭 연결) | ⏸ 결정 대기 |
 | **3** | 데드 코드 삭제 (layout/task_tree/sola 4종) | ⏳ 예정 |
@@ -64,14 +64,16 @@ production(app.py·ui/·scripts/) import 0 확인. Phase 3 에서 삭제 후보.
 
 ---
 
-## Phase 2 — UI 중복 제거 (예정)
+## Phase 2 — UI 중복 제거 (완료)
 
-correctness 영향 없는 순수 dedup. 1a 가 만든 `board_v2 ↔ sola_workshop` 통계 커플링을 상향 정리.
+correctness 영향 없는 순수 dedup. PR #89 에 누적.
 
-1. **app_side_stats 단일화**: `board_v2._archive_stats` / `sola_workshop_v2._archive_stats` 의 사실상 동일 로직을 `app_shell.app_side_stats()` 로 승격. 두 화면은 호출만.
-2. **`ui/toast.py`**: F5 로 도입한 `_STATUS_TOAST` 류 토스트 문구·아이콘을 한 곳으로(보드/데이터관리/보관함 공유).
-3. **`ui/url_state.py`**: `?action=`·`?refresh=`·`?expand=`·`?from=` 1회-소비 패턴(I-16) 의 query strip 보일러플레이트 통합.
-4. **`get_persona` 승격**: `archive_v2._load_persona` / `sola_workshop_v2._load_persona` 동일 구현 → `app_shell.get_persona()` 로.
+1. ✅ **`get_persona` 승격** (`ui/app_shell.get_persona`): 5개 v2 화면(`board`/`insights`/`archive`/`sola_workshop`/`data_management`)에 동일 구현되어 있던 `_load_persona` 를 단일 진입점으로 통합. 호출처 일괄 교체.
+2. ✅ **app_side_stats 단일화**: `archive_v2._archive_stats_oa` / `insights_v2._archive_stats_ia` / `data_management_v2._archive_stats_dm` 가 `board_v2._archive_stats` 와 정확히 동일한 계산을 별도 사본+개별 캐시로 반복 → 세 사본을 board 60초 캐시(`_board_kpis`) 위임으로 교체. 4중 캐시 → 1중 캐시. unused import 동반 정리.
+3. ⏸ **`ui/toast.py`**: 현재 `st.toast` 사용처 1곳뿐 → dedup 가치 부족, 보류. F1b/F1c 에서 사용처 증가 시 재검토.
+4. ⏸ **`ui/url_state.py`**: `del st.query_params[k]` 가 10여 곳에 흩어져 있으나 각 함수가 다른 키·다른 후속 로직 → 단순 헬퍼로 추출 가치 적음. 패턴이 늘어나면 재검토.
+
+**효과**: -114줄(161 삭제/47 추가) · 캐시 일관성(보드와 좌측 nav 카운트가 항상 동일) · `Persona` import 경로 단순화.
 
 ---
 
@@ -80,14 +82,12 @@ correctness 영향 없는 순수 dedup. 1a 가 만든 `board_v2 ↔ sola_worksho
 ### 결정-1 — 제안서/요약 흐름 (sola/propose·summarize)
 - 현재: SOLA 작업실은 자유 채팅만. `sola/propose.py`(자동화 제안서)·`summarize.py`(뉴스 요약)는 구현돼 있으나 UI 미연결(데드).
 - 선택지: **(A)** 작업실에 "제안서 생성"·"요약" 액션으로 부활 / (B) 완전 삭제하고 채팅 프롬프트로만.
-- **잠정 결정: A** (요약에 따르면 사용자 A 선택). → Phase 1b 에서 UI 연결.
+- **확정: A** (2026-06-01 사용자). → Phase 1b 에서 UI 연결.
 
 ### 결정-2 — enrich → 매칭 연결
 - 현재: `scraping/enrich.py`(본문 fetch + LLM 키워드/요약)는 수집 탭에서 옵션이나, 매칭(`store/match.py`)이 enrich 된 keywords 를 충분히 활용하는지 점검 필요.
 - 선택지: **(A)** enrich keywords 를 매칭 가중치에 반영 / (B) 현행 유지.
-- **잠정 결정: A**. → Phase 1c.
-
-> 두 결정은 사용자 최종 확인 후 착수. 확정되면 본 표의 상태를 갱신한다.
+- **확정: A** (2026-06-01 사용자). → Phase 1c.
 
 ---
 

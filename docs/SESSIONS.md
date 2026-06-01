@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-01 · Phase 2 UI dedup (`get_persona` 승격 + `app_side_stats` 단일화)
+
+**브랜치:** `claude/nice-bell-eEZLj` (PR #89 누적)
+
+**맥락:** 사용자 결정 — Phase 1b/1c 는 결정-1/2 (확정: 둘 다 A) 반영을 위한 더 큰 작업이라 게이트가 없는 Phase 2(순수 dedup)부터.
+
+**한 일:**
+- `ui/app_shell.get_persona()` 신설 → 5개 v2 화면의 `_load_persona` 일괄 교체·정의 제거.
+- `archive_v2._archive_stats_oa`/`insights_v2._archive_stats_ia`/`data_management_v2._archive_stats_dm` 세 사본 본문을 `board_v2._archive_stats()` 위임으로 교체(lazy import). board 의 60초 캐시(`_board_kpis`)가 단일 소스가 되어 좌측 nav 카운트와 보드 KPI 가 항상 일관.
+- 위 위임으로 unused 가 된 `_score_matches`/`_score_cells`/`_news_db`/`_load_tasks` import 제거(archive/data_management).
+- `ui/toast.py`/`ui/url_state.py` 는 사용처 1~2건이라 dedup 가치 적어 보류(REFACTOR_PLAN 기록).
+
+**주의/함정:** 내가 짠 `sed` 가 호출(`_load_persona()`)뿐 아니라 정의문(`def _load_persona()`)까지 치환해 4개 파일에서 `def app_shell.get_persona() -> Persona:` 가 만들어져 SyntaxError. 깨진 def 블록을 통째 제거하는 추가 패스로 복구.
+
+**검증:** pytest 656/656 · 금지 패턴 0 · py_compile OK · diff -114줄.
+
+**다음:** Phase 1b(결정-1: SOLA 작업실에 propose/summarize 액션 연결) → Phase 1c(결정-2: enrich keywords → 매칭 가중치) → Phase 3(데드 코드 삭제).
+
+---
+
 ## 2026-06-01 · Phase 1a 무논쟁 correctness (F5·F7·F11·F12)
 
 **브랜치:** `claude/nice-bell-eEZLj` (Phase 0 와 동일 PR #89 — harness 단일 브랜치 제약)
