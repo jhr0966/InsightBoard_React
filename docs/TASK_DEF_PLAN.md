@@ -298,11 +298,11 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 - [ ] diff 화면: 추가/수정/유지 카운트 + 상세 expand
 - [ ] tests: e2e 20건
 
-### PR-A: 데이터 관리 2 그룹 재편
-- [ ] 2 그룹 segmented control (📰 뉴스 / 📋 작업)
-- [ ] URL: `?dm_grp=news|tasks&dm_tab=...`
-- [ ] 기존 4 탭 → 2 그룹 안으로 재배치
-- [ ] tests: 라우팅 10건
+### PR-A: 데이터 관리 2 그룹 재편 ✅
+- [x] 2 그룹 segmented control (📰 뉴스 / 📋 작업) + CSS
+- [x] URL: `?dm_grp=news|tasks&dm_tab=...` + 기존 `?dm_tab=` 단독 북마크 자동 그룹 추론 호환
+- [x] 기존 4 탭 → news(jobs/kw/src) + tasks(task) 재배치 (PR-6 가 `tasks.manage` 추가)
+- [x] tests: 라우팅 14건 + 기존 호환 수정
 
 ### PR-6: 작업 정의 관리 UI
 - [ ] sub-탭 "✏️ 작업 정의 관리" 추가

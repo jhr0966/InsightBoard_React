@@ -84,6 +84,42 @@
 .dm-stat-sep { width: 1px; height: 30px; background: var(--surface-divider); }
 .dm-good { color: var(--semantic-success); }
 
+/* ── Groups segmented (PR-A) ─────────────────────────── */
+.dm-groups {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 10px;
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-divider);
+  border-radius: 10px;
+}
+.dm-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: transparent;
+  border-radius: 7px;
+  transition: all 120ms;
+  letter-spacing: -0.005em;
+}
+.dm-group:hover {
+  background: #fff;
+  color: var(--text-primary);
+}
+.dm-group-active {
+  background: #fff;
+  color: var(--accent-primary);
+  box-shadow: var(--shadow-1);
+}
+.dm-group:visited { color: inherit; }
+
 /* ── Tabs ─────────────────────────────────────────────── */
 .dm-tabs {
   display: flex;

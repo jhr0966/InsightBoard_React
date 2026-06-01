@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### Changed (데이터 관리 area 2 그룹 segmented 재편 — PR-A)
+- `ui/data_management_v2.py` — `_DM_GROUPS=("news","tasks")` + `_DM_GROUP_TABS` (news: jobs/kw/src · tasks: task) + `_DM_GROUP_LABEL` (📰 뉴스 데이터 / 📋 작업 데이터). PR-6 에서 `tasks` 그룹에 `manage` 추가 예정.
+- `_dm_resolve_group_and_tab(grp, tab)` — URL 정규화 헬퍼. 기존 `?dm_tab=` 단독 북마크 URL 도 자동 그룹 추론으로 호환 (예: `?dm_tab=task` → `(tasks, task)`). grp/tab 어긋나면 `tab` 의 그룹이 진실.
+- `_dm_tab_href(tab)` — sub-탭 URL 에 `dm_grp` 자동 포함. news/jobs 는 둘 다 생략 (기존 깔끔한 URL 유지), task 는 `dm_grp=tasks` 만 (tasks 그룹 기본 탭이므로 `dm_tab` 생략), kw/src 는 `dm_grp=news&dm_tab=...` 명시.
+- `_dm_group_href(grp)` / `_dm_groups_html(selected_grp)` 신규 — 그룹 segmented control (`<a role="tab">` 2개, `dm-group-active` 마킹).
+- `_dm_tabs_html(...)` — 현재 그룹의 sub-탭만 렌더 (news 그룹 3개 / tasks 그룹 1개). 활성 마킹 동작 유지.
+- `render()` — `selected_tab` 단일 파싱 → `_dm_resolve_group_and_tab` 로 그룹·탭 동시 결정.
+- `assets/v2/screens/data_management.css` — `.dm-groups` / `.dm-group` / `.dm-group-active` 스타일 추가 (inline-flex segmented).
+- `tests/test_dm_area_groups.py` (+14) — 상수 sanity / `_dm_group_of` / `_dm_resolve_group_and_tab` 6건 (legacy `dm_tab` 호환·둘 다 비음·grp 만·잘못된 값·grp 와 tab 불일치 시 tab 우선) / `_dm_tab_href` 3건 (clean default·dm_grp 자동 포함·tasks 기본 탭은 dm_tab 생략) / `_dm_group_href` / `_dm_groups_html` 2건 / `_dm_tabs_html` 그룹별 필터링 4건.
+- `tests/test_dm_tabs.py` — 기존 4 탭 가정을 news 그룹 3 탭으로 수정 (`task` 는 tasks 그룹).
+
 ### Changed (로드맵 reader → SQLite 우선 + Parquet fallback — PR-4)
 - `roadmap/query.py::load_latest(*, prefer="sqlite")` — SQLite `task_defs` 가 비어있지 않으면 그쪽에서 빌드, 비어있으면 기존 Parquet (호환). `prefer="parquet"` 로 명시 시 Parquet 만 사용.
 - SQLite → DataFrame 빌드: `org_meta` 우선, scalar 미러로 보강. `lv1/lv2/lv3` 가 `org_meta` 에 없으면 `division/process/task` 자동 fallback (`ingest.normalize_columns` 와 동일 동작). 반환 컬럼 셋은 `ALL_COLUMNS` 그대로 — 보드/인사이트/데이터관리/매칭 호출처 무변경.
