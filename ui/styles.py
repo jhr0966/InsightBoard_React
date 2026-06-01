@@ -44,6 +44,12 @@ def inject_screen_css(name: str) -> None:
     글로벌이 아닌 화면 전용 스타일(예: 보드 화면의 .db-greet/.db-stories 등)
     을 화면 진입 시 한 번 주입한다. 같은 화면에 머무는 동안 매 rerun 마다
     재주입되지만 브라우저가 같은 텍스트를 중복 적용해도 시각적 변화는 없음.
+
+    ⚠️ 알려진 이슈 (2026-06): 이 `st.html("<style>")` 가 mid-render 에서
+    실제 DOM 에 주입되지 않는 경우가 확인됨 (전역 `inject_global_styles`
+    는 정상). 즉 screen CSS 클래스(.dm-*/.td-* 등)가 적용 안 될 수 있음.
+    동적 `st.html` 콘텐츠는 inline style 을 병행하는 게 안전 (예: PR-5
+    diff 미리보기, 작업 정의 관리 UI). 근본 수정은 별도 작업. → MILESTONE_1.md §3
     """
     path = ASSETS_DIR / "v2" / "screens" / f"{name}.css"
     if not path.exists():

@@ -25,6 +25,45 @@ from roadmap.task_def_json import TaskDefJsonError
 from store import task_defs_db
 
 
+# ── inline style 상수 ──────────────────────────────────
+# 이 화면의 동적 st.html 은 screen CSS(.td-*) 가 안정적으로 적용되지 않아
+# (전역 CSS 만 주입됨) inline style 을 함께 박는다. PR-5 diff 미리보기/토스트
+# 와 동일한 코드베이스 관행. 클래스도 유지해 screen CSS 동작 시 호환.
+_S_LIST = "margin:8px 24px 24px;display:grid;gap:8px;"
+_S_CARD = (
+    "display:grid;gap:4px;padding:12px 14px;background:#fff;"
+    "border:1px solid #E2E8F0;border-radius:10px;text-decoration:none;"
+    "color:#0F172A;"
+)
+_S_CARD_NAME = "font-size:15px;font-weight:700;color:#0F172A;"
+_S_CARD_META = "font-size:12.5px;color:#64748B;"
+_S_CARD_PID = "font-size:12px;color:#94A3B8;font-family:ui-monospace,monospace;"
+_S_DETAIL = (
+    "margin:8px 24px 24px;padding:18px 22px;background:#fff;"
+    "border:1px solid #E2E8F0;border-radius:12px;"
+)
+_S_DETAIL_NAME = "font-size:22px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;"
+_S_DETAIL_PID = "font-size:13px;color:#64748B;font-family:ui-monospace,monospace;"
+_S_TAG = (
+    "display:inline-block;padding:2px 8px;margin-right:6px;background:#F1F5F9;"
+    "border-radius:999px;font-size:12px;color:#475569;font-weight:600;"
+)
+_S_SECTION_H = "margin:14px 0 6px;font-size:14px;color:#0F172A;font-weight:700;"
+_S_UL = "margin:0;padding-left:20px;color:#334155;line-height:1.6;"
+_S_ACTIONS = (
+    "display:flex;gap:8px;margin-top:18px;padding-top:14px;"
+    "border-top:1px solid #E2E8F0;"
+)
+_S_BTN = "padding:7px 14px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;"
+_S_BTN_PRIMARY = _S_BTN + "background:#2563EB;color:#fff;"
+_S_BTN_SECONDARY = _S_BTN + "background:#F1F5F9;color:#0F172A;"
+_S_BTN_DANGER = _S_BTN + "background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;"
+_S_HISTORY = (
+    "margin:18px 24px 24px;padding:14px 18px;background:#fff;"
+    "border:1px solid #E2E8F0;border-radius:12px;"
+)
+
+
 # ── URL 빌더 ────────────────────────────────────────────
 
 def _manage_href(**params: Any) -> str:
@@ -142,10 +181,11 @@ def _row_card_html(row: dict, query: str = "") -> str:
 
     view_href = _manage_href(td_view=pid, td_q=query)
     return (
-        '<a class="td-card" href="' + _html.escape(view_href) + '" target="_self">'
-        f'<div class="td-card-name">{_html.escape(str(name))}</div>'
-        f'<div class="td-card-meta">{_html.escape(chain)}</div>'
-        f'<div class="td-card-pid"><code>{_html.escape(str(pid))}</code></div>'
+        f'<a class="td-card" style="{_S_CARD}" href="' + _html.escape(view_href)
+        + '" target="_self">'
+        f'<div class="td-card-name" style="{_S_CARD_NAME}">{_html.escape(str(name))}</div>'
+        f'<div class="td-card-meta" style="{_S_CARD_META}">{_html.escape(chain)}</div>'
+        f'<div class="td-card-pid" style="{_S_CARD_PID}"><code>{_html.escape(str(pid))}</code></div>'
         '</a>'
     )
 
@@ -158,7 +198,7 @@ def _list_html(rows: list[dict], query: str = "") -> str:
             'color:#64748B;font-size:14px;">'
             f'{_html.escape(msg)}</div>'
         )
-    parts = ['<div class="td-list">']
+    parts = [f'<div class="td-list" style="{_S_LIST}">']
     for r in rows:
         parts.append(_row_card_html(r, query=query))
     parts.append("</div>")
@@ -182,12 +222,13 @@ def _detail_html(row: dict, query: str = "") -> str:
     if not isinstance(meta, dict):
         meta = {}
 
-    parts = ['<div class="td-detail">']
+    parts = [f'<div class="td-detail" style="{_S_DETAIL}">']
     # 헤더
     parts.append(
-        f'<div class="td-detail-head">'
-        f'<div class="td-detail-name">{_html.escape(str(name))}</div>'
-        f'<div class="td-detail-pid"><code>{_html.escape(str(pid))}</code></div>'
+        '<div class="td-detail-head" style="display:flex;align-items:baseline;'
+        'gap:12px;margin-bottom:12px;">'
+        f'<div class="td-detail-name" style="{_S_DETAIL_NAME}">{_html.escape(str(name))}</div>'
+        f'<div class="td-detail-pid" style="{_S_DETAIL_PID}"><code>{_html.escape(str(pid))}</code></div>'
         '</div>'
     )
     # 조직 메타
@@ -198,28 +239,39 @@ def _detail_html(row: dict, query: str = "") -> str:
             ("작업", meta.get("task")), ("세부작업", meta.get("sub_task")),
         ]
         items = [
-            f'<div class="td-meta-row"><span class="td-meta-k">{k}</span>'
-            f'<span class="td-meta-v">{_html.escape(str(v))}</span></div>'
+            '<div class="td-meta-row" style="font-size:13px;">'
+            f'<span class="td-meta-k" style="color:#64748B;font-weight:600;">{k}: </span>'
+            f'<span class="td-meta-v" style="color:#0F172A;">{_html.escape(str(v))}</span></div>'
             for k, v in rows if v
         ]
         if items:
-            parts.append('<div class="td-meta">' + "".join(items) + '</div>')
+            parts.append(
+                '<div class="td-meta" style="display:grid;'
+                'grid-template-columns:repeat(3,1fr);gap:6px 18px;margin:8px 0 12px;">'
+                + "".join(items) + '</div>'
+            )
     # 도메인/카테고리/설명
     if domain or category:
         parts.append(
-            f'<div class="td-tags">'
-            + (f'<span class="td-tag">{_html.escape(str(domain))}</span>' if domain else "")
-            + (f'<span class="td-tag">{_html.escape(str(category))}</span>' if category else "")
+            '<div class="td-tags" style="margin:4px 0 10px;">'
+            + (f'<span class="td-tag" style="{_S_TAG}">{_html.escape(str(domain))}</span>' if domain else "")
+            + (f'<span class="td-tag" style="{_S_TAG}">{_html.escape(str(category))}</span>' if category else "")
             + '</div>'
         )
     if desc:
-        parts.append(f'<div class="td-desc">{_html.escape(str(desc))}</div>')
+        parts.append(
+            f'<div class="td-desc" style="margin:6px 0 12px;color:#334155;'
+            f'line-height:1.6;">{_html.escape(str(desc))}</div>'
+        )
 
     # objectives
     objs = obj.get("objectives") or []
     if isinstance(objs, list) and objs:
         items = "".join(f"<li>{_html.escape(str(o))}</li>" for o in objs if o)
-        parts.append(f'<div class="td-section"><h4>🎯 목표</h4><ul>{items}</ul></div>')
+        parts.append(
+            f'<div class="td-section"><h4 style="{_S_SECTION_H}">🎯 목표</h4>'
+            f'<ul style="{_S_UL}">{items}</ul></div>'
+        )
     # risks
     risks = obj.get("overall_quality_risks") or []
     if isinstance(risks, list) and risks:
@@ -235,8 +287,8 @@ def _detail_html(row: dict, query: str = "") -> str:
                 )
         if items:
             parts.append(
-                f'<div class="td-section"><h4>⚠️ 품질 리스크</h4>'
-                f'<ul>{"".join(items)}</ul></div>'
+                f'<div class="td-section"><h4 style="{_S_SECTION_H}">⚠️ 품질 리스크</h4>'
+                f'<ul style="{_S_UL}">{"".join(items)}</ul></div>'
             )
     # automation
     autos = obj.get("automation_potential_areas") or []
@@ -255,8 +307,8 @@ def _detail_html(row: dict, query: str = "") -> str:
                 items.append(f"<li>{line}</li>")
         if items:
             parts.append(
-                f'<div class="td-section"><h4>🤖 자동화 가능 영역</h4>'
-                f'<ul>{"".join(items)}</ul></div>'
+                f'<div class="td-section"><h4 style="{_S_SECTION_H}">🤖 자동화 가능 영역</h4>'
+                f'<ul style="{_S_UL}">{"".join(items)}</ul></div>'
             )
     # 액션 링크
     edit_href = _manage_href(td_edit=pid, td_q=query)
@@ -264,15 +316,15 @@ def _detail_html(row: dict, query: str = "") -> str:
     delete_href = _manage_href(td_action="delete", td_pid=pid, td_q=query)
     back_href = _manage_href(td_q=query)
     parts.append(
-        '<div class="td-actions">'
-        f'<a class="td-btn td-btn-secondary" href="{_html.escape(back_href)}" '
-        f'target="_self">← 목록</a>'
-        f'<a class="td-btn td-btn-primary" href="{_html.escape(edit_href)}" '
-        f'target="_self">✏️ 수정</a>'
-        f'<a class="td-btn td-btn-secondary" href="{_html.escape(hist_href)}" '
-        f'target="_self">🕒 history</a>'
-        f'<a class="td-btn td-btn-danger" href="{_html.escape(delete_href)}" '
-        f'target="_self" '
+        f'<div class="td-actions" style="{_S_ACTIONS}">'
+        f'<a class="td-btn td-btn-secondary" style="{_S_BTN_SECONDARY}" '
+        f'href="{_html.escape(back_href)}" target="_self">← 목록</a>'
+        f'<a class="td-btn td-btn-primary" style="{_S_BTN_PRIMARY}" '
+        f'href="{_html.escape(edit_href)}" target="_self">✏️ 수정</a>'
+        f'<a class="td-btn td-btn-secondary" style="{_S_BTN_SECONDARY}" '
+        f'href="{_html.escape(hist_href)}" target="_self">🕒 history</a>'
+        f'<a class="td-btn td-btn-danger" style="{_S_BTN_DANGER}" '
+        f'href="{_html.escape(delete_href)}" target="_self" '
         f'onclick="return confirm(\'정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.\');">'
         f'🗑️ 삭제</a>'
         '</div>'
@@ -287,17 +339,25 @@ def _history_html(pid: str, limit: int = 20) -> str:
     rows = task_defs_db.history(pid, limit=limit)
     if not rows:
         return ""
-    parts = [f'<div class="td-history"><h4>🕒 변경 이력 ({len(rows)})</h4><ul>']
+    parts = [
+        f'<div class="td-history" style="{_S_HISTORY}">'
+        f'<h4 style="{_S_SECTION_H}">🕒 변경 이력 ({len(rows)})</h4>'
+        '<ul style="margin:0;padding-left:0;list-style:none;">'
+    ]
     for h in rows:
         when = (h.get("changed_at") or "")[:19].replace("T", " ")
         action = h.get("action") or ""
         src = h.get("source") or ""
         who = h.get("changed_by") or ""
         parts.append(
-            f'<li><span class="td-h-action">{_html.escape(action)}</span>'
-            f'<span class="td-h-when">{_html.escape(when)}</span>'
-            + (f'<span class="td-h-src">{_html.escape(src)}</span>' if src else "")
-            + (f'<span class="td-h-who">{_html.escape(who)}</span>' if who else "")
+            '<li style="display:flex;gap:10px;padding:4px 0;font-size:13px;'
+            'color:#334155;border-bottom:1px dashed #E2E8F0;">'
+            f'<span class="td-h-action" style="font-weight:700;min-width:60px;'
+            f'color:#2563EB;">{_html.escape(action)}</span>'
+            f'<span class="td-h-when" style="color:#64748B;font-family:ui-monospace,monospace;'
+            f'min-width:140px;">{_html.escape(when)}</span>'
+            + (f'<span class="td-h-src" style="color:#64748B;">{_html.escape(src)}</span>' if src else "")
+            + (f'<span class="td-h-who" style="color:#64748B;">{_html.escape(who)}</span>' if who else "")
             + '</li>'
         )
     parts.append("</ul></div>")
@@ -510,8 +570,8 @@ def render(query_params_getter) -> None:
             st.warning(f"⚠️ `{view}` 작업을 찾을 수 없어요.")
             back_href = _manage_href(td_q=q)
             st.html(
-                f'<a class="td-btn td-btn-secondary" href="{_html.escape(back_href)}" '
-                f'target="_self">← 목록</a>'
+                f'<a class="td-btn td-btn-secondary" style="{_S_BTN_SECONDARY}" '
+                f'href="{_html.escape(back_href)}" target="_self">← 목록</a>'
             )
             return
         st.html(_detail_html(row, query=q))
@@ -527,8 +587,8 @@ def render(query_params_getter) -> None:
         'margin:18px 24px 8px;">'
         '<div class="td-head-title" style="flex:1;font-size:18px;font-weight:800;'
         'color:#0F172A;">📋 작업 정의 관리</div>'
-        f'<a class="td-btn td-btn-primary" href="{_html.escape(add_href)}" '
-        f'target="_self">+ 새 작업 추가</a>'
+        f'<a class="td-btn td-btn-primary" style="{_S_BTN_PRIMARY}" '
+        f'href="{_html.escape(add_href)}" target="_self">+ 새 작업 추가</a>'
         '</div>'
     )
     st.html(head)
