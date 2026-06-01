@@ -239,10 +239,12 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 - 엑셀 업로드 diff 미리보기 + 확인
 - 데이터 관리 area 가 2 그룹 (뉴스/작업) 으로 재편
 
-### Milestone M3: 작업 정의 관리 화면 (PR-6) ← **1차 완성**
+### Milestone M3: 작업 정의 관리 화면 (PR-6) ← **1차 완성** ✅ 달성 (2026-06-01)
 - 검색·1건 보기·추가·수정·삭제·history 보기
 - 사용자가 외부 도구 없이 작업 정의 관리 완료
 - **1차 완성 시점** (사용자 요구사항 기준 minimum viable)
+- 검증·보고서: `docs/MILESTONE_1.md`
+- 검증 중 발견: screen-CSS 미적용 기존 이슈 → manage UI inline style 우회
 
 ### Milestone M4: export (PR-7) — 선택
 - JSON/엑셀 다운로드

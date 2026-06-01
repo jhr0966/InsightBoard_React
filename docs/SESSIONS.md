@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-01 · 트랙 A: manage UI 검증 + 스타일 수정 + 1차 완성 보고서
+
+**브랜치:** `fix-manage-ui-inline-styles` (main `66ad760` 기준 · PR-6 #84 머지 후)
+
+**맥락:** 사용자 "검증 철저히" + 트랙 A 선택. 1차 완성 굳히기.
+
+**한 일:**
+- **실제 앱 구동 검증** (playwright headless): 데이터 관리 → manage 탭 목록·검색·상세·추가폼 4화면. traceback 0, CRUD 렌더 OK.
+- **버그 발견·수정**: `inject_screen_css` 의 `st.html("<style>")` 가 mid-render DOM 에 주입 안 됨 (전역 CSS 는 정상). `.td-*`/`.dm-*` screen CSS 미적용 = 기존 이슈. manage UI 동적 st.html 을 inline style 로 보강 (PR-5 diff·토스트 관행). 재검증 시 카드·버튼 정상 스타일 확인.
+- `docs/MILESTONE_1.md` 신규 — 1차 완성 보고서.
+
+**검증:** pytest 654/654 · 금지 패턴 0 · 실구동 4화면 OK.
+
+**다음 (선택):** screen-CSS 근본 수정 (board/insights/data 일괄 복구) · 변수명 통일 (cosmetic) · PR-7 export · PR-8 권한.
+
+---
+
 ## 2026-06-01 · PR-6: 작업 정의 관리 UI — M3 **1차 완성** 🎉
 
 **브랜치:** `feat-task-def-manage-ui` (main `faf5a99` 기준 · PR-5 #83 머지 후)

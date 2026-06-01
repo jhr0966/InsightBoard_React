@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (작업 정의 관리 UI 스타일 — inline style 보강 + 1차 완성 보고서)
+- `ui/task_def_manage.py` — 동적 `st.html` (카드·상세·버튼·history·메타) 에 inline style 박음. `inject_screen_css` 의 `st.html("<style>")` 가 mid-render 에서 DOM 에 주입되지 않아 `.td-*`/`.dm-*` screen CSS 클래스가 실제 적용되지 않는 **기존 이슈** 확인 (전역 `inject_global_styles` 는 정상) → PR-5 diff·토스트와 동일하게 inline style 사용으로 우회. 클래스도 유지 (screen-CSS 근본 수정 시 호환).
+- 실제 구동 검증 (playwright headless): 목록·검색·상세·추가폼 4화면 Python traceback 0, CRUD 액션 버튼 렌더 확인.
+- `docs/MILESTONE_1.md` 신규 — 1차 완성(M1~M3) 보고서. 화면별 역할·사용 흐름, 검증 결과, screen-CSS 이슈, 남은 작업.
+
 ### Added (작업 정의 관리 UI — PR-6: M3 1차 완성)
 - `ui/task_def_manage.py` 신규 — 검색 / 1건 상세 / 추가·수정·삭제 폼 / history 패널. 평탄 모듈 분리 (`data_management_v2` 평탄 디스패치 유지).
 - `roadmap/task_def_form.py` 신규 — `TaskDefForm` 데이터클래스. `from_db_row(row)` (`task_defs_db.get` 결과 → 폼), `to_json()` (검증 + `ingest_org_meta` 직렬화). objectives/risks/automation 리스트 [+추가][-삭제] 헬퍼. 빈 값/공백 자동 제거.
