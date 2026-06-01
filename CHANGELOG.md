@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 SQLite 저장소 — PR-1: schema + CRUD API)
+- `store/task_defs_db.py` 신규 — sqlite3 기반 작업 정의 저장소. `task_defs` (process_id PK + JSON SOT + scalar 미러 + created/updated 메타) + `task_def_history` (json_before/after + action + source) 2 테이블 자동 생성, conftest 의 `ROADMAP_DIR` 격리 그대로 호환.
+- API: `get(process_id)`, `upsert(process_id, json_str, *, task_def_text=, changed_by=, source=)`, `delete(process_id, *, changed_by=, source=)`, `list_all(*, team=, dept=, process=, limit=)`, `search(query, *, limit=50)`, `history(process_id, *, limit=)`, `count()`, `upsert_many(items, *, changed_by=, source="excel_upload")`.
+- 검증: invalid JSON, non-object JSON, missing `org_meta`, missing `org_meta.team/dept`, `process_id` mismatch (인자 vs JSON 내) 모두 `ValueError` 로 거부. upsert 1회마다 history 1건 자동 기록 (history 는 무한 누적).
+- `tests/test_task_defs_db.py` (+23) — schema 자동 생성·upsert 신규/갱신·validation 6건·get/delete·list_all 필터·search (process_id/JSON 본문)·history 누적·upsert_many.
+
 ### Docs (작업 정의 데이터 시스템 마이그 계획 — Parquet → SQLite + JSON)
 - `docs/TASK_DEF_PLAN.md` 신규 — 작업 정의 데이터 저장·관리·CRUD 마이그 plan. 결정사항 9개, 데이터 모델(엑셀 9 컬럼 / `task_def_json` `org_meta` 확장 / SQLite 스키마 + history), 8 PR 의존성 그래프 + 규모 추정, 화면 시뮬레이션 5 시나리오, 마일스톤 M1~M5, 리팩토링 시점 표 포함. 컨텍스트 압축 후에도 단일 source 로 복원 가능.
 - `docs/SESSIONS.md` — 중간 점검 세션 + 결정사항 요약 추가.
