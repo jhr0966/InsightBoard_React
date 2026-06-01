@@ -40,6 +40,38 @@ class SyncResult:
         return self.created + self.updated
 
 
+@dataclass
+class DiffPreview:
+    """엑셀 업로드 적용 전 변경 사항 미리보기 (PR-5).
+
+    fields:
+      added:   업로드에 있지만 DB 에 없는 process_id 리스트
+      updated: 양쪽 모두 있으나 JSON 이 다른 항목 [(pid, name), ...]
+      unchanged: 동일한 JSON
+      kept:    DB 에 있지만 업로드에 없는 (유지될) 항목 [(pid, name), ...]
+      skipped: process_id 추출 불가 또는 team/dept 누락
+    """
+    added: list[tuple[str, str]] | None = None
+    updated: list[tuple[str, str]] | None = None
+    unchanged: list[str] | None = None
+    kept: list[tuple[str, str]] | None = None
+    skipped: int = 0
+
+    def __post_init__(self) -> None:
+        if self.added is None:
+            self.added = []
+        if self.updated is None:
+            self.updated = []
+        if self.unchanged is None:
+            self.unchanged = []
+        if self.kept is None:
+            self.kept = []
+
+    @property
+    def total_apply(self) -> int:
+        return len(self.added) + len(self.updated)  # type: ignore[arg-type]
+
+
 def _cell(row: Mapping[str, Any], key: str) -> str:
     v = row.get(key, "")
     if v is None:
@@ -90,6 +122,65 @@ def row_to_task_def(row: Mapping[str, Any]) -> tuple[str, str] | None:
     except TaskDefJsonError:
         return None
     return pid, merged
+
+
+def _display_name(json_str: str, pid: str) -> str:
+    """diff 미리보기 표시용 짧은 이름 — process_name 우선, 없으면 process_id."""
+    try:
+        obj = json.loads(json_str)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return pid
+    if isinstance(obj, dict):
+        for key in ("process_name", "process_id"):
+            v = obj.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+    return pid
+
+
+def compute_diff(df) -> DiffPreview:
+    """업로드 DataFrame 의 변경 사항을 현재 SQLite 상태와 비교 (PR-5).
+
+    실제 쓰기는 하지 않음. UI 미리보기 후 `sync_dataframe(df)` 호출이 적용.
+    """
+    from store import task_defs_db
+
+    res = DiffPreview()
+    if df is None or getattr(df, "empty", True):
+        # 업로드는 비었지만 DB 가 비었는지에 따라 kept 채움
+        for r in task_defs_db.list_all():
+            res.kept.append(  # type: ignore[union-attr]
+                (r["process_id"], _display_name(r.get("json") or "", r["process_id"]))
+            )
+        return res
+
+    upload_pids: set[str] = set()
+    for _, raw in df.iterrows():
+        row = raw.to_dict()
+        built = row_to_task_def(row)
+        if built is None:
+            res.skipped += 1
+            continue
+        pid, json_str = built
+        upload_pids.add(pid)
+        name = _display_name(json_str, pid)
+        existing = task_defs_db.get(pid)
+        if existing is None:
+            res.added.append((pid, name))  # type: ignore[union-attr]
+        else:
+            if (existing.get("json") or "") == json_str:
+                res.unchanged.append(pid)  # type: ignore[union-attr]
+            else:
+                res.updated.append((pid, name))  # type: ignore[union-attr]
+
+    # DB 에는 있지만 이번 업로드에 없는 항목 → kept (유지될)
+    for r in task_defs_db.list_all():
+        if r["process_id"] not in upload_pids:
+            res.kept.append(  # type: ignore[union-attr]
+                (r["process_id"], _display_name(r.get("json") or "", r["process_id"]))
+            )
+
+    return res
 
 
 def sync_dataframe(

@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-01 · PR-5: 엑셀 업로드 diff 미리보기 + 사용자 확인
+
+**브랜치:** `feat-excel-diff-preview` (main `625d384` 기준 · PR-A #82 머지 후)
+
+**맥락:** `docs/TASK_DEF_PLAN.md` M2 / PR-5. 결정사항 §4 — UPSERT + 미리보기 + 사용자 확인.
+
+**구현:**
+- `roadmap/sqlite_sync.py::DiffPreview` + `compute_diff(df)` — read-only. added/updated/unchanged/kept/skipped.
+- `ui/data_management_v2.py::_render_task_def_diff_preview(pending)` — 카운트 요약 + expand (200건 + "외 N건") + 취소/적용. apply=0 이면 적용 버튼 disabled.
+- `_render_task_def_upload` — 직접 ingest 대신 `_task_def_pending` 페이로드 → 다음 rerun 미리보기. 적용 시 기존 `_do_task_def_ingest` 재사용.
+
+**검증:** pytest 613/613 · 금지 패턴 0 · 신규 17건.
+
+**다음:** **M2 완료.** M3 시작 — PR-6 (작업 정의 관리 UI · 1차 완성).
+
+---
+
 ## 2026-06-01 · PR-A: 데이터 관리 area 2 그룹 segmented 재편
 
 **브랜치:** `feat-dm-area-2groups` (main `c1a2221` 기준 · M1 완료 후)
