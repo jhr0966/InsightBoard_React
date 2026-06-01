@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (로드맵 reader → SQLite 우선 + Parquet fallback — PR-4)
+- `roadmap/query.py::load_latest(*, prefer="sqlite")` — SQLite `task_defs` 가 비어있지 않으면 그쪽에서 빌드, 비어있으면 기존 Parquet (호환). `prefer="parquet"` 로 명시 시 Parquet 만 사용.
+- SQLite → DataFrame 빌드: `org_meta` 우선, scalar 미러로 보강. `lv1/lv2/lv3` 가 `org_meta` 에 없으면 `division/process/task` 자동 fallback (`ingest.normalize_columns` 와 동일 동작). 반환 컬럼 셋은 `ALL_COLUMNS` 그대로 — 보드/인사이트/데이터관리/매칭 호출처 무변경.
+- `scripts/migrate_roadmap_to_sqlite.py` — 자기 자신이 SQLite 를 채우므로 `prefer="parquet"` 명시.
+- `tests/test_roadmap_query_sqlite.py` (+7) — empty/Parquet fallback/SQLite prefer/explicit parquet/org_meta 보존/by_dept·filter_hierarchy 호환/roundtrip.
+
 ### Added (로드맵 Parquet → SQLite 동기화 + 마이그 도구 — PR-3)
 - `roadmap/sqlite_sync.py` 신규 — 정규화된 로드맵 DataFrame → `store.task_defs_db` UPSERT. `row_to_task_def(row)` (행 → `(process_id, json)` 또는 None), `sync_dataframe(df, *, changed_by=, source=)` → `SyncResult(created/updated/skipped/errors)`.
 - process_id 결정 우선순위: `process_id` 컬럼(신 9 컬럼 폼 "공정ID") → 없으면 `task_def_json` 내부 `process_id`. 둘 다 없으면 skip. org_meta(team/dept/division/process/task/sub_task/lv1~3) 자동 주입, team/dept 없는 행은 skip.

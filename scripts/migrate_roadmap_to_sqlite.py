@@ -52,7 +52,8 @@ def _load_df(file: str | None) -> pd.DataFrame:
             print(f"[migrate] Parquet 파일 없음: {p}", file=sys.stderr)
             return pd.DataFrame()
         return pd.read_parquet(p)
-    return load_latest()
+    # 마이그 도구는 항상 Parquet 만 읽는다 (SQLite 는 비어있다는 가정).
+    return load_latest(prefer="parquet")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
