@@ -5,7 +5,27 @@
 
 ---
 
-## 2026-06-01 · 중간 점검 + 작업 정의 데이터 마이그 계획 확정
+## 2026-06-01 · PR-1: 작업 정의 SQLite 저장소 + CRUD
+
+**브랜치:** `feat-task-defs-db` (main `3b2455b` 기준 · #77 머지 직후)
+
+**맥락:** `docs/TASK_DEF_PLAN.md` PR-1 — Parquet→SQLite 마이그의 첫 단계. 의존성 없음, 가장 안전.
+
+**구현:**
+- `store/task_defs_db.py` 신규 (약 280 LOC, sqlite3 stdlib).
+- 2 테이블: `task_defs` (process_id PK + JSON SOT + scalar 미러) + `task_def_history` (json_before/after + action + source).
+- 매 호출 새 연결 + `CREATE TABLE IF NOT EXISTS` → conftest `ROADMAP_DIR` 격리 자동 호환.
+- CRUD: `get / upsert / delete / list_all(필터) / search / history / count / upsert_many`.
+- 검증: invalid/non-object JSON · missing `org_meta` · missing `team`/`dept` · `process_id` mismatch → `ValueError`.
+- history 는 무한 누적 (계획 §결정 7).
+
+**검증:** pytest 538/538 · 금지 패턴 0 · `task_defs_db` 23/23.
+
+**다음:** PR-2 (`task_def_json` `org_meta` 확장 helper) — 독립적이라 PR-1 와 병행 가능했지만, 순차 진행하면 ingest 리팩토링 (PR-3) 의 입력이 자연스럽게 정리됨.
+
+---
+
+## 2026-06-01 · 중간 점검 + 작업 정의 데이터 마이그 계획 확정 ✅ merged (#77)
 
 **브랜치:** `feat-task-def-plan` (main `fc0a577` 기준 · #75/76 머지 직후)
 

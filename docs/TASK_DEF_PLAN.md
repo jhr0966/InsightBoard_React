@@ -267,11 +267,11 @@ PR-A: 데이터 관리 area 2 그룹 재편       │
 
 ## 진행 상황 추적 체크박스
 
-### PR-1: SQLite store + 스키마
-- [ ] `store/task_defs_db.py` 신규 (sqlite3 + JSON1)
-- [ ] schema migration: `task_defs` + `task_def_history` 테이블 자동 생성
-- [ ] CRUD API: `get(process_id)`, `upsert(...)`, `delete(process_id)`, `list_all(filters)`, `search(query)`, `history(process_id)`
-- [ ] tests: 단위 20건
+### PR-1: SQLite store + 스키마 ✅
+- [x] `store/task_defs_db.py` 신규 (sqlite3 + JSON1)
+- [x] schema migration: `task_defs` + `task_def_history` 테이블 자동 생성
+- [x] CRUD API: `get(process_id)`, `upsert(...)`, `delete(process_id)`, `list_all(filters)`, `search(query)`, `history(process_id)`, `count()`, `upsert_many(...)`
+- [x] tests: 단위 23건
 
 ### PR-2: task_def_json org_meta 확장
 - [ ] `roadmap/task_def_json.py` 스키마 정의 (v1.0)
