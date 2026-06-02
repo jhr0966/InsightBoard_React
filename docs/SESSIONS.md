@@ -28,9 +28,27 @@
 - **사이드바 헤더 절대 `stHeader{display:none}` 금지** — Streamlit 1.58 은 사이드바 '펼치기' 버튼(`stExpandSidebarButton`)을 헤더 toolbar 안에 렌더하므로 헤더를 통째 숨기면 접은 뒤 못 펼친다. `streamlit-overrides.css` 처럼 헤더는 absolute·height:0·투명·pointer-events:none 로 죽이고 toolbar 노이즈(`stToolbarActions`/`stMainMenu`/`stAppDeployButton`/`stStatusWidget`/`stDecoration`)만 숨기고 펼치기 버튼은 좌상단 고정으로 살린다. 좁은 폭(<768px)은 Streamlit 이 사이드바를 오버레이로 띄움(접기로 dismiss).
 - **로컬 라이브 UI 검증 가능**: `pip install playwright` + 사전설치 `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` → `python -m streamlit run app.py --server.port 8765 --server.headless true` 띄우고 playwright 로 DOM/스크린샷 검사. ⚠ Python 모듈 변경은 fileWatcher 꺼져 있으면 서버 재시작 필요(CSS 는 매 run 파일을 읽어 즉시 반영).
 
-**검증 베이스라인**: `pytest -q` = **719 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+**검증 베이스라인**: `pytest -q` = **724 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
 
 **⚠ 라이브 수집은 여전히 막힘**: 사용자가 "전체 도메인 허용 + 새 세션"을 했다 했으나, 이 컨테이너의 네트워크는 아직 **제한적 allowlist**(pypi.org만 200, news 도메인·google.com·example.com 전부 403 `Host not in allowlist`, WebFetch 동일). 네트워크 정책은 **환경 생성 시점에 고정**되므로 이 세션은 정책 변경 전 환경. → 정책=전체 허용으로 설정된 환경에서 **진짜 새 세션**을 열어야 라이브 검증 가능. 라이브 시 허용 필요 호스트: `search.naver.com`·`www.naver.com`·`n.news.naver.com`·`news.google.com`·구글 RSS 가 링크하는 **임의 언론사 도메인**(그래서 '전체 허용'이 맞음)·`www.aitimes.com`·`automation-world.co.kr`.
+
+---
+
+## 2026-06-02 · 시스템 완성도 점검 + 잠재 결함 4건 순차 수정
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #101 머지 후 origin/main `1e83b2a` reset → 재사용).
+
+**점검(정량 + 서브에이전트 심층):** 70 모듈·69 테스트·13.6k LOC. 금지패턴 0·TODO/bare-except/print 0·html.escape 195·compile OK. 3대 축 end-to-end 완전 배선, graceful degradation(무데이터/LLM미설정/네트워크실패) 우수. → **성숙한 production-leaning**. 결함은 *broad except 에 가려진 잠재 데이터-계약 버그* 위주.
+
+**수정(4건 순차, 4커밋):**
+- **C1/C2/D4** `news_db`: `collected_at` 을 `_ARTICLE_COLS` 에 추가(저장 시 enriched_at→published_at 폴백) — board 데일리 브리핑이 없는 컬럼을 select→KeyError→broad except 로 삼켜 매칭경로가 **조용히 죽어** '최근3건'만 돌던 것 부활. `fillna("")` 로 null→`""`(`"nan"` `<img>` 차단).
+- **B4** 데이터-계층 silent 실패 3곳 로깅(board 매칭조인·news_db 깨진 parquet·enrich 파싱). UI 렌더 except 122개는 best-effort 라 제외.
+- **D1/D2** archive 정적 목업을 `archive_main.html` 에서 직접 삭제(23KB→3.6KB) + 런타임 `_strip_oa_mockups` 제거 — 마커 드리프트 시 목업 재등장 위험 해소.
+- **C3/C4** SQLite: ingest 동기화 실패를 `IngestResult.sqlite_error`+로깅으로 표면화(stale 분기 위험) · `task_defs_db._migrate`(user_version + 누락 컬럼 ALTER) forward-마이그레이션.
+
+**검증:** pytest 719→**724 passed**(+5) · 금지 0 · compile OK.
+
+**잔여(점검 발견·미수정):** A3 문서/코드 드리프트(ARCHITECTURE 는 SOLA 작업실 채팅패널 억제라는데 app.py 는 둘 다 렌더) · sparkline SVG 테마색 · 임베딩 RAG(백엔드 부재) · PR #49 디자인 판단.
 
 ---
 
