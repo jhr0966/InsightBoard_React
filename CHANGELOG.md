@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (Phase F — 수집 관측성: 런 로그 + 데이터 관리 '수집 헬스')
+- **`store/run_log.py` 신규** — 매 수집 런을 `data/logs/runs.jsonl` 에 구조화 영속(run_id·시각·트리거·소스별 건수·성공/실패·duration). `record_run`/`load_runs`/`latest_run`/`entry_from_report`(순수). `config.DATA_ROOT` 를 호출 시점 참조해 conftest 격리와 호환(from-import 고정 footgun 회피).
+- **3개 수집 경로에 기록 연결** — cron(`scripts/daily_scrape.py`, trigger=cron + duration 측정)·데이터 관리 새로고침(trigger=manual)·보드 수집(trigger=board). 로깅 실패가 수집 자체를 깨지 않도록 모두 try/except 격리.
+- **데이터 관리 '수집 헬스' 1행**(`data_management_v2._collect_health_li`) — `run_log.latest_run()` 의 성공/건수/파일/시각/트리거/오류 소스를 수집잡 목록 최상단에 노출 → 매일 자동 수집이 **조용히 실패해도** 화면에서 바로 드러난다. 런 기록이 없으면 빈 문자열(기존 동작 무변경).
+- `tests/test_run_log.py`(+7)·`tests/test_collect_health.py`(+3). 검증: pytest 686→**696 passed** · 금지 패턴 0 · py_compile OK.
+
 ### Removed (Phase 3 잔여 — no-op 패널 · 레거시 채팅 · 미사용 템플릿 · batch helper)
 - **`app_shell.render_app_side`/`render_app_sola` 완전 제거** — Phase A 에서 no-op 으로 바뀐 뒤 5개 화면(board/insights/archive/data_management/persona_page)이 계속 호출하던 것을 호출부 + 함수(~300줄) + 부수 패널-토글 클러스터(`consume_panel_toggle`·`_toggle_href`·`_side_collapsed`·`_sola_collapsed`)까지 삭제. 좌측은 네이티브 `st.sidebar`, 우측은 `chat_panel.render_side` 단일 경로.
 - **`chat_panel.render`**(구 bottom expander) 제거 — `render_side`(우측 컬럼 실채팅)가 대체. 공유 헬퍼(`_intro_card_html`/`_format_recent_messages`/`_AREA_INTROS`)는 render_side 가 계속 사용하므로 보존. 모듈 docstring 갱신.
