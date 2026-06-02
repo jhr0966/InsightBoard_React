@@ -8,15 +8,14 @@
 ## 🚩 다음 세션 시작점 (2026-06-02 기준) — 여기부터 읽으세요
 
 **현재 상태**
-- **PR #90 (UI 전면 재정비 A~D) ✅ 스쿼시 머지 완료** → `main 115b176` → Streamlit Cloud 배포됨. **사용자 6대 UI/UX 요구 전부 완결**(①화면연계 ②좌사이드바+우채팅 ③3영역분리 ④죽은버튼 ⑤컨텐츠정리 ⑥설정 테마/폰트).
-- **PR #91 (Phase E — enrich LLM 키워드 매칭 가중) — Draft, CI ✅ green, mergeable.** 머지 대기.
-- **브랜치 `claude/charming-sagan-REsgM`** = `main(115b176)` + Phase E(`77f9292`). 트리 clean · origin 동기. (이 세션은 harness 가 이 브랜치 단일 지정. PR #90 스쿼시 머지 후 `git reset --hard origin/main` 으로 정렬해 재사용 중.)
+- **PR #90 (UI 전면 재정비 A~D) ✅ 머지** + **PR #91 (Phase E — enrich→매칭 가중) ✅ 머지** → `main 7debc32`. 결정-1(제안서·요약)·결정-2(enrich 가중) 모두 구현 완료.
+- **Phase 3 (데드 코드 삭제) ✅ 완료** — 모듈 4종(`ui/layout`·`ui/task_tree`·`sola/{insight,chat_ctx}`) + no-op 패널(`app_shell.render_app_side/sola`+토글 클러스터) + `chat_panel.render` + `_SOLA_TEMPLATE`/`sola_main.html` + `task_defs_db.upsert_many` + `persona_page._archive_stats` 삭제. 보존: `sola/{propose,summarize}`(부활)·`side_context`(orphan).
+- 중복/stale PR 정리: #88(계획서, REFACTOR_PLAN 으로 대체) close · #49(TS 프로토타입) 는 디자인 채택 판단 대기.
 
 **바로 할 일 (택1)**
-1. **PR #91 머지** — 그린/clean. `merge_pull_request(merge_method="squash")` (PR #90 과 동일 방식). 머지 후 브랜치를 다시 `git fetch origin main && git reset --hard origin/main` 으로 정렬한 뒤 다음 작업.
-2. **Phase F — 수집 관측성**: `scraping/run_daily` 에 구조화 로깅 + run_id + 소스별 성공/실패/건수 요약(`data/logs/`), 데이터 관리에 수집 헬스 노출. (블루프린트 원칙 "운영 가능".)
-3. **풀 다크 폴리시**: 일부 차트 색·매트릭스/히트맵 SVG 인터랙션(현재 img 변환으로 클릭 비활성) 정교화. **의미기반 매칭(RAG)**: 임베딩 유사도(블루프린트 Phase B) — 룰 점수와 하이브리드.
-4. **데드 코드 정리(REFACTOR_PLAN Phase 3)**: `ui/layout.py`·`ui/task_tree.py` + `app_shell.render_app_side/render_app_sola`(현재 no-op) + 미부활 `sola/{insight,chat_ctx}` 삭제. `chat_panel.render`(레거시 bottom)·`sola_main.html`(미사용)도 정리 후보. 삭제 시 `test_chat_log`(layout.main_and_chat 시그니처 의존) 등 테스트 동반 정리 필요.
+1. **Phase F — 수집 관측성**: `scraping/run_daily` 에 구조화 로깅 + run_id + 소스별 성공/실패/건수 요약(`data/logs/`), 데이터 관리에 수집 헬스 노출.
+2. **풀 다크 폴리시 / 의미기반 매칭(RAG)**: 차트 색·매트릭스/히트맵 SVG 인터랙션(img 변환으로 클릭 비활성) 정교화 · 임베딩 유사도 하이브리드 매칭.
+3. **PR #49(글래스모피즘 TS 프로토타입) 디자인 판단**: 채택(현 v2 셸에 반영)할지 close 할지 — 미머지 브랜치에만 존재.
 
 **핵심 함정 (재학습 방지)**
 - `st.html` 은 **인라인 `<svg>` 를 sanitize 로 제거** + `data:image/svg+xml;utf8,<svg…#…>` 는 `#`/공백이 잘려 깨짐 → 화면 템플릿은 `ui/components.prepare_screen_html()` 통과 필수(아이콘 인코딩 + 인라인 svg→data-URI img). 각 화면 메인 렌더·`render_topbar` 가 이미 적용.
@@ -24,7 +23,25 @@
 - 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 
-**검증 베이스라인**: `pytest -q` = **702 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` 140 files OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+**검증 베이스라인**: `pytest -q` = **686 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+
+---
+
+## 2026-06-02 · Phase 3 — 데드 코드 삭제 (전체 완료) + PR 정리 (PR #91 머지 후)
+
+**브랜치:** `claude/laughing-pascal-pCbik` (origin/main `7debc32` 기준)
+
+**맥락:** 개발 환경 세팅·진행점검 후, 추천 순서대로 ① PR #91(Phase E) 머지 ② 중복 PR #88 close ③ REFACTOR_PLAN Phase 3(데드 코드) 착수.
+
+**한 일:**
+- **PR 정리**: PR #91(enrich→매칭 가중) Ready 전환 후 squash 머지(`7debc32`) — 결정-2 완결. 중복 PR #88(리팩토링 계획서, REFACTOR_PLAN.md 로 대체) close. PR #49(TS 글래스모피즘 프로토타입)는 디자인 채택 판단 필요로 보류.
+- **Phase 3 데드 코드 삭제**: production import 0 인 `ui/layout.py`·`ui/task_tree.py`·`sola/insight.py`·`sola/chat_ctx.py` 4종 삭제 + 테스트 동반 정리(`test_sola_insight` 삭제, `test_sola`/`test_preview`/`test_chat_log`/`test_task_def_upload` 수술적 편집). `sola/{propose,summarize}` 는 결정-1 A 부활분이라 보존, `sola/side_context` 는 orphan 이나 연결 대상으로 보존(docstring 갱신).
+- **Phase 3 잔여**: `app_shell.render_app_side`/`render_app_sola`(no-op ~300줄 + 5화면 호출부 + 패널 토글 클러스터) · `chat_panel.render`(구 bottom) · `_SOLA_TEMPLATE`+`sola_main.html`(11KB) · `task_defs_db.upsert_many`(재판정→데드) · `persona_page._archive_stats` 삭제. 부수 import(ASSETS_DIR·Iterable·bookmarks·llm_model) 정리. 좌=네이티브 사이드바, 우=`render_side` 단일 경로.
+- **문서 동기화**: ARCHITECTURE(트리·데드 목록)·INVARIANTS·CLAUDE 라우팅·REFACTOR_PLAN(진행표·데드 대장·Phase 3)·CHANGELOG·SESSIONS 갱신.
+
+**검증:** pytest 702→**686 passed**(삭제 테스트 16건) · 잔여 import 0(`grep -rn`) · 금지 패턴 0 · py_compile OK.
+
+**다음:** Phase F(수집 관측성/로깅) · 풀 다크 폴리시/RAG 매칭 · PR #49(글래스모피즘) 디자인 판단.
 
 ---
 

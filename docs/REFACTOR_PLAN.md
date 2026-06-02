@@ -13,9 +13,9 @@
 | **0** | 문서 정합 (ARCHITECTURE/CLAUDE/DEV_GUIDELINES/INVARIANTS + 본 문서) | ✅ 완료 (PR #89) |
 | **1a** | 무논쟁 correctness — F5·F7·F11·F12 | ✅ 완료 (PR #89) |
 | **2** | UI 중복 제거 — `get_persona` 승격 + `app_side_stats` 단일화 | ✅ 완료 (PR #89) |
-| **1b** | 결정-1 반영 (제안서 흐름) | ⏸ 결정 대기 |
-| **1c** | 결정-2 반영 (enrich→매칭 연결) | ⏸ 결정 대기 |
-| **3** | 데드 코드 삭제 (layout/task_tree/sola 4종) | ⏳ 예정 |
+| **1b** | 결정-1 반영 (제안서·요약 흐름) | ✅ 완료 (PR #90 Phase B — SOLA 작업실 연결) |
+| **1c / E** | 결정-2 반영 (enrich→매칭 가중) | ✅ 완료 (PR #91) |
+| **3** | 데드 코드 삭제 (모듈 4종 + no-op 패널·레거시 채팅·batch helper) | ✅ 완료 |
 
 > ⚠ 작업 브랜치 제약: 현재 세션은 `claude/nice-bell-eEZLj` 단일 브랜치에서 진행(harness 지정). 통상 규칙(Phase 당 새 브랜치)과 달리 Phase 0·1a 가 같은 PR(#89)에 누적됨.
 
@@ -52,15 +52,19 @@ production(app.py·ui/·scripts/) import 0 확인. Phase 3 에서 삭제 후보.
 
 | 대상 | 근거 | 처리 |
 |---|---|---|
-| `ui/layout.py` | `main_and_chat` 정의 but 호출 0 (테스트만) | Phase 3 삭제, I-13 은 chat_panel 로 이미 정정(#89) |
-| `ui/task_tree.py` | 드릴다운 위젯, 호출 0 | Phase 3 삭제 |
-| `sola/propose.py` | production import 0 | 결정-1 후 부활 or 삭제 |
-| `sola/summarize.py` | production import 0 | 결정-1 후 부활 or 삭제 |
-| `sola/insight.py` | production import 0 | Phase 3 삭제 후보 |
-| `sola/chat_ctx.py` | production import 0 | Phase 3 삭제 후보 |
-| `store/task_defs_db.upsert_many` | 호출 0 (테스트만) | Phase 3 데드 재판정 |
+| `ui/layout.py` | `main_and_chat`/`render_chat_panel`/`split_with_chat` 호출 0 | ✅ Phase 3 삭제 |
+| `ui/task_tree.py` | 드릴다운 위젯, 호출 0 | ✅ Phase 3 삭제 |
+| `sola/propose.py` | (구 데드) | ✅ 부활 — SOLA 작업실 `propose_for_task` |
+| `sola/summarize.py` | (구 데드) | ✅ 부활 — SOLA 작업실 뉴스 요약 |
+| `sola/insight.py` | production import 0 | ✅ Phase 3 삭제 |
+| `sola/chat_ctx.py` | production import 0 | ✅ Phase 3 삭제 |
+| `sola/side_context.py` | `ui/layout` 삭제로 호출 0 (orphan) | 보존 — 사이드 채팅 컨텍스트 연결 대상 |
+| `app_shell.render_app_side/sola` (+패널 토글) | no-op, 5화면이 호출 | ✅ Phase 3 삭제 (호출부+함수) |
+| `chat_panel.render` (구 bottom expander) | render_side 가 대체, app.py 미사용 | ✅ Phase 3 삭제 |
+| `sola_workshop_v2._SOLA_TEMPLATE` + `sola_main.html` | 정의만, read 0 | ✅ Phase 3 삭제 |
+| `store/task_defs_db.upsert_many` | production 은 단건 upsert 만 사용 | ✅ Phase 3 삭제 (재판정→데드) |
 
-> 삭제는 테스트 의존을 함께 정리해야 하므로 한 Phase 로 묶는다. sola 4종 중 `propose`/`summarize` 는 결정-1(제안서·요약 흐름 부활) 결과에 따라 운명이 갈리므로 **결정 전 삭제 보류**.
+> ✅ 결정-1 A 로 `propose`/`summarize` 는 부활(SOLA 작업실 연결). 나머지 4종(`layout`·`task_tree`·`insight`·`chat_ctx`)은 Phase 3 에서 테스트 동반 삭제 완료. `side_context` 는 layout 삭제로 orphan 이나 보존.
 
 ---
 
@@ -91,9 +95,12 @@ correctness 영향 없는 순수 dedup. PR #89 에 누적.
 
 ---
 
-## Phase 3 — 데드 코드 삭제 (예정)
+## Phase 3 — 데드 코드 삭제 (✅ 완료)
 
-결정-1·1b 완료 후. `ui/layout.py`·`ui/task_tree.py` + 결정-1 에서 부활 안 된 sola 모듈 + 테스트 정리. 삭제마다 `grep -rn` 으로 잔여 import 0 재확인.
+- ✅ **모듈 4종**: `ui/layout.py`·`ui/task_tree.py`·`sola/insight.py`·`sola/chat_ctx.py` + 테스트 동반 정리(`test_sola_insight` 삭제, `test_sola`/`test_preview`/`test_chat_log`/`test_task_def_upload` 수술적 편집).
+- ✅ **no-op 패널·레거시·미사용**: `app_shell.render_app_side`/`render_app_sola`(no-op 본문 ~300줄 + 5화면 호출부 + 패널 토글 클러스터) · `chat_panel.render`(구 bottom expander) · `sola_workshop_v2._SOLA_TEMPLATE`+`sola_main.html` · `task_defs_db.upsert_many`(재판정→데드) · `persona_page._archive_stats`. 부수 import(ASSETS_DIR·Iterable·bookmarks·llm_model) 정리.
+- **보존**: `sola/{propose,summarize}`(결정-1 A 부활) · `sola/side_context`(orphan 이나 사이드 채팅 컨텍스트 연결 대상).
+- 검증: pytest 702→**686 passed** · 잔여 import 0(`grep -rn`) · 금지 패턴 0 · py_compile OK.
 
 ---
 

@@ -1140,12 +1140,6 @@ def render() -> None:
         refresh_label=refresh,
         fresh_kind="fresh",
     )
-    app_shell.render_app_side(
-        active_area="🔎 인사이트 분석",
-        persona=persona,
-        stats=stats,
-    )
-
     app_shell.render_setup_banner_if_needed()
 
     # 트렌드 키워드 클릭 필터 — `?tkw=` 1회 stateless 필터(URL 유지).
@@ -1177,21 +1171,3 @@ def render() -> None:
     )
     html_out = _strip_mockup_blocks(html_out)
     st.html(_components.prepare_screen_html(html_out))
-
-    app_shell.render_app_sola(
-        context_label="인사이트 분석",
-        context_sub=f"30일 뉴스 {ia_stats['news_30d']}건 · 매칭 공정 {ia_stats['matched_processes']}",
-        quick_prompts=[
-            ("01", "<b>비전 검사</b> 트렌드 8주 동향 요약"),
-            ("02", "우리 부서 매칭률 가장 높은 <b>키워드 3개</b>는?"),
-            ("03", "매트릭스 우상단 4건 중 PoC 우선순위 추천"),
-        ],
-        last_q="비전 검사 키워드 8주 그래프가 의미하는 게 뭐야?",
-        last_a_html=(
-            "확연한 상승 추세예요. <b>지난 4주에서 누적 멘션 +62%</b> 증가, "
-            "주체는 현대중공업·삼성중공업·대우조선해양 등 조선소 3사. "
-            "우리 공정과 직결되는 비중이 78% 라 PoC 후보 1순위."
-            "<span class='muted'>방금 · 컨텍스트: 트렌드 + 매칭</span>"
-        ),
-        last_time="방금",
-    )

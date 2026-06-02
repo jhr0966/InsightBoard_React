@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+### Removed (Phase 3 잔여 — no-op 패널 · 레거시 채팅 · 미사용 템플릿 · batch helper)
+- **`app_shell.render_app_side`/`render_app_sola` 완전 제거** — Phase A 에서 no-op 으로 바뀐 뒤 5개 화면(board/insights/archive/data_management/persona_page)이 계속 호출하던 것을 호출부 + 함수(~300줄) + 부수 패널-토글 클러스터(`consume_panel_toggle`·`_toggle_href`·`_side_collapsed`·`_sola_collapsed`)까지 삭제. 좌측은 네이티브 `st.sidebar`, 우측은 `chat_panel.render_side` 단일 경로.
+- **`chat_panel.render`**(구 bottom expander) 제거 — `render_side`(우측 컬럼 실채팅)가 대체. 공유 헬퍼(`_intro_card_html`/`_format_recent_messages`/`_AREA_INTROS`)는 render_side 가 계속 사용하므로 보존. 모듈 docstring 갱신.
+- **`sola_workshop_v2._SOLA_TEMPLATE` + `assets/v2/screens/sola_main.html`(11KB)** 제거 — 정의만 있고 read 0. 부수 `ASSETS_DIR` import 정리.
+- **`store/task_defs_db.upsert_many`** 제거(재판정→데드) — production 은 단건 `upsert`(`task_def_manage`·`sqlite_sync` 루프)만 사용, batch helper 는 테스트 전용이었음. `Iterable` import 정리.
+- **`persona_page._archive_stats`** + 전용 `bookmarks` import 제거 — render_app_side 호출이 유일 사용처였음.
+- 테스트: `test_chat_panel`(render 1건)·`test_task_defs_db`(upsert_many 1건) 정리. 검증: pytest 688→**686 passed** · 잔여 import 0(`grep -rn`) · 금지 패턴 0 · py_compile OK.
+
+### Removed (Phase 3 — 데드 코드 삭제: layout·task_tree·sola/{insight,chat_ctx})
+- production import 0 으로 확인된 데드 모듈 4종 삭제 + 테스트 동반 정리:
+  - `ui/layout.py`(`main_and_chat`/`render_chat_panel`/`split_with_chat` — v3 셸 전환으로 호출 0) · `ui/task_tree.py`(드릴다운 위젯, 호출 0) · `sola/insight.py`(부서 인사이트, 호출 0) · `sola/chat_ctx.py`(구 채팅 컨텍스트 빌더, 호출 0).
+  - 테스트: `tests/test_sola_insight.py` 삭제 · `tests/test_sola.py`(chat_ctx 9건)·`tests/test_preview.py`(insight 2건)·`tests/test_chat_log.py`(main_and_chat 1건)·`tests/test_task_def_upload.py`(task_tree 경로 1줄) 수술적 정리.
+- **보존**: `sola/{propose,summarize}` 는 결정-1 A 로 SOLA 작업실에 연결돼 **부활**(삭제 대상 아님). `sola/side_context.py` 는 `ui/layout` 삭제로 orphan 이나 사이드 채팅 컨텍스트 일원화 연결 대상으로 보존(docstring 갱신).
+- 문서 동기화: `docs/ARCHITECTURE.md`(데드 목록·모듈 트리)·`docs/INVARIANTS.md`·`CLAUDE.md` 라우팅·`docs/REFACTOR_PLAN.md`(진행표·데드 대장·Phase 3) 갱신.
+- **후속**: `app_shell.render_app_side`/`render_app_sola` no-op 호출부(5화면) 제거 · `chat_panel.render` 레거시 · `task_defs_db.upsert_many` 재판정.
+- 검증: pytest 702→**688 passed**(삭제 테스트 14건) · 잔여 import 0(`grep -rn`) · 금지 패턴 0.
+
 ### Changed (Phase E — enrich LLM 키워드 매칭 가중, 결정-2 A)
 - `store/match.score_matches` — enrich 된 기사의 `keywords_llm`(LLM 추출 핵심 키워드)를 매칭에 반영. 작업 토큰과 겹치는 고유 LLM 키워드 1건당 `_LLM_KW_WEIGHT`(=2.0) 보너스를 base 점수(title/summary/keywords 토큰 중첩)에 더한다 → **enrich 된 기사가 동일 작업에 대해 더 높은 점수**. base 매칭이 없어도 LLM 키워드만으로 매칭되면 발견.
 - 후방호환: `keywords_llm` 컬럼이 없거나 비어있으면 보너스 0 → 기존 점수와 동일.

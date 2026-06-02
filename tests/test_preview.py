@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from sola import insight, propose, summarize
+from sola import propose, summarize
 from sola.client import LLMNotConfigured
 from sola.preview import format_messages_preview
 
@@ -64,40 +64,6 @@ def test_propose_for_task_returns_preview_when_llm_unset():
     assert "LLM 미설정" in out
     assert "강재선별" in out
     assert "용접 로봇 신기술" in out
-
-
-def test_insight_for_dept_returns_preview_when_llm_unset():
-    from store import cache
-
-    cache.clear()
-    news = pd.DataFrame([{"title": "디지털 트윈 도입", "press": "AITimes"}])
-    with patch.object(insight, "chat", _raises_unset):
-        out = insight.insight_for_dept("가공부", news)
-    assert "LLM 미설정" in out
-    assert "가공부" in out
-    assert "디지털 트윈 도입" in out
-
-
-def test_insight_for_dept_does_not_cache_preview():
-    """preview 응답은 캐시되지 않아야 — 키 세팅 후 재호출 시 실제 LLM 응답으로 대체되어야 한다."""
-    from store import cache
-
-    cache.clear()
-    news = pd.DataFrame([{"title": "디지털 트윈", "press": "X"}])
-
-    # 1차: 미설정 → preview.
-    with patch.object(insight, "chat", _raises_unset):
-        first = insight.insight_for_dept("가공부", news)
-    assert "LLM 미설정" in first
-
-    # 2차: 키 세팅 후 정상 호출 → 실제 응답이 와야 한다 (이전 preview 가 캐시에 박혀있으면 안 됨).
-    def _ok_chat(*_a, **_kw):
-        return "✅ 부서 인사이트 한 줄"
-
-    with patch.object(insight, "chat", _ok_chat):
-        second = insight.insight_for_dept("가공부", news)
-    assert "✅ 부서 인사이트 한 줄" in second
-    assert "LLM 미설정" not in second
 
 
 def test_refine_proposal_still_raises_to_protect_active_md():

@@ -121,7 +121,7 @@ v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st
 - **금지**: 화면별 고정 HTML 우측 패널(구 `app_shell.render_app_sola` 의 disabled 목업)을 부활시키지 말 것. 우측 LLM 채팅은 `render_side` 단일 경로. SOLA 작업실 풀스크린 채팅은 area 전용 예외.
 - **area_key 네임스페이스**: area 슬러그(이모지 포함)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 분리 저장 (I-15).
 - **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 저장돼 다음 send 에서 사용된다.
-- **데드 (Phase C 삭제 예정)**: `app_shell.render_app_side` / `render_app_sola` 는 호출부 호환용 no-op (좌측은 네이티브 사이드바, 우측은 render_side 가 대체). `chat_panel.render`(구 bottom expander) 는 남아있으나 app.py 미사용. `ui/layout.py::main_and_chat` 도 데드.
+- **데드 정리 완료 (Phase 3)**: 좌측은 네이티브 `st.sidebar`, 우측 LLM 채팅은 `chat_panel.render_side` 단일 경로. 구 고정 HTML 패널 `app_shell.render_app_side`/`render_app_sola`(no-op)·패널 토글 클러스터·`chat_panel.render`(구 bottom expander)·`ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`task_defs_db.upsert_many` 모두 삭제됨.
 
 ## I-14 — LLM 설정은 `config._env_or_secret()` 경유
 

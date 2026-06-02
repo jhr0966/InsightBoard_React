@@ -1575,38 +1575,13 @@ def render() -> None:
         fresh_kind="fresh",
     )
 
-    # ── 2) 좌측 .app-side ──
-    app_shell.render_app_side(
-        active_area="📊 오늘의 보드",
-        persona=persona,
-        stats=stats,
-    )
-
-    # ── 2.5) LLM 미설정 안내 (설정 완료 시 no-op) ──
+    # ── 2) LLM 미설정 안내 (설정 완료 시 no-op) ──
     app_shell.render_setup_banner_if_needed()
     render_opp_action_toast_if_needed()
     render_kw_action_toast_if_needed()
 
     # ── 3) 본문 (main) — 템플릿 로드 후 placeholder 치환 ──
     _render_main(persona=persona, refresh_label=refresh)
-
-    # ── 4) 우측 .app-sola ──
-    app_shell.render_app_sola(
-        context_label="오늘의 보드",
-        context_sub=f"오늘 매칭 {stats['match_today']}건 · 자동화 기회 {stats['opportunities']}건",
-        quick_prompts=[
-            ("01", "이 페이지 <b>탑 스토리 3건</b>을 부서장 메시지로 요약해줘"),
-            ("02", "<b>도장 비전 검사</b> PoC 일정·예산 초안 만들어줘"),
-            ("03", "<b>트렌드</b> 그래프에서 우리 작업과 가장 관련 큰 키워드 3개는?"),
-        ],
-        last_q="자동화 기회 4건 중 가장 빨리 시작할 수 있는 건 뭐야?",
-        last_a_html=(
-            "도장 비전 검사가 가장 빨라요. <b>설비 변경 없이 카메라 1대 추가</b>로 "
-            "1주 안에 시작 가능 — 게다가 도장팀이 작년에 비슷한 PoC 제안한 적이 있어 "
-            "공감대도 있어요.<span class='muted'>05:54 · 컨텍스트: 자동화 기회 4건</span>"
-        ),
-        last_time="2분 전",
-    )
 
 
 def _render_main(*, persona: Persona, refresh_label: str) -> None:

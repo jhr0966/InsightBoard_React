@@ -110,10 +110,8 @@ News_TEST/
 │   ├── preview.py               # LLM 미설정 시 입력 프리뷰
 │   ├── refine.py                # 사용자 입력 정제
 │   ├── thread_title.py          # SOLA thread 자동 제목
-│   ├── propose.py               # ⚠ 데드 (production import 0, 테스트만)
-│   ├── summarize.py             # ⚠ 데드
-│   ├── insight.py               # ⚠ 데드
-│   └── chat_ctx.py              # ⚠ 데드
+│   ├── propose.py               # 자동화 제안서 생성 (SOLA 작업실 연결)
+│   └── summarize.py             # 뉴스 요약 (SOLA 작업실 연결)
 │
 ├── ui/                          # Streamlit v2 셸 + 5영역
 │   ├── app_shell.py             # render_topbar / render_app_side / render_app_sola
@@ -130,9 +128,7 @@ News_TEST/
 │   ├── insights_v2.py           # 🔎 인사이트 분석
 │   ├── sola_workshop_v2.py      # 🤖 SOLA 작업실
 │   ├── task_def_manage.py       # 데이터 관리 안의 작업 정의 탭
-│   ├── data_health.py           # 데이터 준비도 대시보드 (테스트 의존)
-│   ├── layout.py                # ⚠ 데드 (main_and_chat 정의되어 있으나 production 호출 0)
-│   └── task_tree.py             # ⚠ 데드 (production 호출 0)
+│   └── data_health.py           # 데이터 준비도 대시보드 (테스트 의존)
 │
 ├── assets/styles.css
 ├── data/  (.gitignore)
@@ -260,11 +256,11 @@ Streamlit Cloud 가 `main` 트래킹. 작업 브랜치 → PR → 머지 → 즉
 
 ---
 
-## 알려진 데드 코드 (정리 예정 — `docs/REFACTOR_PLAN.md` Phase 4)
+## 알려진 데드 코드 (정리 — `docs/REFACTOR_PLAN.md` Phase 3)
 
-- `ui/layout.py` (218줄) — `main_and_chat` 컨텍스트매니저 정의되어 있으나 production 호출 0.
-- `ui/task_tree.py` (74줄) — 드릴다운 위젯, production 호출 0.
-- `sola/propose.py` · `sola/summarize.py` · `sola/insight.py` · `sola/chat_ctx.py` — 모두 production import 0 (테스트만). 결정-1·결정-3 후 부활 또는 삭제.
-- `store/task_defs_db.upsert_many` — 호출처 0, docstring 의 "rollback" 주장과 실제 행별 commit 불일치.
+- ✅ **삭제됨 (Phase 3)**: `ui/layout.py` · `ui/task_tree.py` · `sola/insight.py` · `sola/chat_ctx.py` (테스트 동반 정리).
+- `sola/propose.py` · `sola/summarize.py` — **부활**(결정-1 A): SOLA 작업실 `_consume_generate_proposal_if_any` / `_consume_summarize_if_any` 에서 production 호출.
+- `sola/side_context.py` — `ui/layout.py` 삭제로 현재 호출 0(orphan)이나, 사이드 채팅 컨텍스트 일원화 연결 대상으로 보존.
+- ✅ **삭제됨 (Phase 3 잔여)**: `app_shell.render_app_side`/`render_app_sola`(no-op)·패널 토글 클러스터·`chat_panel.render`(구 bottom expander)·`sola_workshop_v2._SOLA_TEMPLATE`+`assets/v2/screens/sola_main.html`·`store/task_defs_db.upsert_many`(production 미사용 batch helper).
 
 전수 점검 결과·결정 사항·단계적 PR 계획: [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md).

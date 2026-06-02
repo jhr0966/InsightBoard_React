@@ -18,7 +18,7 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from store.paths import roadmap_dir
 
@@ -319,32 +319,6 @@ def count() -> int:
     with _connect() as conn:
         row = conn.execute("SELECT COUNT(*) AS c FROM task_defs").fetchone()
     return int(row["c"]) if row else 0
-
-
-def upsert_many(
-    items: Iterable[tuple[str, str]],
-    *,
-    changed_by: str | None = None,
-    source: str = "excel_upload",
-) -> dict[str, int]:
-    """대량 UPSERT — (process_id, json_str) 튜플 시퀀스.
-
-    Returns: {"created": N, "updated": M}.
-
-    ⚠ 원자성 없음: 각 항목을 `upsert()` 로 개별 처리하며 행마다 즉시 commit 한다.
-    중간 항목에서 예외가 나면 그대로 전파되지만 **이미 처리된 앞 항목은 롤백되지
-    않는다**(부분 적용 가능). 전체 트랜잭션이 필요하면 호출부에서 보장할 것.
-    """
-    created = 0
-    updated = 0
-    for pid, js in items:
-        existed = get(pid) is not None
-        upsert(pid, js, changed_by=changed_by, source=source)
-        if existed:
-            updated += 1
-        else:
-            created += 1
-    return {"created": created, "updated": updated}
 
 
 # ── internal helpers ───────────────────────────────────────

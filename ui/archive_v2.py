@@ -425,12 +425,6 @@ def render() -> None:
         refresh_label=refresh,
         fresh_kind="accent",
     )
-    app_shell.render_app_side(
-        active_area="📦 산출물 보관함",
-        persona=persona,
-        stats=stats,
-    )
-
     template = _ARCHIVE_TEMPLATE.read_text(encoding="utf-8")
     html_out = (
         template
@@ -445,22 +439,4 @@ def render() -> None:
     )
     html_out = _strip_oa_mockups(html_out)
     st.html(_components.prepare_screen_html(html_out))
-
-    app_shell.render_app_sola(
-        context_label="산출물 보관함",
-        context_sub=f"총 {oa['total']} · 채택 {oa['adopted']} · 대기 {oa['pending']}",
-        quick_prompts=[
-            ("01", f"<b>대기 {oa['pending']}건</b> 중 가장 빨리 검토해야 할 3건은?"),
-            ("02", f"<b>채택 {oa['adopted']}건</b>의 공통 성공 요인 정리"),
-            ("03", f"기각 {oa['rejected']}건 — 사유 패턴 분석"),
-        ],
-        last_q="채택된 도장 PoC 제안서들이 공통적으로 강조한 KPI는?",
-        last_a_html=(
-            "공통 KPI 3가지가 두드러져요. <b>불량률 ↓</b> (5건 평균 −34%), "
-            "<b>검사 공수 ↓</b> (평균 −58%), <b>ROI 회수기간</b> (평균 6.4개월). "
-            "특히 ROI 가 6개월 이내인 제안이 채택률 91% 였어요."
-            "<span class='muted'>방금 · 컨텍스트: 채택</span>"
-        ),
-        last_time="방금",
-    )
 

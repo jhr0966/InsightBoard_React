@@ -140,7 +140,6 @@ def test_no_legacy_term_in_main_screens():
         Path("ui/sidebar.py"),
         Path("ui/persona_page.py"),
         Path("ui/onboarding.py"),
-        Path("ui/task_tree.py"),
     ]
     offenders: list[str] = []
     for p in targets:

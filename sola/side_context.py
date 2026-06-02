@@ -1,6 +1,7 @@
 """사이드 채팅 패널용 시스템 메시지 조립 (순수 함수).
 
-`ui/layout.py:render_chat_panel` 에서 호출.
+라이브 채팅(`chat_panel.render_side`)이 자체 컨텍스트를 구성하므로 현재는 직접 호출되지
+않는다. 향후 사이드 채팅 컨텍스트 일원화 시 연결 대상으로 보존한다 (REFACTOR_PLAN Phase 3).
 
 배치 순서 (가장 우선이 위):
   1. base 시스템 프롬프트 (SYSTEM_CHAT 등)
