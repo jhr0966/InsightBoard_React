@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (match — TF-IDF 코사인 의미유사도 하이브리드 매칭)
+- `store/match.score_matches` 에 `semantic_weight` 파라미터 추가(기본 0 = 순수 토큰 매칭, **하위호환**). >0 이면 작업·뉴스 문서를 **TF-IDF 벡터화**해 코사인 유사도를 `weight*cosine` 만큼 점수에 가산. 토큰 '교집합'은 같은 단어가 정확히 겹쳐야 점수가 났지만, TF-IDF 는 **흔한 단어는 낮게·희소한 핵심어는 높게** 가중 + 길이 정규화 → 표현이 달라도 주제가 가까운 매칭을 끌어올린다. `_build_idf`/`_tfidf_vec`/`_cosine`(순수, 네트워크·모델다운로드 불필요).
+- **호출처 활성화** — 보드 탑스토리·인사이트 공정매핑·SOLA 작업실·자동화 기회 매트릭스(`opportunity`)가 `semantic_weight=DEFAULT_SEMANTIC_WEIGHT`(=4.0)로 호출. `_SEM_MIN_COS`(0.05) 미만 코사인은 잡음으로 무시(공유 토큰 0 → 매칭 안 됨).
+- **설계 메모**: 신경망 임베딩(RAG)은 임베딩 백엔드(groq 미지원·이 환경 네트워크 차단)가 필요해 지금은 classical TF-IDF 로 구현 — `_tfidf_vec`/`_cosine` 시ジ를 임베딩 벡터로 교체하면 그대로 확장 가능.
+- `tests/test_match_semantic.py`(+4: 하위호환·idf 동점변별·무공유 무시·빈입력). pytest 715→**719 passed** · 금지 패턴 0.
+
+### Added (data-mgmt — 수집 헬스: 14일 sparkline 일별 런 성공/실패 오버레이)
+- `store/run_log.daily_status(days)` 신규(순수) — 최근 N일 각 날짜의 런 상태(`ok`/`fail`/`None`, 하루 중 하나라도 실패면 `fail`). `data_management_v2._runstatus_strip_html` 가 14일 볼륨 sparkline 아래에 14칸 스트립으로 겹침(성공 초록/실패 주황/런없음 divider, hover 날짜·상태). 볼륨(news_db)은 '몇 건', 스트립(run_log)은 '그날 런이 돌고 성공했나' → **cron 이 조용히 실패한 날**(볼륨 0 + fail/런없음)을 한 줄로 구분. 런 기록 없으면 빈 문자열(무변경). CSS `.dm-runstatus`(토큰).
+- `tests/test_run_log.py`(+2)·`tests/test_collect_health.py`(+2). pytest 711→715 passed.
+
 ### Fixed (UI — 사이드바 접기/펼치기 버튼 · 채팅 패널 안내·추천·입력)
 - **사이드바 펼치기 버튼 복구** — `streamlit-overrides.css` 가 상단 `stHeader` 를 통째로 `display:none` 해서, 사이드바를 한 번 접으면 펼치기 버튼(`stExpandSidebarButton` — Streamlit 1.58 에선 헤더 toolbar 안에 렌더)까지 함께 사라져 **다시 펼칠 방법이 없던** 문제. 헤더를 flow 에서 빼고(absolute·height:0·투명·pointer-events 통과) toolbar 노이즈(메뉴/배포/상태/장식)만 숨기되 펼치기 버튼은 좌상단 고정으로 항상 노출. 접힘 시 페이지 헤더(`.db-topbar`)를 46px 밀어 버튼이 첫 글자를 가리지 않게.
 - **사이드바·본문 겹침** — 정상 폭(≥768px)에선 겹침 0 확인(playwright 실측). 좁은 폭(<768px)에서 Streamlit 이 사이드바를 오버레이로 띄우던 것이, 펼치기 버튼 복구로 **접어서 본문을 볼 수 있게**(dismiss 가능) 개선.

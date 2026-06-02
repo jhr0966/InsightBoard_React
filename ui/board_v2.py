@@ -26,7 +26,7 @@ from roadmap.query import load_latest as _load_tasks
 from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
 from store import trends as _trends
-from store.match import score_matches as _score_matches
+from store.match import DEFAULT_SEMANTIC_WEIGHT as _SEM_W, score_matches as _score_matches
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
 from ui import components as _components
@@ -487,7 +487,7 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
         and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, tasks_df, top_k=3)
+            matches = _score_matches(news_df, tasks_df, top_k=3, semantic_weight=_SEM_W)
             if not matches.empty and "score" in matches.columns:
                 top = (
                     matches[matches["score"] > 0]
@@ -1386,7 +1386,7 @@ def _board_kpis() -> dict[str, int]:
         and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, tasks_df, top_k=3)
+            matches = _score_matches(news_df, tasks_df, top_k=3, semantic_weight=_SEM_W)
             if not matches.empty:
                 match_count = int(matches[matches["score"] > 0]["link"].nunique())
         except Exception:

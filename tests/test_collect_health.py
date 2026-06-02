@@ -84,3 +84,22 @@ def test_run_timeline_caps_at_limit():
         )
     out = dm._run_timeline_html()
     assert out.count('class="dm-run-cell"') == dm._RUN_TIMELINE_N
+
+
+# ── 14일 sparkline 일별 런 성공/실패 스트립 ──────────────────
+
+def test_runstatus_strip_empty_when_no_runs():
+    assert dm._runstatus_strip_html() == ""
+
+
+def test_runstatus_strip_renders_14_cells_with_colors():
+    from datetime import datetime, timezone
+    run_log.record_run(
+        _rep(saved=[{"source": "naver", "count": 2, "path": "p"}]),
+        trigger="cron", run_id="rs", ts=datetime.now(timezone.utc).isoformat(),
+    )
+    out = dm._runstatus_strip_html()
+    assert "dm-runstatus" in out
+    assert out.count("dm-runstatus-cell") == 14
+    assert "var(--semantic-success)" in out  # 오늘 ok 칸
+    assert "var(--surface-divider)" in out   # 런 없는 날 = divider

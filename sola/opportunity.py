@@ -9,7 +9,7 @@ import pandas as pd
 from sola.client import LLMNotConfigured, chat
 from sola.prompts import SYSTEM_OPPORTUNITY
 from store import cache
-from store.match import score_matches
+from store.match import DEFAULT_SEMANTIC_WEIGHT, score_matches
 
 
 _EMPTY_COLS = (
@@ -40,7 +40,8 @@ def score_cells(
     if cell_level not in roadmap_df.columns:
         return _empty()
 
-    matches = score_matches(news_df, roadmap_df, top_k=top_k_per_task)
+    matches = score_matches(news_df, roadmap_df, top_k=top_k_per_task,
+                            semantic_weight=DEFAULT_SEMANTIC_WEIGHT)
     if matches.empty:
         return _empty()
 

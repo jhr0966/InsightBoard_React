@@ -438,6 +438,17 @@ a.dm-btn-primary, a.dm-btn-primary:visited { color: #fff; }
   width: 100%;
   height: 60px;
 }
+/* 볼륨 바 아래 일별 수집 런 성공/실패 스트립 (run_log 오버레이) */
+.dm-runstatus {
+  display: flex;
+  gap: 2px;
+  height: 5px;
+  margin-top: 5px;
+}
+.dm-runstatus-cell {
+  flex: 1 1 0;
+  border-radius: 2px;
+}
 .dm-hist-x {
   display: flex;
   justify-content: space-between;
