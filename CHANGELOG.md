@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (UI Phase C-2 — 보드 정리 + 심플 세로 스크롤)
+- **죽은/가짜 제거**: hero CTA 2개("브리핑 듣기"/"빠른 질문" — 우측 채팅과 중복), soon 탭(강한매칭/출처별/월별 — 미구현 필터), 가짜 brief-meta("06:08 생성·32건·1.4s"), "검토 대기 4건" 리터럴 → "자동화 기회".
+- **죽은 `*.html` 링크를 실제 area 네비(`?app_area=`)로 재배선**(`board_v2._clean_board_html`) — 기능 보존: 뉴스 라이브러리→데이터 관리, 전체/트렌드/매트릭스 작업장→인사이트. 없는 화면 링크(keyword-manager.html)는 제거.
+- **뉴스 카드 클릭 → 원문 열기**(`_lead_story_html`/`_side_story_html` 를 `<a target="_blank">` 로 래핑, 링크 escape).
+- **심플 세로 스크롤**(사용자 지시): 2-컬럼 셸로 좁아진 main_col 에서 섹션 내부 2단 그리드(`db-greet`/`db-stories`/`db-trend`)를 단일 컬럼으로 스택(`scale.css §11`). 모든 콘텐츠/기능 보존, 레이아웃만 세로화.
+- `tests/test_board_cleanup.py` (+6). 검증: pytest 678/678 · 금지 패턴 0 · playwright 보드 — 죽은 CTA/soon탭/가짜meta/리터럴 0, 우측 채팅 노출.
+
 ### Changed (UI Phase C-1 — 인사이트 화면 정리: 가짜 패널·죽은 필터 제거)
 - `insights_v2._strip_mockup_blocks` 신규 — 렌더 시 `insights_main.html` 의 정적 목업 2블록 제거: ① **가짜 우측 `ia-sola` 패널**(SOLA 분석 모드·가짜 인용·"도장 부스 #3 비전 PoC"·액션/컴포저 — Phase A 로 모든 화면에 실제 우측 채팅이 생겨 중복·가짜였음) ② **죽은 `ia-filters` 스트립**(기간 7/30/90일·공정범위·기술칩·"저장한 뷰" — 전부 핸들러 없는 시안). 마커 슬라이스 방식(`<aside class="ia-sola">…</aside>`, `ia-filters`→`ia-grid` 사이)이라 div 균형 카운트에 의존 안 함.
 - `insights_v2._ia_stats` — **PoC 후보 중복집계 수정**: 자동화 기회 셀에 채택 대기(pending) 제안서를 더하던 버그 제거(두 개념 혼동). 이제 PoC 후보 = 기회 셀만.

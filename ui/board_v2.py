@@ -402,7 +402,7 @@ def _lead_story_html(row: pd.Series) -> str:
     when = str(row.get("collected_at", "") or row.get("published_at", "") or "")
     age = _html.escape(_story_age(when))
 
-    return f"""<article class="db-lead">
+    article = f"""<article class="db-lead">
       <div class="db-lead-img">
         <span class="db-img-stripe"></span>
         <span class="db-img-label">{source_safe}</span>
@@ -417,6 +417,14 @@ def _lead_story_html(row: pd.Series) -> str:
         {f'<p class="db-lead-p">{body}</p>' if body else ''}
       </div>
     </article>"""
+    link = str(row.get("link", "") or "").strip()
+    if link:
+        return (
+            f'<a href="{_html.escape(link)}" target="_blank" rel="noopener" '
+            'style="text-decoration:none; color:inherit; display:block;">'
+            f'{article}</a>'
+        )
+    return article
 
 
 def _side_story_html(row: pd.Series) -> str:
@@ -432,7 +440,7 @@ def _side_story_html(row: pd.Series) -> str:
     when = str(row.get("collected_at", "") or row.get("published_at", "") or "")
     age = _html.escape(_story_age(when))
 
-    return f"""<article class="db-story">
+    article = f"""<article class="db-story">
       <div class="db-story-meta">
         <span class="db-src"><span class="db-src-mark" style="background:{gradient};"></span>{source_safe}</span>
         <span class="db-time">{age}</span>
@@ -440,6 +448,14 @@ def _side_story_html(row: pd.Series) -> str:
       <h4 class="db-story-h">{title}</h4>
       {f'<p class="db-story-p">{body}</p>' if body else ''}
     </article>"""
+    link = str(row.get("link", "") or "").strip()
+    if link:
+        return (
+            f'<a href="{_html.escape(link)}" target="_blank" rel="noopener" '
+            'style="text-decoration:none; color:inherit; display:block;">'
+            f'{article}</a>'
+        )
+    return article
 
 
 @st.cache_data(ttl=60)
@@ -1268,6 +1284,24 @@ def _board_stories_html() -> str:
 _BOARD_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "board_main.html"
 
 
+def _clean_board_html(html: str) -> str:
+    """보드 템플릿의 죽은 `*.html` 섹션 링크를 실제 area 네비(`?app_area=`)로 재배선.
+
+    "뉴스 라이브러리 →"=데이터 관리, "전체 보러가기/트렌드/매트릭스 작업장 →"=인사이트.
+    기능을 없애지 않고 살린다(사용자 지시). keyword-manager 링크는 템플릿에서 제거됨.
+    """
+    from urllib.parse import quote as _q
+    data_href = "?app_area=" + _q("🧱 데이터 관리")
+    ins_href = "?app_area=" + _q("🔎 인사이트 분석")
+    return (
+        html
+        .replace('href="data-management.html"', f'href="{data_href}" target="_self"')
+        .replace('href="insights-analysis.html#trend"', f'href="{ins_href}" target="_self"')
+        .replace('href="insights-analysis.html#matrix"', f'href="{ins_href}" target="_self"')
+        .replace('href="insights-analysis.html"', f'href="{ins_href}" target="_self"')
+    )
+
+
 def _persona_greet(persona: Persona) -> str:
     """헤더 인사: '박정훈 책임' / '자동화기술팀' / '사용자' 우선순위."""
     if persona.name and persona.job:
@@ -1612,6 +1646,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BRIEF_CTA}}", brief["cta"])
         .replace("{{BRIEF_TTS_BTN}}", brief.get("tts_btn", ""))
     )
+    html_out = _clean_board_html(html_out)
     st.html(html_out)
 
 

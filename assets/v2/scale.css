@@ -345,3 +345,17 @@ body:has(.db-topbar) .app-sola-comp-input { font-size: 16px !important; line-hei
 body:has(.db-topbar) .app-sola-comp-pin   { font-size: 12px !important; padding: 4px 9px; }
 body:has(.db-topbar) .app-sola-comp-send  { font-size: 14px !important; padding: 9px 14px; }
 body:has(.db-topbar) .app-sola-comp-tips  { font-size: 12px !important; }
+
+/* ════════════════════════════════════════════════════════════
+   11) Phase C-2 — 보드 심플 세로 스크롤
+   2-컬럼 셸로 좁아진 main_col 에서 섹션 내부 2단 그리드를 세로 스택해
+   부담 없이 위→아래로 읽히게 한다. 모든 콘텐츠/기능은 보존(레이아웃만).
+   ════════════════════════════════════════════════════════════ */
+body:has(.db-greet) .db-greet,
+body:has(.db-stories) .db-stories,
+body:has(.db-trend) .db-trend {
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+}
+/* 섹션 사이 여백을 약간 더 줘 스캔하기 편하게 */
+body:has(.db-main) .db-sec { margin-top: 6px; }

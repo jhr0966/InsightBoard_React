@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-01 · Phase C-2 — 보드 정리 + 심플 세로 스크롤
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
+
+**맥락:** "다음 진행해. 모든 기능 살려놓고, 정리 후 화면별로 심플하게·부담 없이 세로 스크롤." → 보드(홈)에 적용.
+
+**한 일:**
+- 죽은/가짜 제거: hero CTA 2개(우측 채팅과 중복), soon 탭(강한매칭/출처별/월별), 가짜 brief-meta, "검토 대기 4건"→"자동화 기회".
+- 죽은 `*.html` 링크 4개 → 실제 `?app_area=` 네비 재배선(`_clean_board_html`, 기능 보존). keyword-manager.html 링크 제거.
+- 뉴스 카드 클릭→원문(`_lead_story_html`/`_side_story_html` 앵커 래핑).
+- 심플 세로 스크롤: `db-greet`/`db-stories`/`db-trend` 내부 2단 그리드 → 단일 컬럼 스택(scale.css §11).
+- `tests/test_board_cleanup.py` (+6).
+
+**검증:** pytest 678/678 · 금지 패턴 0 · playwright 보드 죽은요소 0·우측 채팅 노출.
+
+**다음:** Phase C-3 데이터관리(뉴스 검색/필터/페이저·3 서브카드 목업 정리, 기능 보존) → C-4 보관함(하단 45건 표·미리보기 목업) → D(설정 테마·폰트).
+
+---
+
 ## 2026-06-01 · Phase C-1 — 인사이트 화면 정리 (가짜 패널·죽은 필터 제거)
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
