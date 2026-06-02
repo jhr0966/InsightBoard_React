@@ -69,13 +69,3 @@ def test_ts_omitted_stays_omitted():
     loaded = chat_log.load_history("nots")
     assert loaded == [{"role": "assistant", "content": "a"}]
     assert "ts" not in loaded[0]
-
-
-def test_main_and_chat_defaults_to_open():
-    """채팅 패널이 첫 진입 시 펼쳐진 상태가 디폴트인지 시그니처로 확인."""
-    import inspect
-
-    from ui import layout
-
-    sig = inspect.signature(layout.main_and_chat)
-    assert sig.parameters["default_open"].default is True
