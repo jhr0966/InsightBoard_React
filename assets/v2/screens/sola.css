@@ -591,7 +591,7 @@
   border: 1px solid var(--surface-divider);
   border-radius: 10px;
   overflow: hidden;
-  background: #FAFBFD;
+  background: var(--surface-soft);
 }
 .ws-doc-head {
   display: flex;

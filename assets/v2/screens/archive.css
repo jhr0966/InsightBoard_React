@@ -345,7 +345,7 @@
   border-color: rgba(21,128,61,0.30);
 }
 .oa-card-rej {
-  background: #FAFBFD;
+  background: var(--surface-soft);
   opacity: 0.85;
 }
 .oa-card-top {

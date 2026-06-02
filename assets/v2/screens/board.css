@@ -20,7 +20,7 @@
   gap: 24px;
   align-items: center;
   padding: 11px 26px 11px;
-  background: rgba(243, 245, 248, 0.94);
+  background: var(--surface-inset-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--surface-divider);
@@ -224,7 +224,7 @@
   padding: 11px 12px 12px;
   background:
     radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.08), transparent 60%),
-    linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%);
+    linear-gradient(180deg, var(--surface-card) 0%, var(--surface-soft) 100%);
   border: 1px solid rgba(37, 99, 235, 0.18);
   border-radius: 11px;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.05);
@@ -630,7 +630,7 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
   grid-template-columns: 1.4fr 1fr;
   gap: 24px;
   padding: 28px 28px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%);
+  background: linear-gradient(180deg, var(--surface-card) 0%, var(--surface-soft) 100%);
   border: 1px solid var(--surface-divider);
   border-radius: 16px;
   box-shadow: var(--shadow-1);
@@ -1798,7 +1798,7 @@ a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
   align-items: center;
   gap: 0;
   padding: 14px 0;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FAFBFE 100%);
+  background: linear-gradient(180deg, var(--surface-card) 0%, var(--surface-soft) 100%);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   box-shadow: var(--shadow-1);
@@ -1971,7 +1971,7 @@ a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
   justify-content: space-between;
   padding: 13px 14px;
   border-bottom: 1px solid var(--surface-divider);
-  background: linear-gradient(180deg, #FAFBFD, #FFFFFF);
+  background: linear-gradient(180deg, var(--surface-soft), var(--surface-card));
 }
 .db-sola-hdr-l {
   display: flex;
@@ -2205,7 +2205,7 @@ a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
 /* ── Composer ── */
 .db-sola-comp {
   padding: 12px 12px 12px;
-  background: linear-gradient(180deg, #FAFBFD, #FFFFFF);
+  background: linear-gradient(180deg, var(--surface-soft), var(--surface-card));
   flex-shrink: 0;
 }
 .db-sola-comp-pin {
