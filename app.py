@@ -11,7 +11,7 @@
 레이아웃 (Phase A — 네이티브 셸):
   좌측 = 네이티브 st.sidebar (nav 단일 소스) · 본문 = st.columns(main, chat)
   우측 chat 컬럼 = chat_panel.render_side (실제 작동 채팅).
-  SOLA 작업실만 자체 풀스크린(스레드+채팅+ctx)이라 우측 컬럼 없이 풀폭.
+  **모든 화면 동일** — SOLA 작업실도 중앙=산출물 작업대, 우측=채팅으로 통일.
 """
 from __future__ import annotations
 
@@ -68,31 +68,31 @@ chat_panel.consume_send_if_any(_persona)
 _is_persona = bool(st.session_state.get("show_persona_editor"))
 _area_key = "프로필 설정" if _is_persona else area
 
-# SOLA 작업실은 자체 풀스크린 셸(스레드+채팅+ctx)이라 우측 채팅 컬럼 없이 풀폭 렌더.
-if not _is_persona and area == "🤖 SOLA 작업실":
-    sola_workshop_v2.render()
-else:
-    # 본문 = 메인 + 우측 채팅 2-컬럼. 각 화면이 보여주는 데이터를 SOLA 컨텍스트로
-    # packaging 해 두면 우측 채팅이 그 화면 콘텐츠에 대해 답할 수 있다.
-    _main_col, _chat_col = st.columns([2.7, 1], gap="large")
-    with _main_col:
-        if _is_persona:
-            persona_page.render()
-            st.session_state["_chat_context_for_sola"] = persona_page.chat_context_block(_persona)
-        elif area == "📊 오늘의 보드":
-            board_v2.render()
-            st.session_state["_chat_context_for_sola"] = board_v2.chat_context_block(_persona)
-        elif area == "🧱 데이터 관리":
-            data_management_v2.render()
-            st.session_state["_chat_context_for_sola"] = data_management_v2.chat_context_block(_persona)
-        elif area == "🔎 인사이트 분석":
-            insights_v2.render()
-            st.session_state["_chat_context_for_sola"] = insights_v2.chat_context_block(_persona)
-        else:
-            archive_v2.render()
-            st.session_state["_chat_context_for_sola"] = archive_v2.chat_context_block(_persona)
-    with _chat_col:
-        chat_panel.render_side(_persona, area_key=_area_key)
+# 모든 화면 통일: [좌 사이드바 │ 중앙 콘텐츠(main_col) │ 우 LLM 채팅(chat_col)].
+# 각 화면이 보여주는 데이터를 SOLA 컨텍스트로 packaging 해 두면 우측 채팅이 그 화면
+# 콘텐츠에 대해 답할 수 있다. SOLA 작업실도 동일 — 중앙은 산출물 작업대, 우측은 대화.
+_main_col, _chat_col = st.columns([2.7, 1], gap="large")
+with _main_col:
+    if _is_persona:
+        persona_page.render()
+        st.session_state["_chat_context_for_sola"] = persona_page.chat_context_block(_persona)
+    elif area == "📊 오늘의 보드":
+        board_v2.render()
+        st.session_state["_chat_context_for_sola"] = board_v2.chat_context_block(_persona)
+    elif area == "🧱 데이터 관리":
+        data_management_v2.render()
+        st.session_state["_chat_context_for_sola"] = data_management_v2.chat_context_block(_persona)
+    elif area == "🔎 인사이트 분석":
+        insights_v2.render()
+        st.session_state["_chat_context_for_sola"] = insights_v2.chat_context_block(_persona)
+    elif area == "🤖 SOLA 작업실":
+        sola_workshop_v2.render()
+        st.session_state["_chat_context_for_sola"] = sola_workshop_v2.chat_context_block(_persona)
+    else:
+        archive_v2.render()
+        st.session_state["_chat_context_for_sola"] = archive_v2.chat_context_block(_persona)
+with _chat_col:
+    chat_panel.render_side(_persona, area_key=_area_key)
 
 # 페르소나 미설정 + 미dismiss → 배경 화면 위에 중앙 모달로 온보딩.
 # 명시적 편집(show_persona_editor) 중에는 마법사를 띄우지 않는다.

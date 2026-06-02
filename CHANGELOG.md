@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (UI Phase B 후속 — SOLA 작업실 3영역 통일: 산출물 캔버스)
+- **SOLA 작업실을 다른 화면과 동일한 [좌 사이드바 │ 중앙 콘텐츠 │ 우 LLM 채팅] 3영역으로 통일.** 기존엔 이 화면만 자체 3열 `ws-shell`(스레드│채팅│ctx)이라 우측 채팅이 없고 채팅·결과·버튼이 중앙에 뒤섞여(버튼 줄바꿈·쏠림, 채팅/결과 경계 불명) 있던 문제 해소(사용자 지적).
+- `app.py` — SOLA 작업실 풀폭 예외 제거, `main_col + chat_col` 에 편입. 우측 = `chat_panel.render_side`(대화), 중앙 = 작업대.
+- `ui/sola_workshop_v2.render()` 재작성 → `_render_workbench`(중앙 산출물 캔버스): ① 액션 바 `📝 제안서 생성`·`📰 뉴스 요약`·`➕ 새 대화` ② 현재 산출물(마지막 SOLA 답변을 `st.container(border)`+`st.markdown` 문서 카드로 + `📦 보관함에 저장`·`🔄 다시 생성`) ③ 세션 목록(검색·고정·삭제) ④ 저장한 산출물. 자체 `ws-shell` 템플릿·중앙 `chat_input` 제거(대화는 우측 채팅이 담당).
+- `_consume_summarize_if_any` 신규(`📰 뉴스 요약` → `sola.summarize`), `chat_context_block` 신규(우측 채팅에 작업실 컨텍스트 자동 첨부). `_msg_html`/`_render_messages_html` 은 테스트 의존이라 보존.
+- 검증: pytest 668/668 · 금지 패턴 0 · playwright SOLA 빈/인계 화면 — 3영역 분리·우측 채팅 노출·액션 버튼 정렬 확인.
+
 ### Added (UI Phase B — 제안서 엔진 복원: 생성 → 보관함 저장 루프)
 - 끊겨 있던 제품 핵심(자동화 기회 → 제안서 → 산출물)을 SOLA 작업실에 배선:
   - `ui/sola_workshop_v2._consume_generate_proposal_if_any` — 인계(dept/lv3) 컨텍스트 + 관련 뉴스(`_related_news_df`: 최근 14일 뉴스 중 작업 매칭 상위 N, 매칭 없으면 최근 폴백)를 **`sola.propose.propose_for_task`(전용 제안서 시스템 프롬프트)** 에 넘겨 구조화 제안서를 assistant 메시지로 생성. LLM 미설정 시 입력 미리보기, 호출 오류 시 안내 메시지로 무중단.

@@ -19,6 +19,7 @@ from persona import context as persona_ctx
 from persona.schema import Persona
 from sola import client as sola_client
 from sola import propose as sola_propose
+from sola import summarize as sola_summarize
 from sola.preview import format_messages_preview
 from store import bookmarks as bookmarks_store
 from store import chat_log
@@ -126,39 +127,62 @@ def _ctx_age_label(iso: str) -> str:
 
 
 def render() -> None:
-    """SOLA 작업실 v2 — topbar + app-side + 3-열 ws-shell (app-sola 없음)."""
-    inject_screen_css("sola")
+    """SOLA 작업실 — 통일 셸의 **중앙 산출물 작업대(캔버스)**.
 
+    좌측 사이드바·우측 LLM 채팅(`chat_panel.render_side`)은 `app.py` 가 그린다.
+    이 함수는 중앙 메인 영역만 렌더: 액션(제안서 생성·요약) + 현재 산출물 문서 +
+    세션/산출물 목록. **대화(메시지·입력)는 우측 채팅이 담당** — 다른 화면과 동일한
+    [좌 사이드바 │ 중앙 콘텐츠 │ 우 채팅] 3영역 통일.
+    """
+    inject_screen_css("sola")
     persona = app_shell.get_persona()
 
-    # ── pending 핸들러 (run 최상단, 위젯 인스턴스화 이전) ──
-    # 순서: 스레드 전환·생성·삭제 → URL switch → prefill ask → send
-    # (앞단 결과가 뒷단의 active_thread 를 바꿀 수 있어 이 순서 필수)
+    # ── pending 핸들러 (위젯 인스턴스화 이전) ──
+    # send 는 app.py 의 chat_panel.consume_send_if_any 가 처리(우측 채팅과 thread 공유).
     _consume_thread_actions_if_any()
     _switch_thread_from_query_if_any()
     _consume_prefill_ask_if_any()
     _consume_generate_proposal_if_any(persona)
+    _consume_summarize_if_any(persona)
     _consume_save_proposal_if_any()
-    _consume_send_if_any(persona)
     _render_sola_action_toasts()
-
-    stats = _archive_stats()
-    refresh = app_shell.refresh_label_now()
 
     app_shell.render_topbar(
         page_title="SOLA 작업실",
         eyebrow_current="SOLA 작업실",
-        refresh_label=refresh,
+        refresh_label=app_shell.refresh_label_now(),
         fresh_kind="accent",
     )
-    # SOLA workshop 은 .app-side 글로벌 네비를 미렌더 — 좌측에 자체 ws-threads
-    # (380px 폭 thread list) 가 있어 두 패널이 겹쳐 보이는 문제 fix.
-    # 사용자는 topbar 또는 ⌘K 팔레트로 다른 area 이동 가능.
-    # block-container padding-left 도 ws-shell 분기에서 축소되어야 함 (CSS 처리).
     app_shell.render_setup_banner_if_needed()
     _render_brief_handoff_banner_if_needed()
-    _render_main(persona)
-    # 의도적으로 app-sola 미렌더 — ws-ctx 가 그 역할 대체
+    _render_workbench(persona)
+
+
+def chat_context_block(persona: Persona) -> str:
+    """우측 채팅(render_side)에 자동 첨부될 SOLA 작업실 컨텍스트."""
+    parts = ["--- 현재 화면: SOLA 작업실 (제안서·요약 작업대) ---"]
+    try:
+        th = _active_thread()
+        parts.append(f"활성 세션: {th.title or '새 대화'}")
+    except Exception:
+        pass
+    dept = st.query_params.get("dept", "")
+    lv3 = st.query_params.get("lv3", "")
+    target = " · ".join(p for p in (dept, lv3) if p)
+    if target:
+        parts.append(f"인계 컨텍스트(작업): {target}")
+    try:
+        msgs = _load_messages()
+        last = next(
+            (m["content"] for m in reversed(msgs)
+             if m.get("role") == "assistant" and (m.get("content") or "").strip()),
+            "",
+        )
+        if last:
+            parts.append("현재 산출물(발췌): " + last[:300])
+    except Exception:
+        pass
+    return "\n".join(parts)
 
 
 _HANDOFF_LABELS: dict[str, tuple[str, str]] = {
@@ -588,6 +612,29 @@ def _consume_generate_proposal_if_any(persona: Persona) -> None:
     st.rerun()
 
 
+def _consume_summarize_if_any(persona: Persona) -> None:
+    """`_do_summarize` pending → 최근 뉴스를 `sola.summarize` 로 요약 → assistant 메시지."""
+    if not st.session_state.pop("_do_summarize", False):
+        return
+    import pandas as pd
+    try:
+        from store import news_db
+        news = news_db.load_news_for_days(7)
+    except Exception:
+        news = pd.DataFrame()
+    _append_message("user", "📰 최근 수집 뉴스를 요약해줘.")
+    try:
+        with st.spinner("SOLA 가 뉴스를 요약하고 있어요…"):
+            out = sola_summarize.summarize_news(news)
+        _append_message("assistant", out)
+        n = 0 if news is None or news.empty else len(news)
+        st.session_state["_sola_action_toast"] = ("ok", f"최근 뉴스 {n}건을 요약했어요.")
+    except Exception as exc:
+        _append_message("assistant", f"⚠️ 요약 실패: {type(exc).__name__}: {exc}")
+        st.session_state["_sola_action_toast"] = ("error", f"요약 실패: {type(exc).__name__}")
+    st.rerun()
+
+
 def _consume_save_proposal_if_any() -> None:
     """`_do_save_proposal` pending → 현 thread 의 마지막 제안서(assistant)를
     proposal 북마크로 저장(실 content).
@@ -858,160 +905,132 @@ def _consume_prefill_ask_if_any() -> None:
     st.rerun()
 
 
-def _render_main(persona: Persona) -> None:
-    """sola_main.html 템플릿 로드 + persona snapshot + composer prefill 치환."""
-    name = persona.name or "사용자"
-    dept = persona.dept or ""
-    job = persona.job or ""
-    line_parts = [p for p in (name, job, dept) if p]
-    persona_line = " · ".join(line_parts) if line_parts else "사용자"
+def _render_workbench(persona: Persona) -> None:
+    """중앙 산출물 작업대(캔버스) — 액션 + 현재 산출물 문서 + 세션/산출물 목록.
 
-    interests = persona.interest_lv3 or persona.interest_tasks or []
-    interests_label = ", ".join(interests[:3]) if interests else "미설정"
-    # 페르소나 카드: 팀 + 키워드 카운트 실데이터
-    team_label = persona.team or "—"
-    kw_count = len(persona.interest_lv3 or []) + len(persona.interest_tasks or [])
-    kw_label = f"{kw_count}개" if kw_count > 0 else "0개"
+    대화·입력은 우측 채팅(`chat_panel.render_side`)이 담당하므로 여기엔 chat_input 없음.
+    """
+    _SEC = ('<div style="font-size:12px; font-weight:800; letter-spacing:0.08em; '
+            'text-transform:uppercase; color:#94A3B8; margin:{m};">{t}</div>')
 
-    # 산출물 보관함 — pending 제안서 카운트 + 최근 1건 미리보기
-    archive_pending_count, linked_proposals_html = _ctx_archive_summary()
-
-    prefill, placeholder, pins_html = _composer_prefill()
     messages = _load_messages()
-    messages_html = _render_messages_html(messages)
-
-    # Thread list — 활성 thread 강조 + 그룹별 묶기 + 검색 필터
-    active_th = _active_thread()
-    all_threads = sola_threads.list_threads()
-    search_query = st.session_state.get("_sola_search_q", "") or ""
-    thread_list_html = _render_thread_list_html(all_threads, active_th.id, search_query)
-    thread_filters_html = _render_thread_filters_html(all_threads)
-    # 새 스레드 버튼 — `<a href>` 로 만들면 query param 안 쓰고 Streamlit
-    # button (아래) 으로 일관 처리. 자리 표시용 정적 마크업만 placeholder 에 넣고
-    # 실 인터랙션은 _render_main 마지막에 Streamlit button 추가.
-    new_thread_btn_html = (
-        '<button class="ws-new" disabled '
-        'title="아래 +새 대화 버튼으로 생성">'
-        '<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'13\' '
-        "height='13' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' "
-        "stroke-linecap='round' stroke-linejoin='round'><line x1='12' y1='5' x2='12' y2='19'/>"
-        "<line x1='5' y1='12' x2='19' y2='12'/></svg>\" width=\"13\" height=\"13\" alt=\"\" />"
-        "새 스레드"
-        "</button>"
+    last_assistant = next(
+        (m for m in reversed(messages)
+         if m.get("role") == "assistant" and (m.get("content") or "").strip()),
+        None,
     )
-
-    template = _SOLA_TEMPLATE.read_text(encoding="utf-8")
-    html_out = (
-        template
-        .replace("{{PERSONA_LINE}}", _html.escape(persona_line))
-        .replace("{{PERSONA_INTERESTS}}", _html.escape(interests_label))
-        .replace("{{PERSONA_TEAM}}", _html.escape(team_label))
-        .replace("{{KEYWORDS_COUNT}}", kw_label)
-        .replace("{{ARCHIVE_PENDING}}", str(archive_pending_count))
-        .replace("{{LINKED_PROPOSALS}}", linked_proposals_html)
-        .replace("{{NEW_THREAD_BTN}}", new_thread_btn_html)
-        .replace("{{THREAD_FILTERS}}", thread_filters_html)
-        .replace("{{THREAD_LIST}}", thread_list_html)
-        .replace("{{WS_MESSAGES}}", messages_html)
-        .replace("{{COMPOSER_PREFILL}}", _html.escape(prefill))
-        .replace("{{COMPOSER_PLACEHOLDER}}", _html.escape(placeholder))
-        .replace("{{COMPOSER_PINS}}", pins_html)
-    )
-    st.html(html_out)
-
-    # ── thread 검색 (Streamlit native, 시안 input 은 시각만) ──
-    # 입력 시 session_state 에 저장 → 다음 run 의 _render_thread_list_html 에
-    # 검색 모드로 단일 그룹 평탄화. on_change 콜백 대신 위젯 key 자체가 송신원.
-    st.text_input(
-        "스레드 검색",
-        key="_sola_search_q",
-        placeholder="제목으로 검색 — 비우면 전체 목록",
-        label_visibility="collapsed",
-        help="제목으로 검색합니다. 본문 검색은 후속 PR.",
-    )
-
-    # ── 활성 thread 액션 버튼 (Streamlit native) ──
-    # 시안의 좌측 <button class="ws-new"> 등은 HTML 내부라 클릭 wire 불가 →
-    # 본문 위에 Streamlit 버튼으로 현 thread 액션을 노출.
-    c1, c2, c3, c4 = st.columns([1.2, 1.4, 1.4, 4])
-    with c1:
-        if st.button("➕ 새 대화", key="sola_new_thread_btn",
-                     use_container_width=True,
-                     help="새 thread 시작 (현 대화는 좌측 목록에 보존됨)"):
-            st.session_state["_do_new_thread"] = True
-            st.rerun()
-    with c2:
-        # 고정 토글 — 좌측 list 에서 ★ 고정 그룹 맨 위로
-        pin_label = "📌 고정 해제" if active_th.pinned else "📌 상단 고정"
-        if st.button(pin_label, key="sola_pin_thread_btn", use_container_width=True,
-                     help="이 대화를 좌측 목록 상단에 고정/해제"):
-            st.session_state["_do_toggle_pin"] = active_th.id
-            st.rerun()
-    with c3:
-        # 삭제 — 메시지 0 이면 즉시, 있으면 한 번 더 확인 (2-click)
-        if len(all_threads) > 1:
-            if active_th.message_count == 0:
-                if st.button("🗑 빈 대화 정리", key="sola_del_thread_btn",
-                             use_container_width=True):
-                    st.session_state["_do_delete_thread"] = active_th.id
-                    st.rerun()
-            else:
-                confirm_key = f"_confirm_del_{active_th.id}"
-                if st.session_state.get(confirm_key):
-                    if st.button("⚠️ 정말 삭제", key="sola_del_confirm_btn",
-                                 type="primary", use_container_width=True):
-                        st.session_state["_do_delete_thread"] = active_th.id
-                        st.session_state.pop(confirm_key, None)
-                        st.rerun()
-                else:
-                    if st.button("🗑 대화 삭제", key="sola_del_thread_btn2",
-                                 use_container_width=True,
-                                 help="이 대화와 메시지를 영구 삭제"):
-                        st.session_state[confirm_key] = True
-                        st.rerun()
-
-    # ── 인계 컨텍스트 액션: 제안서 생성 / 자유 대화 (Phase B 제품 핵심 루프) ──
     hand_dept = st.query_params.get("dept", "")
     hand_lv3 = st.query_params.get("lv3", "")
-    if prefill.strip() or hand_dept or hand_lv3:
-        pc1, pc2 = st.columns(2)
-        with pc1:
-            if st.button(
-                "📝 제안서 생성",
-                key="sola_gen_proposal_btn",
-                type="primary",
-                use_container_width=True,
-                help="이 컨텍스트(부서·공정 + 관련 뉴스)로 자동화 과제 제안서 초안을 생성합니다.",
-            ):
-                st.session_state["_do_generate_proposal"] = {
-                    "dept": hand_dept,
-                    "lv3": hand_lv3,
-                    "kind": st.query_params.get("from", ""),
-                }
-                st.rerun()
-        with pc2:
-            if prefill.strip() and st.button(
-                "💬 컨텍스트로 물어보기",
-                key="sola_ask_prefill_btn",
-                use_container_width=True,
-                help="제안서 형식 대신 자유 대화로 시작합니다.",
-            ):
-                st.session_state["_do_ask_prefill"] = True
-                st.rerun()
+    prefill, _ph, _pins = _composer_prefill()
+    target = " · ".join(p for p in (hand_dept, hand_lv3) if p)
+    has_handoff = bool(target or prefill.strip())
+    gen_payload = {"dept": hand_dept, "lv3": hand_lv3, "kind": st.query_params.get("from", "")}
 
-    # ── 생성된 제안서를 산출물 보관함에 저장 (루프 완성) ──
-    if any(m.get("role") == "assistant" and (m.get("content") or "").strip() for m in messages):
-        if st.button(
-            "📦 이 제안서 보관함에 저장",
-            key="sola_save_proposal_btn",
-            use_container_width=True,
-            help="마지막 SOLA 답변을 제안서 산출물로 보관함에 저장합니다(검토 대기).",
-        ):
-            st.session_state["_do_save_proposal"] = True
+    # ── 1) 액션 바 ──
+    chip = (
+        f'<span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; '
+        f'background:#EEF4FF; border:1px solid #C7DBFF; border-radius:999px; font-size:12.5px; '
+        f'font-weight:600; color:#1E40AF;">🎯 {_html.escape(target)}</span>'
+        if target else
+        '<span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; '
+        'background:#F1F5F9; border:1px solid #E2E8F0; border-radius:999px; font-size:12.5px; '
+        'font-weight:600; color:#475569;">👤 페르소나 컨텍스트</span>'
+    )
+    st.html(
+        '<div style="display:flex; justify-content:space-between; align-items:center; '
+        'gap:12px; flex-wrap:wrap; margin:2px 0 12px;"><div>'
+        '<div style="font-size:12px; font-weight:800; letter-spacing:0.1em; '
+        'text-transform:uppercase; color:#94A3B8;">작업대</div>'
+        '<div style="font-size:14px; color:#475569; margin-top:2px;">'
+        '제안서·요약을 만들고 산출물로 저장하세요</div></div>'
+        f'<div>{chip}</div></div>'
+    )
+    a1, a2, a3 = st.columns([1.4, 1.2, 1.1])
+    with a1:
+        if st.button("📝 제안서 생성", key="wb_gen_proposal", type="primary",
+                     use_container_width=True,
+                     help="인계 컨텍스트(부서·공정) + 관련 뉴스로 자동화 과제 제안서 초안을 생성"):
+            st.session_state["_do_generate_proposal"] = gen_payload
+            st.rerun()
+    with a2:
+        if st.button("📰 뉴스 요약", key="wb_summarize", use_container_width=True,
+                     help="최근 7일 수집 뉴스를 요약"):
+            st.session_state["_do_summarize"] = True
+            st.rerun()
+    with a3:
+        if st.button("➕ 새 대화", key="wb_new_thread", use_container_width=True,
+                     help="새 세션 시작 (현 세션은 아래 목록에 보존)"):
+            st.session_state["_do_new_thread"] = True
             st.rerun()
 
-    # ── 실제 입력 — st.chat_input (자동 하단 고정 + 전송 버튼 내장) ──
-    user_input = st.chat_input(placeholder or "SOLA 에게 질문하세요…", key="sola_chat_input")
-    if user_input:
-        st.session_state["_do_sola_send"] = user_input
-        st.rerun()
+    # ── 2) 현재 산출물 (캔버스) ──
+    st.html(_SEC.format(m="18px 0 8px", t="현재 산출물"))
+    if last_assistant is not None:
+        active_th = _active_thread()
+        doc_title = (active_th.title or "SOLA 산출물").strip()
+        with st.container(border=True):
+            st.markdown(f"##### 📄 {doc_title}")
+            st.markdown(last_assistant.get("content", ""))
+        s1, s2, _s3 = st.columns([1.3, 1.1, 1.4])
+        with s1:
+            if st.button("📦 보관함에 저장", key="wb_save_proposal", type="primary",
+                         use_container_width=True,
+                         help="이 산출물을 제안서로 보관함에 저장(검토 대기)"):
+                st.session_state["_do_save_proposal"] = True
+                st.rerun()
+        with s2:
+            if has_handoff and st.button("🔄 다시 생성", key="wb_regen",
+                                         use_container_width=True,
+                                         help="같은 컨텍스트로 제안서를 다시 생성"):
+                st.session_state["_do_generate_proposal"] = gen_payload
+                st.rerun()
+    else:
+        st.html(
+            '<div style="padding:28px 18px; text-align:center; background:#F8FAFC; '
+            'border:1px dashed #CBD5E1; border-radius:14px; color:#475569;">'
+            '<div style="font-size:26px; margin-bottom:6px;">🪄</div>'
+            '<div style="font-size:15px; font-weight:700; color:#0F172A;">아직 산출물이 없어요</div>'
+            '<div style="font-size:13px; line-height:1.6; margin-top:4px;">'
+            '위 <b>📝 제안서 생성</b>으로 시작하거나, 오른쪽 <b>SOLA 채팅</b>으로 대화하면 '
+            '결과가 여기에 문서로 정리됩니다.</div></div>'
+        )
+
+    # ── 3) 세션 목록 ──
+    st.html(_SEC.format(m="22px 0 8px", t="내 세션"))
+    all_threads = sola_threads.list_threads()
+    st.text_input("세션 검색", key="_sola_search_q",
+                  placeholder="세션 제목으로 검색 — 비우면 전체",
+                  label_visibility="collapsed")
+    search_query = st.session_state.get("_sola_search_q", "") or ""
+    active_th = _active_thread()
+    st.html(
+        '<div class="ws-threads" style="margin-top:4px;">'
+        + _render_thread_list_html(all_threads, active_th.id, search_query)
+        + '</div>'
+    )
+
+    # 현재 세션 관리 (고정 / 삭제) — 기능 보존
+    m1, m2, _m3 = st.columns([1.3, 1.3, 2])
+    with m1:
+        pin_label = "📌 고정 해제" if active_th.pinned else "📌 세션 고정"
+        if st.button(pin_label, key="wb_pin", use_container_width=True):
+            st.session_state["_do_toggle_pin"] = active_th.id
+            st.rerun()
+    with m2:
+        if len(all_threads) > 1:
+            confirm_key = f"_confirm_del_{active_th.id}"
+            if st.session_state.get(confirm_key):
+                if st.button("⚠️ 정말 삭제", key="wb_del_confirm", type="primary",
+                             use_container_width=True):
+                    st.session_state["_do_delete_thread"] = active_th.id
+                    st.session_state.pop(confirm_key, None)
+                    st.rerun()
+            else:
+                if st.button("🗑 세션 삭제", key="wb_del", use_container_width=True,
+                             help="이 세션과 메시지를 영구 삭제"):
+                    st.session_state[confirm_key] = True
+                    st.rerun()
+
+    # ── 4) 저장한 산출물 (보관함 pending) ──
+    _cnt, prop_html = _ctx_archive_summary()
+    st.html(_SEC.format(m="22px 0 8px", t="저장한 산출물") + prop_html)

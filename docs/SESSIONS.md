@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-01 · SOLA 작업실 3영역 통일 — 산출물 캔버스 (사용자 지적 수정)
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
+
+**맥락:** 사용자 — "SOLA 작업실 UI가 정상이냐? 채팅/결과 구분 없고, 버튼 줄바꿈·쏠림, 어디가 채팅이고 결과인지 모르겠다. 모든 화면 좌=사이드바·우=채팅으로 통일했는데 중앙엔 콘텐츠를 보여줘야지. 다시 기획해." → 정확한 지적. Phase A에서 SOLA만 통일 셸에 편입 안 하고 자체 ws-shell(스레드│채팅│ctx) 방치한 게 원인. AskUserQuestion으로 중앙 구성 확정: **산출물 캔버스**.
+
+**한 일:**
+- `app.py` SOLA 풀폭 예외 제거 → `main_col + chat_col`(다른 화면과 동일). 우측 = `chat_panel.render_side`, 중앙 = `sola_workshop_v2.render()`.
+- `render()`/`_render_main` → `_render_workbench`(중앙 캔버스): 액션바(제안서 생성/요약/새 대화) + 현재 산출물 문서 카드(`st.container(border)`+`st.markdown`) + 세션 목록 + 저장한 산출물. 자체 ws-shell 템플릿·중앙 chat_input 제거.
+- `_consume_summarize_if_any`·`chat_context_block` 신규. 헬퍼(`_ctx_archive_summary`/`_render_thread_list_html`/`_composer_prefill`/`_msg_html` 등) 보존 → 테스트 무변경.
+
+**검증:** pytest 668/668 · 금지 패턴 0 · py_compile OK · playwright SOLA 빈/인계 캡처 — [좌 사이드바│중앙 작업대│우 채팅] 분리·버튼 정렬·우측 채팅(`.side-chat-marker`) 노출 확인.
+
+**다음:** Phase C(보드/인사이트 '제안서 생성' CTA를 이 엔진에 연결 + 가짜 목업 제거 + 죽은 버튼) → D(설정 테마·폰트).
+
+---
+
 ## 2026-06-01 · UI Phase B — 제안서 엔진 복원 (생성 → 보관함 저장 루프)
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
