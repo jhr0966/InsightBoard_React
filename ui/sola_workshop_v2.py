@@ -18,6 +18,7 @@ from config import ASSETS_DIR
 from persona import context as persona_ctx
 from persona.schema import Persona
 from sola import client as sola_client
+from sola import propose as sola_propose
 from sola.preview import format_messages_preview
 from store import bookmarks as bookmarks_store
 from store import chat_log
@@ -136,7 +137,10 @@ def render() -> None:
     _consume_thread_actions_if_any()
     _switch_thread_from_query_if_any()
     _consume_prefill_ask_if_any()
+    _consume_generate_proposal_if_any(persona)
+    _consume_save_proposal_if_any()
     _consume_send_if_any(persona)
+    _render_sola_action_toasts()
 
     stats = _archive_stats()
     refresh = app_shell.refresh_label_now()
@@ -509,6 +513,137 @@ def _consume_send_if_any(persona: Persona) -> None:
     st.rerun()
 
 
+# ── 제안서 생성·저장 (Phase B — 제품 핵심 루프) ──────────────
+
+def _related_news_df(dept: str, lv3: str, *, limit: int = 8):
+    """제안서 근거용 관련 뉴스 — 최근 뉴스 중 작업(dept/lv3)과 매칭 상위 N건.
+
+    매칭 결과가 없으면 최근 뉴스로 폴백. 뉴스가 아예 없으면 빈 DataFrame.
+    """
+    import pandas as pd
+
+    try:
+        from store import news_db
+        news = news_db.load_news_for_days(14)
+    except Exception:
+        news = pd.DataFrame()
+    if news is None or news.empty:
+        return pd.DataFrame()
+    if not (dept or lv3):
+        return news.head(limit)
+    try:
+        from store import match
+        tasks_df = pd.DataFrame([{
+            "dept": dept, "lv1": "", "lv2": lv3, "lv3": lv3,
+            "task": lv3, "sub_task": "",
+        }])
+        scored = match.score_matches(news, tasks_df, top_k=limit)
+        if not scored.empty and "link" in scored.columns and "link" in news.columns:
+            links = [lnk for lnk in scored["link"].tolist() if lnk]
+            rel = news[news["link"].isin(links)]
+            if not rel.empty:
+                return rel.head(limit)
+    except Exception:
+        pass
+    return news.head(limit)
+
+
+def _consume_generate_proposal_if_any(persona: Persona) -> None:
+    """`_do_generate_proposal` pending → propose 엔진으로 구조화 제안서 생성 →
+    assistant 메시지로 append.
+
+    인계(dept/lv3) 컨텍스트 + 관련 뉴스 근거를 `sola.propose.propose_for_task`
+    (전용 제안서 시스템 프롬프트)에 넘긴다. LLM 미설정 시 propose 가 입력
+    미리보기를 반환하므로 무중단.
+    """
+    payload = st.session_state.pop("_do_generate_proposal", None)
+    if not payload:
+        return
+    dept = str(payload.get("dept", "")).strip()
+    lv3 = str(payload.get("lv3", "")).strip()
+    target = " · ".join(p for p in (dept, lv3) if p) or "선택한 작업"
+
+    task = {
+        "team": persona.team or "",
+        "dept": dept or persona.dept or "",
+        "lv3": lv3,
+        "task": lv3 or target,
+    }
+    news_df = _related_news_df(dept, lv3)
+
+    # 사용자 요청을 메시지로 남겨 맥락/제목 보존
+    _append_message("user", f"📝 [{target}] 자동화 과제 제안서를 생성해줘.")
+    try:
+        with st.spinner("SOLA 가 제안서를 작성하고 있어요…"):
+            proposal = sola_propose.propose_for_task(task, news_df, persona=persona)
+        _append_message("assistant", proposal)
+        n = 0 if news_df is None or news_df.empty else len(news_df)
+        st.session_state["_sola_action_toast"] = (
+            "ok",
+            f"제안서 초안을 생성했어요 — 근거 뉴스 {n}건. ‘📦 보관함에 저장’으로 산출물로 남기세요.",
+        )
+    except Exception as exc:
+        _append_message("assistant", f"⚠️ 제안서 생성 실패: {type(exc).__name__}: {exc}")
+        st.session_state["_sola_action_toast"] = ("error", f"제안서 생성 실패: {type(exc).__name__}")
+    st.rerun()
+
+
+def _consume_save_proposal_if_any() -> None:
+    """`_do_save_proposal` pending → 현 thread 의 마지막 제안서(assistant)를
+    proposal 북마크로 저장(실 content).
+
+    thread 당 안정 id → 재저장은 갱신(중복 방지). 저장 후 보드/사이드바의
+    '채택 대기' 카운트 캐시를 무효화. 이로써 끊겨 있던 루프
+    (기회 → 생성 → 보관함)가 닫힌다.
+    """
+    if not st.session_state.pop("_do_save_proposal", False):
+        return
+    msgs = _load_messages()
+    proposal = ""
+    for m in reversed(msgs):
+        if m.get("role") == "assistant" and (m.get("content") or "").strip():
+            proposal = m["content"].strip()
+            break
+    if not proposal:
+        st.session_state["_sola_action_toast"] = (
+            "warn", "저장할 제안서 내용이 없어요. 먼저 ‘📝 제안서 생성’으로 초안을 만들어주세요.",
+        )
+        st.rerun()
+        return
+
+    th = _active_thread()
+    title = (th.title or "SOLA 제안서").strip()[:80]
+    tags = [t for t in (st.query_params.get("dept", ""), st.query_params.get("lv3", "")) if t]
+    bm_id = "sola_" + bookmarks_store.make_id("proposal", th.id)
+    try:
+        bookmarks_store.add(bookmarks_store.Bookmark(
+            id=bm_id, type="proposal", title=title, content=proposal,
+            tags=tags, status="pending",
+        ))
+        try:  # 보드/사이드바 '채택 대기' 카운트 갱신
+            from ui import board_v2
+            board_v2._board_kpis.clear()
+            board_v2._archive_stats.clear()
+        except Exception:
+            pass
+        st.session_state["_sola_action_toast"] = (
+            "ok", f"제안서를 산출물 보관함에 저장했어요 — ‘{title[:30]}’ (검토 대기)",
+        )
+    except Exception as exc:
+        st.session_state["_sola_action_toast"] = ("error", f"저장 실패: {type(exc).__name__}")
+    st.rerun()
+
+
+def _render_sola_action_toasts() -> None:
+    """제안서 생성/저장 액션 피드백 토스트 1회 소비."""
+    toast = st.session_state.pop("_sola_action_toast", None)
+    if not toast:
+        return
+    kind, text = toast
+    icon = {"ok": "✅", "warn": "⚠️", "error": "🚫"}.get(kind, "")
+    st.toast(f"{icon} {text}".strip())
+
+
 def _consume_thread_actions_if_any() -> None:
     """Thread 관련 pending → 실행 후 rerun.
 
@@ -835,15 +970,44 @@ def _render_main(persona: Persona) -> None:
                         st.session_state[confirm_key] = True
                         st.rerun()
 
-    # ── prefill 인계받았을 때 즉시 전송 CTA (composer 시안 위) ──
-    if prefill.strip():
+    # ── 인계 컨텍스트 액션: 제안서 생성 / 자유 대화 (Phase B 제품 핵심 루프) ──
+    hand_dept = st.query_params.get("dept", "")
+    hand_lv3 = st.query_params.get("lv3", "")
+    if prefill.strip() or hand_dept or hand_lv3:
+        pc1, pc2 = st.columns(2)
+        with pc1:
+            if st.button(
+                "📝 제안서 생성",
+                key="sola_gen_proposal_btn",
+                type="primary",
+                use_container_width=True,
+                help="이 컨텍스트(부서·공정 + 관련 뉴스)로 자동화 과제 제안서 초안을 생성합니다.",
+            ):
+                st.session_state["_do_generate_proposal"] = {
+                    "dept": hand_dept,
+                    "lv3": hand_lv3,
+                    "kind": st.query_params.get("from", ""),
+                }
+                st.rerun()
+        with pc2:
+            if prefill.strip() and st.button(
+                "💬 컨텍스트로 물어보기",
+                key="sola_ask_prefill_btn",
+                use_container_width=True,
+                help="제안서 형식 대신 자유 대화로 시작합니다.",
+            ):
+                st.session_state["_do_ask_prefill"] = True
+                st.rerun()
+
+    # ── 생성된 제안서를 산출물 보관함에 저장 (루프 완성) ──
+    if any(m.get("role") == "assistant" and (m.get("content") or "").strip() for m in messages):
         if st.button(
-            "📨 이 컨텍스트로 SOLA에게 물어보기",
-            key="sola_ask_prefill_btn",
-            type="primary",
+            "📦 이 제안서 보관함에 저장",
+            key="sola_save_proposal_btn",
             use_container_width=True,
+            help="마지막 SOLA 답변을 제안서 산출물로 보관함에 저장합니다(검토 대기).",
         ):
-            st.session_state["_do_ask_prefill"] = True
+            st.session_state["_do_save_proposal"] = True
             st.rerun()
 
     # ── 실제 입력 — st.chat_input (자동 하단 고정 + 전송 버튼 내장) ──

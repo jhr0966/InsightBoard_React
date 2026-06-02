@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-01 · UI Phase B — 제안서 엔진 복원 (생성 → 보관함 저장 루프)
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
+
+**맥락:** Phase A(셸)·V1 제거·프로필 카드·CI flaky 수정 후, 사용자 "다음 진행해". 계획상 Phase B(제품 핵심 루프) 차례. 전수 분석에서 P0 로 지목됐던 끊긴 제안서 사슬(보드 '채택'=빈 `content=""` 북마크 / `sola/propose`·`update_content` 데드 / 생성·저장 경로 없음)을 닫는 작업.
+
+**한 일:**
+- `ui/sola_workshop_v2`에 3함수 추가: `_consume_generate_proposal_if_any`(인계 dept/lv3 + 관련 뉴스 → `sola.propose.propose_for_task` → assistant 메시지), `_consume_save_proposal_if_any`(마지막 제안서 → proposal 북마크 실 content, thread당 안정 id=재저장 갱신, 보드 캐시 무효화), `_render_sola_action_toasts`. 헬퍼 `_related_news_df`(매칭 상위 N + 폴백).
+- `_render_main` 버튼: "📝 제안서 생성"/"💬 물어보기"(핸드오프 시) + "📦 보관함에 저장"(assistant 메시지 시). render() 상단에 consumer 2개 + 토스트 연결. `from sola import propose` import.
+- `tests/test_sola_propose_loop.py` (+12).
+
+**주의/함정:** 이 샌드박스는 LLM 키는 있으나 네트워크 차단(`PermissionDeniedError: Host not in allowlist`) → `propose_for_task`가 `LLMNotConfigured`가 아닌 일반 예외를 던짐. 생성 consumer의 `except Exception`이 이를 안내 메시지+에러 토스트로 처리(무중단). (이 키+무네트워크 조합이 앞선 CI flaky의 원인과 동일.)
+
+**검증:** pytest 668/668(신규 12) · 금지 패턴 0 · py_compile OK · playwright 핸드오프에서 '📝 제안서 생성' 노출 확인.
+
+**다음:** Phase C(화면별 가짜 패널·죽은 버튼 정리 — 보드/인사이트 '제안서 생성' CTA를 이 엔진에 연결, archive 하단 목업 제거) → D(설정: 테마·폰트) → E(매칭 가중치) → F(위생/관측성).
+
+---
+
 ## 2026-06-01 · UI Phase A — 셸 v3 3영역 네이티브 재건
 
 **브랜치:** `claude/charming-sagan-REsgM`

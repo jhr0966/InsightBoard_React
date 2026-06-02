@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (UI Phase B — 제안서 엔진 복원: 생성 → 보관함 저장 루프)
+- 끊겨 있던 제품 핵심(자동화 기회 → 제안서 → 산출물)을 SOLA 작업실에 배선:
+  - `ui/sola_workshop_v2._consume_generate_proposal_if_any` — 인계(dept/lv3) 컨텍스트 + 관련 뉴스(`_related_news_df`: 최근 14일 뉴스 중 작업 매칭 상위 N, 매칭 없으면 최근 폴백)를 **`sola.propose.propose_for_task`(전용 제안서 시스템 프롬프트)** 에 넘겨 구조화 제안서를 assistant 메시지로 생성. LLM 미설정 시 입력 미리보기, 호출 오류 시 안내 메시지로 무중단.
+  - `ui/sola_workshop_v2._consume_save_proposal_if_any` — 현 thread 의 마지막 제안서(assistant)를 **proposal 북마크로 저장(실 content, status=pending)**. thread 당 안정 id → 재저장은 갱신(중복 방지). 저장 후 보드/사이드바 '채택 대기' 카운트 캐시 무효화.
+  - `_render_main` 버튼: 핸드오프 시 **"📝 제안서 생성"** + "💬 컨텍스트로 물어보기", assistant 메시지 존재 시 **"📦 이 제안서 보관함에 저장"**. 액션 피드백은 `_render_sola_action_toasts`.
+- **이전 상태**: 보드 '채택' 은 `content=""` 빈 제안서만 생성하고 `sola/propose`·`bookmarks.update_content` 는 production 호출 0(데드)이라 사용자가 실제 제안서를 받을 경로가 없었음 → 이제 기회에서 인계받아 **실제 제안서 본문이 보관함 산출물로 저장**된다.
+- `tests/test_sola_propose_loop.py` (+12) — `_related_news_df` 폴백 2 · generate(append 순서/persona·task 전달/noop/오류 표면화) 4 · save(실 content/재저장 갱신/no-content warn/noop/handoff tags) 5 · toast 1회 소비 1.
+- 검증: pytest 668/668 · 금지 패턴 0 · playwright 핸드오프 화면에서 '📝 제안서 생성' 버튼 노출 확인.
+
 ### Fixed (CI — flaky 테스트 결정화)
 - `tests/test_sola_composer.py::test_append_message_persists_to_chat_log` — 첫 user 메시지의 thread 제목 자동생성이 LLM 가용성에 의존(가용 시 압축 제목, 미설정 시 raw fallback)해 CI 에서 간헐 실패(`assert '인사 분석하기' == 'hello'`)하던 것을 `sola.thread_title.generate` 목으로 결정화. 제목 생성기 동작 자체는 `test_thread_title_llm` 가 검증하고, 본 테스트는 chat_log 영속+message_count+제목 wiring 에 집중. (UI 셸/CSS/사이드바 변경과 무관한 기존 취약점.)
 
