@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Changed (UI Phase C-1 — 인사이트 화면 정리: 가짜 패널·죽은 필터 제거)
+- `insights_v2._strip_mockup_blocks` 신규 — 렌더 시 `insights_main.html` 의 정적 목업 2블록 제거: ① **가짜 우측 `ia-sola` 패널**(SOLA 분석 모드·가짜 인용·"도장 부스 #3 비전 PoC"·액션/컴포저 — Phase A 로 모든 화면에 실제 우측 채팅이 생겨 중복·가짜였음) ② **죽은 `ia-filters` 스트립**(기간 7/30/90일·공정범위·기술칩·"저장한 뷰" — 전부 핸들러 없는 시안). 마커 슬라이스 방식(`<aside class="ia-sola">…</aside>`, `ia-filters`→`ia-grid` 사이)이라 div 균형 카운트에 의존 안 함.
+- `insights_v2._ia_stats` — **PoC 후보 중복집계 수정**: 자동화 기회 셀에 채택 대기(pending) 제안서를 더하던 버그 제거(두 개념 혼동). 이제 PoC 후보 = 기회 셀만.
+- `tests/test_insights_cleanup.py` (+4). 검증: pytest 672/672 · 금지 패턴 0 · playwright 인사이트 — 가짜 패널·필터·가짜 PoC문구 0, 우측 실채팅 노출.
+
 ### Changed (UI Phase B 후속 — SOLA 작업실 3영역 통일: 산출물 캔버스)
 - **SOLA 작업실을 다른 화면과 동일한 [좌 사이드바 │ 중앙 콘텐츠 │ 우 LLM 채팅] 3영역으로 통일.** 기존엔 이 화면만 자체 3열 `ws-shell`(스레드│채팅│ctx)이라 우측 채팅이 없고 채팅·결과·버튼이 중앙에 뒤섞여(버튼 줄바꿈·쏠림, 채팅/결과 경계 불명) 있던 문제 해소(사용자 지적).
 - `app.py` — SOLA 작업실 풀폭 예외 제거, `main_col + chat_col` 에 편입. 우측 = `chat_panel.render_side`(대화), 중앙 = 작업대.

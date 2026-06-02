@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-01 · Phase C-1 — 인사이트 화면 정리 (가짜 패널·죽은 필터 제거)
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
+
+**맥락:** "다음 진행해" → Phase C(화면별 정리). Phase A 로 모든 화면에 우측 채팅(render_side)이 생기면서, 템플릿에 가짜 우측 패널이 박힌 **인사이트**가 가장 깨짐(중복). 여기부터.
+
+**한 일:**
+- `insights_v2._strip_mockup_blocks` — 렌더 시 `insights_main.html` 의 ① 가짜 `ia-sola` 우측 패널(가짜 인용·"도장 부스 #3 PoC"·액션/컴포저) ② 죽은 `ia-filters` 스트립(7/30/90일·저장한 뷰)을 마커 슬라이스로 제거. div 균형 카운트 비의존(템플릿이 원래 div 균형 느슨).
+- `_ia_stats` PoC 후보 중복집계 수정(기회 셀 + pending → 기회 셀만).
+- `tests/test_insights_cleanup.py` (+4: 합성 strip·noop·실템플릿 strip·PoC 제외).
+
+**검증:** pytest 672/672 · 금지 패턴 0 · playwright 인사이트 — `.ia-sola`/`.ia-filters`/"도장 부스 #3" 0, `.side-chat-marker`(우측 채팅) 노출.
+
+**다음:** Phase C-2 보드(hero 죽은 CTA·섹션 `→`.html 404 링크·brief-meta 목업·뉴스카드 클릭) → C-3 데이터관리(필터/페이저/3 서브카드 목업) → C-4 보관함(하단 45건 표·미리보기 목업).
+
+---
+
 ## 2026-06-01 · SOLA 작업실 3영역 통일 — 산출물 캔버스 (사용자 지적 수정)
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
