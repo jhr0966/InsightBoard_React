@@ -12,7 +12,7 @@
     Common card style
    ════════════════════════════════════════════════════════ */
 .ws-threads, .ws-chat, .ws-ctx {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   box-shadow: var(--shadow-1);
@@ -303,7 +303,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
-  background: #fff;
+  background: var(--surface-card);
   padding: 3px 12px;
   border: 1px solid var(--surface-divider);
   border-radius: 999px;
@@ -373,7 +373,7 @@
   font-weight: 500;
 }
 .ws-bubble-sola {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   color: var(--text-primary);
   border-bottom-left-radius: 4px;
@@ -431,7 +431,7 @@
   align-items: center;
   padding: 10px 14px;
   border-bottom: 1px solid var(--surface-divider);
-  background: #fff;
+  background: var(--surface-card);
 }
 .ws-plan-row:last-child { border-bottom: 0; }
 .ws-plan-num {
@@ -563,7 +563,7 @@
   font-family: var(--font-sans);
   font-size: 17px;
   font-weight: 700;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   color: var(--text-primary);
   border-radius: 8px;
@@ -598,7 +598,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: #fff;
+  background: var(--surface-card);
   border-bottom: 1px solid var(--surface-divider);
 }
 .ws-doc-icon {
@@ -701,7 +701,7 @@
 .ws-composer {
   padding: 14px 20px 16px;
   border-top: 1px solid var(--surface-divider);
-  background: #fff;
+  background: var(--surface-card);
 }
 .ws-composer-top {
   display: flex;
@@ -755,7 +755,7 @@
 }
 .ws-composer-wrap:focus-within {
   border-color: var(--accent-primary);
-  background: #fff;
+  background: var(--surface-card);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .ws-cmp-add {
@@ -768,7 +768,7 @@
   display: grid;
   place-items: center;
 }
-.ws-cmp-add:hover { background: #fff; color: var(--accent-primary); }
+.ws-cmp-add:hover { background: var(--surface-card); color: var(--accent-primary); }
 .ws-cmp-input {
   border: 0;
   background: transparent;
@@ -793,7 +793,7 @@
   display: grid;
   place-items: center;
 }
-.ws-cmp-tool:hover { background: #fff; color: var(--text-primary); }
+.ws-cmp-tool:hover { background: var(--surface-card); color: var(--text-primary); }
 .ws-cmp-send {
   width: 34px; height: 34px;
   border-radius: 8px;
@@ -820,7 +820,7 @@
   box-shadow: none;
 }
 .ws-ctx-card {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 12px;
   padding: 14px 16px;

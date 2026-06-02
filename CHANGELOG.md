@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Added (UI Phase D — 설정 메뉴: 테마 + 글자 크기) — 사용자 6대 UI/UX 요구 완결
+- `store/ui_prefs.py` 신규 — 표시 설정(theme·font)을 `data/ui_prefs.json` 에 영구화.
+- `ui/styles.inject_user_prefs()` — 저장된 테마/글자 크기를 `inject_global_styles` 직후 주입(베이스 토큰 이후 → `:root` 오버라이드 우선). `app.py` 에서 호출.
+  - **테마**: 라이트(기본) / **다크** / 오션(틸 강조) / 선셋(로즈 강조). 다크는 토큰 + `.stApp`·사이드바·우측 채팅·네이티브 위젯(input·textarea·select·버튼) 오버라이드.
+  - **글자 크기**: 작게(0.92) / 보통 / 크게(1.12) — `stMain`·사이드바 `zoom`.
+- 설정 UI: `persona_page._render_display_settings` — 🎨 표시 설정(테마·글자 크기 라디오). **변경 즉시 저장·적용**(on_click 없이 diff 감지 → rerun). topbar ⚙·아바타로 진입.
+- **다크모드 활성화용 색 토큰 일괄화**: 화면 CSS 고정 `background:#fff` 89곳 → `var(--surface-card)`, `#E5E7EB` 테두리 6곳 → `var(--surface-divider)` (라이트 무변경·다크 추종). 내가 추가했던 인라인 색(chat_panel·sidebar 통계·sola workbench)도 토큰화.
+- `tests/test_ui_prefs.py` (+7). 검증: pytest 697/697 · 금지 패턴 0 · playwright 라이트/다크/오션/큰글자 — 다크 사이드바·KPI·본문·채팅 일관, 라이트 무변경.
+- **사용자 6대 UI/UX 요구 완결**: ① 화면 역할·연계(Phase C) ② 모든 화면 좌 사이드바+우 채팅(Phase A) ③ 3영역 분리(Phase A) ④ 죽은 버튼 와이어/삭제(Phase C+전역 SVG) ⑤ 컨텐츠 정리(Phase C) ⑥ 설정 메뉴 테마·폰트(Phase D).
+
 ### Changed (UI Phase C-4 — 보관함 정리: 하단 목업·컨트롤 스트립 제거) — Phase C 완료
 - `archive_v2._strip_oa_mockups` — 렌더 시 ① 죽은 컨트롤 스트립(seg 탭·검색·필터칩·묶음 내보내기) ② 하단 "전체 산출물 45건" 표 + 미리보기 패널(PRO-2026-…·₩1.4억·근거 뉴스 8건·결정/내보내기 — 전부 하드코딩 목업, 위 칸반 카운트와 모순) 제거.
 - 템플릿: 칸반 "+ 새로 만들기"(가짜 버튼)·"+6 (전월 대비)"(가짜 트렌드) 제거.

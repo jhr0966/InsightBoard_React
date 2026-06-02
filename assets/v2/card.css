@@ -96,7 +96,7 @@ body.app-sola-collapsed .app-with-sola { padding-right: 60px !important; }
   z-index: 40;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -241,7 +241,7 @@ body:not(.app-sola-collapsed) .app-sola > .app-sola-rail { display: none; }
 .app-sola-ctx-icon {
   width: 24px; height: 24px;
   display: grid; place-items: center;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid rgba(37,99,235,0.22);
   border-radius: 6px;
   color: var(--accent-primary);
@@ -316,7 +316,7 @@ body:not(.app-sola-collapsed) .app-sola > .app-sola-rail { display: none; }
   transition: all 120ms;
 }
 .app-sola-quick-q:hover {
-  background: #fff;
+  background: var(--surface-card);
   border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
@@ -418,7 +418,7 @@ body:not(.app-sola-collapsed) .app-sola > .app-sola-rail { display: none; }
 .app-sola-comp-box {
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 10px;
   transition: all 120ms;
@@ -545,7 +545,7 @@ body.app-side-collapsed .app-with-sidebar { padding-left: 60px !important; }
   bottom: 16px;
   width: 240px;
   z-index: 35;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   padding: 14px 12px;

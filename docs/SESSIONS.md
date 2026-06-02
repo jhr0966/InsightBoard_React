@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-01 · Phase D — 설정 메뉴(테마·글자 크기) · 6대 요구 완결
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
+
+**한 일:**
+- `store/ui_prefs.py`(theme·font 영구화) + `styles.inject_user_prefs()`(테마/글자 zoom 주입, app.py 호출) + `persona_page._render_display_settings`(🎨 표시 설정 라디오, 변경 즉시 적용).
+- 테마: 라이트/다크/오션/선셋. 글자: 작게/보통/크게(zoom).
+- **다크 활성화**: Streamlit 네이티브 위젯이 config(정적 라이트) 종속이라 런타임 다크가 어려운 점을, 토큰 일괄화(화면 CSS `#fff`×89·`#E5E7EB`×6 → 토큰) + 네이티브 위젯/사이드바/채팅 다크 오버라이드 + 내 인라인 색 토큰화로 해결.
+- `tests/test_ui_prefs.py` (+7).
+
+**주의:** 풀 다크는 화면 CSS 가 카드 배경을 고정 `#fff` 로 쓰던 게 원인이라, `#fff→var(--surface-card)` 일괄 치환(라이트 무변경)으로 토큰화해야 했다. zoom 은 stMain·사이드바에 적용(채팅 100vh 와 공존 — overflow 스크롤).
+
+**검증:** pytest 697/697 · 금지 패턴 0 · playwright 라이트/다크/오션/큰글자 4종 육안 — 다크 일관·라이트 무변경.
+
+**사용자 6대 요구 완결:** ①연계(C) ②좌사이드바+우채팅(A) ③3영역(A) ④죽은버튼(C+SVG) ⑤컨텐츠정리(C) ⑥설정(D).
+
+**다음:** PR #90 정리/머지 검토(매우 큼) · 또는 Phase B 후속(제안서 고도화)/E(매칭 가중치)/F(관측성). 잔여: 풀 다크의 일부 차트색·SVG 인터랙션(img 변환분).
+
+---
+
 ## 2026-06-01 · Phase C-4 — 보관함 정리 (Phase C 완료)
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)

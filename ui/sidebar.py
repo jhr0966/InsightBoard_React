@@ -194,14 +194,14 @@ def _side_stats_html(stats: dict) -> str:
     )
     inner = "".join(
         f'<div style="flex:1; text-align:center;">'
-        f'<div style="font-size:21px; font-weight:800; color:#0F172A; line-height:1.1;">{v}</div>'
-        f'<div style="font-size:11px; color:#64748B; margin-top:2px;">{_html.escape(lbl)}</div>'
+        f'<div style="font-size:21px; font-weight:800; color:var(--text-primary); line-height:1.1;">{v}</div>'
+        f'<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">{_html.escape(lbl)}</div>'
         f'</div>'
         for lbl, v in cells
     )
     return (
         '<div style="display:flex; gap:6px; margin:10px 0 4px; padding:11px 10px; '
-        'background:#F5F7FB; border:1px solid #E5E7EB; border-radius:10px;">'
+        'background:var(--surface-soft); border:1px solid var(--surface-divider); border-radius:10px;">'
         f'{inner}</div>'
     )
 

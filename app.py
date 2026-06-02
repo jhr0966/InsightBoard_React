@@ -33,7 +33,7 @@ from ui import (
     sidebar,
     sola_workshop_v2,
 )
-from ui.styles import inject_global_styles
+from ui.styles import inject_global_styles, inject_user_prefs
 
 
 st.set_page_config(
@@ -45,6 +45,7 @@ st.set_page_config(
 
 ensure_data_dirs()
 inject_global_styles()
+inject_user_prefs()  # 저장된 테마·글자 크기 (베이스 토큰 이후 → :root 오버라이드 우선)
 
 # 세션당 1회: 미채택 제안서 만료 정리 (기본 30일, adopted 는 보존).
 if not st.session_state.get("_did_expire_check"):

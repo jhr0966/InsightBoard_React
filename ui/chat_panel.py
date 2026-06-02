@@ -207,10 +207,10 @@ def render_side(persona: Persona, area_key: str) -> None:
     st.html(
         '<div class="side-chat-marker"></div>'
         '<div style="display:flex; align-items:center; gap:8px; '
-        'padding:0 2px 10px; border-bottom:1px solid #E5E7EB; margin-bottom:10px;">'
+        'padding:0 2px 10px; border-bottom:1px solid var(--surface-divider); margin-bottom:10px;">'
         f'<span style="width:8px; height:8px; border-radius:50%; background:{dot};"></span>'
-        '<span style="font-weight:800; font-size:15px; color:#0F172A;">SOLA</span>'
-        f'<span style="font-size:12px; color:#64748B; font-weight:600;">· {title_safe}</span>'
+        '<span style="font-weight:800; font-size:15px; color:var(--text-primary);">SOLA</span>'
+        f'<span style="font-size:12px; color:var(--text-muted); font-weight:600;">· {title_safe}</span>'
         '</div>'
     )
 

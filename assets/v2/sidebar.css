@@ -8,8 +8,8 @@
 
 /* ── 사이드바 컨테이너 ─────────────────────────────────────── */
 [data-testid="stSidebar"] {
-  background: #FFFFFF;
-  border-right: 1px solid var(--surface-divider, #E5E7EB);
+  background: var(--surface-card);
+  border-right: 1px solid var(--surface-divider);
 }
 [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
   padding-top: 14px;
@@ -27,7 +27,7 @@
   position: relative;
   padding: 16px 14px 13px;
   background: linear-gradient(160deg, #F8FAFF 0%, #FFFFFF 60%);
-  border: 1px solid var(--surface-divider, #E5E7EB);
+  border: 1px solid var(--surface-divider);
   border-radius: 14px;
   box-shadow: var(--shadow-1, 0 1px 2px rgba(15,23,42,0.06));
   transition: border-color 120ms, box-shadow 120ms, transform 120ms;
@@ -80,8 +80,8 @@
   width: 26px; height: 26px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 8px;
-  background: #FFFFFF;
-  border: 1px solid var(--surface-divider, #E5E7EB);
+  background: var(--surface-card);
+  border: 1px solid var(--surface-divider);
   color: var(--text-muted, #94A3B8);
   font-size: 13px;
 }
@@ -199,7 +199,7 @@
   display: flex; align-items: center; gap: 10px;
   margin: 14px 2px 4px; padding: 11px 12px;
   background: var(--surface-soft, #F5F7FB);
-  border: 1px solid var(--surface-divider, #E5E7EB);
+  border: 1px solid var(--surface-divider);
   border-radius: 10px;
 }
 .sidebar-footer.sidebar-footer-empty { flex-direction: column; align-items: stretch; gap: 9px; }

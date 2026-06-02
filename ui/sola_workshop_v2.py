@@ -260,7 +260,7 @@ def _render_brief_handoff_banner_if_needed() -> None:
             display: flex; align-items: center; gap: 6px;
           }}
           body:has(.db-topbar) .ws-brief-handoff-sub {{
-            font-weight: 500; color: #1E40AF; margin-left: 6px;
+            font-weight: 500; color: var(--accent-active); margin-left: 6px;
           }}
           body:has(.db-topbar) .ws-brief-handoff ol {{ margin: 0; padding-left: 0; list-style: none; }}
           body:has(.db-topbar) .ws-brief-handoff li {{
@@ -275,7 +275,7 @@ def _render_brief_handoff_banner_if_needed() -> None:
             display: flex; gap: 8px; align-items: center;
           }}
           body:has(.db-topbar) .ws-brief-target-eye {{
-            font-size: 11px; color: #1E40AF; opacity: 0.7; letter-spacing: 0.04em;
+            font-size: 11px; color: var(--accent-active); opacity: 0.7; letter-spacing: 0.04em;
           }}
           body:has(.db-topbar) .ws-brief-target-v {{ font-weight: 700; }}
         </style>
@@ -911,7 +911,7 @@ def _render_workbench(persona: Persona) -> None:
     대화·입력은 우측 채팅(`chat_panel.render_side`)이 담당하므로 여기엔 chat_input 없음.
     """
     _SEC = ('<div style="font-size:12px; font-weight:800; letter-spacing:0.08em; '
-            'text-transform:uppercase; color:#94A3B8; margin:{m};">{t}</div>')
+            'text-transform:uppercase; color:var(--text-muted); margin:{m};">{t}</div>')
 
     messages = _load_messages()
     last_assistant = next(
@@ -929,19 +929,19 @@ def _render_workbench(persona: Persona) -> None:
     # ── 1) 액션 바 ──
     chip = (
         f'<span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; '
-        f'background:#EEF4FF; border:1px solid #C7DBFF; border-radius:999px; font-size:12.5px; '
-        f'font-weight:600; color:#1E40AF;">🎯 {_html.escape(target)}</span>'
+        f'background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.30); border-radius:999px; font-size:12.5px; '
+        f'font-weight:600; color:var(--accent-active);">🎯 {_html.escape(target)}</span>'
         if target else
         '<span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; '
-        'background:#F1F5F9; border:1px solid #E2E8F0; border-radius:999px; font-size:12.5px; '
-        'font-weight:600; color:#475569;">👤 페르소나 컨텍스트</span>'
+        'background:var(--surface-soft); border:1px solid var(--surface-divider); border-radius:999px; font-size:12.5px; '
+        'font-weight:600; color:var(--text-secondary);">👤 페르소나 컨텍스트</span>'
     )
     st.html(
         '<div style="display:flex; justify-content:space-between; align-items:center; '
         'gap:12px; flex-wrap:wrap; margin:2px 0 12px;"><div>'
         '<div style="font-size:12px; font-weight:800; letter-spacing:0.1em; '
-        'text-transform:uppercase; color:#94A3B8;">작업대</div>'
-        '<div style="font-size:14px; color:#475569; margin-top:2px;">'
+        'text-transform:uppercase; color:var(--text-muted);">작업대</div>'
+        '<div style="font-size:14px; color:var(--text-secondary); margin-top:2px;">'
         '제안서·요약을 만들고 산출물로 저장하세요</div></div>'
         f'<div>{chip}</div></div>'
     )
@@ -986,10 +986,10 @@ def _render_workbench(persona: Persona) -> None:
                 st.rerun()
     else:
         st.html(
-            '<div style="padding:28px 18px; text-align:center; background:#F8FAFC; '
-            'border:1px dashed #CBD5E1; border-radius:14px; color:#475569;">'
+            '<div style="padding:28px 18px; text-align:center; background:var(--surface-soft); '
+            'border:1px dashed var(--surface-divider); border-radius:14px; color:var(--text-secondary);">'
             '<div style="font-size:26px; margin-bottom:6px;">🪄</div>'
-            '<div style="font-size:15px; font-weight:700; color:#0F172A;">아직 산출물이 없어요</div>'
+            '<div style="font-size:15px; font-weight:700; color:var(--text-primary);">아직 산출물이 없어요</div>'
             '<div style="font-size:13px; line-height:1.6; margin-top:4px;">'
             '위 <b>📝 제안서 생성</b>으로 시작하거나, 오른쪽 <b>SOLA 채팅</b>으로 대화하면 '
             '결과가 여기에 문서로 정리됩니다.</div></div>'
