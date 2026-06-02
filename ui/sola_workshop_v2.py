@@ -557,7 +557,8 @@ def _related_news_df(dept: str, lv3: str, *, limit: int = 8):
             "dept": dept, "lv1": "", "lv2": lv3, "lv3": lv3,
             "task": lv3, "sub_task": "",
         }])
-        scored = match.score_matches(news, tasks_df, top_k=limit)
+        scored = match.score_matches(news, tasks_df, top_k=limit,
+                                     semantic_weight=match.DEFAULT_SEMANTIC_WEIGHT)
         if not scored.empty and "link" in scored.columns and "link" in news.columns:
             links = [lnk for lnk in scored["link"].tolist() if lnk]
             rel = news[news["link"].isin(links)]
