@@ -5,6 +5,29 @@
 
 ---
 
+## 🚩 다음 세션 시작점 (2026-06-02 기준) — 여기부터 읽으세요
+
+**현재 상태**
+- **PR #90 (UI 전면 재정비 A~D) ✅ 스쿼시 머지 완료** → `main 115b176` → Streamlit Cloud 배포됨. **사용자 6대 UI/UX 요구 전부 완결**(①화면연계 ②좌사이드바+우채팅 ③3영역분리 ④죽은버튼 ⑤컨텐츠정리 ⑥설정 테마/폰트).
+- **PR #91 (Phase E — enrich LLM 키워드 매칭 가중) — Draft, CI ✅ green, mergeable.** 머지 대기.
+- **브랜치 `claude/charming-sagan-REsgM`** = `main(115b176)` + Phase E(`77f9292`). 트리 clean · origin 동기. (이 세션은 harness 가 이 브랜치 단일 지정. PR #90 스쿼시 머지 후 `git reset --hard origin/main` 으로 정렬해 재사용 중.)
+
+**바로 할 일 (택1)**
+1. **PR #91 머지** — 그린/clean. `merge_pull_request(merge_method="squash")` (PR #90 과 동일 방식). 머지 후 브랜치를 다시 `git fetch origin main && git reset --hard origin/main` 으로 정렬한 뒤 다음 작업.
+2. **Phase F — 수집 관측성**: `scraping/run_daily` 에 구조화 로깅 + run_id + 소스별 성공/실패/건수 요약(`data/logs/`), 데이터 관리에 수집 헬스 노출. (블루프린트 원칙 "운영 가능".)
+3. **풀 다크 폴리시**: 일부 차트 색·매트릭스/히트맵 SVG 인터랙션(현재 img 변환으로 클릭 비활성) 정교화. **의미기반 매칭(RAG)**: 임베딩 유사도(블루프린트 Phase B) — 룰 점수와 하이브리드.
+4. **데드 코드 정리(REFACTOR_PLAN Phase 3)**: `ui/layout.py`·`ui/task_tree.py` + `app_shell.render_app_side/render_app_sola`(현재 no-op) + 미부활 `sola/{insight,chat_ctx}` 삭제. `chat_panel.render`(레거시 bottom)·`sola_main.html`(미사용)도 정리 후보. 삭제 시 `test_chat_log`(layout.main_and_chat 시그니처 의존) 등 테스트 동반 정리 필요.
+
+**핵심 함정 (재학습 방지)**
+- `st.html` 은 **인라인 `<svg>` 를 sanitize 로 제거** + `data:image/svg+xml;utf8,<svg…#…>` 는 `#`/공백이 잘려 깨짐 → 화면 템플릿은 `ui/components.prepare_screen_html()` 통과 필수(아이콘 인코딩 + 인라인 svg→data-URI img). 각 화면 메인 렌더·`render_topbar` 가 이미 적용.
+- **Streamlit 네이티브 위젯은 `.streamlit/config.toml`(정적 라이트) 종속** → 런타임 다크는 토큰 + 위젯 오버라이드(`styles.inject_user_prefs` `_DARK_CSS`)로 처리. 새 인라인 색은 반드시 `var(--token)` 사용(고정 hex 금지 — 다크 깨짐).
+- 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
+- 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
+
+**검증 베이스라인**: `pytest -q` = **702 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` 140 files OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+
+---
+
 ## 2026-06-02 · Phase E — enrich LLM 키워드 매칭 가중 (PR #90 머지 후 신규)
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 스쿼시 머지 후 origin/main `115b176` 으로 reset → 깨끗한 베이스에서 Phase E)
