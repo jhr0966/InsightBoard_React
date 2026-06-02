@@ -228,10 +228,14 @@ def _ingest_jobs_html() -> str:
         today_df = None
 
     if today_df is None or today_df.empty:
-        return ('<li class="dm-job" style="border:1px dashed var(--surface-divider); '
-                'padding:14px; text-align:center; color: var(--text-muted); font-size: 14px;">'
+        # display:block 로 .dm-job 의 grid(5px 1fr auto) 를 무력화 — 안 그러면 빈 문구가
+        # 5px 첫 칸에 갇혀 글자마다 줄바꿈됨. word-break:keep-all 로 단어 단위 줄바꿈.
+        return ('<li class="dm-job" style="display:block; word-break:keep-all; '
+                'border:1px dashed var(--surface-divider); '
+                'padding:18px 14px; text-align:center; color: var(--text-muted); '
+                'font-size: 14px; line-height:1.6;">'
                 '오늘 실행된 수집잡이 없습니다.<br>'
-                '<span style="font-size:12.5px;">[지금 실행] 으로 수집 시작</span>'
+                '<span style="font-size:12.5px;">우측 상단 [지금 새로고침] 으로 수집을 시작하세요</span>'
                 '</li>')
 
     if "source" not in today_df.columns:
@@ -329,14 +333,18 @@ def _hist_html() -> dict[str, str]:
         "<line x1='0' y1='50' x2='280' y2='50' stroke='#E5E7EB' stroke-dasharray='2 3'/>"
         + "".join(bars)
     )
-    svg_full = (
-        "<svg xmlns='http://www.w3.org/2000/svg' "
-        "class='dm-hist-chart' viewBox='0 0 280 70' "
-        "preserveAspectRatio='none'>"
-        f"{svg_inner}"
-        "</svg>"
+    # st.html 은 인라인 <svg> 를 sanitize 로 제거하므로 <img> 로 렌더한다. 단,
+    # `;utf8,` 비인코딩 data-URI 는 색상값의 '#'(#2563EB) 가 fragment 로 잘려 깨졌다
+    # → URL 인코딩(quote)된 data-URI 로 '#'→%23 등 처리해 정상 표시.
+    from urllib.parse import quote as _q
+    svg_doc = (
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 280 70' "
+        f"preserveAspectRatio='none'>{svg_inner}</svg>"
     )
-    svg_img = f'<img src="data:image/svg+xml;utf8,{svg_full}" width="280" height="70" alt="14일 수집량 차트" />'
+    svg_img = (
+        f'<img src="data:image/svg+xml,{_q(svg_doc)}" class="dm-hist-chart" '
+        'style="width:100%; height:60px; display:block;" alt="14일 수집량 차트" />'
+    )
 
     head_html = (
         '<div class="dm-hist-head">'
@@ -544,13 +552,20 @@ def _refresh_cta_html() -> str:
         "?app_area=" + quote("🧱 데이터 관리")
         + "&refresh=now"
     )
+    # 아이콘은 URL 인코딩 data-URI <img> (st.html 이 인라인 <svg> 를 제거 + 비인코딩
+    # data-URI 는 stroke='#fff' 의 '#' 가 잘려 깨짐) + 문구 중앙정렬.
+    from urllib.parse import quote as _q
+    icon_svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' "
+        "fill='none' stroke='#fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>"
+        "<polyline points='23 4 23 10 17 10'/>"
+        "<path d='M3.51 9a9 9 0 0114.85-3.36L23 10'/></svg>"
+    )
     return (
         f'<a class="dm-btn-primary" href="{href}" target="_self" '
+        f'style="justify-content:center;" '
         f'title="페르소나 관심사 키워드로 지금 수집을 실행하고 캐시를 새로 그립니다.">'
-        '<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'11\' '
-        'height=\'11\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#fff\' stroke-width=\'2.4\' '
-        'stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'23 4 23 10 17 10\'/>'
-        '<path d=\'M3.51 9a9 9 0 0114.85-3.36L23 10\'/></svg>" width="11" height="11" alt="" />'
+        f'<img src="data:image/svg+xml,{_q(icon_svg)}" width="12" height="12" alt="" />'
         '지금 새로고침'
         '</a>'
     )

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Fixed (UI 버그 — 데이터 관리 + 우측 채팅, 사용자 보고 4건)
+- **빈 수집잡 문구 세로 깨짐**: 빈 상태 `<li class="dm-job">` 가 `.dm-job` 의 `grid(5px 1fr auto)` 를 상속해 "오늘 실행된 수집잡이 없습니다" 가 글자마다 줄바꿈되던 것을 `display:block; word-break:keep-all` 로 수정.
+- **"지금 새로고침" 버튼 문구 중앙정렬**: `justify-content:center` + 아이콘을 URL 인코딩 data-URI `<img>` 로 교체.
+- **14일 수집량 차트 깨짐**: `st.html` 이 인라인 `<svg>` 를 sanitize 로 제거하고, 비인코딩 `data:image/svg+xml;utf8,<svg ... fill='#…'>` 의 색상 `#` 가 fragment 로 잘려 이미지가 깨지던 것을 **URL 인코딩 data-URI `<img>`**(`#`→`%23`)로 정상 렌더. 새로고침 아이콘도 동일 처리.
+- **우측 채팅 높이/하단 공간**: 입력창 height 78→130, 패널을 `height:calc(100vh-28px)` 로 뷰포트 높이 채움 + 내부 flex column 으로 입력 form 을 하단 고정(`stLayoutWrapper:has(stForm){margin-top:auto}`) → 하단 빈 공간 제거 + 채팅 영역 확대.
+- `tests/test_dm_cleanup.py` (+3 회귀). 검증: pytest 684/684 · 금지 패턴 0 · playwright — 차트/아이콘 `<img>` 로드 True, 입력 form 이 패널 하단 배치 확인.
+
 ### Changed (UI Phase C-3 — 데이터 관리 정리 + 심플 세로 스크롤)
 - `data_management_v2._strip_dm_mockups` 신규 — 렌더 시 정적 목업 제거: ① 죽은 필터바(검색 input·필터칩·출처/기간/정렬 셀렉트) ② 죽은 페이저(1–6 / 1,247 … 208) ③ **가짜 서브카드 3종**(키워드 매니저 "활성8·56건/일"·작업 정의 "3파일·86항목"·출처 설정 "1 셀렉터 오류" — 실제 탭이 대체하는 가짜 통계/목록). 마커 슬라이스(필터→기사그리드, 페이저→섹션닫힘, 서브그리드→셸닫힘)라 div 균형 카운트 비의존.
 - 템플릿 편집: 가짜 "06:00 정기 실행 · 5개 작업" → "정기 수집 · 매일 새벽 자동 실행", disabled "스케줄" 버튼 제거, 가짜 news-meta(전체 1,247·매칭 32·북마크 17) 제거.

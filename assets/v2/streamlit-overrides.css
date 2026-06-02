@@ -34,14 +34,32 @@ body:has(.db-topbar) [data-testid="stMain"] .block-container {
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker) {
   position: sticky;
   top: 12px;
-  align-self: flex-start;
   background: #FFFFFF;
   border: 1px solid var(--surface-divider, #E5E7EB);
   border-radius: 14px;
   padding: 12px 14px 14px;
   box-shadow: var(--shadow-2, 0 4px 12px rgba(15,23,42,0.06));
-  max-height: calc(100vh - 28px);
+  height: calc(100vh - 28px);    /* 뷰포트 높이를 채워 하단 빈 공간 제거 */
   overflow-y: auto;
+}
+/* 패널 안쪽을 flex column 으로 — 입력 form 을 하단에 붙이고 그 위는 메시지/안내가 채움.
+   DOM: stColumn > … > stVerticalBlock(마커 포함) > [stElementContainer ×2, stLayoutWrapper>stForm]. */
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker) > div,
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
+    [data-testid="stVerticalBlockBorderWrapper"]:has(.side-chat-marker) {
+  height: 100%;
+}
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
+    [data-testid="stVerticalBlock"]:has(.side-chat-marker) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+/* 입력 form 래퍼(마지막 자식)를 하단으로 밀어 채팅 영역이 위를 채우게 */
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
+    [data-testid="stLayoutWrapper"]:has([data-testid="stForm"]) {
+  margin-top: auto;
+  width: 100%;
 }
 
 /* Streamlit 기본 토스트 위치 (in-flow 헤더라 상단 가림 없음) */

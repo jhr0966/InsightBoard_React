@@ -231,7 +231,7 @@ def render_side(persona: Persona, area_key: str) -> None:
             key=f"_side_chat_input_{safe_area}",
             placeholder="이 화면에 대해 무엇이든 물어보세요…",
             label_visibility="collapsed",
-            height=78,
+            height=130,
         )
         sent = st.form_submit_button("➤ 보내기", use_container_width=True)
     if sent and user_input and user_input.strip():
