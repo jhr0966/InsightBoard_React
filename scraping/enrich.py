@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import html as _html
+import logging
 import random
 import re
 import time
@@ -21,6 +22,8 @@ from bs4 import Comment
 from scraping.extract import soup_of
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 from store import cache
+
+logger = logging.getLogger(__name__)
 
 
 _CONTENT_SELECTORS = [
@@ -249,6 +252,7 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
         content = max(candidates, key=len) if candidates else ""
         return {"content": content, "image_url": image_url}
     except Exception:  # noqa: BLE001 — 단일 페이지 파싱 실패가 전체 수집을 막지 않도록.
+        logger.debug("기사 파싱 실패: %s", url, exc_info=True)
         return {"content": "", "image_url": ""}
 
 

@@ -1,6 +1,7 @@
 """뉴스 article dict 리스트 ↔ 일자별 Parquet 저장소."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -8,6 +9,8 @@ import pandas as pd
 
 from config import NEWS_DIR
 from store.paths import latest_parquet, news_dir_for
+
+logger = logging.getLogger(__name__)
 
 
 _ARTICLE_COLS = (
@@ -109,7 +112,8 @@ def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.Data
         for p in sorted(day_dir.glob("*.parquet")):
             try:
                 frames.append(_normalize_loaded(pd.read_parquet(p)))
-            except Exception:  # noqa: BLE001 — 깨진 parquet 은 스킵
+            except Exception:  # noqa: BLE001 — 깨진 parquet 은 스킵(어느 파일인지 로깅)
+                logger.warning("깨진 parquet 스킵: %s", p, exc_info=True)
                 continue
     if not frames:
         return pd.DataFrame(columns=list(_ARTICLE_COLS))
