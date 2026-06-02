@@ -114,11 +114,11 @@ I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 
 
 ## I-13 — 글로벌 채팅 패널은 `ui/chat_panel.py` 단일 진입점 (Phase A: 우측 컬럼)
 
-v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st.sidebar`(nav) + `st.columns([2.7, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `ui/chat_panel.render_side(persona, area_key=...)` 단 한 곳에서 마운트한다. 어느 area 에서든 사용자가 채팅 form 으로 전송한 텍스트는 render 직전 `chat_panel.consume_send_if_any(persona)` 가 단일 처리한다.
+v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st.sidebar`(nav) + `st.columns([2.3, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `ui/chat_panel.render_side(persona, area_key=...)` 단 한 곳에서 마운트한다. 어느 area 에서든 사용자가 채팅 form 으로 전송한 텍스트는 render 직전 `chat_panel.consume_send_if_any(persona)` 가 단일 처리한다.
 
-- **app.py 규약**: SOLA 작업실 area 제외한 모든 area 를 `with main_col:` 안에서 렌더하고, `with chat_col:` 안에서 `chat_panel.render_side(_persona, area_key=...)` 호출. SOLA 작업실은 자체 풀스크린(스레드+채팅+ctx) 이라 우측 컬럼 없이 풀폭 렌더.
+- **app.py 규약**: 5개 area **전부(SOLA 작업실 포함)** 를 `with main_col:` 안에서 렌더하고, `with chat_col:` 안에서 `chat_panel.render_side(_persona, area_key=...)` 호출 — 모든 화면이 동일한 `[좌 사이드바 │ 중앙 │ 우 채팅]`. 작업실 중앙은 산출물 작업대(스레드 + composer), 우측은 글로벌 채팅(통일 설계). *(작업실에서 우측 채팅을 억제하려면 코드 변경 필요 — 현재는 의도적으로 미억제.)*
 - **우측 채팅 구현**: `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 담기지 않는다 → `render_side` 는 `st.form`(text_area + form_submit_button) 으로 송신하고 `_do_sola_send` pending 을 세팅한다. 컬럼 sticky 패널화는 `.side-chat-marker` 훅 + `streamlit-overrides.css` 의 `[data-testid="stColumn"]:has(.side-chat-marker)`.
-- **금지**: 화면별 고정 HTML 우측 패널(구 `app_shell.render_app_sola` 의 disabled 목업)을 부활시키지 말 것. 우측 LLM 채팅은 `render_side` 단일 경로. SOLA 작업실 풀스크린 채팅은 area 전용 예외.
+- **금지**: 화면별 고정 HTML 우측 패널(구 `app_shell.render_app_sola` 의 disabled 목업)을 부활시키지 말 것. 우측 LLM 채팅은 `render_side` 단일 경로(**모든 area 동일** — 작업실 예외 없음).
 - **area_key 네임스페이스**: area 슬러그(이모지 포함)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 분리 저장 (I-15).
 - **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 저장돼 다음 send 에서 사용된다.
 - **데드 정리 완료 (Phase 3)**: 좌측은 네이티브 `st.sidebar`, 우측 LLM 채팅은 `chat_panel.render_side` 단일 경로. 구 고정 HTML 패널 `app_shell.render_app_side`/`render_app_sola`(no-op)·패널 토글 클러스터·`chat_panel.render`(구 bottom expander)·`ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`task_defs_db.upsert_many` 모두 삭제됨.

@@ -424,7 +424,7 @@ def _runstatus_strip_html(days: int = 14) -> str:
 
 
 @st.cache_data(ttl=60)
-def _hist_html() -> dict[str, str]:
+def _hist_html(dark: bool = False) -> dict[str, str]:
     """14일 수집량 sparkline + head/foot 라벨 HTML.
 
     SVG 는 img src='data:image/svg+xml,...' 형식이라 큰따옴표 escape 필요 →
@@ -471,11 +471,16 @@ def _hist_html() -> dict[str, str]:
         h = max(round(count / max_val * 56), 2) if count > 0 else 2
         y = 60 - h
         is_today = (i == 13)
-        fill = "#2563EB" if is_today else "#CBD5E1"
+        # SVG 는 data-URI img 라 CSS 변수를 못 쓴다 → 테마별 색을 직접 분기.
+        if is_today:
+            fill = "#60A5FA" if dark else "#2563EB"
+        else:
+            fill = "#475569" if dark else "#CBD5E1"
         bars.append(f"<rect x='{x}' y='{y}' width='16' height='{h}' fill='{fill}' rx='2'/>")
 
+    baseline = "#334155" if dark else "#E5E7EB"
     svg_inner = (
-        "<line x1='0' y1='50' x2='280' y2='50' stroke='#E5E7EB' stroke-dasharray='2 3'/>"
+        f"<line x1='0' y1='50' x2='280' y2='50' stroke='{baseline}' stroke-dasharray='2 3'/>"
         + "".join(bars)
     )
     # st.html 은 인라인 <svg> 를 sanitize 로 제거하므로 <img> 로 렌더한다. 단,
@@ -1532,7 +1537,8 @@ def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
         persona: 키워드 탭 본문에서 사용 (관심사 chip).
     """
     template = _DM_TEMPLATE.read_text(encoding="utf-8")
-    hist = _hist_html()
+    from store import ui_prefs as _uiprefs
+    hist = _hist_html(_uiprefs.load().get("theme") == "dark")
 
     if selected_tab == "jobs":
         body_open = ""
