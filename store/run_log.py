@@ -143,3 +143,30 @@ def load_runs(limit: int = 20) -> list[dict]:
 def latest_run() -> dict | None:
     runs = load_runs(limit=1)
     return runs[0] if runs else None
+
+
+def daily_status(days: int = 14) -> list[str | None]:
+    """최근 `days` 일 각 날짜의 수집 런 상태 (오래된→최신, 길이 `days`).
+
+    값: `"ok"`(그날 런이 있고 전부 성공) / `"fail"`(하나라도 실패) / `None`(런 없음).
+    하루 여러 런이면 하나라도 실패 시 그날은 `"fail"`. 14일 볼륨 sparkline 에
+    일별 성공/실패를 겹쳐 보여주는 데 쓴다(`data_management_v2._hist_html`).
+    """
+    from datetime import datetime, timezone
+
+    today = datetime.now(timezone.utc).date()
+    buckets: dict[int, str] = {}  # delta(0=오늘 … days-1=가장 오래) → status
+    for r in load_runs(limit=0):
+        ts = str(r.get("ts", ""))
+        try:
+            d = datetime.fromisoformat(ts.replace("Z", "+00:00")).date()
+        except (ValueError, TypeError):
+            continue
+        delta = (today - d).days
+        if not (0 <= delta < days):
+            continue
+        if buckets.get(delta) == "fail":
+            continue  # 실패가 우선 — 이미 fail 이면 유지
+        buckets[delta] = "ok" if r.get("ok") else "fail"
+    return [buckets.get(days - 1 - i) for i in range(days)]
+

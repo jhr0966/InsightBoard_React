@@ -81,3 +81,31 @@ def test_load_runs_limit_and_skips_corrupt_lines():
     runs = run_log.load_runs(limit=2)
     assert len(runs) == 2
     assert all("run_id" in r for r in runs)
+
+
+# ── daily_status — 14일 일별 런 성공/실패 (sparkline 오버레이용) ──
+
+def test_daily_status_buckets_ok_fail_and_none():
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    run_log.record_run(_report(saved=[{"source": "naver", "count": 3, "path": "p"}]),
+                       trigger="cron", run_id="d0", ts=now.isoformat())
+    run_log.record_run(
+        _report(saved=[{"source": "naver", "count": 1, "path": "p"}],
+                errors=[{"source": "google", "error": "x"}]),
+        trigger="cron", run_id="d1", ts=(now - timedelta(days=1)).isoformat())
+    out = run_log.daily_status(days=14)
+    assert len(out) == 14
+    assert out[-1] == "ok"     # 오늘
+    assert out[-2] == "fail"   # 어제 (오류 소스 존재)
+    assert out[-3] is None     # 그제 — 런 없음
+
+
+def test_daily_status_fail_takes_priority_same_day():
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    run_log.record_run(_report(saved=[{"source": "naver", "count": 5, "path": "p"}]),
+                       trigger="cron", run_id="ok", ts=now.isoformat())
+    run_log.record_run(_report(errors=[{"source": "x", "error": "e"}]),
+                       trigger="manual", run_id="er", ts=now.isoformat())
+    assert run_log.daily_status(days=14)[-1] == "fail"  # 하루 중 하나라도 실패 → fail

@@ -393,6 +393,36 @@ def _ingest_jobs_html() -> str:
     return health + "\n".join(parts)
 
 
+def _runstatus_strip_html(days: int = 14) -> str:
+    """14일 sparkline 아래 일별 수집 런 성공/실패 스트립 — run_log 기반.
+
+    각 칸: 성공(초록)/실패(주황)/런 없음(divider). 런 기록이 하나도 없으면 빈
+    문자열(기존 화면 무변경). hover 로 날짜·상태.
+    """
+    try:
+        from store import run_log
+        statuses = run_log.daily_status(days=days)
+    except Exception:  # noqa: BLE001
+        statuses = [None] * days
+    if not any(statuses):
+        return ""  # 아직 런 기록 없음 → 스트립 숨김
+
+    from datetime import datetime, timezone, timedelta
+    today = datetime.now(timezone.utc).date()
+    color = {"ok": "var(--semantic-success)", "fail": "var(--semantic-warning)"}
+    label = {"ok": "정상", "fail": "오류"}
+    cells = []
+    for i, sstat in enumerate(statuses):
+        day = today - timedelta(days=days - 1 - i)  # i=0 가장 오래, 마지막=오늘
+        title = f"{day:%m-%d}: {label.get(sstat, '런 없음')}"
+        bg = color.get(sstat, "var(--surface-divider)")
+        cells.append(
+            f'<span class="dm-runstatus-cell" style="background:{bg};" '
+            f'title="{_html.escape(title)}"></span>'
+        )
+    return f'<div class="dm-runstatus">{"".join(cells)}</div>'
+
+
 @st.cache_data(ttl=60)
 def _hist_html() -> dict[str, str]:
     """14일 수집량 sparkline + head/foot 라벨 HTML.
@@ -460,6 +490,11 @@ def _hist_html() -> dict[str, str]:
         f'<img src="data:image/svg+xml,{_q(svg_doc)}" class="dm-hist-chart" '
         'style="width:100%; height:60px; display:block;" alt="14일 수집량 차트" />'
     )
+
+    # 볼륨 바 아래 일별 '수집 런 성공/실패' 스트립을 겹친다 (run_log 기반).
+    # 볼륨(news_db)은 "몇 건 쌓였나", 이 스트립은 "그날 런이 돌았고 성공했나" →
+    # cron 이 조용히 실패한 날(볼륨 0 이면서 fail/런없음)을 한 줄로 구분.
+    svg_img += _runstatus_strip_html()
 
     head_html = (
         '<div class="dm-hist-head">'
