@@ -26,11 +26,16 @@ class _FakeResp:
         self.text = text
         self.status_code = status
 
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            import requests
+            raise requests.HTTPError(f"HTTP {self.status_code}")
 
-def _fake_session(text: str):
+
+def _fake_session(text: str, status: int = 200):
     class FakeSession:
         def get(self, *a, **kw):
-            return _FakeResp(text)
+            return _FakeResp(text, status)
 
     return FakeSession()
 
@@ -81,3 +86,25 @@ def test_search_site_propagates_http_failure():
     with patch.object(tech_sites, "build_session", lambda: FailSession()):
         with pytest.raises(RuntimeError):
             tech_sites.search_site("AI Times", "https://www.aitimes.com")
+
+
+def test_search_site_raises_on_bad_status():
+    """403/500 등 HTTP 오류 상태는 RuntimeError 로 표면화 (naver/google 과 일관)."""
+    with patch.object(tech_sites, "build_session", lambda: _fake_session(_AITIMES_HTML, 403)):
+        with pytest.raises(RuntimeError):
+            tech_sites.search_site("AI Times", "https://www.aitimes.com")
+
+
+def test_search_all_surfaces_errors_via_on_error():
+    """on_error 콜백이 있으면 사이트별 실패를 통보 → 수집 헬스 노출용."""
+    def _fake_search(name, url, max_results=10):
+        if name == "AI Times":
+            return [{"title": "ok", "press": name, "link": url + "/x", "source": "tech",
+                     "query": name, "summary": "", "keywords": "", "date": "", "published_at": ""}]
+        raise RuntimeError("403")
+
+    seen: list[tuple] = []
+    with patch.object(tech_sites, "search_site", _fake_search):
+        out = tech_sites.search_all(max_results_per_site=5, on_error=lambda n, m: seen.append((n, m)))
+    assert len(out) == 1  # 성공 사이트 결과는 보존
+    assert seen and seen[0][1] == "403"  # 실패 사이트는 콜백으로 통보

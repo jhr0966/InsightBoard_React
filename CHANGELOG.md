@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Fixed (scraping — tech 사이트 HTTP 실패를 '수집 헬스'에 표면화, Phase F 후속)
+- 라이브 수집 검증 중 발견 — `tech_sites.search_site` 가 HTTP 상태를 체크하지 않아 403/500 응답을 받아도 본문을 파싱해 **조용히 0건** 반환 → 방금 추가한 '수집 헬스'에 AI Times/오토메이션월드 장애가 안 잡히던 빈틈.
+- `search_site`: `resp.raise_for_status()` 추가 → naver/google 과 일관되게 HTTP 오류를 `RuntimeError` 로 표면화.
+- `search_all`: `on_error(site, msg)` 콜백(후방호환) — 사이트별 실패를 통보(콜백 없으면 기존처럼 조용히 격리).
+- `collect_batch` tech 분기: `on_error` → `report.errors` → `run_log`/'수집 헬스' 에 오류 소스로 노출.
+- `tests/test_tech_sites.py`(+2: bad-status raise·on_error 통보)·`test_run_daily.py` 페이크 호환. 검증: pytest 696→**698 passed** · 금지 패턴 0.
+
 ### Added (Phase F — 수집 관측성: 런 로그 + 데이터 관리 '수집 헬스')
 - **`store/run_log.py` 신규** — 매 수집 런을 `data/logs/runs.jsonl` 에 구조화 영속(run_id·시각·트리거·소스별 건수·성공/실패·duration). `record_run`/`load_runs`/`latest_run`/`entry_from_report`(순수). `config.DATA_ROOT` 를 호출 시점 참조해 conftest 격리와 호환(from-import 고정 footgun 회피).
 - **3개 수집 경로에 기록 연결** — cron(`scripts/daily_scrape.py`, trigger=cron + duration 측정)·데이터 관리 새로고침(trigger=manual)·보드 수집(trigger=board). 로깅 실패가 수집 자체를 깨지 않도록 모두 try/except 격리.

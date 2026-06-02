@@ -125,7 +125,13 @@ def collect_batch(
                 )
         elif src == "tech":
             try:
-                articles = tech_sites.search_all(max_results_per_site=max_results)
+                # 사이트별 HTTP 실패를 report.errors 로 표면화 → '수집 헬스' 가 감지.
+                articles = tech_sites.search_all(
+                    max_results_per_site=max_results,
+                    on_error=lambda site, msg: report.errors.append(
+                        {"source": "tech", "keyword": site, "error": msg}
+                    ),
+                )
                 path = save_articles(articles, source="tech")
                 report.saved.append(
                     {

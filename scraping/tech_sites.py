@@ -8,6 +8,7 @@ from __future__ import annotations
 import random
 import time
 from datetime import datetime, timezone
+from typing import Callable
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -80,6 +81,7 @@ def search_site(site_name: str, site_url: str, max_results: int = 10) -> list[di
     try:
         time.sleep(random.uniform(0.4, 0.9))
         resp = session.get(site_url, headers=default_headers(), timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
     except requests.RequestException as e:
         raise RuntimeError(f"{site_name} 요청 실패: {e}") from e
 
@@ -117,12 +119,23 @@ def search_site(site_name: str, site_url: str, max_results: int = 10) -> list[di
     return articles
 
 
-def search_all(max_results_per_site: int = 10) -> list[dict]:
-    """등록된 모든 기술 사이트에서 수집. 사이트별 실패는 무시하고 계속."""
+def search_all(
+    max_results_per_site: int = 10,
+    *,
+    on_error: Callable[[str, str], None] | None = None,
+) -> list[dict]:
+    """등록된 모든 기술 사이트에서 수집. 사이트별 실패는 격리하고 계속.
+
+    `on_error(site_name, message)` 콜백이 주어지면 사이트별 실패를 통보한다
+    (collect_batch 가 이를 report.errors 로 받아 '수집 헬스' 에 노출). 콜백이 없으면
+    기존처럼 조용히 건너뛴다(후방 호환).
+    """
     bag: list[dict] = []
     for name, url in TECH_SITES.items():
         try:
             bag.extend(search_site(name, url, max_results=max_results_per_site))
-        except RuntimeError:
+        except RuntimeError as e:
+            if on_error:
+                on_error(name, str(e))
             continue
     return bag
