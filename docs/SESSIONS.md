@@ -23,11 +23,33 @@
 - `st.html` 은 **인라인 `<svg>` 를 sanitize 로 제거** + `data:image/svg+xml;utf8,<svg…#…>` 는 `#`/공백이 잘려 깨짐 → 화면 템플릿은 `ui/components.prepare_screen_html()` 통과 필수(아이콘 인코딩 + 인라인 svg→data-URI img). 각 화면 메인 렌더·`render_topbar` 가 이미 적용.
 - **Streamlit 네이티브 위젯은 `.streamlit/config.toml`(정적 라이트) 종속** → 런타임 다크는 토큰 + 위젯 오버라이드(`styles.inject_user_prefs` `_DARK_CSS`)로 처리. 새 인라인 색은 반드시 `var(--token)` 사용(고정 hex 금지 — 다크 깨짐).
 - 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
-- 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
+- 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.3,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
+- **사이드바 헤더 절대 `stHeader{display:none}` 금지** — Streamlit 1.58 은 사이드바 '펼치기' 버튼(`stExpandSidebarButton`)을 헤더 toolbar 안에 렌더하므로 헤더를 통째 숨기면 접은 뒤 못 펼친다. `streamlit-overrides.css` 처럼 헤더는 absolute·height:0·투명·pointer-events:none 로 죽이고 toolbar 노이즈(`stToolbarActions`/`stMainMenu`/`stAppDeployButton`/`stStatusWidget`/`stDecoration`)만 숨기고 펼치기 버튼은 좌상단 고정으로 살린다. 좁은 폭(<768px)은 Streamlit 이 사이드바를 오버레이로 띄움(접기로 dismiss).
+- **로컬 라이브 UI 검증 가능**: `pip install playwright` + 사전설치 `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` → `python -m streamlit run app.py --server.port 8765 --server.headless true` 띄우고 playwright 로 DOM/스크린샷 검사. ⚠ Python 모듈 변경은 fileWatcher 꺼져 있으면 서버 재시작 필요(CSS 는 매 run 파일을 읽어 즉시 반영).
 
-**검증 베이스라인**: `pytest -q` = **708 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+**검증 베이스라인**: `pytest -q` = **711 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
 
 **⚠ 라이브 수집은 여전히 막힘**: 사용자가 "전체 도메인 허용 + 새 세션"을 했다 했으나, 이 컨테이너의 네트워크는 아직 **제한적 allowlist**(pypi.org만 200, news 도메인·google.com·example.com 전부 403 `Host not in allowlist`, WebFetch 동일). 네트워크 정책은 **환경 생성 시점에 고정**되므로 이 세션은 정책 변경 전 환경. → 정책=전체 허용으로 설정된 환경에서 **진짜 새 세션**을 열어야 라이브 검증 가능. 라이브 시 허용 필요 호스트: `search.naver.com`·`www.naver.com`·`n.news.naver.com`·`news.google.com`·구글 RSS 가 링크하는 **임의 언론사 도메인**(그래서 '전체 허용'이 맞음)·`www.aitimes.com`·`automation-world.co.kr`.
+
+---
+
+## 2026-06-02 · UI 수정 — 사이드바 펼치기 버튼 복구 + 채팅 패널 (안내·추천·입력)
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #97 머지 후 origin/main `8f88e32` 으로 reset → 재사용). harness 지정 단일 브랜치.
+
+**맥락:** 사용자 보고 2건 — ① 사이드바가 메인과 겹치고 한번 접으면 펼치기 버튼을 못 찾음 ② 채팅 패널 표시 영역이 좁고, 안내+추천이 채팅 한번에 사라지며, 추천 프롬프트를 눌러도 입력창에 안 들어감.
+
+**진단(playwright 실측, 사전설치 chromium):** ≥768px 겹침 0 / <768px 만 Streamlit 오버레이. 접으면 `stExpandSidebarButton`(헤더 toolbar 안)·`stHeader` 가 우리 `display:none` 으로 사라져 펼치기 불가. 추천 질문은 정적 `<span>` 이라 클릭 무반응.
+
+**한 일:**
+- `streamlit-overrides.css`: `stHeader` 통째 `display:none` → absolute·height:0·투명·pointer-events 통과 + toolbar 노이즈만 숨김 + `stExpandSidebarButton` 좌상단 고정. 접힘 시 `.db-topbar` 46px 시프트(버튼이 첫 글자 안 가림). 채팅 `.side-chat-scroll/-intro/-chip` 토큰 CSS.
+- `chat_panel.py`: 안내+추천을 항상 스크롤 최상단(`render_side` 가 intro+메시지를 한 컨테이너로), 추천 chip → `?sola_prefill=` 링크 + `_consume_prefill`(위젯 생성 전 입력창 값 주입, query_params 패턴), 버블 폭 92%·토큰 색.
+- `app.py`: 채팅 컬럼 `[2.7,1]→[2.3,1]`.
+- `tests/test_chat_panel.py`(+3: chip 링크·prefill 주입·no-op).
+
+**검증:** playwright 라이브 — 펼치기 버튼 보임·클릭·재펼침 PASS · 추천칩→입력창 PASS · 대화 후 안내 최상단 유지 PASS. pytest 708→**711 passed** · 금지패턴 0 · py_compile OK.
+
+**다음:** PR 리뷰/머지 · 풀 다크 정교화(이번에 채팅 토큰화 일부 완료) · RAG · PR #49.
 
 ---
 

@@ -72,7 +72,7 @@ _area_key = "프로필 설정" if _is_persona else area
 # 모든 화면 통일: [좌 사이드바 │ 중앙 콘텐츠(main_col) │ 우 LLM 채팅(chat_col)].
 # 각 화면이 보여주는 데이터를 SOLA 컨텍스트로 packaging 해 두면 우측 채팅이 그 화면
 # 콘텐츠에 대해 답할 수 있다. SOLA 작업실도 동일 — 중앙은 산출물 작업대, 우측은 대화.
-_main_col, _chat_col = st.columns([2.7, 1], gap="large")
+_main_col, _chat_col = st.columns([2.3, 1], gap="large")
 with _main_col:
     if _is_persona:
         persona_page.render()

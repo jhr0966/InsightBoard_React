@@ -86,32 +86,35 @@ _AREA_INTROS: dict[str, dict[str, list[str] | str]] = {
 
 
 def _intro_card_html(area_key: str) -> str:
-    """빈 thread 일 때 노출되는 area 별 안내 카드."""
+    """area 별 안내 + 추천 질문 카드 — 채팅 스크롤 최상단에 **항상** 노출.
+
+    추천 질문 chip 은 `?sola_prefill=<질문>` 링크라 클릭하면 입력창에 그대로
+    채워진다(`_consume_prefill` 이 소비). 색은 모두 토큰 → 다크 추종.
+    """
     intro = _AREA_INTROS.get(area_key) or _AREA_INTROS["📊 오늘의 보드"]
     headline = _html.escape(str(intro["headline"]))
     items = intro["suggestions"]
     chip_html = "".join(
-        f'<span style="display:inline-block; padding:6px 12px; margin:4px 4px 0 0; '
-        f'background:#EFF6FF; border:1px solid #BFDBFE; border-radius:999px; '
-        f'font-size:12.5px; color:#1E3A8A; line-height:1.4;">'
-        f'{_html.escape(str(s))}'
-        f'</span>'
+        f'<a class="side-chat-chip" href="?sola_prefill={quote(str(s), safe="")}" '
+        f'target="_self">{_html.escape(str(s))}</a>'
         for s in items
     )
     return (
-        f'<div style="padding:14px 16px; background:#F8FAFC; '
-        f'border:1px solid #E5E7EB; border-radius:10px; line-height:1.5;">'
-        f'<div style="font-weight:700; font-size:14px; color:#0F172A; margin-bottom:4px;">{headline}</div>'
-        f'<div style="font-size:12.5px; color:#64748B; margin-bottom:8px;">'
-        f'아래 입력창에 직접 적거나, 추천 질문 중 하나로 시작하세요.'
-        f'</div>'
-        f'<div>{chip_html}</div>'
-        f'</div>'
+        '<div class="side-chat-intro">'
+        f'<div class="side-chat-intro-h">{headline}</div>'
+        '<div class="side-chat-intro-sub">'
+        '아래 입력창에 직접 적거나, 추천 질문을 눌러 시작하세요.'
+        '</div>'
+        f'<div class="side-chat-chips">{chip_html}</div>'
+        '</div>'
     )
 
 
 def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
-    """최근 cap 개 메시지를 간단 마크업으로 (글로벌 패널 — 시안 ws-msg 아님)."""
+    """최근 cap 개 메시지를 버블 마크업으로. 스크롤은 바깥 `.side-chat-scroll` 가 담당.
+
+    색은 토큰(다크 추종), 버블 폭은 좁은 채팅 컬럼에 맞춰 92% 까지 넓힌다.
+    """
     if not messages:
         return ""
     parts = []
@@ -122,25 +125,23 @@ def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
         if role == "user":
             parts.append(
                 f'<div style="display:flex; justify-content:flex-end; margin:6px 0;">'
-                f'<div style="max-width:75%; padding:8px 12px; background:#2563EB; '
-                f'color:#fff; border-radius:12px 12px 4px 12px; font-size:13px; line-height:1.5;">'
+                f'<div style="max-width:92%; padding:8px 12px; background:var(--accent-primary); '
+                f'color:#fff; border-radius:12px 12px 4px 12px; font-size:13px; line-height:1.5; '
+                f'word-break:break-word;">'
                 f'{content}'
                 f'</div></div>'
             )
         else:
             parts.append(
                 f'<div style="display:flex; justify-content:flex-start; margin:6px 0;">'
-                f'<div style="max-width:75%; padding:8px 12px; background:#F1F5F9; '
-                f'color:#0F172A; border-radius:12px 12px 12px 4px; font-size:13px; line-height:1.5;">'
-                f'<div style="font-size:11px; color:#475569; font-weight:700; margin-bottom:2px;">🤖 SOLA</div>'
+                f'<div style="max-width:92%; padding:8px 12px; background:var(--surface-soft); '
+                f'color:var(--text-primary); border:1px solid var(--surface-divider); '
+                f'border-radius:12px 12px 12px 4px; font-size:13px; line-height:1.5; word-break:break-word;">'
+                f'<div style="font-size:11px; color:var(--text-secondary); font-weight:700; margin-bottom:2px;">🤖 SOLA</div>'
                 f'{content}'
                 f'</div></div>'
             )
-    return (
-        '<div style="max-height:360px; overflow-y:auto; padding:4px 2px;">'
-        + "".join(parts)
-        + '</div>'
-    )
+    return "".join(parts)
 
 
 def render_side(persona: Persona, area_key: str) -> None:
@@ -173,24 +174,46 @@ def render_side(persona: Persona, area_key: str) -> None:
     except Exception:
         messages = []
 
-    if not messages:
-        st.html(_intro_card_html(area_key))
-    else:
-        st.html(_format_recent_messages(messages))
-
     safe_area = quote(area_key, safe="")
+    input_key = f"_side_chat_input_{safe_area}"
+
+    # 추천 질문 chip 클릭(`?sola_prefill=…`) → 입력창에 채움. 위젯 생성 전에 소비.
+    _consume_prefill(input_key)
+
+    # 안내 + 추천 질문은 **항상** 스크롤 최상단에 두고 그 아래 대화 — 대화를
+    # 시작해도 위로 스크롤하면 안내·추천이 그대로 남아있다.
+    st.html(
+        '<div class="side-chat-scroll">'
+        + _intro_card_html(area_key)
+        + _format_recent_messages(messages)
+        + '</div>'
+    )
+
     with st.form(key=f"_side_chat_form_{safe_area}", clear_on_submit=True):
         user_input = st.text_area(
             "SOLA 에게 질문",
-            key=f"_side_chat_input_{safe_area}",
+            key=input_key,
             placeholder="이 화면에 대해 무엇이든 물어보세요…",
             label_visibility="collapsed",
-            height=130,
+            height=120,
         )
         sent = st.form_submit_button("➤ 보내기", use_container_width=True)
     if sent and user_input and user_input.strip():
         st.session_state["_do_sola_send"] = user_input.strip()
         st.rerun()
+
+
+def _consume_prefill(input_key: str) -> None:
+    """추천 질문 chip(`?sola_prefill=`) 을 입력창 위젯 값으로 주입 후 쿼리 파라미터 제거.
+
+    `st.text_area` 위젯 생성 **전에** session_state 를 세팅해야 초기값으로 반영된다
+    (사이드바 nav 의 query_params 패턴과 동일 — on_click 미사용).
+    """
+    val = st.query_params.get("sola_prefill")
+    if not val:
+        return
+    st.session_state[input_key] = val
+    del st.query_params["sola_prefill"]
 
 
 def consume_send_if_any(persona: Persona) -> None:

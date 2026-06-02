@@ -82,6 +82,36 @@ def test_format_recent_messages_role_styling():
     assert "Q" in user_part
 
 
+# ── 추천 질문 chip 은 클릭 링크(?sola_prefill=) ─────────────
+
+def test_intro_card_chips_are_prefill_links():
+    """추천 질문이 정적 span 이 아니라 ?sola_prefill= 링크여야 클릭 시 입력창에 채워진다."""
+    out = chat_panel._intro_card_html("📊 오늘의 보드")
+    assert "side-chat-chip" in out
+    assert "?sola_prefill=" in out
+    # 질문 텍스트가 href 로 인코딩돼 들어간다 (예: 공백 → %20)
+    assert "href=\"?sola_prefill=" in out
+
+
+def test_consume_prefill_sets_input_value_and_clears_param():
+    from types import SimpleNamespace
+
+    fake = SimpleNamespace(query_params={"sola_prefill": "오늘 KPI 요약"}, session_state={})
+    with patch.object(chat_panel, "st", fake):
+        chat_panel._consume_prefill("_side_chat_input_board")
+    assert fake.session_state["_side_chat_input_board"] == "오늘 KPI 요약"
+    assert "sola_prefill" not in fake.query_params  # 소비 후 제거 (재적용 방지)
+
+
+def test_consume_prefill_noop_when_no_param():
+    from types import SimpleNamespace
+
+    fake = SimpleNamespace(query_params={}, session_state={})
+    with patch.object(chat_panel, "st", fake):
+        chat_panel._consume_prefill("_side_chat_input_board")
+    assert fake.session_state == {}
+
+
 # ── consume_send_if_any 위임 ────────────────────────────────
 
 def test_consume_send_delegates_to_sola_workshop():

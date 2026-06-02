@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Fixed (UI — 사이드바 접기/펼치기 버튼 · 채팅 패널 안내·추천·입력)
+- **사이드바 펼치기 버튼 복구** — `streamlit-overrides.css` 가 상단 `stHeader` 를 통째로 `display:none` 해서, 사이드바를 한 번 접으면 펼치기 버튼(`stExpandSidebarButton` — Streamlit 1.58 에선 헤더 toolbar 안에 렌더)까지 함께 사라져 **다시 펼칠 방법이 없던** 문제. 헤더를 flow 에서 빼고(absolute·height:0·투명·pointer-events 통과) toolbar 노이즈(메뉴/배포/상태/장식)만 숨기되 펼치기 버튼은 좌상단 고정으로 항상 노출. 접힘 시 페이지 헤더(`.db-topbar`)를 46px 밀어 버튼이 첫 글자를 가리지 않게.
+- **사이드바·본문 겹침** — 정상 폭(≥768px)에선 겹침 0 확인(playwright 실측). 좁은 폭(<768px)에서 Streamlit 이 사이드바를 오버레이로 띄우던 것이, 펼치기 버튼 복구로 **접어서 본문을 볼 수 있게**(dismiss 가능) 개선.
+- **채팅 패널 — 안내/추천 영속** — 메시지가 하나라도 생기면 안내 카드+추천 질문이 사라지던 것을, 채팅 스크롤 **최상단에 항상** 두고 그 아래로 대화가 쌓이게(위로 스크롤하면 안내가 그대로). `render_side` 가 `_intro_card_html`+메시지를 한 `.side-chat-scroll` 컨테이너로 묶음.
+- **채팅 패널 — 추천 질문 클릭 미동작** — 추천 질문이 정적 `<span>` 이라 클릭해도 입력창에 안 들어가던 버그. `?sola_prefill=<질문>` 링크로 바꾸고 `_consume_prefill` 이 위젯 생성 전 입력창 값으로 주입(사이드바 nav 와 동일한 query_params 패턴, on_click 미사용).
+- **채팅 패널 — 표시 영역 확대** — 채팅 컬럼 비율 `[2.7,1]→[2.3,1]`, 메시지 버블 폭 `75%→92%`(+word-break), 안내·버블·칩 색을 토큰화(다크 추종).
+- **검증**: 사전설치 chromium + playwright 라이브 — 접기→펼치기 버튼 보임·클릭·재펼침 **PASS**, 추천칩→입력창 채움 **PASS**, 대화 후 안내 최상단 유지 **PASS**. `tests/test_chat_panel.py`(+3). pytest 708→**711 passed** · 금지패턴 0 · py_compile OK.
+
 ### Added (수집 헬스 고도화 — 최근 N회 런 미니 타임라인, run_log 기반)
 - **`data_management_v2._run_timeline_html()` 신규** — 🧱 데이터 관리 '수집 히스토리' 카드에 최근 12회 수집 런을 미니 막대 타임라인으로 노출(왼쪽=과거, 오른쪽=최신). 각 셀 높이=기사량(상대), 색=성공(`--semantic-success`)/오류(`--semantic-warning`), hover=`트리거 · 날짜 시각 · N건 · 정상/오류`. 헤더 `N/M 정상`(성공률) + foot(가장 오래된 날짜 / 최신 시각). 이전엔 '수집 헬스' 1행이 **마지막 런만** 보여줘서 **연속 실패·런 누락 패턴**이 안 보이던 것을 보완. `run_log.load_runs()` 기반이라 "cron이 돌았지만 0건"(정상 셀, 높이 최소)과 "런 자체가 없음"(셀 부재)을 구분.
 - `_hist_html()` 반환 dict 에 `"runs"` 키 추가(기존 캐시 60초 + 새로고침 무효화 경로 재사용 → 별도 캐시 등록 불필요) · 템플릿 `data_management_main.html` `{{HIST_RUNS}}` placeholder · CSS `.dm-runs/.dm-run-track/.dm-run-cell/.dm-run-fill`(토큰 기반 — 다크 추종).

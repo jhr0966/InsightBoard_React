@@ -8,10 +8,40 @@
    v2 셸 활성 여부는 `body:has(.db-topbar)` 로 분기 — in-flow 페이지 헤더(.db-topbar)
    가 있으면 적용. */
 
-/* Streamlit 기본 상단 헤더만 숨김 (페이지 헤더는 in-flow .db-topbar 가 대체).
-   네이티브 사이드바는 이제 좌측 nav 의 단일 소스라 숨기지 않는다. */
+/* Streamlit 상단 헤더 — 통째로 display:none 하면 사이드바 '펼치기' 버튼
+   (stExpandSidebarButton, stToolbar 안에 렌더)까지 숨겨져 한번 접으면 다시
+   못 펼치는 문제가 있었다(Streamlit 1.58 확인). 헤더는 flow 에서 빼고(absolute·
+   height:0) 투명·클릭통과로 죽이되, 툴바의 '노이즈'(메뉴/배포/상태/장식)만
+   숨기고 사이드바 펼치기 버튼은 좌상단 고정으로 항상 보이게 살린다. */
 body:has(.db-topbar) [data-testid="stHeader"] {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none !important;   /* 빈 헤더가 본문 클릭을 가리지 않게 */
+}
+body:has(.db-topbar) [data-testid="stToolbarActions"],
+body:has(.db-topbar) [data-testid="stMainMenu"],
+body:has(.db-topbar) [data-testid="stAppDeployButton"],
+body:has(.db-topbar) [data-testid="stStatusWidget"],
+body:has(.db-topbar) [data-testid="stDecoration"] {
   display: none !important;
+}
+/* 사이드바 펼치기 버튼 — 헤더가 무높이여도 좌상단에 떠서 클릭 가능해야 한다. */
+body:has(.db-topbar) [data-testid="stExpandSidebarButton"] {
+  position: fixed !important;
+  top: 8px !important;
+  left: 10px !important;
+  z-index: 1001 !important;
+  pointer-events: auto !important;
+  background: var(--surface-card, #fff) !important;
+  border: 1px solid var(--surface-divider, #E5E7EB) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
 }
 
 /* 본문 컨테이너 — 네이티브 사이드바가 좌측 폭을 자동 확보하고, 우측 채팅은
@@ -60,6 +90,49 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
     [data-testid="stLayoutWrapper"]:has([data-testid="stForm"]) {
   margin-top: auto;
   width: 100%;
+}
+
+/* 채팅 스크롤 영역 — 안내+추천+대화가 한 컨테이너에서 스크롤(위로 올리면 안내가
+   최상단에 남음). 입력 form 위 공간을 채우고 넘치면 자체 스크롤. */
+.side-chat-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: calc(100vh - 300px);
+  padding-right: 2px;
+}
+.side-chat-intro {
+  padding: 13px 14px;
+  background: var(--surface-soft, #F8FAFC);
+  border: 1px solid var(--surface-divider, #E5E7EB);
+  border-radius: 10px;
+  line-height: 1.5;
+}
+.side-chat-intro-h { font-weight: 700; font-size: 14px; color: var(--text-primary, #0F172A); margin-bottom: 4px; }
+.side-chat-intro-sub { font-size: 12.5px; color: var(--text-muted, #64748B); margin-bottom: 8px; }
+.side-chat-chips { display: flex; flex-wrap: wrap; }
+/* 추천 질문 chip — 클릭 시 입력창에 채워지는 링크 (?sola_prefill=) */
+.side-chat-chip {
+  display: inline-block;
+  padding: 6px 11px;
+  margin: 4px 4px 0 0;
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--surface-divider, #E5E7EB);
+  border-radius: 999px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--accent-primary, #2563EB);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+.side-chat-chip:hover { border-color: var(--accent-primary, #2563EB); background: var(--accent-ring, rgba(37,99,235,0.12)); }
+
+/* 사이드바를 접으면 좌상단 펼치기 버튼이 페이지 헤더 첫 글자를 가리지 않도록
+   페이지 헤더(.db-topbar)만 좌측으로 살짝 민다 (aria-expanded="false" = 접힘). */
+body:has(.db-topbar):has([data-testid="stSidebar"][aria-expanded="false"]) .db-topbar {
+  padding-left: 46px !important;
 }
 
 /* Streamlit 기본 토스트 위치 (in-flow 헤더라 상단 가림 없음) */
