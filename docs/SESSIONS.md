@@ -10,10 +10,11 @@
 **현재 상태**
 - **PR #90 (UI 전면 재정비 A~D) ✅ 머지** + **PR #91 (Phase E — enrich→매칭 가중) ✅ 머지** → `main 7debc32`. 결정-1(제안서·요약)·결정-2(enrich 가중) 모두 구현 완료.
 - **Phase 3 (데드 코드 삭제) ✅ 완료** — 모듈 4종(`ui/layout`·`ui/task_tree`·`sola/{insight,chat_ctx}`) + no-op 패널(`app_shell.render_app_side/sola`+토글 클러스터) + `chat_panel.render` + `_SOLA_TEMPLATE`/`sola_main.html` + `task_defs_db.upsert_many` + `persona_page._archive_stats` 삭제. 보존: `sola/{propose,summarize}`(부활)·`side_context`(orphan).
+- **Phase F (수집 관측성) ✅ 완료** — `store/run_log.py`(수집 런을 `data/logs/runs.jsonl` 영속) + cron·새로고침·보드 3경로 기록 + 데이터 관리 '수집 헬스' 1행. 조용한 수집 실패를 화면에서 감지.
 - 중복/stale PR 정리: #88(계획서, REFACTOR_PLAN 으로 대체) close · #49(TS 프로토타입) 는 디자인 채택 판단 대기.
 
 **바로 할 일 (택1)**
-1. **Phase F — 수집 관측성**: `scraping/run_daily` 에 구조화 로깅 + run_id + 소스별 성공/실패/건수 요약(`data/logs/`), 데이터 관리에 수집 헬스 노출.
+1. **수집 헬스 고도화**: 14일 sparkline 을 news_db 추정 대신 `run_log` 실제 런 기반으로 · 최근 N회 런 미니 타임라인 노출.
 2. **풀 다크 폴리시 / 의미기반 매칭(RAG)**: 차트 색·매트릭스/히트맵 SVG 인터랙션(img 변환으로 클릭 비활성) 정교화 · 임베딩 유사도 하이브리드 매칭.
 3. **PR #49(글래스모피즘 TS 프로토타입) 디자인 판단**: 채택(현 v2 셸에 반영)할지 close 할지 — 미머지 브랜치에만 존재.
 
@@ -23,7 +24,25 @@
 - 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 
-**검증 베이스라인**: `pytest -q` = **686 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+**검증 베이스라인**: `pytest -q` = **696 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+
+---
+
+## 2026-06-02 · Phase F — 수집 관측성 (런 로그 + 수집 헬스)
+
+**브랜치:** `claude/laughing-pascal-pCbik` (PR #92 머지 후 origin/main `e184f50` 으로 reset → 깨끗한 베이스)
+
+**맥락:** Phase 3(데드 청산) 머지 후 다음 단계. 매일 cron 수집이 **조용히 실패해도 알 길이 없던** 문제 해결.
+
+**한 일:**
+- `store/run_log.py` 신규 — `collect_batch` 의 `CollectionReport` 를 run_id·시각·트리거·소스별 건수·성공/실패·duration 으로 구조화해 `data/logs/runs.jsonl` 에 append. `load_runs`/`latest_run`/`entry_from_report`(순수). `config.DATA_ROOT` 호출 시점 참조로 conftest 격리 호환.
+- 수집 3경로에 `record_run` 연결 — cron(`scripts/daily_scrape.py`, duration 측정)·데이터관리 새로고침(manual)·보드 수집(board). 모두 try/except 로 격리(로깅이 수집을 못 깨게).
+- 데이터 관리 수집잡 최상단에 '수집 헬스' 1행(`_collect_health_li`) — 최근 런 성공/건수/시각/트리거/오류 소스. 런 없으면 빈 문자열(기존 무변경).
+- `tests/test_run_log.py`(+7)·`tests/test_collect_health.py`(+3).
+
+**검증:** pytest 686→**696 passed** · 금지 패턴 0 · py_compile OK.
+
+**다음:** 14일 sparkline 을 run_log 기반으로 · 풀 다크/RAG · PR #49 디자인 판단.
 
 ---
 

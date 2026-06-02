@@ -50,7 +50,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 |---|---|
 | 스크래퍼 셀렉터·HTTP | `scraping/<source>.py` (+ `scraping/http.py`) |
 | 본문 enrich / 키워드·요약 | `scraping/enrich.py` |
-| 일일 cron 수집 | `scraping/run_daily.py`, `scripts/daily_scrape.py` |
+| 일일 cron 수집 · 수집 런 로그 | `scraping/run_daily.py`, `scripts/daily_scrape.py` (+ `store/run_log.py`) |
 | 로드맵 엑셀 적재·스키마 | `roadmap/ingest.py`, `roadmap/schema.py` |
 | 작업 정의 CRUD (SQLite) | `store/task_defs_db.py`, `roadmap/{task_def_form,task_def_json}.py` |
 | 로드맵 조회 (SQLite→Parquet) | `roadmap/query.py`, `roadmap/sqlite_sync.py` |

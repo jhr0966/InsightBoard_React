@@ -85,6 +85,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         label = f"{src}" + (f" [{kw}]" if kw else "")
         print(f"[daily_scrape]   · {label}: {n}건", flush=True)
 
+    import time
+
+    _t0 = time.monotonic()
     report = collect_batch(
         keywords,
         sources=tuple(args.sources),
@@ -92,6 +95,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         on_step=_on_step,
         extra_feeds=extra_feeds or None,
     )
+    _duration = time.monotonic() - _t0
+
+    # 런 로그 기록 — 데이터 관리 '수집 헬스' 가 읽는다. 로깅 실패가 cron 을 깨면 안 됨.
+    try:
+        from store import run_log
+        entry = run_log.record_run(report, trigger="cron", duration_s=_duration)
+        print(f"[daily_scrape] 런 기록됨: {entry['run_id']} · ok={entry['ok']}", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_scrape] WARN: 런 로그 기록 실패: {exc}",
+              file=sys.stderr, flush=True)
 
     print("[daily_scrape] " + report.summary_lines()[0], flush=True)
     if report.errors:

@@ -239,6 +239,11 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
             else:
                 from scraping.run_daily import collect_batch
                 report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
+                try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
+                    from store import run_log
+                    run_log.record_run(report, trigger="board")
+                except Exception:  # noqa: BLE001
+                    pass
                 n_files = report.total_files
                 n_articles = report.total_articles
                 n_err = len(report.errors)

@@ -216,13 +216,61 @@ def _news_empty_html() -> str:
     </li>"""
 
 
+def _collect_health_li() -> str:
+    """최근 수집 런 헬스 — `run_log.latest_run()` 요약 1행 (dm-job li). 런 없으면 빈 문자열.
+
+    cron/수동/보드 어느 경로로 수집했든 마지막 런의 성공·건수·시각·트리거·오류 소스를
+    노출 → 매일 수집이 조용히 실패해도 데이터 관리 화면에서 바로 드러난다 (Phase F).
+    """
+    try:
+        from store import run_log
+        run = run_log.latest_run()
+    except Exception:  # noqa: BLE001
+        run = None
+    if not run:
+        return ""
+
+    ok = bool(run.get("ok"))
+    color = "#15803D" if ok else "#B45309"
+    badge = "정상" if ok else "오류"
+    ts = str(run.get("ts", ""))
+    when = ts.split("T")[1][:5] if "T" in ts else (ts[:16] or "—")
+    trig_map = {"cron": "자동(cron)", "manual": "수동 새로고침", "board": "보드 수집"}
+    trig = trig_map.get(str(run.get("trigger", "")), str(run.get("trigger", "")) or "—")
+    total = int(run.get("total_articles", 0) or 0)
+    files = int(run.get("total_files", 0) or 0)
+    dur = run.get("duration_s")
+    dur_txt = f" · {float(dur):.1f}s" if isinstance(dur, (int, float)) else ""
+    err_srcs = [str(s) for s in (run.get("error_sources") or []) if s]
+    err_html = (
+        f'<div class="dm-job-sub" style="color:#B45309;">⚠ 오류 소스: '
+        f'{_html.escape(", ".join(err_srcs))}</div>'
+        if err_srcs else ""
+    )
+    return (
+        f'<li class="dm-job" style="border:1px solid var(--surface-divider); '
+        f'background:var(--surface-soft);">'
+        f'<span class="dm-job-mark" style="background:{color};"></span>'
+        f'<div class="dm-job-body">'
+        f'<div class="dm-job-name">최근 수집 · '
+        f'<span style="color:{color}; font-weight:700;">{badge}</span> '
+        f'<span class="dm-job-meta">{total}건 / {files}파일{dur_txt}</span></div>'
+        f'<div class="dm-job-sub">{_html.escape(trig)} · {_html.escape(when)} 기준</div>'
+        f'{err_html}'
+        f'</div>'
+        f'<span class="dm-job-time">{_html.escape(when)}</span>'
+        f'</li>'
+    )
+
+
 @st.cache_data(ttl=60)
 def _ingest_jobs_html() -> str:
-    """오늘의 수집잡 — source 별 카운트 + 마지막 시각 → dm-job 행 빌드.
+    """오늘의 수집잡 — 최근 런 헬스 + source 별 카운트 → dm-job 행 빌드.
 
-    실제 ingest job tracker 가 없어 news_db 의 source 별 그룹 카운트로 대체.
-    상태는 모두 'done' 으로 표시 (실시간 진행 상태 트래킹은 후속 PR).
+    헬스 1행은 `run_log.latest_run()`(실제 수집 런 기록), 그 아래 행들은 news_db 의
+    source 별 그룹 카운트(오늘자). 실시간 진행 상태 트래킹은 후속.
     """
+    health = _collect_health_li()
     try:
         today_df = _news_db.load_all_today()
     except Exception:
@@ -231,7 +279,7 @@ def _ingest_jobs_html() -> str:
     if today_df is None or today_df.empty:
         # display:block 로 .dm-job 의 grid(5px 1fr auto) 를 무력화 — 안 그러면 빈 문구가
         # 5px 첫 칸에 갇혀 글자마다 줄바꿈됨. word-break:keep-all 로 단어 단위 줄바꿈.
-        return ('<li class="dm-job" style="display:block; word-break:keep-all; '
+        return health + ('<li class="dm-job" style="display:block; word-break:keep-all; '
                 'border:1px dashed var(--surface-divider); '
                 'padding:18px 14px; text-align:center; color: var(--text-muted); '
                 'font-size: 14px; line-height:1.6;">'
@@ -240,7 +288,7 @@ def _ingest_jobs_html() -> str:
                 '</li>')
 
     if "source" not in today_df.columns:
-        return ""
+        return health
 
     grouped = today_df.groupby("source").size().reset_index(name="count")
     grouped = grouped.sort_values("count", ascending=False).head(5)
@@ -276,7 +324,7 @@ def _ingest_jobs_html() -> str:
             f'<span class="dm-job-time">{_html.escape(last_time)}</span>'
             f'</li>'
         )
-    return "\n".join(parts)
+    return health + "\n".join(parts)
 
 
 @st.cache_data(ttl=60)
@@ -580,6 +628,11 @@ def _consume_refresh_if_any() -> bool:
             )
         else:
             report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
+            try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
+                from store import run_log
+                run_log.record_run(report, trigger="manual")
+            except Exception:  # noqa: BLE001
+                pass
             n_articles = report.total_articles
             n_files = report.total_files
             n_err = len(report.errors)
