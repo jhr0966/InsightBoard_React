@@ -1,27 +1,29 @@
-"""Phase C-4 — 보관함 정리: 컨트롤 스트립·하단 표/미리보기·칸반 가짜요소 제거."""
+"""보관함 정리: 정적 목업(컨트롤 스트립·하단 표/미리보기·칸반 가짜요소)이
+템플릿에서 **영구 제거**됐는지 검증.
+
+이전엔 런타임 `_strip_oa_mockups` 가 매 렌더마다 마커 슬라이스로 잘라냈으나
+(마커 드리프트 시 목업 재등장 위험·테스트 부재), 완성도 점검 D1/D2 후속으로
+목업을 `archive_main.html` 에서 직접 삭제하고 스트리퍼를 제거했다.
+"""
 from __future__ import annotations
 
 from ui import archive_v2
 
 
-def test_strip_removes_controls_and_bottom_keeps_kanban():
+def test_template_has_no_static_mockup():
     raw = archive_v2._ARCHIVE_TEMPLATE.read_text(encoding="utf-8")
-    out = archive_v2._strip_oa_mockups(raw)
-    assert "oa-controls" not in out        # 죽은 컨트롤 스트립
-    assert "oa-bottom" not in out          # 하단 표 + 미리보기 패널
-    assert "PRO-2026" not in out           # 가짜 산출물 ID
-    assert "전체 산출물" not in out         # 가짜 리스트 헤더
-    assert "묶음 내보내기" not in out       # 죽은 내보내기 버튼
-    # 칸반(실데이터)·셸·헤더 통계 보존
-    assert 'class="oa-board"' in out
-    assert "{{OA_CARDS_PENDING}}" in out
-    assert "{{OA_TOTAL}}" in out
-    assert 'class="oa-shell"' in out
+    for gone in ("oa-controls", "oa-bottom", "PRO-2026", "전체 산출물", "묶음 내보내기"):
+        assert gone not in raw, f"목업 잔존: {gone}"
+    # 실데이터 골격(칸반·헤더 통계·셸)은 보존
+    assert 'class="oa-board"' in raw
+    assert "{{OA_CARDS_PENDING}}" in raw
+    assert "{{OA_TOTAL}}" in raw
+    assert 'class="oa-shell"' in raw
 
 
-def test_strip_noop_when_blocks_absent():
-    html = '<div class="oa-shell"><section class="oa-board">{{OA_CARDS_PENDING}}</section></div>'
-    assert archive_v2._strip_oa_mockups(html) == html
+def test_runtime_stripper_removed():
+    """런타임 문자열-수술 스트리퍼 제거 — 템플릿에서 직접 삭제했으므로 불필요."""
+    assert not hasattr(archive_v2, "_strip_oa_mockups")
 
 
 def test_template_kanban_mockup_removed():
