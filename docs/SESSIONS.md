@@ -34,6 +34,20 @@
 
 ---
 
+## 2026-06-02 · 다크 모드 정교화 (2차) — 작업정의 뷰 · 콜아웃 배너
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #100 머지 후 origin/main `fefdb66` reset → 재사용).
+
+**진단(playwright 다크 — 인사이트/작업실/보관함 추가 확인):** 메인 5화면은 1차로 다크 정상. 남은 건 **light-island 컴포넌트** — ① `task_def_manage` 상세/카드 뷰 전부 고정 라이트(자체로는 읽히나 다크 페이지에 밝은 섬) ② LLM 미설정/브리프 콜아웃 배너(amber/blue 고정).
+
+**한 일:** `task_def_manage.py` 스타일 상수 전체 토큰화(라이트값 동일→라이트 무변경) · `_DARK_CSS` 에 `.app-llm-banner`/`.ws-brief-handoff` 다크 틴트 변형.
+
+**검증:** pytest **719 passed**(test_task_def_manage 포함) · 금지 0 · compile OK.
+
+**다음:** sparkline SVG 테마색(data-URI, 현재도 가독은 됨) · 임베딩 RAG(백엔드 시) · PR #49.
+
+---
+
 ## 2026-06-02 · 다크 모드 정교화 (1차) — 입력창·카드 배경
 
 **브랜치:** `claude/kind-volta-IWxix` (PR #99 머지 후 origin/main `715445d` reset → 재사용). 메뉴 "풀 다크" 1차.

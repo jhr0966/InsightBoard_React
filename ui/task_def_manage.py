@@ -31,36 +31,36 @@ from store import task_defs_db
 # 와 동일한 코드베이스 관행. 클래스도 유지해 screen CSS 동작 시 호환.
 _S_LIST = "margin:8px 24px 24px;display:grid;gap:8px;"
 _S_CARD = (
-    "display:grid;gap:4px;padding:12px 14px;background:#fff;"
-    "border:1px solid #E2E8F0;border-radius:10px;text-decoration:none;"
-    "color:#0F172A;"
+    "display:grid;gap:4px;padding:12px 14px;background:var(--surface-card);"
+    "border:1px solid var(--surface-divider);border-radius:10px;text-decoration:none;"
+    "color:var(--text-primary);"
 )
-_S_CARD_NAME = "font-size:15px;font-weight:700;color:#0F172A;"
-_S_CARD_META = "font-size:12.5px;color:#64748B;"
-_S_CARD_PID = "font-size:12px;color:#94A3B8;font-family:ui-monospace,monospace;"
+_S_CARD_NAME = "font-size:15px;font-weight:700;color:var(--text-primary);"
+_S_CARD_META = "font-size:12.5px;color:var(--text-secondary);"
+_S_CARD_PID = "font-size:12px;color:var(--text-muted);font-family:ui-monospace,monospace;"
 _S_DETAIL = (
-    "margin:8px 24px 24px;padding:18px 22px;background:#fff;"
-    "border:1px solid #E2E8F0;border-radius:12px;"
+    "margin:8px 24px 24px;padding:18px 22px;background:var(--surface-card);"
+    "border:1px solid var(--surface-divider);border-radius:12px;"
 )
-_S_DETAIL_NAME = "font-size:22px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;"
-_S_DETAIL_PID = "font-size:13px;color:#64748B;font-family:ui-monospace,monospace;"
+_S_DETAIL_NAME = "font-size:22px;font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;"
+_S_DETAIL_PID = "font-size:13px;color:var(--text-secondary);font-family:ui-monospace,monospace;"
 _S_TAG = (
-    "display:inline-block;padding:2px 8px;margin-right:6px;background:#F1F5F9;"
-    "border-radius:999px;font-size:12px;color:#475569;font-weight:600;"
+    "display:inline-block;padding:2px 8px;margin-right:6px;background:var(--surface-soft);"
+    "border-radius:999px;font-size:12px;color:var(--text-secondary);font-weight:600;"
 )
-_S_SECTION_H = "margin:14px 0 6px;font-size:14px;color:#0F172A;font-weight:700;"
-_S_UL = "margin:0;padding-left:20px;color:#334155;line-height:1.6;"
+_S_SECTION_H = "margin:14px 0 6px;font-size:14px;color:var(--text-primary);font-weight:700;"
+_S_UL = "margin:0;padding-left:20px;color:var(--text-secondary);line-height:1.6;"
 _S_ACTIONS = (
     "display:flex;gap:8px;margin-top:18px;padding-top:14px;"
-    "border-top:1px solid #E2E8F0;"
+    "border-top:1px solid var(--surface-divider);"
 )
 _S_BTN = "padding:7px 14px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;"
-_S_BTN_PRIMARY = _S_BTN + "background:#2563EB;color:#fff;"
-_S_BTN_SECONDARY = _S_BTN + "background:#F1F5F9;color:#0F172A;"
-_S_BTN_DANGER = _S_BTN + "background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;"
+_S_BTN_PRIMARY = _S_BTN + "background:var(--accent-primary);color:#fff;"
+_S_BTN_SECONDARY = _S_BTN + "background:var(--surface-soft);color:var(--text-primary);"
+_S_BTN_DANGER = _S_BTN + "background:rgba(185,28,28,0.12);color:var(--semantic-danger);border:1px solid rgba(185,28,28,0.30);"
 _S_HISTORY = (
-    "margin:18px 24px 24px;padding:14px 18px;background:#fff;"
-    "border:1px solid #E2E8F0;border-radius:12px;"
+    "margin:18px 24px 24px;padding:14px 18px;background:var(--surface-card);"
+    "border:1px solid var(--surface-divider);border-radius:12px;"
 )
 
 
@@ -148,7 +148,7 @@ def render_td_toast_if_needed() -> None:
         "ok":    ("#ECFDF5", "#A7F3D0", "#064E3B"),
         "warn":  ("#FFFBEB", "#FDE68A", "#92400E"),
         "error": ("#FEF2F2", "#FECACA", "#991B1B"),
-    }.get(kind, ("#F1F5F9", "#CBD5E1", "#0F172A"))
+    }.get(kind, ("#F1F5F9", "#CBD5E1", "var(--text-primary)"))
     safe = _html.escape(message)
     st.html(
         f'<div style="margin:0 24px 14px;padding:10px 14px;background:{bg};'
@@ -195,7 +195,7 @@ def _list_html(rows: list[dict], query: str = "") -> str:
         msg = "검색 결과가 없어요." if query else "등록된 작업 정의가 없어요."
         return (
             '<div class="td-empty" style="padding:32px;text-align:center;'
-            'color:#64748B;font-size:14px;">'
+            'color:var(--text-secondary);font-size:14px;">'
             f'{_html.escape(msg)}</div>'
         )
     parts = [f'<div class="td-list" style="{_S_LIST}">']
@@ -240,8 +240,8 @@ def _detail_html(row: dict, query: str = "") -> str:
         ]
         items = [
             '<div class="td-meta-row" style="font-size:13px;">'
-            f'<span class="td-meta-k" style="color:#64748B;font-weight:600;">{k}: </span>'
-            f'<span class="td-meta-v" style="color:#0F172A;">{_html.escape(str(v))}</span></div>'
+            f'<span class="td-meta-k" style="color:var(--text-secondary);font-weight:600;">{k}: </span>'
+            f'<span class="td-meta-v" style="color:var(--text-primary);">{_html.escape(str(v))}</span></div>'
             for k, v in rows if v
         ]
         if items:
@@ -260,7 +260,7 @@ def _detail_html(row: dict, query: str = "") -> str:
         )
     if desc:
         parts.append(
-            f'<div class="td-desc" style="margin:6px 0 12px;color:#334155;'
+            f'<div class="td-desc" style="margin:6px 0 12px;color:var(--text-secondary);'
             f'line-height:1.6;">{_html.escape(str(desc))}</div>'
         )
 
@@ -351,13 +351,13 @@ def _history_html(pid: str, limit: int = 20) -> str:
         who = h.get("changed_by") or ""
         parts.append(
             '<li style="display:flex;gap:10px;padding:4px 0;font-size:13px;'
-            'color:#334155;border-bottom:1px dashed #E2E8F0;">'
+            'color:var(--text-secondary);border-bottom:1px dashed var(--surface-divider);">'
             f'<span class="td-h-action" style="font-weight:700;min-width:60px;'
             f'color:#2563EB;">{_html.escape(action)}</span>'
-            f'<span class="td-h-when" style="color:#64748B;font-family:ui-monospace,monospace;'
+            f'<span class="td-h-when" style="color:var(--text-secondary);font-family:ui-monospace,monospace;'
             f'min-width:140px;">{_html.escape(when)}</span>'
-            + (f'<span class="td-h-src" style="color:#64748B;">{_html.escape(src)}</span>' if src else "")
-            + (f'<span class="td-h-who" style="color:#64748B;">{_html.escape(who)}</span>' if who else "")
+            + (f'<span class="td-h-src" style="color:var(--text-secondary);">{_html.escape(src)}</span>' if src else "")
+            + (f'<span class="td-h-who" style="color:var(--text-secondary);">{_html.escape(who)}</span>' if who else "")
             + '</li>'
         )
     parts.append("</ul></div>")
@@ -372,7 +372,7 @@ def _render_form(form: TaskDefForm, *, mode: str, query: str = "") -> None:
     title = "+ 새 작업 추가" if is_create else f"✏️ 수정 — {form.process_id}"
     st.html(
         f'<div style="margin:18px 24px 8px;font-size:18px;font-weight:800;'
-        f'color:#0F172A;letter-spacing:-0.01em;">{_html.escape(title)}</div>'
+        f'color:var(--text-primary);letter-spacing:-0.01em;">{_html.escape(title)}</div>'
     )
 
     # process_id (수정 시엔 readonly)
@@ -586,7 +586,7 @@ def render(query_params_getter) -> None:
         '<div class="td-head" style="display:flex;gap:12px;align-items:center;'
         'margin:18px 24px 8px;">'
         '<div class="td-head-title" style="flex:1;font-size:18px;font-weight:800;'
-        'color:#0F172A;">📋 작업 정의 관리</div>'
+        'color:var(--text-primary);">📋 작업 정의 관리</div>'
         f'<a class="td-btn td-btn-primary" style="{_S_BTN_PRIMARY}" '
         f'href="{_html.escape(add_href)}" target="_self">+ 새 작업 추가</a>'
         '</div>'
