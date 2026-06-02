@@ -1,6 +1,7 @@
 """뉴스 article dict 리스트 ↔ 일자별 Parquet 저장소."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -9,17 +10,33 @@ import pandas as pd
 from config import NEWS_DIR
 from store.paths import latest_parquet, news_dir_for
 
+logger = logging.getLogger(__name__)
+
 
 _ARTICLE_COLS = (
     "title", "press", "date", "published_at", "link",
     "summary", "keywords", "source", "query",
     # M4-α enrich 컬럼 — 본문/대표 이미지/LLM 키워드·요약/타임스탬프
     "content", "image_url", "keywords_llm", "summary_llm", "enriched_at",
+    # 단일 '수집 시각' — 저장 시점에 enriched_at→published_at 폴백으로 채운다
+    # (board 데일리 브리핑·정렬이 이 컬럼을 읽는다). 과거 parquet 엔 없어 빈값.
+    "collected_at",
 )
+
+_NULLISH = {"", "nan", "none", "nat", "<na>"}
 
 
 def _utc_stamp() -> str:
     return datetime.now(timezone.utc).strftime("%H%M%SZ")
+
+
+def _first_ts(row: dict) -> str:
+    """collected_at 정규화 — collected_at→enriched_at→published_at 중 첫 비어있지 않은 값."""
+    for key in ("collected_at", "enriched_at", "published_at"):
+        val = str(row.get(key, "") or "").strip()
+        if val.lower() not in _NULLISH:
+            return val
+    return ""
 
 
 def _to_df(articles: list[dict]) -> pd.DataFrame:
@@ -29,7 +46,9 @@ def _to_df(articles: list[dict]) -> pd.DataFrame:
     for col in _ARTICLE_COLS:
         if col not in df.columns:
             df[col] = ""
-    return df[list(_ARTICLE_COLS)].astype(str)
+    df["collected_at"] = df.apply(_first_ts, axis=1)
+    # fillna 로 None/NaN → "" (astype(str) 가 'nan'/'None' 문자열을 만들지 않게).
+    return df[list(_ARTICLE_COLS)].fillna("").astype(str)
 
 
 def save_articles(articles: list[dict], *, source: str) -> Path | None:
@@ -47,7 +66,9 @@ def _normalize_loaded(df: pd.DataFrame) -> pd.DataFrame:
     for col in _ARTICLE_COLS:
         if col not in df.columns:
             df[col] = ""
-    return df[list(_ARTICLE_COLS)]
+    # 과거 parquet 의 NaN 도 "" 로 — 다운스트림 `if image_url:` 가 'nan' 문자열에
+    # 속지 않게(C2). collected_at 없던 과거 데이터는 빈값으로 남는다(정렬 시 뒤로).
+    return df[list(_ARTICLE_COLS)].fillna("")
 
 
 def load_latest(source: str | None = None) -> pd.DataFrame:
@@ -91,7 +112,8 @@ def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.Data
         for p in sorted(day_dir.glob("*.parquet")):
             try:
                 frames.append(_normalize_loaded(pd.read_parquet(p)))
-            except Exception:  # noqa: BLE001 — 깨진 parquet 은 스킵
+            except Exception:  # noqa: BLE001 — 깨진 parquet 은 스킵(어느 파일인지 로깅)
+                logger.warning("깨진 parquet 스킵: %s", p, exc_info=True)
                 continue
     if not frames:
         return pd.DataFrame(columns=list(_ARTICLE_COLS))

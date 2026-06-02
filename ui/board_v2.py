@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import html as _html
 import json as _json
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -31,6 +32,8 @@ from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
 from ui import components as _components
 from ui.styles import inject_screen_css
+
+logger = logging.getLogger(__name__)
 
 
 # 탑 스토리: lead 1 + side 4 = 5
@@ -504,8 +507,8 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
                         "source": str(r.get("source", "") or ""),
                         "when": str(r.get("collected_at", "") or ""),
                     })
-        except Exception:
-            pass
+        except Exception:  # noqa: BLE001 — 데이터-경로: silent 실패가 잘못된 폴백을 부르므로 로깅
+            logger.warning("데일리 브리핑 매칭-뉴스 처리 실패", exc_info=True)
 
     # fallback: 매칭 없을 때 그냥 최근 3건
     if not items and news_df is not None and not news_df.empty:

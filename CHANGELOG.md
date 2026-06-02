@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Fixed (완성도 점검 후속 — 데이터-계약·관측성·목업·SQLite 견고성)
+시스템 완성도 점검에서 발견한 잠재 결함 4건을 순차 수정(719→**724 passed**).
+- **[C1/C2/D4] 데일리 브리핑 매칭경로 부활 + null 안전** (`store/news_db.py`) — `board_v2` 가 select 하던 `collected_at` 컬럼이 **어떤 스크래퍼·스토어도 안 쓰던** 컬럼이라 매번 KeyError→broad except 로 삼켜져 '아침 7분' 브리핑의 매칭-뉴스 분기가 **조용히 죽어** '최근 3건' 폴백만 돌던 것 → `collected_at` 을 `_ARTICLE_COLS` 에 추가하고 저장 시 `enriched_at→published_at` 폴백으로 채움(단일 '수집 시각'). `_to_df`/`_normalize_loaded` 에 `fillna("")` — null `image_url` 이 `astype(str)` 로 `"nan"` 문자열이 돼 `if image_url:` 가 truthy→깨진 `<img src=nan>` 나던 것 차단.
+- **[B4] 데이터-경로 silent 실패 로깅** — broad except 가 진짜 오류를 무로깅 삼켜 '무데이터'와 '코드 깨짐'을 구분 못 하던 문제. 데이터-계층 핵심 3곳에 `logging` 추가: `board_v2` 브리핑 매칭조인(C1 을 가렸던 자리)·`news_db` 깨진 parquet(파일명)·`enrich` 기사 파싱(URL). 122개 UI 렌더 except 는 best-effort 라 제외.
+- **[D1/D2] archive 정적 목업 영구 제거** (`assets/v2/screens/archive_main.html`) — 죽은 컨트롤 스트립 + '전체 산출물 45건' 표 + 'PRO-2026…₩1.4억' 가짜 제안서가 매 렌더 `_strip_oa_mockups` 문자열 슬라이스로만 가려져 마커 드리프트 시 재등장 위험이던 것 → 템플릿에서 직접 삭제(23KB→3.6KB) + 스트리퍼 제거. 테스트를 '템플릿에 목업 부재' 직접 검증으로 전환.
+- **[C3/C4] SQLite 견고성** — ① 로드맵 엑셀 업로드의 SQLite 동기화 실패가 `except: pass` 로 묻혀, Parquet 만 갱신되고 SQLite-우선 reader(`query.load_latest`)가 stale 데이터를 읽어 분기되던 위험 → `IngestResult.sqlite_error` + `logger.warning` 로 표면화. ② `task_defs_db` 가 `CREATE IF NOT EXISTS` 만이라 기존 `*.db` 에 새 컬럼이 반영 안 되던 것 → `_migrate`(`user_version` + 누락 컬럼 `ALTER ADD`) forward-마이그레이션.
+- 검증: pytest **724 passed**(+5: news_db 2·ingest 1·task_defs_db 2) · 금지 패턴 0 · py_compile OK.
+
 ### Fixed (UI 다크 모드 2차 — 작업 정의 상세 뷰 · 콜아웃 배너 일관성)
 - **작업 정의 상세/카드 뷰**(`ui/task_def_manage.py`)가 고정 라이트색(흰 카드 `#fff`·`#0F172A` 등)이라 다크에서 밝은 섬으로 떠 보이던 것 → 스타일 상수 전체를 토큰화(`var(--surface-card/soft)`·`var(--text-primary/secondary/muted)`·`var(--surface-divider)`·danger 는 `var(--semantic-danger)` 틴트). 토큰 라이트값이 기존 hex 와 동일/근접이라 **라이트 무변경**(테스트 78건 green).
 - **콜아웃 배너 다크 변형**(`_DARK_CSS`) — LLM 미설정 배너(`.app-llm-banner`, amber)·브리프 핸드오프(`.ws-brief-handoff`, blue)가 라이트 고정색이라 다크에서 밝게 떠 보이던 것 → 다크 틴트(반투명 amber/blue + 밝은 텍스트) 오버라이드.

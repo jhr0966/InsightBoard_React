@@ -55,3 +55,34 @@ def test_score_matches_finds_overlap():
     cutting = matches[matches["task"] == "절단"]
     assert not cutting.empty
     assert cutting.iloc[0]["link"] == "https://x.com/2"
+
+
+# ── 데이터-계약 (C1: collected_at · C2: null→"") ──────────────
+
+def test_collected_at_filled_from_enriched_then_published():
+    """collected_at 정규화 — enriched_at 우선, 없으면 published_at (D4/C1)."""
+    arts = [
+        {"title": "a", "link": "l1", "source": "naver",
+         "published_at": "2026-06-01T00:00:00", "enriched_at": "2026-06-02T09:00:00"},
+        {"title": "b", "link": "l2", "source": "naver",
+         "published_at": "2026-05-30T00:00:00"},  # enriched 없음 → published 폴백
+    ]
+    save_articles(arts, source="naver")
+    df = load_latest(source="naver")
+    assert "collected_at" in df.columns  # board 데일리 브리핑 select 컬럼 존재 (C1 회귀 방지)
+    by = df.set_index("link")
+    assert by.loc["l1", "collected_at"] == "2026-06-02T09:00:00"  # enriched 우선
+    assert by.loc["l2", "collected_at"] == "2026-05-30T00:00:00"  # published 폴백
+
+
+def test_missing_optional_field_is_empty_not_nan():
+    """일부 기사에만 image_url 이 있어 NaN 이 생겨도 'nan' 문자열이 아닌 '' (C2)."""
+    arts = [
+        {"title": "a", "link": "l1", "source": "naver", "image_url": "http://x/a.jpg"},
+        {"title": "b", "link": "l2", "source": "naver"},  # image_url 없음 → 혼합 NaN
+    ]
+    save_articles(arts, source="naver")
+    by = load_latest(source="naver").set_index("link")
+    assert by.loc["l1", "image_url"] == "http://x/a.jpg"
+    assert by.loc["l2", "image_url"] == ""          # NaN → "" (not "nan")
+    assert by.loc["l2", "summary"] == ""

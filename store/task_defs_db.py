@@ -74,8 +74,38 @@ CREATE INDEX IF NOT EXISTS idx_history_process ON task_def_history(process_id, c
 """
 
 
+# 현재 스키마 버전 — 컬럼 추가/변경 시 +1 하고 _TASK_DEFS_COLUMNS 갱신.
+_SCHEMA_VERSION = 1
+
+# task_defs 기대 컬럼(마이그레이션용). `CREATE TABLE IF NOT EXISTS` 만으론 기존
+# *.db 에 새 컬럼이 반영 안 되므로(C4), 누락 컬럼을 ALTER ADD 로 보강한다.
+# ALTER ADD COLUMN 은 NOT NULL+default 없으면 기존 행에서 실패하므로 전부 nullable 선언.
+_TASK_DEFS_COLUMNS: dict[str, str] = {
+    "process_id": "TEXT", "team": "TEXT", "dept": "TEXT", "division": "TEXT",
+    "process": "TEXT", "task": "TEXT", "json": "TEXT", "task_def_text": "TEXT",
+    "created_at": "TEXT", "updated_at": "TEXT", "created_by": "TEXT", "updated_by": "TEXT",
+}
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """경량 forward-마이그레이션 — 기존 DB 에 누락된 컬럼을 ADD + user_version 추적 (C4).
+
+    `CREATE TABLE IF NOT EXISTS` 는 이미 존재하는 테이블의 스키마 변경을 반영하지
+    못한다. 업그레이드 설치(구 *.db)에서 새 컬럼이 조용히 빠지는 것을 막기 위해
+    기대 컬럼 중 누락분을 ALTER 로 채운다(현재 v1 은 baseline 이라 보통 no-op).
+    """
+    ver = conn.execute("PRAGMA user_version").fetchone()[0]
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(task_defs)")}
+    for col, decl in _TASK_DEFS_COLUMNS.items():
+        if col not in existing:
+            conn.execute(f"ALTER TABLE task_defs ADD COLUMN {col} {decl}")
+    if ver < _SCHEMA_VERSION:
+        conn.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+
+
 def _ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_SCHEMA_SQL)
+    _migrate(conn)
     conn.commit()
 
 

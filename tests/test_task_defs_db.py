@@ -245,3 +245,26 @@ def test_history_returns_empty_for_unknown_process_id():
     assert task_defs_db.history("") == []
 
 
+
+
+# ── C4: 스키마 마이그레이션 (user_version + 누락 컬럼 ADD) ──────
+
+def test_connect_sets_user_version():
+    from store import task_defs_db
+    conn = task_defs_db._connect()
+    try:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == task_defs_db._SCHEMA_VERSION
+    finally:
+        conn.close()
+
+
+def test_migrate_adds_missing_columns_to_old_db():
+    import sqlite3
+    from store import task_defs_db
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE task_defs (process_id TEXT PRIMARY KEY, json TEXT)")  # 구 스키마(컬럼 부족)
+    task_defs_db._migrate(conn)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(task_defs)")}
+    assert {"team", "dept", "updated_by", "created_at"} <= cols      # 누락 컬럼 ADD 됨
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == task_defs_db._SCHEMA_VERSION
+    conn.close()
