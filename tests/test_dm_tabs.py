@@ -184,7 +184,7 @@ def test_render_main_hides_split_for_non_jobs_tab():
          patch.object(dm, "_load_tasks", return_value=pd.DataFrame()), \
          patch.object(dm, "_news_cards_html", return_value=""), \
          patch.object(dm, "_ingest_jobs_html", return_value=""), \
-         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": ""}):
+         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
         dm._render_main(stats, selected_tab="kw")
     assert captured
     html = captured[0]
@@ -200,7 +200,7 @@ def test_render_main_jobs_tab_no_hidden_wrapper():
     with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
          patch.object(dm, "_news_cards_html", return_value=""), \
          patch.object(dm, "_ingest_jobs_html", return_value=""), \
-         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": ""}):
+         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
         dm._render_main(stats, selected_tab="jobs")
     html = captured[0]
     # 숨김 wrapper 없음

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (수집 헬스 고도화 — 최근 N회 런 미니 타임라인, run_log 기반)
+- **`data_management_v2._run_timeline_html()` 신규** — 🧱 데이터 관리 '수집 히스토리' 카드에 최근 12회 수집 런을 미니 막대 타임라인으로 노출(왼쪽=과거, 오른쪽=최신). 각 셀 높이=기사량(상대), 색=성공(`--semantic-success`)/오류(`--semantic-warning`), hover=`트리거 · 날짜 시각 · N건 · 정상/오류`. 헤더 `N/M 정상`(성공률) + foot(가장 오래된 날짜 / 최신 시각). 이전엔 '수집 헬스' 1행이 **마지막 런만** 보여줘서 **연속 실패·런 누락 패턴**이 안 보이던 것을 보완. `run_log.load_runs()` 기반이라 "cron이 돌았지만 0건"(정상 셀, 높이 최소)과 "런 자체가 없음"(셀 부재)을 구분.
+- `_hist_html()` 반환 dict 에 `"runs"` 키 추가(기존 캐시 60초 + 새로고침 무효화 경로 재사용 → 별도 캐시 등록 불필요) · 템플릿 `data_management_main.html` `{{HIST_RUNS}}` placeholder · CSS `.dm-runs/.dm-run-track/.dm-run-cell/.dm-run-fill`(토큰 기반 — 다크 추종).
+- **볼륨 14일 sparkline 은 news_db 유지** — run_log 는 Phase F 부터라 14일 히스토리가 아직 없어 즉시 전환 시 빈 차트 회귀. '일별 수집량'은 news_db(`collected_at`)가 정확한 소스이고, 런 헬스(성공/cadence)는 새 타임라인이 담당하도록 역할 분리.
+- `tests/test_collect_health.py`(+4: empty·런당 셀·ok/오류 색·N 상한) · `tests/test_dm_tabs.py` mock 에 `"runs"` 키 반영. 검증: pytest 704→**708 passed** · 금지 패턴 0 · py_compile OK.
+
 ### Added (test — 네이버 검색 파서 회귀 테스트 + 라이브 수집 검증)
 - **`tests/test_naver.py` 신규(+6)** — 4개 수집 소스 중 유일하게 단위테스트가 없던 네이버 리스트 파서(`naver.search`)를 고정. 현행 네이버 결과 구조(`div.fds-news-item-list-tab > div`) 기반 합성 HTML 로 ① 제목·언론사·날짜·요약 추출, ② `n.news.naver.com` '네이버뉴스' 앵커 **링크 우선**(없으면 언론사 원문 폴백), ③ 썸네일 `data-src`>`src` 우선, ④ `max_results` 제한, ⑤ 빈 키워드 short-circuit, ⑥ HTTP 오류→`RuntimeError` 전파를 단언. `time.sleep` 은 patch 로 무력화.
 - **라이브 수집 재검증(요청)** — 네이버/구글 키워드검색·AI Times·오토메이션월드의 제목/본문전체/사진 수집을 라이브로 확인 시도. **이 원격 환경의 네트워크가 여전히 제한적 allowlist** 라(pypi.org 200, 그 외 news 도메인·google.com·example.com 전부 403 `Host not in allowlist`; WebFetch 동일 차단) 라이브 fetch 불가. 대신 파서 로직을 오프라인으로 검증: `fetch_article` 가 본문 전체(문단 결합·코드/저작권 노이즈 제거)+대표사진(og:image)을, 구글 RSS 파서가 제목/언론사/썸네일을 정확히 추출함을 확인(파서 회귀 45건 green). 라이브 점검은 환경 네트워크 정책=전체 도메인 허용 + **새 세션** 에서 재시도 필요.

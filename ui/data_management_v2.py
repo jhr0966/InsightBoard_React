@@ -263,6 +263,72 @@ def _collect_health_li() -> str:
     )
 
 
+_RUN_TIMELINE_N = 12  # 최근 N회 런
+
+
+def _run_when_parts(ts: str) -> tuple[str, str]:
+    """ISO ts → (MM-DD, HH:MM). 잘린 문자열도 안전하게."""
+    ts = str(ts or "")
+    date = ts[5:10] if len(ts) >= 10 else (ts or "—")
+    time = ts[11:16] if len(ts) >= 16 and ts[10:11] == "T" else ""
+    return date, time
+
+
+def _run_timeline_html() -> str:
+    """최근 N회 수집 런 미니 타임라인 — `run_log` 기반 (왼쪽=과거, 오른쪽=최신).
+
+    각 셀 높이=기사량(상대), 색=성공(초록)/오류(주황). 헬스 1행이 '마지막 런'만
+    보여주는 것을 보완해 런 cadence·연속 실패 패턴을 한눈에 드러낸다 (Phase F 고도화).
+    런 기록이 없으면 빈 문자열(기존 동작 무변경).
+    """
+    try:
+        from store import run_log
+        runs = run_log.load_runs(limit=_RUN_TIMELINE_N)
+    except Exception:  # noqa: BLE001
+        runs = []
+    if not runs:
+        return ""
+
+    runs = list(reversed(runs))  # load_runs 는 최신 우선 → 시간순(과거→최신)으로
+    counts = [int(r.get("total_articles", 0) or 0) for r in runs]
+    max_val = max(counts) if any(counts) else 1
+    ok_count = sum(1 for r in runs if r.get("ok"))
+    trig_map = {"cron": "자동", "manual": "수동", "board": "보드"}
+
+    cells: list[str] = []
+    for r in runs:
+        cnt = int(r.get("total_articles", 0) or 0)
+        ok = bool(r.get("ok"))
+        color = "var(--semantic-success)" if ok else "var(--semantic-warning)"
+        # 막대 높이 %: 기사량 비례, 0건이어도 '런은 있었음'을 보이도록 최소 8%.
+        pct = max(round(cnt / max_val * 100), 8) if cnt > 0 else 8
+        date, time = _run_when_parts(r.get("ts", ""))
+        trig = trig_map.get(str(r.get("trigger", "")), str(r.get("trigger", "")) or "—")
+        title = f"{trig} · {date} {time} · {cnt}건 · {'정상' if ok else '오류'}"
+        cells.append(
+            f'<span class="dm-run-cell" title="{_html.escape(title)}">'
+            f'<span class="dm-run-fill" style="height:{pct}%; background:{color};"></span>'
+            f'</span>'
+        )
+
+    old_date, _ = _run_when_parts(runs[0].get("ts", ""))
+    new_date, new_time = _run_when_parts(runs[-1].get("ts", ""))
+    latest_label = f"최신 {new_date} {new_time}".strip()
+    return (
+        '<div class="dm-runs">'
+        '<div class="dm-hist-head">'
+        '<span class="dm-hist-t">최근 수집 런</span>'
+        f'<span class="dm-hist-meta">{ok_count}/{len(runs)} 정상</span>'
+        '</div>'
+        f'<div class="dm-run-track">{"".join(cells)}</div>'
+        '<div class="dm-hist-x">'
+        f'<span>{_html.escape(old_date)}</span>'
+        f'<span>{_html.escape(latest_label)}</span>'
+        '</div>'
+        '</div>'
+    )
+
+
 @st.cache_data(ttl=60)
 def _ingest_jobs_html() -> str:
     """오늘의 수집잡 — 최근 런 헬스 + source 별 카운트 → dm-job 행 빌드.
@@ -407,7 +473,7 @@ def _hist_html() -> dict[str, str]:
         f'<span>오늘 {today_count}</span>'
         '</div>'
     )
-    return {"head": head_html, "svg": svg_img, "foot": foot_html}
+    return {"head": head_html, "svg": svg_img, "foot": foot_html, "runs": _run_timeline_html()}
 
 
 @st.cache_data(ttl=60)
@@ -1454,6 +1520,7 @@ def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
         .replace("{{HIST_HEAD}}", hist["head"])
         .replace("{{HIST_SVG}}", hist["svg"])
         .replace("{{HIST_X}}", hist["foot"])
+        .replace("{{HIST_RUNS}}", hist["runs"])
         .replace(
             "{{DM_TABS}}",
             _dm_groups_html(_dm_group_of(selected_tab))

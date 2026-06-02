@@ -15,7 +15,7 @@
 - 중복/stale PR 정리: #88(계획서, REFACTOR_PLAN 으로 대체) close · #49(TS 프로토타입) 는 디자인 채택 판단 대기.
 
 **바로 할 일 (택1)**
-1. **수집 헬스 고도화**: 14일 sparkline 을 news_db 추정 대신 `run_log` 실제 런 기반으로 · 최근 N회 런 미니 타임라인 노출.
+1. ✅(부분) **수집 헬스 고도화**: '최근 N회 런 미니 타임라인'(`_run_timeline_html`, run_log 기반) 완료(PR #97). 남은 선택지 — 14일 **볼륨** sparkline 은 news_db 유지(run_log 14일 히스토리 부재로 즉시 전환 시 빈 차트). run_log 가 14일 쌓이면 일별 '런 성공/실패' 오버레이를 sparkline 에 추가 검토.
 2. **풀 다크 폴리시 / 의미기반 매칭(RAG)**: 차트 색·매트릭스/히트맵 SVG 인터랙션(img 변환으로 클릭 비활성) 정교화 · 임베딩 유사도 하이브리드 매칭.
 3. **PR #49(글래스모피즘 TS 프로토타입) 디자인 판단**: 채택(현 v2 셸에 반영)할지 close 할지 — 미머지 브랜치에만 존재.
 
@@ -25,9 +25,27 @@
 - 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 
-**검증 베이스라인**: `pytest -q` = **704 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+**검증 베이스라인**: `pytest -q` = **708 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
 
 **⚠ 라이브 수집은 여전히 막힘**: 사용자가 "전체 도메인 허용 + 새 세션"을 했다 했으나, 이 컨테이너의 네트워크는 아직 **제한적 allowlist**(pypi.org만 200, news 도메인·google.com·example.com 전부 403 `Host not in allowlist`, WebFetch 동일). 네트워크 정책은 **환경 생성 시점에 고정**되므로 이 세션은 정책 변경 전 환경. → 정책=전체 허용으로 설정된 환경에서 **진짜 새 세션**을 열어야 라이브 검증 가능. 라이브 시 허용 필요 호스트: `search.naver.com`·`www.naver.com`·`n.news.naver.com`·`news.google.com`·구글 RSS 가 링크하는 **임의 언론사 도메인**(그래서 '전체 허용'이 맞음)·`www.aitimes.com`·`automation-world.co.kr`.
+
+---
+
+## 2026-06-02 · 수집 헬스 고도화 — 최근 N회 런 미니 타임라인 (PR #97)
+
+**브랜치:** `claude/kind-volta-IWxix` (harness 지정 단일 브랜치 — PR #97 에 누적). 중복 PR #95·#96(verify CLI) close.
+
+**맥락:** '수집 헬스' 1행이 마지막 런만 보여줘 연속 실패·런 누락 패턴이 안 보이던 한계 보완.
+
+**한 일:**
+- `data_management_v2._run_timeline_html()` 신규 — 최근 12회 런을 미니 막대 타임라인으로(높이=기사량, 색=ok 초록/오류 주황, hover=트리거·시각·건수·상태). `run_log.load_runs()` 기반 → "cron 돌았지만 0건"(최소 높이 셀) vs "런 없음"(셀 부재) 구분. div/span + 시맨틱 토큰(다크 추종), SVG 아님.
+- `_hist_html()` dict 에 `"runs"` 키 합류(기존 60초 캐시 + 새로고침 무효화 재사용) · 템플릿 `{{HIST_RUNS}}` · CSS `.dm-runs/.dm-run-*`.
+- **볼륨 14일 sparkline 은 news_db 유지** — run_log 14일 히스토리 부재로 즉시 전환 시 빈 차트 회귀. 볼륨=news_db, 런 헬스=새 타임라인으로 역할 분리.
+- `tests/test_collect_health.py`(+4) · `test_dm_tabs.py` mock 에 `"runs"` 반영.
+
+**검증:** pytest 704→**708 passed** · 금지 패턴 0 · py_compile OK · 스모크(prepare_screen_html 통과·셀 보존) 확인.
+
+**다음:** run_log 14일 축적되면 sparkline 에 일별 런 성공/실패 오버레이 · 풀 다크/RAG · PR #49 디자인 판단.
 
 ---
 
