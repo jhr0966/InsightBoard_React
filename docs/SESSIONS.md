@@ -23,6 +23,7 @@
 - `st.html` 은 **인라인 `<svg>` 를 sanitize 로 제거** + `data:image/svg+xml;utf8,<svg…#…>` 는 `#`/공백이 잘려 깨짐 → 화면 템플릿은 `ui/components.prepare_screen_html()` 통과 필수(아이콘 인코딩 + 인라인 svg→data-URI img). 각 화면 메인 렌더·`render_topbar` 가 이미 적용.
 - **Streamlit 네이티브 위젯은 `.streamlit/config.toml`(정적 라이트) 종속** → 런타임 다크는 토큰 + 위젯 오버라이드(`styles.inject_user_prefs` `_DARK_CSS`)로 처리. 새 인라인 색은 반드시 `var(--token)` 사용(고정 hex 금지 — 다크 깨짐).
 - 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
+- **다크에서 입력창 흰색 = baseweb 래퍼** — `_DARK_CSS` 가 안쪽 `input`/`textarea` 만 칠하면 Streamlit 1.58 의 `[data-baseweb="base-input"]` 래퍼가 흰색으로 남는다. 래퍼(`base-input`/`input`/`textarea`)까지 다크화해야 함(이미 반영). 카드 흰색은 화면 CSS 의 고정 `#FFFFFF`/`#FAFBFD` 그라데이션 → `var(--surface-card)`/`var(--surface-soft)` 토큰화(라이트값 동일이라 라이트 무변경).
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.3,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 - **사이드바 헤더 절대 `stHeader{display:none}` 금지** — Streamlit 1.58 은 사이드바 '펼치기' 버튼(`stExpandSidebarButton`)을 헤더 toolbar 안에 렌더하므로 헤더를 통째 숨기면 접은 뒤 못 펼친다. `streamlit-overrides.css` 처럼 헤더는 absolute·height:0·투명·pointer-events:none 로 죽이고 toolbar 노이즈(`stToolbarActions`/`stMainMenu`/`stAppDeployButton`/`stStatusWidget`/`stDecoration`)만 숨기고 펼치기 버튼은 좌상단 고정으로 살린다. 좁은 폭(<768px)은 Streamlit 이 사이드바를 오버레이로 띄움(접기로 dismiss).
 - **로컬 라이브 UI 검증 가능**: `pip install playwright` + 사전설치 `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` → `python -m streamlit run app.py --server.port 8765 --server.headless true` 띄우고 playwright 로 DOM/스크린샷 검사. ⚠ Python 모듈 변경은 fileWatcher 꺼져 있으면 서버 재시작 필요(CSS 는 매 run 파일을 읽어 즉시 반영).
@@ -30,6 +31,22 @@
 **검증 베이스라인**: `pytest -q` = **719 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
 
 **⚠ 라이브 수집은 여전히 막힘**: 사용자가 "전체 도메인 허용 + 새 세션"을 했다 했으나, 이 컨테이너의 네트워크는 아직 **제한적 allowlist**(pypi.org만 200, news 도메인·google.com·example.com 전부 403 `Host not in allowlist`, WebFetch 동일). 네트워크 정책은 **환경 생성 시점에 고정**되므로 이 세션은 정책 변경 전 환경. → 정책=전체 허용으로 설정된 환경에서 **진짜 새 세션**을 열어야 라이브 검증 가능. 라이브 시 허용 필요 호스트: `search.naver.com`·`www.naver.com`·`n.news.naver.com`·`news.google.com`·구글 RSS 가 링크하는 **임의 언론사 도메인**(그래서 '전체 허용'이 맞음)·`www.aitimes.com`·`automation-world.co.kr`.
+
+---
+
+## 2026-06-02 · 다크 모드 정교화 (1차) — 입력창·카드 배경
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #99 머지 후 origin/main `715445d` reset → 재사용). 메뉴 "풀 다크" 1차.
+
+**진단(playwright 다크 캡처):** 대부분 다크 OK 였으나 ① **입력창(검색·채팅)이 흰색** — textarea 자체는 다크인데 baseweb 래퍼 `base-input` 가 `rgb(255,255,255)` ② **보드 인사+KPI 카드(.db-greet) 등 흰 카드** — 화면 CSS 고정 `#FFFFFF` 그라데이션.
+
+**한 일:**
+- `styles._DARK_CSS`: baseweb 입력 래퍼(`base-input`/`input`/`textarea`) 다크화 추가.
+- 화면 CSS 8곳(board·card·archive·sola) 흰 카드 배경 → `var(--surface-card)`/`var(--surface-soft)`/`var(--surface-inset-bg)` 토큰화. 라이트값 동일이라 라이트 무변경.
+
+**검증:** 다크 캡처(입력창·카드 다크 확인) + 라이트 캡처(회귀 없음) + textarea 래퍼 `255→15,23,42` 측정. pytest **719 passed** · 금지 0. ⚠ `_DARK_CSS`(Python 상수) 변경은 서버 재시작 필요(모듈 캐시), CSS 파일은 리로드로 즉시 반영.
+
+**다음:** 잔여 인라인 hex(상태 배지·텍스트색)·sparkline SVG 테마색 · PR #49.
 
 ---
 

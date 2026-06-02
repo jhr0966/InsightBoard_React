@@ -155,7 +155,7 @@ body:not(.app-sola-collapsed) .app-sola > .app-sola-rail { display: none; }
   justify-content: space-between;
   padding: 13px 14px;
   border-bottom: 1px solid var(--surface-divider);
-  background: linear-gradient(180deg, #FAFBFD, #FFFFFF);
+  background: linear-gradient(180deg, var(--surface-soft), var(--surface-card));
   flex-shrink: 0;
 }
 .app-sola-hdr-l {
@@ -390,7 +390,7 @@ body:not(.app-sola-collapsed) .app-sola > .app-sola-rail { display: none; }
 /* ── Composer ── */
 .app-sola-comp {
   padding: 12px 12px 12px;
-  background: linear-gradient(180deg, #FAFBFD, #FFFFFF);
+  background: linear-gradient(180deg, var(--surface-soft), var(--surface-card));
   flex-shrink: 0;
 }
 .app-sola-comp-pin {

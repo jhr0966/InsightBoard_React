@@ -64,6 +64,11 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker){ background
 body:has(.db-topbar) [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"]{ background:#1E293B !important; border-color:#334155 !important; }
 body:has(.db-topbar) [data-testid="stTextInput"] input,
 body:has(.db-topbar) [data-testid="stTextArea"] textarea{ background:#0F172A !important; color:#F1F5F9 !important; border-color:#334155 !important; }
+/* baseweb 입력 래퍼(base-input/input/textarea)가 흰색으로 남아 입력창이 다크에서
+   하얗게 보이던 문제 — 래퍼까지 다크화 (Streamlit 1.58 DOM). */
+body:has(.db-topbar) [data-baseweb="base-input"],
+body:has(.db-topbar) [data-baseweb="input"],
+body:has(.db-topbar) [data-baseweb="textarea"]{ background:#0F172A !important; border-color:#334155 !important; }
 body:has(.db-topbar) [data-baseweb="select"] > div{ background:#0F172A !important; border-color:#334155 !important; color:#F1F5F9 !important; }
 body:has(.db-topbar) button[kind="secondary"]{ background:#1E293B !important; color:#F1F5F9 !important; border-color:#334155 !important; }
 body:has(.db-topbar) [data-testid="stMain"] label,

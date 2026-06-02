@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (UI 다크 모드 — 입력창·카드 배경이 다크에서 하얗게 남던 문제)
+- **입력창(검색·채팅 textarea·select) 흰색** — `_DARK_CSS` 가 안쪽 `input`/`textarea` 만 다크화하고 baseweb 래퍼는 안 칠해, Streamlit 1.58 의 `[data-baseweb="base-input"]` 래퍼가 흰색으로 남아 다크에서 입력창이 하얗게 보였다. 래퍼(`base-input`/`input`/`textarea`)까지 다크화. (playwright 로 textarea 래퍼 `rgb(255,255,255)→rgb(15,23,42)` 확인)
+- **카드 배경 흰색** — 화면 CSS 8곳(`board.css`·`card.css`·`archive.css`·`sola.css`)이 카드 배경에 고정 `#FFFFFF`/`#FAFBFD` 그라데이션을 써서 다크에서 흰 카드로 남았다(특히 보드 인사+KPI `.db-greet`). `var(--surface-card)`/`var(--surface-soft)`/`var(--surface-inset-bg)` 로 토큰화 → 다크 추종. **라이트 토큰값이 원래 hex 와 동일**(`--surface-card`=#FFFFFF, `--surface-soft`=#F5F7FB)이라 라이트 모드 무변경(playwright 회귀 확인).
+- 검증: 다크/라이트 보드 스크린샷 대조 — 다크에서 입력창·카드 모두 다크, 라이트 무변경. pytest **719 passed** · 금지 패턴 0 · py_compile OK.
+- 후속: 잔여 인라인 hex(상태 배지·일부 텍스트색)·sparkline SVG(data-URI 라 CSS var 불가, 테마별 색 생성 필요)는 다음 패스.
+
 ### Added (match — TF-IDF 코사인 의미유사도 하이브리드 매칭)
 - `store/match.score_matches` 에 `semantic_weight` 파라미터 추가(기본 0 = 순수 토큰 매칭, **하위호환**). >0 이면 작업·뉴스 문서를 **TF-IDF 벡터화**해 코사인 유사도를 `weight*cosine` 만큼 점수에 가산. 토큰 '교집합'은 같은 단어가 정확히 겹쳐야 점수가 났지만, TF-IDF 는 **흔한 단어는 낮게·희소한 핵심어는 높게** 가중 + 길이 정규화 → 표현이 달라도 주제가 가까운 매칭을 끌어올린다. `_build_idf`/`_tfidf_vec`/`_cosine`(순수, 네트워크·모델다운로드 불필요).
 - **호출처 활성화** — 보드 탑스토리·인사이트 공정매핑·SOLA 작업실·자동화 기회 매트릭스(`opportunity`)가 `semantic_weight=DEFAULT_SEMANTIC_WEIGHT`(=4.0)로 호출. `_SEM_MIN_COS`(0.05) 미만 코사인은 잡음으로 무시(공유 토큰 0 → 매칭 안 됨).
