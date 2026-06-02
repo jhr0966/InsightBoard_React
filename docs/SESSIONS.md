@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-02 · Phase E — enrich LLM 키워드 매칭 가중 (PR #90 머지 후 신규)
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 스쿼시 머지 후 origin/main `115b176` 으로 reset → 깨끗한 베이스에서 Phase E)
+
+**맥락:** PR #90(UI 전면 재정비 A~D) 스쿼시 머지 완료 → 프로덕션 배포. 후속으로 결정-2(A) Phase E.
+
+**한 일:**
+- `store/match.score_matches` — enrich `keywords_llm` 가중 보너스(고유 매칭 1건당 `_LLM_KW_WEIGHT`=2.0). base 매칭 보존, enrich 안 된 기사 무영향(후방호환), LLM 키워드-only 매칭도 발견.
+- `tests/test_match_enrich_weight.py` (+5).
+
+**검증:** pytest 702/702 · 금지 패턴 0 · py_compile OK.
+
+**다음:** Phase F(수집 관측성/로깅) · 풀 다크 폴리시 · 또는 의미기반 매칭(임베딩, 블루프린트 Phase B).
+
+---
+
 ## 2026-06-01 · Phase D — 설정 메뉴(테마·글자 크기) · 6대 요구 완결
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)

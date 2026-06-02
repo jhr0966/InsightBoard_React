@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Changed (Phase E — enrich LLM 키워드 매칭 가중, 결정-2 A)
+- `store/match.score_matches` — enrich 된 기사의 `keywords_llm`(LLM 추출 핵심 키워드)를 매칭에 반영. 작업 토큰과 겹치는 고유 LLM 키워드 1건당 `_LLM_KW_WEIGHT`(=2.0) 보너스를 base 점수(title/summary/keywords 토큰 중첩)에 더한다 → **enrich 된 기사가 동일 작업에 대해 더 높은 점수**. base 매칭이 없어도 LLM 키워드만으로 매칭되면 발견.
+- 후방호환: `keywords_llm` 컬럼이 없거나 비어있으면 보너스 0 → 기존 점수와 동일.
+- `tests/test_match_enrich_weight.py` (+5: 가중 부스트·후방호환·LLM-only 매칭·빈 값 무보너스·상수). 검증: pytest 702/702 · 금지 패턴 0.
+
 ### Added (UI Phase D — 설정 메뉴: 테마 + 글자 크기) — 사용자 6대 UI/UX 요구 완결
 - `store/ui_prefs.py` 신규 — 표시 설정(theme·font)을 `data/ui_prefs.json` 에 영구화.
 - `ui/styles.inject_user_prefs()` — 저장된 테마/글자 크기를 `inject_global_styles` 직후 주입(베이스 토큰 이후 → `:root` 오버라이드 우선). `app.py` 에서 호출.
