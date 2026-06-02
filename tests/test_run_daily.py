@@ -24,7 +24,7 @@ def _fake_google_search(keyword: str, max_results: int = 10, **_) -> list[dict]:
     ]
 
 
-def _fake_tech_search_all(max_results_per_site: int = 10) -> list[dict]:
+def _fake_tech_search_all(max_results_per_site: int = 10, **_) -> list[dict]:
     return [
         {"title": "AI Times A", "link": "https://aitimes.example/a", "press": "AI Times",
          "date": "2026-05-13", "summary": ""},
@@ -75,7 +75,7 @@ def test_collect_batch_errors_isolated(monkeypatch):
 
     monkeypatch.setattr(run_daily.naver_news, "search", _boom)
     monkeypatch.setattr(run_daily.google_news, "search", _fake_google_search)
-    monkeypatch.setattr(run_daily.tech_sites, "search_all", lambda max_results_per_site=10: [])
+    monkeypatch.setattr(run_daily.tech_sites, "search_all", lambda max_results_per_site=10, **_: [])
 
     report = run_daily.collect_batch(
         ["로봇"], sources=("naver", "google", "tech"), max_results=3

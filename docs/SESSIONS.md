@@ -11,6 +11,7 @@
 - **PR #90 (UI 전면 재정비 A~D) ✅ 머지** + **PR #91 (Phase E — enrich→매칭 가중) ✅ 머지** → `main 7debc32`. 결정-1(제안서·요약)·결정-2(enrich 가중) 모두 구현 완료.
 - **Phase 3 (데드 코드 삭제) ✅ 완료** — 모듈 4종(`ui/layout`·`ui/task_tree`·`sola/{insight,chat_ctx}`) + no-op 패널(`app_shell.render_app_side/sola`+토글 클러스터) + `chat_panel.render` + `_SOLA_TEMPLATE`/`sola_main.html` + `task_defs_db.upsert_many` + `persona_page._archive_stats` 삭제. 보존: `sola/{propose,summarize}`(부활)·`side_context`(orphan).
 - **Phase F (수집 관측성) ✅ 완료** — `store/run_log.py`(수집 런을 `data/logs/runs.jsonl` 영속) + cron·새로고침·보드 3경로 기록 + 데이터 관리 '수집 헬스' 1행. 조용한 수집 실패를 화면에서 감지.
+- **스크래퍼 라이브 검증**: 이 원격 환경은 네트워크 allowlist 프록시라 외부 수집 차단("Host not in allowlist" 403 — example.com 포함). 파싱 로직은 fixture 42건으로 정상 확인. 검증 중 tech 사이트가 HTTP 오류를 조용히 0건 처리하던 빈틈 발견·보강(`raise_for_status`+`on_error` → 수집 헬스 표면화).
 - 중복/stale PR 정리: #88(계획서, REFACTOR_PLAN 으로 대체) close · #49(TS 프로토타입) 는 디자인 채택 판단 대기.
 
 **바로 할 일 (택1)**
@@ -24,7 +25,7 @@
 - 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 
-**검증 베이스라인**: `pytest -q` = **696 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+**검증 베이스라인**: `pytest -q` = **698 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
 
 ---
 
