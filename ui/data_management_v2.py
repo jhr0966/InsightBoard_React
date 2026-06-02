@@ -485,13 +485,6 @@ def render() -> None:
         fresh_kind="fresh",
     )
 
-    # ── 2) 좌측 .app-side ──
-    app_shell.render_app_side(
-        active_area="🧱 데이터 관리",
-        persona=persona,
-        stats=stats,
-    )
-
     # 업로드/액션 송신 처리 (위젯 인스턴스화 이전, 최상단)
     _consume_task_def_upload_if_any()
     _consume_src_action_if_any()
@@ -524,25 +517,7 @@ def render() -> None:
     elif selected_tab == "src":
         _render_src_add_form()
 
-    # ── 4) 우측 .app-sola ──
-    sources_n = dm_stats["active_sources"]
-    today_n = dm_stats["today_count"]
-    app_shell.render_app_sola(
-        context_label="데이터 관리",
-        context_sub=f"{sources_n}개 출처 · DB {dm_stats['total_chunks']} · 오늘 {today_n}건",
-        quick_prompts=[
-            ("01", "<b>Google RSS</b> 가 자주 느려지는 이유는?"),
-            ("02", "<b>네이버 기술</b> 셀렉터 오류 자동 복구가 가능할까?"),
-            ("03", "키워드 <b>'협동 로봇'</b> 추가하면 매칭이 늘어날까?"),
-        ],
-        last_q=f"오늘 수집된 {today_n}건 중 우리 부서와 가장 관련 깊은 건?",
-        last_a_html=(
-            "도장 카테고리가 가장 가까워요. <b>현대중공업 AI 비전 검사 PoC</b>가 "
-            "직결돼요 — 4개월 PoC 결과 + 부스 #3·#5 적용 사례까지 한 번에 정리돼 있어요."
-            "<span class='muted'>방금 · 컨텍스트: 오늘 수집</span>"
-        ),
-        last_time="방금",
-    )
+    # 수집 잡·뉴스 라이브러리·작업 정의 등은 위 _render_main / 탭 위젯이 담당.
 
 
 def _refresh_cta_html() -> str:

@@ -90,15 +90,3 @@ def test_consume_send_delegates_to_sola_workshop():
     with patch("ui.sola_workshop_v2._consume_send_if_any") as mock_consume:
         chat_panel.consume_send_if_any(persona)
         mock_consume.assert_called_once_with(persona)
-
-
-# ── render — SOLA workshop 에선 미렌더 ───────────────────────
-
-def test_render_returns_early_for_sola_workshop_area():
-    """SOLA workshop area 는 자체 풀스크린 채팅이 있으므로 글로벌 패널 미렌더."""
-    persona = Persona()
-    with patch("streamlit.divider") as mock_div, \
-         patch("streamlit.markdown"), \
-         patch("streamlit.chat_input"):
-        chat_panel.render(persona, area_key="🤖 SOLA 작업실")
-    mock_div.assert_not_called()

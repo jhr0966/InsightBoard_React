@@ -261,7 +261,6 @@ Streamlit Cloud 가 `main` 트래킹. 작업 브랜치 → PR → 머지 → 즉
 - ✅ **삭제됨 (Phase 3)**: `ui/layout.py` · `ui/task_tree.py` · `sola/insight.py` · `sola/chat_ctx.py` (테스트 동반 정리).
 - `sola/propose.py` · `sola/summarize.py` — **부활**(결정-1 A): SOLA 작업실 `_consume_generate_proposal_if_any` / `_consume_summarize_if_any` 에서 production 호출.
 - `sola/side_context.py` — `ui/layout.py` 삭제로 현재 호출 0(orphan)이나, 사이드 채팅 컨텍스트 일원화 연결 대상으로 보존.
-- `ui/app_shell.render_app_side` / `render_app_sola` — no-op 인데 5개 화면이 여전히 호출 (호출부 제거는 후속 PR).
-- `ui/chat_panel.render` (구 bottom expander) — app.py 미사용. `store/task_defs_db.upsert_many` — 호출처 0 (데드 재판정 대상).
+- ✅ **삭제됨 (Phase 3 잔여)**: `app_shell.render_app_side`/`render_app_sola`(no-op)·패널 토글 클러스터·`chat_panel.render`(구 bottom expander)·`sola_workshop_v2._SOLA_TEMPLATE`+`assets/v2/screens/sola_main.html`·`store/task_defs_db.upsert_many`(production 미사용 batch helper).
 
 전수 점검 결과·결정 사항·단계적 PR 계획: [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md).

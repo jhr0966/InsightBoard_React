@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Removed (Phase 3 잔여 — no-op 패널 · 레거시 채팅 · 미사용 템플릿 · batch helper)
+- **`app_shell.render_app_side`/`render_app_sola` 완전 제거** — Phase A 에서 no-op 으로 바뀐 뒤 5개 화면(board/insights/archive/data_management/persona_page)이 계속 호출하던 것을 호출부 + 함수(~300줄) + 부수 패널-토글 클러스터(`consume_panel_toggle`·`_toggle_href`·`_side_collapsed`·`_sola_collapsed`)까지 삭제. 좌측은 네이티브 `st.sidebar`, 우측은 `chat_panel.render_side` 단일 경로.
+- **`chat_panel.render`**(구 bottom expander) 제거 — `render_side`(우측 컬럼 실채팅)가 대체. 공유 헬퍼(`_intro_card_html`/`_format_recent_messages`/`_AREA_INTROS`)는 render_side 가 계속 사용하므로 보존. 모듈 docstring 갱신.
+- **`sola_workshop_v2._SOLA_TEMPLATE` + `assets/v2/screens/sola_main.html`(11KB)** 제거 — 정의만 있고 read 0. 부수 `ASSETS_DIR` import 정리.
+- **`store/task_defs_db.upsert_many`** 제거(재판정→데드) — production 은 단건 `upsert`(`task_def_manage`·`sqlite_sync` 루프)만 사용, batch helper 는 테스트 전용이었음. `Iterable` import 정리.
+- **`persona_page._archive_stats`** + 전용 `bookmarks` import 제거 — render_app_side 호출이 유일 사용처였음.
+- 테스트: `test_chat_panel`(render 1건)·`test_task_defs_db`(upsert_many 1건) 정리. 검증: pytest 688→**686 passed** · 잔여 import 0(`grep -rn`) · 금지 패턴 0 · py_compile OK.
+
 ### Removed (Phase 3 — 데드 코드 삭제: layout·task_tree·sola/{insight,chat_ctx})
 - production import 0 으로 확인된 데드 모듈 4종 삭제 + 테스트 동반 정리:
   - `ui/layout.py`(`main_and_chat`/`render_chat_panel`/`split_with_chat` — v3 셸 전환으로 호출 0) · `ui/task_tree.py`(드릴다운 위젯, 호출 0) · `sola/insight.py`(부서 인사이트, 호출 0) · `sola/chat_ctx.py`(구 채팅 컨텍스트 빌더, 호출 0).

@@ -245,16 +245,3 @@ def test_history_returns_empty_for_unknown_process_id():
     assert task_defs_db.history("") == []
 
 
-# ── upsert_many ─────────────────────────────────────────
-
-def test_upsert_many_counts_created_and_updated():
-    from store import task_defs_db
-    task_defs_db.upsert("A1", _make_json("A1"))
-    items = [
-        ("A1", _make_json("A1", objectives=["new"])),
-        ("A2", _make_json("A2")),
-        ("A3", _make_json("A3")),
-    ]
-    result = task_defs_db.upsert_many(items, source="excel_upload")
-    assert result == {"created": 2, "updated": 1}
-    assert task_defs_db.count() == 3

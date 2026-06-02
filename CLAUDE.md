@@ -67,7 +67,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
 | 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
 
-> ⚠ 데드 (건드리기 전 `REFACTOR_PLAN` 확인): `app_shell.render_app_side`/`render_app_sola`(no-op·5화면이 호출), `chat_panel.render`(레거시 bottom), `sola/side_context.py`(orphan·보존). `propose`/`summarize` 는 부활(SOLA 작업실 연결), `ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py` 는 Phase 3 에서 삭제됨.
+> ⚠ 데드 (건드리기 전 `REFACTOR_PLAN` 확인): `sola/side_context.py`(orphan·보존 — 사이드 채팅 컨텍스트 연결 대상). `propose`/`summarize` 는 부활(SOLA 작업실 연결). Phase 3 에서 `ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`app_shell.render_app_side/sola`(+패널 토글)·`chat_panel.render`·`task_defs_db.upsert_many`·`sola_main.html` 삭제됨.
 
 전체 라우팅 표는 [`DEV_GUIDELINES.md §3`](./DEV_GUIDELINES.md#3-라우팅-표).
 

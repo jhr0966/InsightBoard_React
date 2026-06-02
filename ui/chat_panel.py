@@ -1,15 +1,15 @@
-"""글로벌 SOLA 채팅 패널 — 모든 area 본문 하단에 노출되는 미니 채팅.
+"""글로벌 SOLA 채팅 패널 — 모든 area 본문 우측 컬럼에 노출되는 채팅.
 
 설계:
-  - 활성 thread (sola_threads) 의 메시지 load + Streamlit chat_input
+  - 활성 thread (sola_threads) 의 메시지 load + `st.form`(text_area + 보내기)
   - LLM 호출 인프라(sola_workshop_v2._consume_send_if_any/_build_llm_messages)
     재사용 — 풀 SOLA workshop 과 같은 thread/영구화 공유
   - 빈 thread 일 때: area 별 "이 화면에서 이런 걸 물어보세요" 안내 카드
-  - chat_input 은 화면 하단 자동 고정 (Streamlit native)
+  - 우측 컬럼 sticky 패널(`.side-chat-marker` + streamlit-overrides.css)
 
 각 area 의 진입점:
-    chat_panel.render(persona, area_key="📊 오늘의 보드")
-        → 본문 끝에 expander 안에 채팅
+    chat_panel.render_side(persona, area_key="📊 오늘의 보드")
+        → 우측 컬럼에 실제 작동 채팅 (app.py 가 chat_col 안에서 호출)
         → app.py 의 chat_context_block set 결과를 LLM 컨텍스트로 자동 첨부
 """
 from __future__ import annotations
@@ -141,52 +141,6 @@ def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
         + "".join(parts)
         + '</div>'
     )
-
-
-def render(persona: Persona, area_key: str) -> None:
-    """area 본문 끝에 글로벌 채팅 패널 렌더.
-
-    - 활성 thread 의 최근 메시지 노출 (없으면 area 별 안내 카드)
-    - chat_input — Streamlit 하단 자동 고정. send 시 sola_workshop_v2 의
-      pending flag(`_do_sola_send`) 로 위임 → 다음 run 에서 LLM 호출 + 응답 append.
-    """
-    # 의존성 lazy import — 순환 회피 (sola_workshop_v2 가 이 모듈을 안 씀)
-    from ui import sola_workshop_v2 as sw
-
-    # SOLA workshop area 자체는 자기 풀스크린 채팅이 있으니 미니 패널 미렌더
-    if area_key == "🤖 SOLA 작업실":
-        return
-
-    st.divider()
-    title_safe = _html.escape(area_key)
-    st.html(
-        f'<div style="font-size:14px; font-weight:700; color:#0F172A; '
-        f'margin:8px 0 6px;">💬 SOLA 와 대화 · <span style="color:#64748B; '
-        f'font-weight:600;">{title_safe} 컨텍스트로</span></div>'
-    )
-
-    # 활성 thread 메시지 load
-    try:
-        messages = sw._load_messages()
-    except Exception:
-        messages = []
-
-    if not messages:
-        st.html(_intro_card_html(area_key))
-    else:
-        st.html(_format_recent_messages(messages))
-
-    # chat_input — area 별 key 로 중복 회피.
-    # 송신은 sola_workshop_v2 의 pending flag 위임 → 다음 run 의 _consume_send_if_any
-    # 가 LLM 호출 + 메시지 append + chat_log 영구화 + rerun.
-    safe_area = quote(area_key, safe="")
-    user_input = st.chat_input(
-        "SOLA 에게 질문하세요 — 위 추천 질문 그대로 적어도 됩니다",
-        key=f"_global_chat_input_{safe_area}",
-    )
-    if user_input:
-        st.session_state["_do_sola_send"] = user_input
-        st.rerun()
 
 
 def render_side(persona: Persona, area_key: str) -> None:

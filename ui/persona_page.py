@@ -14,19 +14,8 @@ import streamlit as st
 from persona import store as persona_store
 from persona.schema import Persona
 from roadmap.query import load_latest as load_tasks
-from store import bookmarks as _bookmarks_store
 from ui import app_shell
 from ui.styles import inject_screen_css
-
-
-def _archive_stats() -> dict[str, int]:
-    """app-side 좌측 통계 — bookmarks summary 기반 (다른 화면과 동일 키)."""
-    try:
-        summary = _bookmarks_store.summary_counts()
-        pending = int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
-    except Exception:
-        pending = 0
-    return {"match_today": 0, "opportunities": 0, "pending_adopt": pending}
 
 
 def chat_context_block(persona: Persona) -> str:
@@ -147,11 +136,6 @@ def render() -> None:
         eyebrow_current="프로필 / 페르소나",
         refresh_label=app_shell.refresh_label_now(),
         fresh_kind="",
-    )
-    app_shell.render_app_side(
-        active_area="",  # 5-nav 중 해당 없음 — 강조 없이 표시
-        persona=persona,
-        stats=_archive_stats(),
     )
     app_shell.render_setup_banner_if_needed()
 

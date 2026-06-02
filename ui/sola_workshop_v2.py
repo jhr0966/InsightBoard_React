@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 
 import streamlit as st
 
-from config import ASSETS_DIR
 from persona import context as persona_ctx
 from persona.schema import Persona
 from sola import client as sola_client
@@ -39,9 +38,6 @@ _SOLA_SYSTEM_PROMPT = (
     "ROI · 일정 · 위험요인을 함께 설명합니다. "
     "답변은 한국어로, 사용자의 페르소나와 맥락을 반영해서 작성합니다."
 )
-
-
-_SOLA_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "sola_main.html"
 
 
 def _archive_stats() -> dict[str, int]:
