@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UI Phase A 후속 — 사이드바 프로필 카드 재설계)
+- `ui/sidebar._persona_card_html` 깔끔한 프로필 카드로 재설계. **설정 시**: 아바타 + 이름/역할 + 편집펜(✎) + 팀/관심 구분선. **미설정 시**: 👤 프로필 이모지 + "프로필 미설정" + 안내 문구 + "＋ 프로필 설정하기" CTA. 카드 전체가 `?persona_editor=1` 링크라 **이모지·이름·안내 문구 어디를 눌러도 설정 화면이 열림**(playwright 클릭 검증).
+- `assets/v2/sidebar.css` 프로필 카드 스타일을 새 구조(`.persona-profile-row`/`-id`/`-head-empty`/`-edit`/`-empty-hint`/`-cta`)로 교체.
+- `tests/test_sidebar_profile.py` 2건 새 마크업에 맞춰 갱신(XSS escape·클릭 링크·미설정 CTA 검증 보존).
+- 검증: pytest 656/656 · 금지 패턴 0 · playwright 설정/미설정 카드 + 미설정 클릭→설정창 열림 확인.
+
 ### Removed (UI Phase A 후속 — V1 잔재·레거시 스타일시트 제거)
 - **레거시 `assets/styles.css`(1463줄, V1 디자인 시스템) 삭제 + 로드 중단**. 이 스타일시트가 매 페이지 unconditional 로 주입돼 `.stApp`/`.block-container` 등 ungated 전역 규칙이 v2 와 충돌, 새로고침 시 V1 UI 가 잠깐 보이던 FOUC 원인. 유일한 라이브 소비처였던 네이티브 사이드바 스타일(`.sidebar-*`/`.persona-profile-*`)을 신규 `assets/v2/sidebar.css`(v2 토큰 기반)로 이전.
 - `ui/persona_page.py` — V1 `page_header`(`.app-header` 마크업) + `section_label` 호출 제거. topbar 가 이미 제목을 담당하므로 중복 V1 헤더가 페르소나 화면에 남던 문제 해소. v2 인라인 인트로/레이블로 교체.

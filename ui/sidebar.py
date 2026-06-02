@@ -85,35 +85,55 @@ def _llm_footer_html(*, ready: bool, backend: str, model: str) -> str:
 
 
 def _persona_card_html(persona: Persona) -> str:
-    avatar = _html.escape(_avatar_text(persona))
-    name = _html.escape(persona.name or "사용자")
-    dept = _html.escape(persona.dept or "부서 미설정")
-    job = _html.escape(persona.job or "직무 미설정")
-    team = _html.escape(persona.team or "팀 미설정")
-    interests = _html.escape(
-        " · ".join(persona.interest_lv3[:3]) if persona.interest_lv3 else "관심 공정 미설정"
-    )
+    """좌측 사이드바 프로필 카드.
+
+    카드 전체가 `?persona_editor=1` 링크라 아바타·이름·역할·안내 문구 어디를
+    눌러도 프로필 설정 화면이 열린다. 미설정 시엔 👤 이모지 + 안내 + CTA 로
+    설정을 유도한다.
+    """
     if persona.is_set():
-        hint = "아바타를 눌러 프로필 편집"
-        card_extra_class = ""
-    else:
-        hint = "👋 클릭해서 프로필 설정 시작"
-        card_extra_class = " persona-profile-card-empty"
-    return f"""
+        avatar = _html.escape(_avatar_text(persona))
+        name = _html.escape(persona.name or "사용자")
+        role_parts = [p for p in (persona.dept, persona.job) if p]
+        role = _html.escape(" · ".join(role_parts)) if role_parts else "부서·직무 미설정"
+        team = _html.escape(persona.team or "—")
+        interests = _html.escape(
+            " · ".join(persona.interest_lv3[:3]) if persona.interest_lv3 else "—"
+        )
+        return f"""
+        <a class="persona-profile-link" href="?persona_editor=1" target="_self"
+           aria-label="프로필 편집 열기">
+          <div class="persona-profile-card">
+            <div class="persona-profile-row">
+              <div class="persona-profile-head">{avatar}</div>
+              <div class="persona-profile-id">
+                <div class="persona-profile-name">{name}</div>
+                <div class="persona-profile-role">{role}</div>
+              </div>
+              <div class="persona-profile-edit" aria-hidden="true">✎</div>
+            </div>
+            <div class="persona-profile-details">
+              <div><span>팀</span><b>{team}</b></div>
+              <div><span>관심</span><b>{interests}</b></div>
+            </div>
+          </div>
+        </a>
+        """
+    return """
     <a class="persona-profile-link" href="?persona_editor=1" target="_self"
-       aria-label="페르소나 편집 페이지 열기">
-      <div class="persona-profile-card{card_extra_class}">
-        <div class="persona-profile-avatar">
-          <div class="persona-profile-head">{avatar}</div>
-          <div class="persona-profile-body"></div>
+       aria-label="프로필 설정 시작">
+      <div class="persona-profile-card persona-profile-card-empty">
+        <div class="persona-profile-row">
+          <div class="persona-profile-head persona-profile-head-empty" aria-hidden="true">👤</div>
+          <div class="persona-profile-id">
+            <div class="persona-profile-name">프로필 미설정</div>
+            <div class="persona-profile-role">눌러서 설정을 시작하세요</div>
+          </div>
         </div>
-        <div class="persona-profile-name">{name}</div>
-        <div class="persona-profile-role">{dept} · {job}</div>
-        <div class="persona-profile-details">
-          <div><span>팀</span><b>{team}</b></div>
-          <div><span>관심</span><b>{interests}</b></div>
+        <div class="persona-profile-empty-hint">
+          부서·직무·관심 공정을 설정하면 오늘의 보드와 SOLA 가 나에게 맞춰집니다.
         </div>
-        <div class="persona-profile-edit-hint">{hint}</div>
+        <div class="persona-profile-cta">＋ 프로필 설정하기</div>
       </div>
     </a>
     """

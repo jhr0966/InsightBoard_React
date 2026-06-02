@@ -43,29 +43,56 @@
   border-color: var(--accent-primary, #2563EB);
   background: #F5F8FF;
 }
-.persona-profile-avatar { margin-bottom: 10px; }
+/* 상단 행: 아바타 + 이름/역할 + 편집 펜 */
+.persona-profile-row { display: flex; align-items: center; gap: 11px; }
 .persona-profile-head {
-  width: 46px; height: 46px;
+  flex-shrink: 0;
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 14px;
+  border-radius: 13px;
   background: linear-gradient(135deg, #0F172A, #2563EB);
   color: #FFFFFF;
-  font-size: 19px; font-weight: 800;
+  font-size: 18px; font-weight: 800;
   box-shadow: 0 4px 10px rgba(37,99,235,0.24);
 }
-.persona-profile-body { display: none; }
+.persona-profile-head-empty {
+  background: #EEF2F8;
+  color: #64748B;
+  font-size: 22px;
+  box-shadow: none;
+  border: 1px dashed #C7D2E0;
+}
+.persona-profile-id { flex: 1; min-width: 0; }
 .persona-profile-name {
-  font-size: 17px; font-weight: 800;
+  font-size: 16px; font-weight: 800;
   color: var(--text-primary, #0F172A);
   letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .persona-profile-role {
   margin-top: 2px;
-  font-size: 13px; font-weight: 500;
+  font-size: 12.5px; font-weight: 500;
   color: var(--text-secondary, #475569);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.persona-profile-edit {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: #FFFFFF;
+  border: 1px solid var(--surface-divider, #E5E7EB);
+  color: var(--text-muted, #94A3B8);
+  font-size: 13px;
+}
+.persona-profile-link:hover .persona-profile-edit {
+  color: var(--accent-primary, #2563EB);
+  border-color: var(--accent-primary, #2563EB);
+}
+
+/* 세부 (팀 / 관심) — 설정 시에만 */
 .persona-profile-details {
-  margin-top: 11px;
+  margin-top: 12px;
   display: flex; flex-direction: column; gap: 5px;
   padding-top: 11px;
   border-top: 1px solid var(--surface-divider, #EEF0F3);
@@ -82,11 +109,23 @@
   color: var(--text-primary, #0F172A);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.persona-profile-edit-hint {
+
+/* 미설정 — 안내 문구 + CTA (카드 전체가 링크라 함께 클릭됨) */
+.persona-profile-empty-hint {
   margin-top: 11px;
-  font-size: 12px; font-weight: 600;
-  color: var(--accent-primary, #2563EB);
+  font-size: 12px; font-weight: 500; line-height: 1.5;
+  color: var(--text-secondary, #475569);
 }
+.persona-profile-cta {
+  margin-top: 11px;
+  padding: 8px 10px;
+  text-align: center;
+  border-radius: 9px;
+  background: var(--accent-primary, #2563EB);
+  color: #FFFFFF;
+  font-size: 12.5px; font-weight: 700;
+}
+.persona-profile-link:hover .persona-profile-cta { background: var(--accent-hover, #1D4ED8); }
 
 /* ── 브랜드 ────────────────────────────────────────────────── */
 .sidebar-brand {
