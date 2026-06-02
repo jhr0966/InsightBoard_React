@@ -16,6 +16,7 @@
 - `app_shell.render_app_side`/`render_app_sola` → no-op(Phase C 삭제 예정). `render_topbar` fixed→static.
 - `sidebar.py` 통계 3칸 추가(구 app-side 정보 보존). CSS 3종(overrides/shell/scale) 매직패딩·고정패널 제거 + 우측 컬럼 sticky.
 - INVARIANTS I-13 · ARCHITECTURE 셸 도식 갱신.
+- **후속(V1 잔재 제거, 사용자 지적)**: 레거시 `assets/styles.css`(1463줄, V1 디자인) 삭제 + 로드 중단 → 새로고침 FOUC 제거. 유일 라이브 소비처였던 사이드바 스타일을 `assets/v2/sidebar.css`(v2 토큰)로 이전. `persona_page` V1 `page_header`(.app-header)·`section_label` 호출 제거 → 페르소나 화면 V1 헤더 해소. (`page_header` 정의는 layout.py+test 의존이라 유지.)
 
 **주의/함정:** `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 못 담음 → `render_side` 는 `st.form`(text_area+submit)으로 우회. 컬럼 sticky 는 `.side-chat-marker` + `[data-testid="stColumn"]:has()` 훅. 화면 템플릿에 내장된 가짜 우측 패널(insights ia-sola, archive 하단)은 Phase C 정리 대상(이번엔 셸만).
 

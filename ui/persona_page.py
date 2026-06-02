@@ -16,7 +16,7 @@ from persona.schema import Persona
 from roadmap.query import load_latest as load_tasks
 from store import bookmarks as _bookmarks_store
 from ui import app_shell
-from ui.styles import inject_screen_css, page_header, section_label
+from ui.styles import inject_screen_css
 
 
 def _archive_stats() -> dict[str, int]:
@@ -123,9 +123,12 @@ def render() -> None:
     )
     app_shell.render_setup_banner_if_needed()
 
-    page_header(
-        "사용자 프로필 설정",
-        "부서·직무·관심 공정을 설정하면 오늘의 보드와 SOLA 컨텍스트가 개인화됩니다.",
+    # v2 인트로 (구 page_header 의 .app-header V1 마크업 제거 — topbar 가 제목 담당)
+    st.html(
+        '<div style="font-size:14px; color:#475569; line-height:1.55; '
+        'margin:2px 0 14px; max-width:760px;">'
+        '부서·직무·관심 공정을 설정하면 오늘의 보드와 SOLA 컨텍스트가 개인화됩니다.'
+        '</div>'
     )
 
     msg = st.session_state.pop("persona_page_msg", None)
@@ -135,7 +138,10 @@ def render() -> None:
 
     _handle_pending(persona)
 
-    section_label("기본 정보")
+    st.html(
+        '<div style="font-size:12px; font-weight:800; letter-spacing:0.08em; '
+        'text-transform:uppercase; color:#94A3B8; margin:14px 0 6px;">기본 정보</div>'
+    )
     dept_opts = _options(tasks, "dept")
     team_opts = _options(tasks, "team")
     lv3_opts = _lv3_options(tasks)

@@ -60,8 +60,8 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | 📦 산출물 보관함 | `ui/archive_v2.py` |
 | v2 셸 (topbar·좌측 nav·우측 SOLA 패널·⌘K) | `ui/app_shell.py` |
 | 사이드바 / 페르소나 모달 / 온보딩 | `ui/sidebar.py`, `ui/persona_page.py`, `ui/onboarding.py` |
-| 글로벌 채팅 패널 (본문 끝) | `ui/chat_panel.py` |
-| CSS·스타일 | `ui/styles.py` (+ `assets/styles.css`) |
+| 글로벌 채팅 패널 (우측 컬럼) | `ui/chat_panel.py` (`render_side`) |
+| CSS·스타일 | `ui/styles.py` (+ `assets/v2/*.css`: tokens·card·shell·sidebar·streamlit-overrides·scale + `screens/*.css`) |
 | HTML 컴포넌트 빌더 | `ui/components.py` |
 | 진입점·디스패치·세션 키 | `app.py` (+ `docs/INVARIANTS.md`) |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |

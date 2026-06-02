@@ -14,6 +14,7 @@ _V2_CSS_FILES = (
     "v2/tokens.css",
     "v2/card.css",
     "v2/shell.css",
+    "v2/sidebar.css",
     "v2/streamlit-overrides.css",
     "v2/scale.css",
 )
@@ -22,8 +23,12 @@ _V2_CSS_FILES = (
 def inject_global_styles() -> None:
     """Inject v2 design tokens + Streamlit overrides + legacy styles.
 
-    순서 중요: tokens → card(components) → shell(v2 topbar) → streamlit overrides
-    → legacy styles.css (점진 제거 대상, 마지막에 로드해 v2 토큰을 못 덮어쓰게 함).
+    순서: tokens → card(components) → shell(v2 topbar) → sidebar(네이티브 사이드바)
+    → streamlit overrides → scale.
+
+    레거시 `assets/styles.css`(V1 디자인 시스템, 1463줄)는 더 이상 로드하지 않는다 —
+    유일한 라이브 소비처였던 네이티브 사이드바 스타일을 `v2/sidebar.css` 로 이전하고,
+    새로고침 시 잠깐 보이던 V1 잔재(FOUC) 를 제거 (2026-06-01).
 
     Streamlit `st.html("<style>")` 는 큰 `<style>` 블록을 안정적으로 mount 하지
     못함이 확인됨 (수만 자 누락). `st.markdown(unsafe_allow_html=True)` 가 다른
@@ -34,9 +39,6 @@ def inject_global_styles() -> None:
         path = ASSETS_DIR / rel
         if path.exists():
             parts.append(path.read_text(encoding="utf-8"))
-    legacy = ASSETS_DIR / "styles.css"
-    if legacy.exists():
-        parts.append(legacy.read_text(encoding="utf-8"))
     if not parts:
         return
     st.markdown("<style>" + "\n".join(parts) + "</style>", unsafe_allow_html=True)

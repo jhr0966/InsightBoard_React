@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Removed (UI Phase A 후속 — V1 잔재·레거시 스타일시트 제거)
+- **레거시 `assets/styles.css`(1463줄, V1 디자인 시스템) 삭제 + 로드 중단**. 이 스타일시트가 매 페이지 unconditional 로 주입돼 `.stApp`/`.block-container` 등 ungated 전역 규칙이 v2 와 충돌, 새로고침 시 V1 UI 가 잠깐 보이던 FOUC 원인. 유일한 라이브 소비처였던 네이티브 사이드바 스타일(`.sidebar-*`/`.persona-profile-*`)을 신규 `assets/v2/sidebar.css`(v2 토큰 기반)로 이전.
+- `ui/persona_page.py` — V1 `page_header`(`.app-header` 마크업) + `section_label` 호출 제거. topbar 가 이미 제목을 담당하므로 중복 V1 헤더가 페르소나 화면에 남던 문제 해소. v2 인라인 인트로/레이블로 교체.
+- 죽은 V1 빌더(`components.metric_card`/`status_card`/`action_card`)·`data_health`(둘 다 라이브 호출 0)는 styles.css 없이도 무방 — 확인 후 보존(테스트 의존). `page_header`/`section_label` 정의는 `ui/layout.py`+`test_chat_log` 의존이라 유지(Phase C 에서 layout 과 함께 삭제).
+- `CLAUDE.md` 라우팅 표 CSS 항목을 `assets/v2/*.css` 로 갱신.
+- 검증: pytest 656/656 · 금지 패턴 0 · playwright 보드/페르소나 캡처 — 사이드바 v2 스타일 정상, 페르소나 화면 V1 헤더 제거 확인.
+
 ### Changed (UI Phase A — 셸 v3: 3영역 레이아웃 네이티브 재건)
 - **레이아웃 소유권을 `app.py` 로 이전**: 좌측은 Streamlit 네이티브 `st.sidebar`(nav 단일 소스), 본문은 `st.columns([2.7, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `chat_panel.render_side()` 가 **실제 작동하는** 채팅(form text_area + 보내기 → `_do_sola_send` → `consume_send_if_any`)을 렌더. SOLA 작업실만 자체 풀스크린(스레드+채팅+ctx)이라 우측 컬럼 없이 풀폭.
 - **제거된 근본 원인**: ① 좌측 패널 이중화(네이티브 `st.sidebar` 를 CSS 로 숨기고 고정 HTML `.app-side` 를 따로 그리던 구조 → nav 정의 2벌) ② 본문 매직 패딩(`padding-left:344px`/`padding-right:480px` 가 고정 패널 폭에 수동 정합 → 어긋나면 겹침) ③ 우측 `.app-sola` 패널 전체가 `disabled` 목업(입력창·보내기·빠른질문 전부 비활성)이라 진짜 채팅은 본문 끝에 따로 있던 이중 채팅.
