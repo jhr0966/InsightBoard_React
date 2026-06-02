@@ -82,3 +82,19 @@ def test_ingest_excel_falls_back_to_first_sheet():
     result = ingest_excel(buf, sheet_name="Master_Table")
     assert result.ok
     assert result.row_count == 1
+
+
+def test_ingest_surfaces_sqlite_sync_error(monkeypatch):
+    """C3 — SQLite 동기화 실패 시 result.sqlite_error 에 표면화(Parquet 성공이라 ok 는 유지)."""
+    raw = pd.DataFrame([{
+        "팀": "가공팀", "부서": "가공부",
+        "분류(Lv1)": "실행분과", "소분류(Lv2)": "구조내업", "공정(Lv3)": "전처리",
+        "작업": "강재선별", "세부 작업": "크레인", "작업 정의": "",
+        "SWS 표준번호": "SC0-1", "SWS명": "강재 하역",
+    }])
+    buf = _make_excel_bytes(raw)
+    import roadmap.sqlite_sync as ss
+    monkeypatch.setattr(ss, "sync_dataframe", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db locked")))
+    result = ingest_excel(buf, sheet_name="Master_Table", to_sqlite=True)
+    assert result.ok and result.parquet_path           # Parquet 은 성공 → ok 유지
+    assert "db locked" in result.sqlite_error           # 동기화 실패가 조용히 묻히지 않음

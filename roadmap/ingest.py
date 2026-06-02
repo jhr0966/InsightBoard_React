@@ -1,6 +1,7 @@
 """로드맵 엑셀 업로드/정규화/검증/Parquet 저장."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,8 @@ import pandas as pd
 
 from roadmap.schema import ALL_COLUMNS, COLUMN_MAP, REQUIRED_COLUMNS
 from store.paths import roadmap_dir
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -23,6 +26,9 @@ class IngestResult:
     sqlite_created: int = 0
     sqlite_updated: int = 0
     sqlite_skipped: int = 0
+    # 동기화 실패 메시지 — Parquet 은 성공했는데 SQLite 가 실패하면 채워진다.
+    # query.load_latest 가 SQLite 를 우선 읽으므로(stale 위험) 호출부가 표면화할 수 있게 (C3).
+    sqlite_error: str = ""
 
 
 def _utc_stamp() -> str:
@@ -141,7 +147,10 @@ def ingest_excel(
             result.sqlite_created = sync.created
             result.sqlite_updated = sync.updated
             result.sqlite_skipped = sync.skipped
-        except Exception:  # noqa: BLE001 — SQLite 동기화는 best-effort
-            pass
+        except Exception as exc:  # noqa: BLE001 — SQLite 동기화는 best-effort(Parquet 은 이미 성공)
+            # 조용히 삼키면 Parquet 만 갱신되고 SQLite 우선 reader 가 stale 데이터를
+            # 읽어 분기됨(C3). 메시지를 result 에 남기고 로깅해 표면화.
+            result.sqlite_error = str(exc)
+            logger.warning("로드맵 SQLite 동기화 실패(Parquet 은 성공): %s", exc, exc_info=True)
 
     return result
