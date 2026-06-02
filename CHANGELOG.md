@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added (test — 네이버 검색 파서 회귀 테스트 + 라이브 수집 검증)
+- **`tests/test_naver.py` 신규(+6)** — 4개 수집 소스 중 유일하게 단위테스트가 없던 네이버 리스트 파서(`naver.search`)를 고정. 현행 네이버 결과 구조(`div.fds-news-item-list-tab > div`) 기반 합성 HTML 로 ① 제목·언론사·날짜·요약 추출, ② `n.news.naver.com` '네이버뉴스' 앵커 **링크 우선**(없으면 언론사 원문 폴백), ③ 썸네일 `data-src`>`src` 우선, ④ `max_results` 제한, ⑤ 빈 키워드 short-circuit, ⑥ HTTP 오류→`RuntimeError` 전파를 단언. `time.sleep` 은 patch 로 무력화.
+- **라이브 수집 재검증(요청)** — 네이버/구글 키워드검색·AI Times·오토메이션월드의 제목/본문전체/사진 수집을 라이브로 확인 시도. **이 원격 환경의 네트워크가 여전히 제한적 allowlist** 라(pypi.org 200, 그 외 news 도메인·google.com·example.com 전부 403 `Host not in allowlist`; WebFetch 동일 차단) 라이브 fetch 불가. 대신 파서 로직을 오프라인으로 검증: `fetch_article` 가 본문 전체(문단 결합·코드/저작권 노이즈 제거)+대표사진(og:image)을, 구글 RSS 파서가 제목/언론사/썸네일을 정확히 추출함을 확인(파서 회귀 45건 green). 라이브 점검은 환경 네트워크 정책=전체 도메인 허용 + **새 세션** 에서 재시도 필요.
+
 ### Fixed (scraping — tech 사이트 HTTP 실패를 '수집 헬스'에 표면화, Phase F 후속)
 - 라이브 수집 검증 중 발견 — `tech_sites.search_site` 가 HTTP 상태를 체크하지 않아 403/500 응답을 받아도 본문을 파싱해 **조용히 0건** 반환 → 방금 추가한 '수집 헬스'에 AI Times/오토메이션월드 장애가 안 잡히던 빈틈.
 - `search_site`: `resp.raise_for_status()` 추가 → naver/google 과 일관되게 HTTP 오류를 `RuntimeError` 로 표면화.

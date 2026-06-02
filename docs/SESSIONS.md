@@ -25,7 +25,26 @@
 - 화면 CSS 카드 배경은 `var(--surface-card)` 토큰화됨(다크 추종). 새 카드도 토큰 사용.
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 
-**검증 베이스라인**: `pytest -q` = **698 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+**검증 베이스라인**: `pytest -q` = **704 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+
+**⚠ 라이브 수집은 여전히 막힘**: 사용자가 "전체 도메인 허용 + 새 세션"을 했다 했으나, 이 컨테이너의 네트워크는 아직 **제한적 allowlist**(pypi.org만 200, news 도메인·google.com·example.com 전부 403 `Host not in allowlist`, WebFetch 동일). 네트워크 정책은 **환경 생성 시점에 고정**되므로 이 세션은 정책 변경 전 환경. → 정책=전체 허용으로 설정된 환경에서 **진짜 새 세션**을 열어야 라이브 검증 가능. 라이브 시 허용 필요 호스트: `search.naver.com`·`www.naver.com`·`n.news.naver.com`·`news.google.com`·구글 RSS 가 링크하는 **임의 언론사 도메인**(그래서 '전체 허용'이 맞음)·`www.aitimes.com`·`automation-world.co.kr`.
+
+---
+
+## 2026-06-02 · 라이브 수집 재검증 시도 + 네이버 파서 회귀 테스트
+
+**브랜치:** `claude/kind-volta-IWxix` (origin/main `6d6f5dc` 기준, behind/ahead 0)
+
+**맥락:** "개발 준비" 후, 사용자가 "전체 도메인 허용 + 새 세션"을 했다며 네이버/구글 키워드검색·AI Times·오토메이션월드의 제목/본문전체/사진 라이브 수집 검증을 요청.
+
+**한 일:**
+- **네트워크 상태 진단** — `build_session().get()` 으로 5개 타깃 호스트 + 대조군 점검: pypi.org만 **200**, 나머지(`search.naver.com`/`news.google.com`/`www.aitimes.com`/`automation-world.co.kr`/`www.google.com`/`example.com`) 전부 **403 `Host not in allowlist`**. WebFetch 우회도 동일 403. → 이 컨테이너는 정책 변경 전 환경(네트워크 정책은 환경 생성 시 고정). **라이브 수집 불가**로 확정.
+- **오프라인 파서 검증** — 라이브 대체로 코드가 제목/본문전체/사진을 추출하는지 확인: `fetch_article` 합성 HTML 시연(본문 문단 결합·`dataLayer`/`무단전재` 노이즈 제거·og:image 추출 OK), 구글 RSS 파서 제목/언론사/썸네일 분리 OK. 관련 회귀 39건 green.
+- **`tests/test_naver.py` 신규(+6)** — 4소스 중 유일하게 단위테스트 없던 네이버 리스트 파서를 고정(제목·언론사·날짜·요약 / `n.news.naver.com` 링크 우선 / `data-src` 썸네일 / max_results / 빈 키워드 / HTTP 오류 전파). SESSIONS 가 지적한 '라이브 1순위 점검 대상' 갭 해소.
+
+**검증:** pytest 698→**704 passed** · 금지 패턴 0 · py_compile OK.
+
+**다음:** 정책=전체 허용 환경의 **새 세션**에서 라이브 수집 재검증(네이버 리스트 파서 실HTML 대조 1순위) · 중복 PR #95/#96(verify CLI) 하나로 정리 · 14일 sparkline run_log 기반 · 풀 다크/RAG.
 
 ---
 
