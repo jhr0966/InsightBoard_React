@@ -39,22 +39,10 @@ body:has(.db-topbar) h4 {
 }
 
 /* ════════════════════════════════════════════════════════════
-   3) Panel widths
+   3) (Phase A 제거) 본문 매직 패딩 — fixed 패널 폭에 수동 정합하던 규칙.
+      네이티브 사이드바 + st.columns 가 폭을 관리하므로 더 이상 필요 없다.
+      block-container 좌우 패딩은 streamlit-overrides.css 가 28px 로 통일.
    ════════════════════════════════════════════════════════════ */
-body:has(.db-topbar) .app-side  { width: 304px !important; }
-body:has(.db-topbar) .app-sola  { width: 440px !important; }
-
-body:has(.db-topbar) .main .block-container,
-body:has(.db-topbar) [data-testid="stMain"] .block-container {
-  padding-left: 344px !important;
-  padding-right: 480px !important;
-}
-
-/* SOLA 작업실: app-sola 없는 화면 — 우측 패딩 축소 */
-body:has(.ws-shell) .main .block-container,
-body:has(.ws-shell) [data-testid="stMain"] .block-container {
-  padding-right: 32px !important;
-}
 
 /* ════════════════════════════════════════════════════════════
    4) 사이드바 + SOLA 패널 상단/하단 여유 — top 80px (시안 72px → 8px 더)
@@ -287,7 +275,9 @@ body:has(.db-stories) .db-stories {
    jobs 380px 고정 → 1fr (가변, news 와 비슷한 폭)
    결과: 수집잡 박스의 정보 표시 여유 + 뉴스 카드 그리드 유지 */
 body:has(.dm-split) .dm-split {
-  grid-template-columns: 1fr 1.35fr !important;
+  /* Phase C-3: 좁은 main_col 에서 수집 잡 / 뉴스 라이브러리를 세로 스택(심플 스크롤) */
+  grid-template-columns: 1fr !important;
+  gap: 20px !important;
 }
 
 /* S1 — SOLA 작업실 ws-threads 가로 overflow
@@ -357,3 +347,17 @@ body:has(.db-topbar) .app-sola-comp-input { font-size: 16px !important; line-hei
 body:has(.db-topbar) .app-sola-comp-pin   { font-size: 12px !important; padding: 4px 9px; }
 body:has(.db-topbar) .app-sola-comp-send  { font-size: 14px !important; padding: 9px 14px; }
 body:has(.db-topbar) .app-sola-comp-tips  { font-size: 12px !important; }
+
+/* ════════════════════════════════════════════════════════════
+   11) Phase C-2 — 보드 심플 세로 스크롤
+   2-컬럼 셸로 좁아진 main_col 에서 섹션 내부 2단 그리드를 세로 스택해
+   부담 없이 위→아래로 읽히게 한다. 모든 콘텐츠/기능은 보존(레이아웃만).
+   ════════════════════════════════════════════════════════════ */
+body:has(.db-greet) .db-greet,
+body:has(.db-stories) .db-stories,
+body:has(.db-trend) .db-trend {
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+}
+/* 섹션 사이 여백을 약간 더 줘 스캔하기 편하게 */
+body:has(.db-main) .db-sec { margin-top: 6px; }

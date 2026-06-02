@@ -149,8 +149,13 @@ def clean_chat_log(tmp_path, monkeypatch):
 
 
 def test_append_message_persists_to_chat_log(clean_chat_log):
-    sola_v2._append_message("user", "hello")
-    sola_v2._append_message("assistant", "world")
+    # 첫 user 메시지의 thread 제목 자동생성은 LLM 의존(가용 시 압축 제목, 미설정 시
+    # 룰 fallback)이라 환경(CI/로컬)에 따라 값이 달라진다 → 생성기를 목해 결정적으로.
+    # (제목 생성기 자체 동작은 test_thread_title_llm 가 검증. 이 테스트 목적은
+    #  chat_log 영속 + message_count + 제목 wiring.)
+    with patch("sola.thread_title.generate", return_value="hello 정리"):
+        sola_v2._append_message("user", "hello")
+        sola_v2._append_message("assistant", "world")
     # 활성 thread id 로 chat_log 에 저장됨
     from store import chat_log, sola_threads
     import streamlit as st
@@ -158,10 +163,10 @@ def test_append_message_persists_to_chat_log(clean_chat_log):
     saved = chat_log.load_history(active_id)
     assert [m["role"] for m in saved] == ["user", "assistant"]
     assert [m["content"] for m in saved] == ["hello", "world"]
-    # thread message_count + title 자동
+    # thread message_count + title 자동 (제목 생성기 결과)
     th = sola_threads.get(active_id)
     assert th.message_count == 2
-    assert th.title == "hello"  # 첫 user 메시지로 자동 제목
+    assert th.title == "hello 정리"  # 첫 user 메시지 → 제목 생성기 결과
 
 
 def test_load_messages_seeds_from_chat_log_when_session_empty(clean_chat_log):

@@ -19,6 +19,7 @@ import streamlit as st
 from config import llm_backend, llm_model
 from persona.schema import Persona
 from sola.client import is_configured as llm_ready
+from ui import components as _components
 
 
 def get_persona() -> Persona:
@@ -335,7 +336,7 @@ def render_topbar(
         notif_title = "새 알림 없음 · 산출물 보관함 열기"
         notif_dot = ""
 
-    st.html(
+    st.html(_components.prepare_screen_html(
         f"""
         <header class="db-topbar">
           <div class="db-topbar-l">
@@ -384,7 +385,7 @@ def render_topbar(
         </header>
         <div class="v2-scroll-fade" aria-hidden="true"></div>
         """
-    )
+    ))
 
 
 def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]) -> None:
@@ -395,6 +396,10 @@ def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]
         persona: Persona 객체.
         stats: {"match_today": int, "opportunities": int, "pending_adopt": int}.
     """
+    # Phase A: 좌측 네비가 네이티브 st.sidebar(`sidebar.render`) 단일 소스로 이전됨.
+    # 이 고정 HTML 패널(.app-side)은 더 이상 렌더하지 않는다 — 호출부 호환용 no-op.
+    # (아래 본문은 Phase C 데드 코드 정리에서 함수째 삭제 예정.)
+    return None
     avatar = _avatar_letter(persona)
     name = _html.escape(persona.name or "사용자")
     role = _html.escape(persona.dept or "부서 미설정")
@@ -540,6 +545,10 @@ def render_app_sola(
         last_a_html: 최근 답변 HTML (b 태그 등 허용, 호출자 sanitize 책임).
         last_time: 최근 답변 시각 라벨.
     """
+    # Phase A: 우측 채팅이 실제 작동하는 st.columns 컬럼(`chat_panel.render_side`)으로
+    # 이전됨. 이 고정 HTML 패널(.app-sola)은 입력창·버튼이 모두 disabled 인 목업이라
+    # 렌더를 중단한다 — 호출부 호환용 no-op. (본문은 Phase C 에서 함수째 삭제 예정.)
+    return None
     quick_prompts = quick_prompts or []
     quick_html_parts = []
     for idx, prompt_html in quick_prompts:

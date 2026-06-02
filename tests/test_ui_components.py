@@ -45,3 +45,34 @@ def test_step_guide_escapes_and_marks_active_step():
     assert "&lt;Pick&gt;" in html
     assert "Body&lt;script&gt;" in html
     assert "<script>" not in html
+
+
+# ── prepare_screen_html: st.html SVG 함정 보정 (전 화면 아이콘/차트) ──
+
+def test_prepare_screen_html_reencodes_broken_data_uri_icon():
+    from ui.components import prepare_screen_html
+    raw = ('<img src="data:image/svg+xml;utf8,'
+           "<svg xmlns='http://x' viewBox='0 0 24 24' fill='#2563EB'></svg>" '" width="11"/>')
+    out = prepare_screen_html(raw)
+    assert ";utf8," not in out
+    assert "data:image/svg+xml," in out
+    src = out.split('src="', 1)[1].split('"', 1)[0]
+    assert "#" not in src and "<svg" not in src   # '#'(→%23)·'<' 인코딩되어 src 안 잘림
+    assert "%23" in src
+
+
+def test_prepare_screen_html_converts_inline_svg_to_img():
+    from ui.components import prepare_screen_html
+    raw = ("<div><svg xmlns='http://x' class='db-trend-svg' "
+           "style='width:100%;height:60px;'><path d='M0 0'/></svg></div>")
+    out = prepare_screen_html(raw)
+    assert "<svg" not in out                       # 인라인 svg 제거(st.html sanitize 회피)
+    assert '<img src="data:image/svg+xml,' in out
+    assert 'class="db-trend-svg"' in out           # class 보존
+    assert "height:60px" in out                    # style 보존
+
+
+def test_prepare_screen_html_noop_without_svg():
+    from ui.components import prepare_screen_html
+    raw = '<div class="x">hello world</div>'
+    assert prepare_screen_html(raw) == raw

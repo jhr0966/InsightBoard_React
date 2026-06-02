@@ -112,15 +112,16 @@ I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 
 
 
 
-## I-13 — 글로벌 채팅 패널은 `ui/chat_panel.py` 단일 진입점
+## I-13 — 글로벌 채팅 패널은 `ui/chat_panel.py` 단일 진입점 (Phase A: 우측 컬럼)
 
-v2 셸에서 본문 끝 채팅 expander 는 `ui/chat_panel.render(persona, area_key=...)` 단 한 곳에서 마운트한다. 어느 area 에서든 사용자가 채팅 입력에 전송한 텍스트는 render 직전 `chat_panel.consume_send_if_any(persona)` 가 단일 처리한다.
+v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st.sidebar`(nav) + `st.columns([2.7, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `ui/chat_panel.render_side(persona, area_key=...)` 단 한 곳에서 마운트한다. 어느 area 에서든 사용자가 채팅 form 으로 전송한 텍스트는 render 직전 `chat_panel.consume_send_if_any(persona)` 가 단일 처리한다.
 
-- **app.py 규약**: SOLA 작업실 area 제외한 모든 area 렌더 직후 `chat_panel.render(_persona, area_key=area)` 호출. SOLA 작업실은 자체 풀스크린 채팅을 가지므로 글로벌 패널 미렌더 (중복 방지).
-- **금지**: 메인 영역에 별도 `st.chat_input` / `st.chat_message` 로 LLM 채팅 UI 를 다시 만들기. SOLA 작업실 풀스크린 채팅은 area 전용 예외.
-- **area_key 네임스페이스**: area 슬러그(이모지 포함 문자열)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 로 분리 저장 (I-15).
-- **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 임시 저장돼 다음 send 에서 사용된다.
-- **데드 인터페이스**: `ui/layout.py::main_and_chat` 는 과거 컨텍스트매니저 패턴이지만 production 호출이 없다. v2 화면 신규/수정 시 사용하지 말 것 (REFACTOR_PLAN Phase 4 에서 삭제 예정).
+- **app.py 규약**: SOLA 작업실 area 제외한 모든 area 를 `with main_col:` 안에서 렌더하고, `with chat_col:` 안에서 `chat_panel.render_side(_persona, area_key=...)` 호출. SOLA 작업실은 자체 풀스크린(스레드+채팅+ctx) 이라 우측 컬럼 없이 풀폭 렌더.
+- **우측 채팅 구현**: `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 담기지 않는다 → `render_side` 는 `st.form`(text_area + form_submit_button) 으로 송신하고 `_do_sola_send` pending 을 세팅한다. 컬럼 sticky 패널화는 `.side-chat-marker` 훅 + `streamlit-overrides.css` 의 `[data-testid="stColumn"]:has(.side-chat-marker)`.
+- **금지**: 화면별 고정 HTML 우측 패널(구 `app_shell.render_app_sola` 의 disabled 목업)을 부활시키지 말 것. 우측 LLM 채팅은 `render_side` 단일 경로. SOLA 작업실 풀스크린 채팅은 area 전용 예외.
+- **area_key 네임스페이스**: area 슬러그(이모지 포함)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 분리 저장 (I-15).
+- **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 저장돼 다음 send 에서 사용된다.
+- **데드 (Phase C 삭제 예정)**: `app_shell.render_app_side` / `render_app_sola` 는 호출부 호환용 no-op (좌측은 네이티브 사이드바, 우측은 render_side 가 대체). `chat_panel.render`(구 bottom expander) 는 남아있으나 app.py 미사용. `ui/layout.py::main_and_chat` 도 데드.
 
 ## I-14 — LLM 설정은 `config._env_or_secret()` 경유
 

@@ -17,22 +17,26 @@ def test_persona_profile_card_escapes_and_renders_large_avatar():
     )
 
     assert "persona-profile-card" in html
-    assert "persona-profile-avatar" in html
-    assert 'href="?persona_editor=1"' in html
-    assert "아바타를 눌러 프로필 편집" in html
+    assert "persona-profile-head" in html        # 아바타
+    assert 'href="?persona_editor=1"' in html    # 카드 전체가 설정 링크
+    assert "persona-profile-edit" in html         # 편집 펜 affordance
     assert "생산기술 · 자동화" in html
     assert "&lt;script&gt;x&lt;/script&gt;" in html
     assert "용접&lt;script&gt;" in html
     assert "<script>" not in html
 
 
-def test_persona_profile_card_unset_defaults():
+def test_persona_profile_card_unset_shows_setup_cta_and_is_clickable():
     html = sidebar._persona_card_html(Persona())
 
-    assert "사용자" in html
-    assert "부서 미설정" in html
-    assert "직무 미설정" in html
-    assert "관심 공정 미설정" in html
+    # 미설정 카드도 전체가 ?persona_editor=1 링크 → 이모지·이름·안내·CTA 어디든 클릭 가능
+    assert 'href="?persona_editor=1"' in html
+    assert "persona-profile-card-empty" in html
+    assert "프로필 미설정" in html
+    assert "👤" in html                            # 프로필 이모지 아이콘
+    assert "프로필 설정하기" in html                 # CTA
+    # 값이 없으니 팀/관심 세부 행은 노출하지 않음 (깔끔한 미설정 카드)
+    assert "persona-profile-details" not in html
 
 
 def test_persona_page_options_helpers_handle_empty_and_columns():

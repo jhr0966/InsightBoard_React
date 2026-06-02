@@ -20,6 +20,7 @@ from store import trends as _trends
 from store.match import score_matches as _score_matches
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
+from ui import components as _components
 from ui.styles import inject_screen_css
 
 
@@ -989,7 +990,8 @@ def _ia_stats() -> dict[str, str]:
         except Exception:
             pass
 
-    # PoC 후보: 자동화 기회 셀 + 채택 대기 제안서
+    # PoC 후보: 자동화 기회 셀(높은 매칭 점수)만. '채택 대기' 제안서와는 별개
+    # 개념이라 합산하지 않는다 (이전: pending 을 더해 두 개념을 혼동시키던 버그 — 감사 지적).
     poc_candidates = 0
     if (
         news_7d is not None and not news_7d.empty
@@ -1000,8 +1002,6 @@ def _ia_stats() -> dict[str, str]:
             poc_candidates += int(len(cells))
         except Exception:
             pass
-    summary = bookmarks_store.summary_counts()
-    poc_candidates += int(summary["proposal_status"].get("pending", 0))  # type: ignore[index]
 
     return {
         "news_30d": str(n_30d),
@@ -1104,8 +1104,29 @@ def chat_context_block(persona: Persona) -> str:
     return "\n".join(parts)
 
 
+def _strip_mockup_blocks(html: str) -> str:
+    """정적 목업 블록 제거 (Phase C) — 실데이터/실위젯이 대체하는 시안 잔재.
+
+    - 가짜 우측 `ia-sola` 패널: 실제 SOLA 채팅은 우측 컬럼(`chat_panel.render_side`)이 담당.
+      (Phase A 로 모든 화면에 우측 채팅이 생겨 이 시안 패널은 중복·가짜였음.)
+    - 죽은 `ia-filters` 스트립: 기간/공정범위/저장한 뷰 버튼이 모두 핸들러 없는 시안.
+    두 마커 사이를 슬라이스해 제거 — div 균형 카운트에 의존하지 않는 안전 방식.
+    """
+    i = html.find('<aside class="ia-sola">')
+    if i != -1:
+        j = html.find('</aside>', i)
+        if j != -1:
+            html = html[:i] + html[j + len('</aside>'):]
+    i = html.find('<div class="ia-filters">')
+    if i != -1:
+        j = html.find('<div class="ia-grid">', i)
+        if j != -1:
+            html = html[:i] + html[j:]
+    return html
+
+
 def render() -> None:
-    """인사이트 분석 v2 — topbar + app-side + main + app-sola."""
+    """인사이트 분석 v2 — 중앙 콘텐츠(트렌드·매트릭스·히트맵). 우측 채팅은 render_side(app.py)."""
     inject_screen_css("insights")
 
     persona = app_shell.get_persona()
@@ -1154,7 +1175,8 @@ def render() -> None:
         .replace("{{IA_HEATMAP}}", _ia_heatmap_html(selected_key=selected_hm))
         .replace("{{IA_PROCESS_MAP}}", _ia_process_map_html(selected_kw=selected_kw))
     )
-    st.html(html_out)
+    html_out = _strip_mockup_blocks(html_out)
+    st.html(_components.prepare_screen_html(html_out))
 
     app_shell.render_app_sola(
         context_label="인사이트 분석",

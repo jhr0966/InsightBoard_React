@@ -1,0 +1,227 @@
+/* ──────────────────────────────────────────────────────────────
+   v2 네이티브 사이드바 스타일 (Phase A 후속 — 레거시 styles.css 대체)
+   ──────────────────────────────────────────────────────────────
+   `ui/sidebar.py` 가 네이티브 st.sidebar 안에 렌더하는 페르소나 카드 · 통계 ·
+   브랜드 · 5-nav · 플로우 힌트 · LLM 푸터의 스타일. 모두 v2 토큰(tokens.css)
+   기반. 이 파일이 추가되면서 1463줄짜리 옛 `assets/styles.css` 로드를 중단했다
+   (V1 잔재 + 새로고침 FOUC 제거). ────────────────────────────────────────── */
+
+/* ── 사이드바 컨테이너 ─────────────────────────────────────── */
+[data-testid="stSidebar"] {
+  background: var(--surface-card);
+  border-right: 1px solid var(--surface-divider);
+}
+[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+  padding-top: 14px;
+}
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem; }
+
+/* ── 페르소나 프로필 카드 (클릭 → 편집) ───────────────────── */
+.persona-profile-link,
+.persona-profile-link:visited {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.persona-profile-card {
+  position: relative;
+  padding: 16px 14px 13px;
+  background: linear-gradient(160deg, #F8FAFF 0%, #FFFFFF 60%);
+  border: 1px solid var(--surface-divider);
+  border-radius: 14px;
+  box-shadow: var(--shadow-1, 0 1px 2px rgba(15,23,42,0.06));
+  transition: border-color 120ms, box-shadow 120ms, transform 120ms;
+}
+.persona-profile-link:hover .persona-profile-card,
+.persona-profile-link:focus .persona-profile-card {
+  border-color: var(--accent-primary, #2563EB);
+  box-shadow: 0 0 0 3px var(--accent-ring, rgba(37,99,235,0.18));
+  transform: translateY(-1px);
+}
+.persona-profile-card-empty {
+  border-style: dashed;
+  border-color: var(--accent-primary, #2563EB);
+  background: #F5F8FF;
+}
+/* 상단 행: 아바타 + 이름/역할 + 편집 펜 */
+.persona-profile-row { display: flex; align-items: center; gap: 11px; }
+.persona-profile-head {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #0F172A, #2563EB);
+  color: #FFFFFF;
+  font-size: 18px; font-weight: 800;
+  box-shadow: 0 4px 10px rgba(37,99,235,0.24);
+}
+.persona-profile-head-empty {
+  background: #EEF2F8;
+  color: #64748B;
+  font-size: 22px;
+  box-shadow: none;
+  border: 1px dashed #C7D2E0;
+}
+.persona-profile-id { flex: 1; min-width: 0; }
+.persona-profile-name {
+  font-size: 16px; font-weight: 800;
+  color: var(--text-primary, #0F172A);
+  letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.persona-profile-role {
+  margin-top: 2px;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-secondary, #475569);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.persona-profile-edit {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-divider);
+  color: var(--text-muted, #94A3B8);
+  font-size: 13px;
+}
+.persona-profile-link:hover .persona-profile-edit {
+  color: var(--accent-primary, #2563EB);
+  border-color: var(--accent-primary, #2563EB);
+}
+
+/* 세부 (팀 / 관심) — 설정 시에만 */
+.persona-profile-details {
+  margin-top: 12px;
+  display: flex; flex-direction: column; gap: 5px;
+  padding-top: 11px;
+  border-top: 1px solid var(--surface-divider, #EEF0F3);
+}
+.persona-profile-details > div {
+  display: grid; grid-template-columns: 38px 1fr; align-items: baseline; gap: 8px;
+}
+.persona-profile-details span {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--text-muted, #94A3B8);
+}
+.persona-profile-details b {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-primary, #0F172A);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 미설정 — 안내 문구 + CTA (카드 전체가 링크라 함께 클릭됨) */
+.persona-profile-empty-hint {
+  margin-top: 11px;
+  font-size: 12px; font-weight: 500; line-height: 1.5;
+  color: var(--text-secondary, #475569);
+}
+.persona-profile-cta {
+  margin-top: 11px;
+  padding: 8px 10px;
+  text-align: center;
+  border-radius: 9px;
+  background: var(--accent-primary, #2563EB);
+  color: #FFFFFF;
+  font-size: 12.5px; font-weight: 700;
+}
+.persona-profile-link:hover .persona-profile-cta { background: var(--accent-hover, #1D4ED8); }
+
+/* ── 브랜드 ────────────────────────────────────────────────── */
+.sidebar-brand {
+  display: flex; align-items: center; gap: 9px;
+  margin: 16px 2px 6px;
+}
+.sidebar-brand-mark {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: var(--accent-primary, #2563EB);
+  color: #FFFFFF; font-size: 11px; font-weight: 800; letter-spacing: -0.02em;
+}
+.sidebar-brand-text {
+  font-size: 14px; font-weight: 800; letter-spacing: -0.01em;
+  color: var(--text-primary, #0F172A);
+}
+
+/* ── 섹션 레이블 ──────────────────────────────────────────── */
+.sidebar-section {
+  margin: 14px 2px 8px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94A3B8);
+}
+
+/* ── 5-nav (업무 흐름) ────────────────────────────────────── */
+.sidebar-nav { display: flex; flex-direction: column; gap: 3px; }
+.sidebar-nav-item {
+  display: grid; grid-template-columns: 26px 1fr; align-items: center; gap: 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 120ms, border-color 120ms;
+}
+.sidebar-nav-item:hover { background: var(--surface-soft, #F5F7FB); }
+.sidebar-nav-item.active {
+  background: #EEF4FF;
+  border-color: rgba(37,99,235,0.20);
+}
+.sidebar-nav-index {
+  font-size: 11px; font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted, #94A3B8);
+}
+.sidebar-nav-item.active .sidebar-nav-index { color: var(--accent-primary, #2563EB); }
+.sidebar-nav-copy { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.sidebar-nav-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--text-primary, #0F172A);
+}
+.sidebar-nav-item.active .sidebar-nav-title { color: var(--accent-active, #1E40AF); }
+.sidebar-nav-desc {
+  font-size: 12px; font-weight: 500;
+  color: var(--text-muted, #94A3B8);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── 플로우 힌트 ──────────────────────────────────────────── */
+.sidebar-flow-hint {
+  margin: 12px 2px 4px; padding: 9px 11px;
+  background: var(--surface-soft, #F5F7FB);
+  border-radius: 9px;
+  font-size: 11.5px; font-weight: 600; line-height: 1.5;
+  color: var(--text-secondary, #475569);
+}
+
+/* ── LLM 상태 푸터 ────────────────────────────────────────── */
+.sidebar-footer {
+  display: flex; align-items: center; gap: 10px;
+  margin: 14px 2px 4px; padding: 11px 12px;
+  background: var(--surface-soft, #F5F7FB);
+  border: 1px solid var(--surface-divider);
+  border-radius: 10px;
+}
+.sidebar-footer.sidebar-footer-empty { flex-direction: column; align-items: stretch; gap: 9px; }
+.sidebar-footer-row { display: flex; align-items: center; gap: 10px; }
+.sidebar-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  background: var(--text-muted, #94A3B8);
+}
+.sidebar-dot.ok { background: var(--semantic-success, #15803D); box-shadow: 0 0 0 3px rgba(21,128,61,0.14); }
+.sidebar-dot.warn { background: var(--semantic-warning, #B45309); box-shadow: 0 0 0 3px rgba(180,83,9,0.14); }
+.sidebar-footer-text { line-height: 1.4; flex: 1; min-width: 0; overflow: hidden; }
+.sidebar-footer-text b { font-size: 13px; font-weight: 700; color: var(--text-primary, #0F172A); }
+.sidebar-footer-text .muted { font-size: 11.5px; color: var(--text-muted, #94A3B8); }
+.sidebar-llm-empty-hint {
+  font-size: 11.5px; line-height: 1.55;
+  color: var(--text-secondary, #475569);
+}
+.sidebar-llm-empty-hint a {
+  color: var(--accent-primary, #2563EB); font-weight: 700; text-decoration: none;
+}
+.sidebar-llm-empty-hint a:hover { text-decoration: underline; }
+.sidebar-llm-empty-hint code {
+  font-family: var(--font-mono, monospace); font-size: 11px;
+  background: #EEF1F6; padding: 1px 5px; border-radius: 4px;
+}

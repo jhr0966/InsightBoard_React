@@ -20,10 +20,32 @@ from persona.schema import Persona
 from store import bookmarks as bookmarks_store
 from store.bookmarks import Bookmark
 from ui import app_shell
+from ui import components as _components
 from ui.styles import inject_screen_css
 
 
 _ARCHIVE_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "archive_main.html"
+
+
+def _strip_oa_mockups(html: str) -> str:
+    """정적 목업 블록 제거 (Phase C-4) — 실데이터(헤더 통계·칸반)는 보존.
+
+    - 죽은 컨트롤 스트립(seg 탭·검색·필터칩·묶음 내보내기 — 핸들러 없는 시안).
+    - 하단 "전체 산출물 45건" 표 + 미리보기 패널(PRO-2026-…·₩1.4억·근거 뉴스 8건·
+      결정/내보내기 버튼 — 전부 하드코딩 목업, 위 칸반 카운트와도 모순).
+    마커 슬라이스(컨트롤→칸반, 하단→셸닫힘)라 div 균형 카운트 비의존.
+    """
+    i = html.find('<div class="oa-controls">')
+    if i != -1:
+        j = html.find('<section class="oa-board">', i)
+        if j != -1:
+            html = html[:i] + html[j:]
+    i = html.find('<section class="oa-bottom">')
+    if i != -1:
+        end = html.rfind("</div>")
+        if end != -1 and end > i:
+            html = html[:i] + html[end:]
+    return html
 
 # 칸반 컬럼당 최대 노출 카드 수 — 초과분은 "+N건 더 보기" 로 표시
 _MAX_CARDS_PER_COL = 4
@@ -421,7 +443,8 @@ def render() -> None:
         .replace("{{OA_CARDS_ADOPTED}}", oa["cards_adopted"])
         .replace("{{OA_CARDS_REJECTED}}", oa["cards_rejected"])
     )
-    st.html(html_out)
+    html_out = _strip_oa_mockups(html_out)
+    st.html(_components.prepare_screen_html(html_out))
 
     app_shell.render_app_sola(
         context_label="산출물 보관함",

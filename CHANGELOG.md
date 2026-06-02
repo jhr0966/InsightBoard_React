@@ -5,6 +5,98 @@
 
 ## [Unreleased]
 
+### Added (UI Phase D — 설정 메뉴: 테마 + 글자 크기) — 사용자 6대 UI/UX 요구 완결
+- `store/ui_prefs.py` 신규 — 표시 설정(theme·font)을 `data/ui_prefs.json` 에 영구화.
+- `ui/styles.inject_user_prefs()` — 저장된 테마/글자 크기를 `inject_global_styles` 직후 주입(베이스 토큰 이후 → `:root` 오버라이드 우선). `app.py` 에서 호출.
+  - **테마**: 라이트(기본) / **다크** / 오션(틸 강조) / 선셋(로즈 강조). 다크는 토큰 + `.stApp`·사이드바·우측 채팅·네이티브 위젯(input·textarea·select·버튼) 오버라이드.
+  - **글자 크기**: 작게(0.92) / 보통 / 크게(1.12) — `stMain`·사이드바 `zoom`.
+- 설정 UI: `persona_page._render_display_settings` — 🎨 표시 설정(테마·글자 크기 라디오). **변경 즉시 저장·적용**(on_click 없이 diff 감지 → rerun). topbar ⚙·아바타로 진입.
+- **다크모드 활성화용 색 토큰 일괄화**: 화면 CSS 고정 `background:#fff` 89곳 → `var(--surface-card)`, `#E5E7EB` 테두리 6곳 → `var(--surface-divider)` (라이트 무변경·다크 추종). 내가 추가했던 인라인 색(chat_panel·sidebar 통계·sola workbench)도 토큰화.
+- `tests/test_ui_prefs.py` (+7). 검증: pytest 697/697 · 금지 패턴 0 · playwright 라이트/다크/오션/큰글자 — 다크 사이드바·KPI·본문·채팅 일관, 라이트 무변경.
+- **사용자 6대 UI/UX 요구 완결**: ① 화면 역할·연계(Phase C) ② 모든 화면 좌 사이드바+우 채팅(Phase A) ③ 3영역 분리(Phase A) ④ 죽은 버튼 와이어/삭제(Phase C+전역 SVG) ⑤ 컨텐츠 정리(Phase C) ⑥ 설정 메뉴 테마·폰트(Phase D).
+
+### Changed (UI Phase C-4 — 보관함 정리: 하단 목업·컨트롤 스트립 제거) — Phase C 완료
+- `archive_v2._strip_oa_mockups` — 렌더 시 ① 죽은 컨트롤 스트립(seg 탭·검색·필터칩·묶음 내보내기) ② 하단 "전체 산출물 45건" 표 + 미리보기 패널(PRO-2026-…·₩1.4억·근거 뉴스 8건·결정/내보내기 — 전부 하드코딩 목업, 위 칸반 카운트와 모순) 제거.
+- 템플릿: 칸반 "+ 새로 만들기"(가짜 버튼)·"+6 (전월 대비)"(가짜 트렌드) 제거.
+- **보존**: 헤더 4 stats·칸반 3열(대기/채택/기각) 실데이터 + 채택/기각/되돌리기/수정 액션. 빈 칸반은 "SOLA 작업실에서 제안서를 만들면 여기 모입니다" 안내.
+- `tests/test_archive_cleanup.py` (+3). 검증: pytest 690/690 · 금지 패턴 0 · playwright 보관함 — 컨트롤스트립/하단표/가짜ID 0, 칸반 유지, 깨진img 0.
+- **Phase C(5화면 컨텐츠 정리) 완료** — 인사이트(C-1)·보드(C-2)·데이터관리(C-3)·보관함(C-4) + SOLA 작업실(재설계). 모든 화면: 가짜 목업 제거 · 죽은 링크 실네비 재배선 · 심플 세로 스크롤.
+
+### Fixed (UI 전역 — 모든 화면 SVG 아이콘 깨짐 + 차트 누락 일괄 수정)
+- **전수 진단(playwright)**: 모든 화면에 깨진 이미지(board 5·insights 5·sola 3·**archive 14**·data 3)와 `inlineSVG=0`(차트 누락) 발견. 원인 2종:
+  ① `data:image/svg+xml;utf8,<svg ... fill='#…'>` 미인코딩 data-URI — 색상 `#`·공백이 잘려 **아이콘 전부 깨짐**.
+  ② `st.html` 의 sanitizer 가 **인라인 `<svg>` 를 통째로 제거** — 차트(보드 트렌드·인사이트 매트릭스/히트맵 등)가 안 보임.
+- **`ui/components.prepare_screen_html()` 신규** — `st.html` 직전 통과: ① `;utf8,` data-URI → URL 인코딩(`#`→`%23`) 재작성, ② 인라인 `<svg>` → class/style/width/height 보존한 인코딩 data-URI `<img>` 로 래핑. `render_screen_html()` 도 함께 제공.
+- 적용: `app_shell.render_topbar`(전 화면 topbar 아이콘) + board/insights/data/archive 메인 템플릿 렌더 → **전 화면 깨진 이미지 0** 확인(playwright 재진단).
+- `tests/test_ui_components.py` (+3). 검증: pytest 687/687 · 금지 패턴 0 · playwright board/data/insights/sola/archive 모두 broken=0.
+
+### Fixed (UI 버그 — 데이터 관리 + 우측 채팅, 사용자 보고 4건)
+- **빈 수집잡 문구 세로 깨짐**: 빈 상태 `<li class="dm-job">` 가 `.dm-job` 의 `grid(5px 1fr auto)` 를 상속해 "오늘 실행된 수집잡이 없습니다" 가 글자마다 줄바꿈되던 것을 `display:block; word-break:keep-all` 로 수정.
+- **"지금 새로고침" 버튼 문구 중앙정렬**: `justify-content:center` + 아이콘을 URL 인코딩 data-URI `<img>` 로 교체.
+- **14일 수집량 차트 깨짐**: `st.html` 이 인라인 `<svg>` 를 sanitize 로 제거하고, 비인코딩 `data:image/svg+xml;utf8,<svg ... fill='#…'>` 의 색상 `#` 가 fragment 로 잘려 이미지가 깨지던 것을 **URL 인코딩 data-URI `<img>`**(`#`→`%23`)로 정상 렌더. 새로고침 아이콘도 동일 처리.
+- **우측 채팅 높이/하단 공간**: 입력창 height 78→130, 패널을 `height:calc(100vh-28px)` 로 뷰포트 높이 채움 + 내부 flex column 으로 입력 form 을 하단 고정(`stLayoutWrapper:has(stForm){margin-top:auto}`) → 하단 빈 공간 제거 + 채팅 영역 확대.
+- `tests/test_dm_cleanup.py` (+3 회귀). 검증: pytest 684/684 · 금지 패턴 0 · playwright — 차트/아이콘 `<img>` 로드 True, 입력 form 이 패널 하단 배치 확인.
+
+### Changed (UI Phase C-3 — 데이터 관리 정리 + 심플 세로 스크롤)
+- `data_management_v2._strip_dm_mockups` 신규 — 렌더 시 정적 목업 제거: ① 죽은 필터바(검색 input·필터칩·출처/기간/정렬 셀렉트) ② 죽은 페이저(1–6 / 1,247 … 208) ③ **가짜 서브카드 3종**(키워드 매니저 "활성8·56건/일"·작업 정의 "3파일·86항목"·출처 설정 "1 셀렉터 오류" — 실제 탭이 대체하는 가짜 통계/목록). 마커 슬라이스(필터→기사그리드, 페이저→섹션닫힘, 서브그리드→셸닫힘)라 div 균형 카운트 비의존.
+- 템플릿 편집: 가짜 "06:00 정기 실행 · 5개 작업" → "정기 수집 · 매일 새벽 자동 실행", disabled "스케줄" 버튼 제거, 가짜 news-meta(전체 1,247·매칭 32·북마크 17) 제거.
+- 심플 세로 스크롤: `dm-split`(수집 잡 | 뉴스 라이브러리)를 단일 컬럼 스택(`scale.css` D1).
+- **기능/실데이터 보존**: 헤더 4 stats·그룹/탭 nav·수집 잡·뉴스 카드·새로고침 CTA·작업 정의 CRUD·키워드/출처 탭 모두 유지.
+- `tests/test_dm_cleanup.py` (+3). 검증: pytest 681/681 · 금지 패턴 0 · playwright 데이터관리 — 죽은 필터/페이저/가짜서브카드/가짜카운트 0, 우측 채팅 노출.
+
+### Changed (UI Phase C-2 — 보드 정리 + 심플 세로 스크롤)
+- **죽은/가짜 제거**: hero CTA 2개("브리핑 듣기"/"빠른 질문" — 우측 채팅과 중복), soon 탭(강한매칭/출처별/월별 — 미구현 필터), 가짜 brief-meta("06:08 생성·32건·1.4s"), "검토 대기 4건" 리터럴 → "자동화 기회".
+- **죽은 `*.html` 링크를 실제 area 네비(`?app_area=`)로 재배선**(`board_v2._clean_board_html`) — 기능 보존: 뉴스 라이브러리→데이터 관리, 전체/트렌드/매트릭스 작업장→인사이트. 없는 화면 링크(keyword-manager.html)는 제거.
+- **뉴스 카드 클릭 → 원문 열기**(`_lead_story_html`/`_side_story_html` 를 `<a target="_blank">` 로 래핑, 링크 escape).
+- **심플 세로 스크롤**(사용자 지시): 2-컬럼 셸로 좁아진 main_col 에서 섹션 내부 2단 그리드(`db-greet`/`db-stories`/`db-trend`)를 단일 컬럼으로 스택(`scale.css §11`). 모든 콘텐츠/기능 보존, 레이아웃만 세로화.
+- `tests/test_board_cleanup.py` (+6). 검증: pytest 678/678 · 금지 패턴 0 · playwright 보드 — 죽은 CTA/soon탭/가짜meta/리터럴 0, 우측 채팅 노출.
+
+### Changed (UI Phase C-1 — 인사이트 화면 정리: 가짜 패널·죽은 필터 제거)
+- `insights_v2._strip_mockup_blocks` 신규 — 렌더 시 `insights_main.html` 의 정적 목업 2블록 제거: ① **가짜 우측 `ia-sola` 패널**(SOLA 분석 모드·가짜 인용·"도장 부스 #3 비전 PoC"·액션/컴포저 — Phase A 로 모든 화면에 실제 우측 채팅이 생겨 중복·가짜였음) ② **죽은 `ia-filters` 스트립**(기간 7/30/90일·공정범위·기술칩·"저장한 뷰" — 전부 핸들러 없는 시안). 마커 슬라이스 방식(`<aside class="ia-sola">…</aside>`, `ia-filters`→`ia-grid` 사이)이라 div 균형 카운트에 의존 안 함.
+- `insights_v2._ia_stats` — **PoC 후보 중복집계 수정**: 자동화 기회 셀에 채택 대기(pending) 제안서를 더하던 버그 제거(두 개념 혼동). 이제 PoC 후보 = 기회 셀만.
+- `tests/test_insights_cleanup.py` (+4). 검증: pytest 672/672 · 금지 패턴 0 · playwright 인사이트 — 가짜 패널·필터·가짜 PoC문구 0, 우측 실채팅 노출.
+
+### Changed (UI Phase B 후속 — SOLA 작업실 3영역 통일: 산출물 캔버스)
+- **SOLA 작업실을 다른 화면과 동일한 [좌 사이드바 │ 중앙 콘텐츠 │ 우 LLM 채팅] 3영역으로 통일.** 기존엔 이 화면만 자체 3열 `ws-shell`(스레드│채팅│ctx)이라 우측 채팅이 없고 채팅·결과·버튼이 중앙에 뒤섞여(버튼 줄바꿈·쏠림, 채팅/결과 경계 불명) 있던 문제 해소(사용자 지적).
+- `app.py` — SOLA 작업실 풀폭 예외 제거, `main_col + chat_col` 에 편입. 우측 = `chat_panel.render_side`(대화), 중앙 = 작업대.
+- `ui/sola_workshop_v2.render()` 재작성 → `_render_workbench`(중앙 산출물 캔버스): ① 액션 바 `📝 제안서 생성`·`📰 뉴스 요약`·`➕ 새 대화` ② 현재 산출물(마지막 SOLA 답변을 `st.container(border)`+`st.markdown` 문서 카드로 + `📦 보관함에 저장`·`🔄 다시 생성`) ③ 세션 목록(검색·고정·삭제) ④ 저장한 산출물. 자체 `ws-shell` 템플릿·중앙 `chat_input` 제거(대화는 우측 채팅이 담당).
+- `_consume_summarize_if_any` 신규(`📰 뉴스 요약` → `sola.summarize`), `chat_context_block` 신규(우측 채팅에 작업실 컨텍스트 자동 첨부). `_msg_html`/`_render_messages_html` 은 테스트 의존이라 보존.
+- 검증: pytest 668/668 · 금지 패턴 0 · playwright SOLA 빈/인계 화면 — 3영역 분리·우측 채팅 노출·액션 버튼 정렬 확인.
+
+### Added (UI Phase B — 제안서 엔진 복원: 생성 → 보관함 저장 루프)
+- 끊겨 있던 제품 핵심(자동화 기회 → 제안서 → 산출물)을 SOLA 작업실에 배선:
+  - `ui/sola_workshop_v2._consume_generate_proposal_if_any` — 인계(dept/lv3) 컨텍스트 + 관련 뉴스(`_related_news_df`: 최근 14일 뉴스 중 작업 매칭 상위 N, 매칭 없으면 최근 폴백)를 **`sola.propose.propose_for_task`(전용 제안서 시스템 프롬프트)** 에 넘겨 구조화 제안서를 assistant 메시지로 생성. LLM 미설정 시 입력 미리보기, 호출 오류 시 안내 메시지로 무중단.
+  - `ui/sola_workshop_v2._consume_save_proposal_if_any` — 현 thread 의 마지막 제안서(assistant)를 **proposal 북마크로 저장(실 content, status=pending)**. thread 당 안정 id → 재저장은 갱신(중복 방지). 저장 후 보드/사이드바 '채택 대기' 카운트 캐시 무효화.
+  - `_render_main` 버튼: 핸드오프 시 **"📝 제안서 생성"** + "💬 컨텍스트로 물어보기", assistant 메시지 존재 시 **"📦 이 제안서 보관함에 저장"**. 액션 피드백은 `_render_sola_action_toasts`.
+- **이전 상태**: 보드 '채택' 은 `content=""` 빈 제안서만 생성하고 `sola/propose`·`bookmarks.update_content` 는 production 호출 0(데드)이라 사용자가 실제 제안서를 받을 경로가 없었음 → 이제 기회에서 인계받아 **실제 제안서 본문이 보관함 산출물로 저장**된다.
+- `tests/test_sola_propose_loop.py` (+12) — `_related_news_df` 폴백 2 · generate(append 순서/persona·task 전달/noop/오류 표면화) 4 · save(실 content/재저장 갱신/no-content warn/noop/handoff tags) 5 · toast 1회 소비 1.
+- 검증: pytest 668/668 · 금지 패턴 0 · playwright 핸드오프 화면에서 '📝 제안서 생성' 버튼 노출 확인.
+
+### Fixed (CI — flaky 테스트 결정화)
+- `tests/test_sola_composer.py::test_append_message_persists_to_chat_log` — 첫 user 메시지의 thread 제목 자동생성이 LLM 가용성에 의존(가용 시 압축 제목, 미설정 시 raw fallback)해 CI 에서 간헐 실패(`assert '인사 분석하기' == 'hello'`)하던 것을 `sola.thread_title.generate` 목으로 결정화. 제목 생성기 동작 자체는 `test_thread_title_llm` 가 검증하고, 본 테스트는 chat_log 영속+message_count+제목 wiring 에 집중. (UI 셸/CSS/사이드바 변경과 무관한 기존 취약점.)
+
+### Changed (UI Phase A 후속 — 사이드바 프로필 카드 재설계)
+- `ui/sidebar._persona_card_html` 깔끔한 프로필 카드로 재설계. **설정 시**: 아바타 + 이름/역할 + 편집펜(✎) + 팀/관심 구분선. **미설정 시**: 👤 프로필 이모지 + "프로필 미설정" + 안내 문구 + "＋ 프로필 설정하기" CTA. 카드 전체가 `?persona_editor=1` 링크라 **이모지·이름·안내 문구 어디를 눌러도 설정 화면이 열림**(playwright 클릭 검증).
+- `assets/v2/sidebar.css` 프로필 카드 스타일을 새 구조(`.persona-profile-row`/`-id`/`-head-empty`/`-edit`/`-empty-hint`/`-cta`)로 교체.
+- `tests/test_sidebar_profile.py` 2건 새 마크업에 맞춰 갱신(XSS escape·클릭 링크·미설정 CTA 검증 보존).
+- 검증: pytest 656/656 · 금지 패턴 0 · playwright 설정/미설정 카드 + 미설정 클릭→설정창 열림 확인.
+
+### Removed (UI Phase A 후속 — V1 잔재·레거시 스타일시트 제거)
+- **레거시 `assets/styles.css`(1463줄, V1 디자인 시스템) 삭제 + 로드 중단**. 이 스타일시트가 매 페이지 unconditional 로 주입돼 `.stApp`/`.block-container` 등 ungated 전역 규칙이 v2 와 충돌, 새로고침 시 V1 UI 가 잠깐 보이던 FOUC 원인. 유일한 라이브 소비처였던 네이티브 사이드바 스타일(`.sidebar-*`/`.persona-profile-*`)을 신규 `assets/v2/sidebar.css`(v2 토큰 기반)로 이전.
+- `ui/persona_page.py` — V1 `page_header`(`.app-header` 마크업) + `section_label` 호출 제거. topbar 가 이미 제목을 담당하므로 중복 V1 헤더가 페르소나 화면에 남던 문제 해소. v2 인라인 인트로/레이블로 교체.
+- 죽은 V1 빌더(`components.metric_card`/`status_card`/`action_card`)·`data_health`(둘 다 라이브 호출 0)는 styles.css 없이도 무방 — 확인 후 보존(테스트 의존). `page_header`/`section_label` 정의는 `ui/layout.py`+`test_chat_log` 의존이라 유지(Phase C 에서 layout 과 함께 삭제).
+- `CLAUDE.md` 라우팅 표 CSS 항목을 `assets/v2/*.css` 로 갱신.
+- 검증: pytest 656/656 · 금지 패턴 0 · playwright 보드/페르소나 캡처 — 사이드바 v2 스타일 정상, 페르소나 화면 V1 헤더 제거 확인.
+
+### Changed (UI Phase A — 셸 v3: 3영역 레이아웃 네이티브 재건)
+- **레이아웃 소유권을 `app.py` 로 이전**: 좌측은 Streamlit 네이티브 `st.sidebar`(nav 단일 소스), 본문은 `st.columns([2.7, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `chat_panel.render_side()` 가 **실제 작동하는** 채팅(form text_area + 보내기 → `_do_sola_send` → `consume_send_if_any`)을 렌더. SOLA 작업실만 자체 풀스크린(스레드+채팅+ctx)이라 우측 컬럼 없이 풀폭.
+- **제거된 근본 원인**: ① 좌측 패널 이중화(네이티브 `st.sidebar` 를 CSS 로 숨기고 고정 HTML `.app-side` 를 따로 그리던 구조 → nav 정의 2벌) ② 본문 매직 패딩(`padding-left:344px`/`padding-right:480px` 가 고정 패널 폭에 수동 정합 → 어긋나면 겹침) ③ 우측 `.app-sola` 패널 전체가 `disabled` 목업(입력창·보내기·빠른질문 전부 비활성)이라 진짜 채팅은 본문 끝에 따로 있던 이중 채팅.
+- `ui/app_shell.render_app_side` / `render_app_sola` → **no-op**(호출부 호환 유지, 본문은 Phase C 에서 함수째 삭제). `render_topbar` 는 in-flow 페이지 헤더로 전환(fixed → static), `.v2-scroll-fade` 숨김.
+- `ui/sidebar.py` — 네이티브 사이드바에 통계 3칸(오늘 매칭/자동화 기회/채택 대기, `board_v2._archive_stats` 실데이터 위임) 추가해 구 `.app-side` 정보 보존.
+- CSS: `streamlit-overrides.css` 네이티브 사이드바 노출 + 매직 패딩 제거 + 우측 채팅 컬럼 sticky(`[data-testid="stColumn"]:has(.side-chat-marker)`). `shell.css` `.db-topbar` static 화. `scale.css` 패널 폭/본문 패딩 규칙 제거.
+- `docs/INVARIANTS.md I-13` · `docs/ARCHITECTURE.md` — 네이티브 셸 기준으로 갱신.
+- **검증**: pytest 656/656 · 금지 패턴(on_click/raw requests) 0 · py_compile OK · playwright 5화면 캡처 — 3영역(사이드바·본문·채팅) 겹침 없이 분리 확인, SOLA 작업실도 동일 네이티브 사이드바로 일관.
+
 ### Docs (다음 세션 준비)
 - `docs/REFACTOR_PLAN.md` 끝에 "다음 세션 시작점" 섹션 — Phase 1b/1c 의 브랜치명·진입 파일·UX 안 3개·완료 기준·시작 명령 명시.
 - 옛 계획·블루프린트 7건(`DEVELOPMENT_PHASES`/`MILESTONE_1`/`TASK_DEF_PLAN`/`UX_QA_CHECKLIST`/`UX_REDESIGN_PLAN`/`VIBE_CODING_BLUEPRINT`/`WORKFLOW`)에 역사적 기록 표식 + `REFACTOR_PLAN`/`CLAUDE.md` 로의 redirect 헤더.

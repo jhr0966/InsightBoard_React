@@ -12,24 +12,31 @@
   │
   ▼
 ┌─────────────────────────────────────────────────────────┐
-│  app.py (평탄 디스패처)                                 │
-│   sidebar.render() → area 슬러그 → if/elif 5분기        │
-│   chat_panel.consume_send_if_any() (어느 area든 송신)   │
+│  app.py (평탄 디스패처 — 레이아웃 소유: Phase A 네이티브 셸)  │
+│   with st.sidebar: sidebar.render() → area 슬러그          │
+│   chat_panel.consume_send_if_any() (어느 area든 송신)      │
+│   main_col, chat_col = st.columns([2.7, 1])               │
+│     with main_col: if/elif 5분기 → 화면 render()          │
+│     with chat_col: chat_panel.render_side()               │
+│   (SOLA 작업실만 풀폭 — 자체 스레드+채팅+ctx)              │
 └─────────────────────────────────────────────────────────┘
   │
-  ├── ui/app_shell  (topbar · 좌측 nav · 우측 SOLA 패널 · ⌘K 팔레트)
-  ├── ui/sidebar    (페르소나 카드 · 5-nav · LLM 상태)
-  ├── ui/chat_panel (본문 끝 글로벌 채팅 expander · area_key 별 영구화)
+  ├── ui/sidebar    (네이티브 좌측 사이드바 = nav 단일 소스 · 페르소나 · 통계 · LLM 상태)
+  ├── ui/chat_panel (우측 컬럼 채팅 render_side · area_key 별 영구화)
+  ├── ui/app_shell  (in-flow topbar render_topbar · ⌘K 팔레트 · get_persona)
+  │                  ⚠ render_app_side/render_app_sola 는 Phase A no-op (Phase C 삭제)
   │
   └── area 5종 (v2 화면, 각 render() + chat_context_block() 한 쌍)
         ├── 📊 board_v2          → KPI · 기회 · 트렌드 · 매트릭스 · 탑스토리
         ├── 🧱 data_management_v2 → 뉴스 수집 · 라이브러리 · 작업 정의 CRUD
         ├── 🔎 insights_v2        → 트렌드 · 매칭 · 자동화 기회
-        ├── 🤖 sola_workshop_v2   → 풀스크린 LLM 채팅 (자체 채팅, 패널 미렌더)
+        ├── 🤖 sola_workshop_v2   → 풀스크린 LLM 채팅 (자체 채팅, 우측 컬럼 미사용)
         └── 📦 archive_v2         → 북마크 · 채택 의사결정
 ```
 
-`app.py` 는 위→아래 스크립트. area 분기 + chat 송신 핸들러 + 페르소나 온보딩 모달만 담는다. 마크업/state 로직은 모두 `ui/*_v2.py` 내부.
+`app.py` 는 위→아래 스크립트. 레이아웃(네이티브 사이드바 + main/chat 2-컬럼) + area 분기 + chat 송신 핸들러 + 온보딩 모달만 담는다. 마크업/state 로직은 모두 `ui/*_v2.py` 내부.
+
+> **Phase A 셸 v3 (2026-06-01)**: 좌측은 Streamlit 네이티브 `st.sidebar`(단일 nav 소스), 우측은 `st.columns` 채팅 컬럼(`chat_panel.render_side`, 실제 작동). 이전의 fixed 좌/우 패널(`.app-side`/`.app-sola`)과 본문 매직 패딩(344/480px)을 제거해 3영역 겹침을 해소. 화면들의 `render_app_side`/`render_app_sola` 호출은 no-op (Phase C 에서 호출부·함수 삭제).
 
 ---
 

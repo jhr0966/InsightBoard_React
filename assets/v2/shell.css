@@ -17,19 +17,16 @@
     Fixed full-width top header (.db-topbar)
    ════════════════════════════════════════════════════════════ */
 .db-topbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;   /* above .app-side (35) and .app-sola (40) so panels slide UNDER on scroll */
+  /* Phase A: fixed 풀폭 헤더 → in-flow 페이지 헤더 (네이티브 사이드바와 겹침 제거).
+     본문 컬럼 최상단에 흐르며, 좁은 폭에서도 안전하게 줄어든다. */
+  position: static;
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(320px, 480px) auto;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 300px) auto;
+  gap: 18px;
   align-items: center;
-  padding: 11px 26px 11px;
-  background: rgba(243, 245, 248, 0.94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  padding: 4px 2px 14px;
+  margin-bottom: 14px;
+  background: transparent;
   border-bottom: 1px solid var(--surface-divider);
 }
 .db-topbar-l {
@@ -233,14 +230,8 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
 
 /* ── Scroll fade-out strip below header ─────────────────────── */
 .v2-scroll-fade {
-  position: fixed;
-  top: var(--v2-topbar-h);
-  left: 0;
-  right: 0;
-  height: 18px;
-  background: linear-gradient(180deg, var(--v2-bg) 0%, rgba(243, 245, 248, 0) 100%);
-  z-index: 45;
-  pointer-events: none;
+  /* Phase A: fixed 헤더가 사라져 스크롤 페이드 불필요 */
+  display: none;
 }
 
 /* ── Panels start below the header strip ────────────────────── */

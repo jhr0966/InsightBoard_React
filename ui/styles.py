@@ -14,6 +14,7 @@ _V2_CSS_FILES = (
     "v2/tokens.css",
     "v2/card.css",
     "v2/shell.css",
+    "v2/sidebar.css",
     "v2/streamlit-overrides.css",
     "v2/scale.css",
 )
@@ -22,8 +23,12 @@ _V2_CSS_FILES = (
 def inject_global_styles() -> None:
     """Inject v2 design tokens + Streamlit overrides + legacy styles.
 
-    순서 중요: tokens → card(components) → shell(v2 topbar) → streamlit overrides
-    → legacy styles.css (점진 제거 대상, 마지막에 로드해 v2 토큰을 못 덮어쓰게 함).
+    순서: tokens → card(components) → shell(v2 topbar) → sidebar(네이티브 사이드바)
+    → streamlit overrides → scale.
+
+    레거시 `assets/styles.css`(V1 디자인 시스템, 1463줄)는 더 이상 로드하지 않는다 —
+    유일한 라이브 소비처였던 네이티브 사이드바 스타일을 `v2/sidebar.css` 로 이전하고,
+    새로고침 시 잠깐 보이던 V1 잔재(FOUC) 를 제거 (2026-06-01).
 
     Streamlit `st.html("<style>")` 는 큰 `<style>` 블록을 안정적으로 mount 하지
     못함이 확인됨 (수만 자 누락). `st.markdown(unsafe_allow_html=True)` 가 다른
@@ -34,12 +39,68 @@ def inject_global_styles() -> None:
         path = ASSETS_DIR / rel
         if path.exists():
             parts.append(path.read_text(encoding="utf-8"))
-    legacy = ASSETS_DIR / "styles.css"
-    if legacy.exists():
-        parts.append(legacy.read_text(encoding="utf-8"))
     if not parts:
         return
     st.markdown("<style>" + "\n".join(parts) + "</style>", unsafe_allow_html=True)
+
+
+# ── 사용자 표시 설정 (테마 · 글자 크기) ──────────────────────────
+# 베이스 토큰(tokens.css) 이후에 주입해 :root 오버라이드가 이기게 한다.
+
+_FONT_ZOOM = {"small": "0.92", "medium": "", "large": "1.12"}
+
+# 다크 — 토큰 + 핵심 크롬 + 네이티브 위젯(config 라이트를 다크로) 오버라이드.
+_DARK_CSS = """
+:root{
+  --bg-base:#0F172A; --bg-gradient-from:#0F172A; --bg-gradient-to:#1E293B;
+  --surface-page:#0F172A; --surface-card:#1E293B; --surface-soft:#172033;
+  --surface-divider:#334155; --surface-inset-bg:rgba(15,23,42,.6);
+  --surface-glass-bg:rgba(30,41,59,.72); --surface-glass-border:rgba(255,255,255,.08);
+  --text-primary:#F1F5F9; --text-secondary:rgba(241,245,249,.74); --text-muted:rgba(241,245,249,.52);
+}
+body:has(.db-topbar) .stApp{ background:#0F172A !important; }
+body:has(.db-topbar) [data-testid="stSidebar"]{ background:#1E293B !important; border-right:1px solid #334155 !important; }
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker){ background:#1E293B !important; border-color:#334155 !important; }
+body:has(.db-topbar) [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"]{ background:#1E293B !important; border-color:#334155 !important; }
+body:has(.db-topbar) [data-testid="stTextInput"] input,
+body:has(.db-topbar) [data-testid="stTextArea"] textarea{ background:#0F172A !important; color:#F1F5F9 !important; border-color:#334155 !important; }
+body:has(.db-topbar) [data-baseweb="select"] > div{ background:#0F172A !important; border-color:#334155 !important; color:#F1F5F9 !important; }
+body:has(.db-topbar) button[kind="secondary"]{ background:#1E293B !important; color:#F1F5F9 !important; border-color:#334155 !important; }
+body:has(.db-topbar) [data-testid="stMain"] label,
+body:has(.db-topbar) [data-testid="stMain"] [data-testid="stMarkdownContainer"]{ color:#F1F5F9 !important; }
+/* 사이드바 고정 표면(그라데이션/틴트) 다크화 */
+body:has(.db-topbar) .persona-profile-card,
+body:has(.db-topbar) .persona-profile-card-empty{ background:#172033 !important; }
+body:has(.db-topbar) .persona-profile-head-empty{ background:#0F172A !important; border-color:#334155 !important; color:#94A3B8 !important; }
+body:has(.db-topbar) .sidebar-nav-item.active{ background:rgba(96,165,250,.16) !important; border-color:rgba(96,165,250,.30) !important; }
+"""
+
+# 강조 색상 테마 (라이트 베이스 + accent 토큰 교체) — 네이티브 primary 버튼도 추종.
+_ACCENT_BTN = ('body:has(.db-topbar) button[kind="primary"]{ '
+               'background:var(--accent-primary) !important; border-color:var(--accent-primary) !important; }')
+_OCEAN_CSS = (":root{ --accent-primary:#0D9488; --accent-hover:#0F766E; --accent-active:#115E59; "
+              "--accent-ring:rgba(13,148,136,.22); --accent-glow:rgba(13,148,136,.18); }" + _ACCENT_BTN)
+_SUNSET_CSS = (":root{ --accent-primary:#E11D48; --accent-hover:#BE123C; --accent-active:#9F1239; "
+               "--accent-ring:rgba(225,29,72,.22); --accent-glow:rgba(225,29,72,.18); }" + _ACCENT_BTN)
+
+_THEME_CSS = {"light": "", "dark": _DARK_CSS, "ocean": _OCEAN_CSS, "sunset": _SUNSET_CSS}
+
+
+def inject_user_prefs() -> None:
+    """저장된 테마·글자 크기를 적용 — `inject_global_styles` 직후 호출.
+
+    테마 = light(기본)/dark/ocean/sunset. 글자 크기 = small/medium/large(zoom).
+    """
+    from store import ui_prefs
+
+    prefs = ui_prefs.load()
+    css = _THEME_CSS.get(prefs.get("theme", "light"), "")
+    zoom = _FONT_ZOOM.get(prefs.get("font", "medium"), "")
+    if zoom:
+        css += (f'\nbody:has(.db-topbar) [data-testid="stMain"],'
+                f'\nbody:has(.db-topbar) [data-testid="stSidebar"]{{ zoom:{zoom}; }}')
+    if css.strip():
+        st.markdown("<style>" + css + "</style>", unsafe_allow_html=True)
 
 
 def inject_screen_css(name: str) -> None:

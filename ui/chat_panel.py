@@ -21,6 +21,7 @@ from urllib.parse import quote
 import streamlit as st
 
 from persona.schema import Persona
+from sola.client import is_configured as _llm_ready
 
 
 # ── area 별 안내 & 추천 질문 ─────────────────────────────────
@@ -185,6 +186,56 @@ def render(persona: Persona, area_key: str) -> None:
     )
     if user_input:
         st.session_state["_do_sola_send"] = user_input
+        st.rerun()
+
+
+def render_side(persona: Persona, area_key: str) -> None:
+    """우측 컬럼 SOLA 채팅 (Phase A) — 모든 area 본문 우측에 **실제 작동** 채팅.
+
+    이전 `app_shell.render_app_sola` 의 disabled 목업을 대체한다.
+    - 활성 thread 의 최근 메시지(없으면 area 별 안내 카드).
+    - `st.form`(text_area + submit) 송신 → `_do_sola_send` pending → 다음 run 의
+      `consume_send_if_any` 가 LLM 호출 + append + chat_log 영구화.
+    - `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 담기지 않으므로 form 사용.
+
+    `.side-chat-marker` 는 `streamlit-overrides.css` 가 컬럼을 sticky 패널로 만드는 훅.
+    """
+    from ui import sola_workshop_v2 as sw
+
+    title_safe = _html.escape(area_key)
+    dot = "#15803D" if _llm_ready() else "#B45309"
+    st.html(
+        '<div class="side-chat-marker"></div>'
+        '<div style="display:flex; align-items:center; gap:8px; '
+        'padding:0 2px 10px; border-bottom:1px solid var(--surface-divider); margin-bottom:10px;">'
+        f'<span style="width:8px; height:8px; border-radius:50%; background:{dot};"></span>'
+        '<span style="font-weight:800; font-size:15px; color:var(--text-primary);">SOLA</span>'
+        f'<span style="font-size:12px; color:var(--text-muted); font-weight:600;">· {title_safe}</span>'
+        '</div>'
+    )
+
+    try:
+        messages = sw._load_messages()
+    except Exception:
+        messages = []
+
+    if not messages:
+        st.html(_intro_card_html(area_key))
+    else:
+        st.html(_format_recent_messages(messages))
+
+    safe_area = quote(area_key, safe="")
+    with st.form(key=f"_side_chat_form_{safe_area}", clear_on_submit=True):
+        user_input = st.text_area(
+            "SOLA 에게 질문",
+            key=f"_side_chat_input_{safe_area}",
+            placeholder="이 화면에 대해 무엇이든 물어보세요…",
+            label_visibility="collapsed",
+            height=130,
+        )
+        sent = st.form_submit_button("➤ 보내기", use_container_width=True)
+    if sent and user_input and user_input.strip():
+        st.session_state["_do_sola_send"] = user_input.strip()
         st.rerun()
 
 

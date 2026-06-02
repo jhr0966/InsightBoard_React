@@ -16,7 +16,7 @@ from persona.schema import Persona
 from roadmap.query import load_latest as load_tasks
 from store import bookmarks as _bookmarks_store
 from ui import app_shell
-from ui.styles import inject_screen_css, page_header, section_label
+from ui.styles import inject_screen_css
 
 
 def _archive_stats() -> dict[str, int]:
@@ -103,6 +103,38 @@ def _handle_pending(persona: Persona) -> None:
         st.rerun()
 
 
+_THEME_LABELS = [("light", "라이트"), ("dark", "다크"), ("ocean", "오션"), ("sunset", "선셋")]
+_FONT_LABELS = [("small", "작게"), ("medium", "보통"), ("large", "크게")]
+
+
+def _render_display_settings() -> None:
+    """🎨 표시 설정 — 테마 + 글자 크기. 변경 즉시 저장·적용(on_change 콜백 대신 diff 감지)."""
+    from store import ui_prefs
+
+    prefs = ui_prefs.load()
+    st.html(
+        '<div style="font-size:12px; font-weight:800; letter-spacing:0.08em; '
+        'text-transform:uppercase; color:var(--text-muted,#94A3B8); margin:14px 0 6px;">🎨 표시 설정</div>'
+    )
+    with st.container(border=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            theme_labels = [lbl for _, lbl in _THEME_LABELS]
+            ti = next((i for i, (k, _) in enumerate(_THEME_LABELS) if k == prefs["theme"]), 0)
+            sel_theme = st.radio("테마", theme_labels, index=ti, key="ux_theme",
+                                 horizontal=True, help="라이트 · 다크 · 강조색(오션/선셋)")
+        with c2:
+            font_labels = [lbl for _, lbl in _FONT_LABELS]
+            fi = next((i for i, (k, _) in enumerate(_FONT_LABELS) if k == prefs["font"]), 1)
+            sel_font = st.radio("글자 크기", font_labels, index=fi, key="ux_font", horizontal=True)
+        new_theme = next(k for k, lbl in _THEME_LABELS if lbl == sel_theme)
+        new_font = next(k for k, lbl in _FONT_LABELS if lbl == sel_font)
+        if new_theme != prefs["theme"] or new_font != prefs["font"]:
+            ui_prefs.save(theme=new_theme, font=new_font)
+            st.rerun()
+        st.caption("변경하면 즉시 적용되고 다음 접속에도 유지됩니다.")
+
+
 def render() -> None:
     """Render the main-content persona editor page (v2 셸 적용)."""
     persona: Persona = st.session_state.get("persona") or persona_store.load()
@@ -123,9 +155,12 @@ def render() -> None:
     )
     app_shell.render_setup_banner_if_needed()
 
-    page_header(
-        "사용자 프로필 설정",
-        "부서·직무·관심 공정을 설정하면 오늘의 보드와 SOLA 컨텍스트가 개인화됩니다.",
+    # v2 인트로 (구 page_header 의 .app-header V1 마크업 제거 — topbar 가 제목 담당)
+    st.html(
+        '<div style="font-size:14px; color:#475569; line-height:1.55; '
+        'margin:2px 0 14px; max-width:760px;">'
+        '부서·직무·관심 공정을 설정하면 오늘의 보드와 SOLA 컨텍스트가 개인화됩니다.'
+        '</div>'
     )
 
     msg = st.session_state.pop("persona_page_msg", None)
@@ -135,7 +170,12 @@ def render() -> None:
 
     _handle_pending(persona)
 
-    section_label("기본 정보")
+    _render_display_settings()
+
+    st.html(
+        '<div style="font-size:12px; font-weight:800; letter-spacing:0.08em; '
+        'text-transform:uppercase; color:var(--text-muted,#94A3B8); margin:14px 0 6px;">기본 정보</div>'
+    )
     dept_opts = _options(tasks, "dept")
     team_opts = _options(tasks, "team")
     lv3_opts = _lv3_options(tasks)

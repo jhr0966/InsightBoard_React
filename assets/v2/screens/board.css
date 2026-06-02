@@ -186,7 +186,7 @@
     SIDEBAR
    ───────────────────────────────────────────────────────────── */
 .db-side {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   padding: 14px 12px;
@@ -470,7 +470,7 @@
   align-items: center;
   gap: 10px;
   padding: 9px 14px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 10px;
   max-width: 460px;
@@ -518,7 +518,7 @@
   display: grid;
   place-items: center;
 }
-.db-hdr-btn:hover { background: #fff; color: var(--text-primary); }
+.db-hdr-btn:hover { background: var(--surface-card); color: var(--text-primary); }
 /* <a> 로 정직화된 알림/설정 버튼 — 밑줄 제거 + :visited 색 회복 (I-19) */
 a.db-hdr-btn, a.db-hdr-btn:visited { color: var(--text-secondary); text-decoration: none; }
 a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
@@ -593,7 +593,7 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
   color: var(--text-secondary);
   cursor: pointer;
 }
-.db-tab:hover { background: #fff; color: var(--text-primary); }
+.db-tab:hover { background: var(--surface-card); color: var(--text-primary); }
 .db-tab-active {
   background: rgba(37,99,235,0.10);
   color: var(--accent-primary);
@@ -683,7 +683,7 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
 }
 .db-cta-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
 .db-cta-secondary {
-  background: #fff;
+  background: var(--surface-card);
   color: var(--text-secondary);
   border: 1px solid var(--surface-divider);
 }
@@ -697,7 +697,7 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
 .db-kpi {
   position: relative;
   padding: 14px 16px 12px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 10px;
 }
@@ -852,7 +852,7 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
   font-weight: 600;
   padding: 2px 9px 2px 3px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   color: var(--text-secondary);
   cursor: pointer;
@@ -879,7 +879,7 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
   font-size: 15.5px;
   font-weight: 700;
   border-radius: 7px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   color: var(--text-secondary);
   cursor: pointer;
@@ -921,7 +921,7 @@ a.db-act-primary, a.db-act-primary:visited { color: #fff; }
   font-size: 12.5px;
   font-weight: 700;
   color: var(--text-secondary);
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 6px;
   cursor: pointer;
@@ -942,7 +942,7 @@ a.db-act-primary, a.db-act-primary:visited { color: #fff; }
   gap: 16px;
 }
 .db-lead {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   overflow: hidden;
@@ -954,7 +954,7 @@ a.db-act-primary, a.db-act-primary:visited { color: #fff; }
   height: 220px;
   background: repeating-linear-gradient(
     135deg,
-    #E5E7EB 0 12px,
+    var(--surface-divider) 0 12px,
     #F3F4F6 12px 24px
   );
   overflow: hidden;
@@ -1088,7 +1088,7 @@ a.db-act-primary, a.db-act-primary:visited { color: #fff; }
 }
 .db-story {
   padding: 14px 16px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 12px;
   flex: 1;
@@ -1133,7 +1133,7 @@ a.db-act-primary, a.db-act-primary:visited { color: #fff; }
 }
 .db-prop {
   padding: 18px 18px 14px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   display: flex;
@@ -1255,7 +1255,7 @@ a.db-act-primary, a.db-act-primary:visited { color: #fff; }
 }
 .db-prop-hold {
   color: var(--text-secondary);
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
 }
 .db-prop-hold:hover { background: var(--surface-soft); }
@@ -1287,7 +1287,7 @@ a.db-prop-accept, a.db-prop-accept:visited { color: #fff; }
   grid-template-columns: 1.7fr 1fr;
   gap: 18px;
   padding: 22px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
 }
@@ -1340,7 +1340,7 @@ a.db-prop-accept, a.db-prop-accept:visited { color: #fff; }
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-card);
   flex-shrink: 0;
 }
 .db-anno-t {
@@ -1402,7 +1402,7 @@ a.db-prop-accept, a.db-prop-accept:visited { color: #fff; }
   grid-template-columns: 1.6fr 1fr;
   gap: 16px;
   padding: 22px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
 }
@@ -1610,7 +1610,7 @@ a.db-mx-cta, a.db-mx-cta:visited { color: #fff; }
   flex-direction: column;
   gap: 12px;
   padding: 22px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
 }
@@ -1656,7 +1656,7 @@ a.db-mx-cta, a.db-mx-cta:visited { color: #fff; }
   gap: 6px;
   padding: 5px 4px 5px 11px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   font-size: 17px;
   font-weight: 600;
@@ -1957,7 +1957,7 @@ a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 14px;
   box-shadow: var(--shadow-1);
@@ -2055,7 +2055,7 @@ a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
 .db-sola-ctx-icon {
   width: 24px; height: 24px;
   display: grid; place-items: center;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid rgba(37,99,235,0.22);
   border-radius: 6px;
   color: var(--accent-primary);
@@ -2131,7 +2131,7 @@ a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
   transition: all 120ms;
 }
 .db-sola-quick-q:hover {
-  background: #fff;
+  background: var(--surface-card);
   border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
@@ -2233,7 +2233,7 @@ a.db-kw-sum-cta, a.db-kw-sum-cta:visited { color: #fff; }
 .db-sola-comp-box {
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--surface-divider);
   border-radius: 10px;
   transition: all 120ms;
