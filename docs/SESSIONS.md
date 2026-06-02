@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-06-01 · UI 전역 버그 일괄 수정 — SVG 아이콘 깨짐 + 차트 누락
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
+
+**맥락:** "모든 화면 UI 버그들부터 싹 다 잡아." 데이터관리 4건 수정에서 얻은 교훈(`st.html` 이 인라인 svg 제거 + `;utf8,` data-URI 의 `#` 깨짐)을 전 화면 전수 진단으로 확장.
+
+**전수 진단(playwright):** 화면별 깨진 img — board 5·data 3·insights 5·sola 3·archive 14, 그리고 `inlineSVG=0`(차트 stripped).
+
+**한 일:**
+- `ui/components.prepare_screen_html()` — ① `data:image/svg+xml;utf8,<svg…>` → URL 인코딩 data-URI(`#`→%23) ② 인라인 `<svg>` → class/style 보존 `<img>`(인코딩 data-URI). `render_screen_html()` 동반.
+- `app_shell.render_topbar`(전 화면 topbar) + board/insights/data/archive 메인 렌더에 적용. 각 화면 `from ui import components as _components`.
+- `tests/test_ui_components.py` (+3).
+
+**검증:** pytest 687/687 · 금지 패턴 0 · playwright 재진단 — 5화면 모두 **broken img = 0**.
+
+**주의:** 인라인 svg→img 변환으로 매트릭스/히트맵의 in-svg `<a>` 클릭은 사라지나, st.html 이 이미 svg 를 strip 해 **원래도 비작동**(회귀 아님)이고 시각은 복구됨. 셀 선택은 매트릭스 rank 리스트 등 외부 링크로 대체됨.
+
+**다음:** Phase C-4 보관함(하단 목업) → D(설정 테마·폰트). 인라인 차트 인터랙션 복원이 필요하면 별도 검토.
+
+---
+
 ## 2026-06-01 · Phase C-3 — 데이터 관리 정리 + 심플 세로 스크롤
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)

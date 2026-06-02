@@ -20,6 +20,7 @@ from store import trends as _trends
 from store.match import score_matches as _score_matches
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
+from ui import components as _components
 from ui.styles import inject_screen_css
 
 
@@ -1175,7 +1176,7 @@ def render() -> None:
         .replace("{{IA_PROCESS_MAP}}", _ia_process_map_html(selected_kw=selected_kw))
     )
     html_out = _strip_mockup_blocks(html_out)
-    st.html(html_out)
+    st.html(_components.prepare_screen_html(html_out))
 
     app_shell.render_app_sola(
         context_label="인사이트 분석",

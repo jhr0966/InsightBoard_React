@@ -29,6 +29,7 @@ from store import trends as _trends
 from store.match import score_matches as _score_matches
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
+from ui import components as _components
 from ui.styles import inject_screen_css
 
 
@@ -1647,7 +1648,7 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BRIEF_TTS_BTN}}", brief.get("tts_btn", ""))
     )
     html_out = _clean_board_html(html_out)
-    st.html(html_out)
+    st.html(_components.prepare_screen_html(html_out))
 
 
 def _board_trend_block_html() -> str:

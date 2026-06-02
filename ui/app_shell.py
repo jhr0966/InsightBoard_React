@@ -19,6 +19,7 @@ import streamlit as st
 from config import llm_backend, llm_model
 from persona.schema import Persona
 from sola.client import is_configured as llm_ready
+from ui import components as _components
 
 
 def get_persona() -> Persona:
@@ -335,7 +336,7 @@ def render_topbar(
         notif_title = "새 알림 없음 · 산출물 보관함 열기"
         notif_dot = ""
 
-    st.html(
+    st.html(_components.prepare_screen_html(
         f"""
         <header class="db-topbar">
           <div class="db-topbar-l">
@@ -384,7 +385,7 @@ def render_topbar(
         </header>
         <div class="v2-scroll-fade" aria-hidden="true"></div>
         """
-    )
+    ))
 
 
 def render_app_side(*, active_area: str, persona: Persona, stats: dict[str, int]) -> None:

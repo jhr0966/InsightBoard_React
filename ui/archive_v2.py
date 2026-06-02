@@ -20,6 +20,7 @@ from persona.schema import Persona
 from store import bookmarks as bookmarks_store
 from store.bookmarks import Bookmark
 from ui import app_shell
+from ui import components as _components
 from ui.styles import inject_screen_css
 
 
@@ -421,7 +422,7 @@ def render() -> None:
         .replace("{{OA_CARDS_ADOPTED}}", oa["cards_adopted"])
         .replace("{{OA_CARDS_REJECTED}}", oa["cards_rejected"])
     )
-    st.html(html_out)
+    st.html(_components.prepare_screen_html(html_out))
 
     app_shell.render_app_sola(
         context_label="산출물 보관함",

@@ -6,9 +6,58 @@ them through Streamlit's native HTML element instead of Markdown escaping.
 from __future__ import annotations
 
 import html as _html
+import re as _re
 from collections.abc import Iterable
+from urllib.parse import quote as _quote
 
 import streamlit as st
+
+
+_SVG_DATAURI_RE = _re.compile(r"data:image/svg\+xml;utf8,(<svg.*?</svg>)", _re.DOTALL)
+_SVG_INLINE_RE = _re.compile(r"(<svg\b[^>]*>).*?</svg>", _re.DOTALL)
+
+
+def _svg_attr(open_tag: str, name: str) -> str:
+    m = _re.search(name + r"""\s*=\s*(['"])(.*?)\1""", open_tag, _re.DOTALL)
+    return m.group(2) if m else ""
+
+
+def prepare_screen_html(markup: str) -> str:
+    """`st.html` 의 두 SVG 함정을 보정해 모든 화면의 아이콘/차트가 렌더되게 한다.
+
+    1) ``data:image/svg+xml;utf8,<svg ... fill='#2563EB'>`` (미인코딩 data-URI) —
+       색상값의 ``#`` 와 공백이 URL fragment/구분자로 잘려 이미지가 **깨진다** →
+       URL 인코딩 data-URI 로 재작성.
+    2) 인라인 ``<svg>...</svg>`` — `st.html` 의 sanitizer 가 통째로 **제거한다** →
+       class/style/width/height 를 보존한 ``<img>``(인코딩 data-URI)로 래핑.
+
+    템플릿 HTML 을 `st.html` 로 렌더하기 직전 한 번 통과시킨다.
+    """
+    if not markup or "svg" not in markup:
+        return markup
+    # 1) data-URI 재인코딩 (먼저 — 이후 인라인 변환이 src 안 <svg> 를 건드리지 않게)
+    markup = _SVG_DATAURI_RE.sub(
+        lambda m: "data:image/svg+xml," + _quote(m.group(1), safe=""),
+        markup,
+    )
+
+    # 2) 남은 인라인 <svg> → <img>
+    def _to_img(m: "_re.Match[str]") -> str:
+        full = m.group(0)
+        open_tag = m.group(1)
+        attrs = ""
+        for name in ("class", "style", "width", "height"):
+            val = _svg_attr(open_tag, name)
+            if val:
+                attrs += f' {name}="{val.replace(chr(34), "&quot;")}"'
+        return f'<img src="data:image/svg+xml,{_quote(full, safe="")}"{attrs} alt="" />'
+
+    return _SVG_INLINE_RE.sub(_to_img, markup)
+
+
+def render_screen_html(markup: str) -> None:
+    """`prepare_screen_html` 통과 후 `st.html` 렌더 — 화면 템플릿 전용 안전 진입점."""
+    st.html(prepare_screen_html(markup))
 
 
 def render_html(markup: str, **_ignored) -> None:

@@ -18,6 +18,7 @@ from roadmap import ingest as _ingest
 from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
 from ui import app_shell
+from ui import components as _components
 from ui.styles import inject_screen_css
 
 
@@ -1434,4 +1435,4 @@ def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
         .replace("{{DM_MAIN_BODY_CLOSE}}", body_close)
     )
     html_out = _strip_dm_mockups(html_out)
-    st.html(html_out)
+    st.html(_components.prepare_screen_html(html_out))

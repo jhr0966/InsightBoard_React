@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Fixed (UI 전역 — 모든 화면 SVG 아이콘 깨짐 + 차트 누락 일괄 수정)
+- **전수 진단(playwright)**: 모든 화면에 깨진 이미지(board 5·insights 5·sola 3·**archive 14**·data 3)와 `inlineSVG=0`(차트 누락) 발견. 원인 2종:
+  ① `data:image/svg+xml;utf8,<svg ... fill='#…'>` 미인코딩 data-URI — 색상 `#`·공백이 잘려 **아이콘 전부 깨짐**.
+  ② `st.html` 의 sanitizer 가 **인라인 `<svg>` 를 통째로 제거** — 차트(보드 트렌드·인사이트 매트릭스/히트맵 등)가 안 보임.
+- **`ui/components.prepare_screen_html()` 신규** — `st.html` 직전 통과: ① `;utf8,` data-URI → URL 인코딩(`#`→`%23`) 재작성, ② 인라인 `<svg>` → class/style/width/height 보존한 인코딩 data-URI `<img>` 로 래핑. `render_screen_html()` 도 함께 제공.
+- 적용: `app_shell.render_topbar`(전 화면 topbar 아이콘) + board/insights/data/archive 메인 템플릿 렌더 → **전 화면 깨진 이미지 0** 확인(playwright 재진단).
+- `tests/test_ui_components.py` (+3). 검증: pytest 687/687 · 금지 패턴 0 · playwright board/data/insights/sola/archive 모두 broken=0.
+
 ### Fixed (UI 버그 — 데이터 관리 + 우측 채팅, 사용자 보고 4건)
 - **빈 수집잡 문구 세로 깨짐**: 빈 상태 `<li class="dm-job">` 가 `.dm-job` 의 `grid(5px 1fr auto)` 를 상속해 "오늘 실행된 수집잡이 없습니다" 가 글자마다 줄바꿈되던 것을 `display:block; word-break:keep-all` 로 수정.
 - **"지금 새로고침" 버튼 문구 중앙정렬**: `justify-content:center` + 아이콘을 URL 인코딩 data-URI `<img>` 로 교체.
