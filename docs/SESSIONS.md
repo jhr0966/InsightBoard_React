@@ -11,7 +11,7 @@
 - **PR #90 (UI 전면 재정비 A~D) ✅ 머지** + **PR #91 (Phase E — enrich→매칭 가중) ✅ 머지** → `main 7debc32`. 결정-1(제안서·요약)·결정-2(enrich 가중) 모두 구현 완료.
 - **Phase 3 (데드 코드 삭제) ✅ 완료** — 모듈 4종(`ui/layout`·`ui/task_tree`·`sola/{insight,chat_ctx}`) + no-op 패널(`app_shell.render_app_side/sola`+토글 클러스터) + `chat_panel.render` + `_SOLA_TEMPLATE`/`sola_main.html` + `task_defs_db.upsert_many` + `persona_page._archive_stats` 삭제. 보존: `sola/{propose,summarize}`(부활)·`side_context`(orphan).
 - **Phase F (수집 관측성) ✅ 완료** — `store/run_log.py`(수집 런을 `data/logs/runs.jsonl` 영속) + cron·새로고침·보드 3경로 기록 + 데이터 관리 '수집 헬스' 1행. 조용한 수집 실패를 화면에서 감지.
-- **스크래퍼 라이브 검증**: 이 원격 환경은 네트워크 allowlist 프록시라 외부 수집 차단("Host not in allowlist" 403 — example.com 포함). 파싱 로직은 fixture 42건으로 정상 확인. 검증 중 tech 사이트가 HTTP 오류를 조용히 0건 처리하던 빈틈 발견·보강(`raise_for_status`+`on_error` → 수집 헬스 표면화).
+- **스크래퍼 라이브 검증**: 이 원격 환경은 네트워크 allowlist 프록시라 외부 수집 차단("Host not in allowlist" 403 — example.com 포함). 파싱 로직은 fixture 42건으로 정상 확인. 검증 중 tech 사이트가 HTTP 오류를 조용히 0건 처리하던 빈틈 발견·보강(`raise_for_status`+`on_error` → 수집 헬스 표면화). **라이브 4소스(제목·본문·이미지) 실측은 `python -m scripts.verify_scrape`(신규) 로 새 세션에서 실행** — 도메인 허용 정책은 새 세션부터 적용됨.
 - 중복/stale PR 정리: #88(계획서, REFACTOR_PLAN 으로 대체) close · #49(TS 프로토타입) 는 디자인 채택 판단 대기.
 
 **바로 할 일 (택1)**
@@ -26,6 +26,23 @@
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 
 **검증 베이스라인**: `pytest -q` = **698 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+
+---
+
+## 2026-06-02 · 라이브 수집 검증 CLI 정리 (scripts/verify_scrape.py)
+
+**브랜치:** `claude/happy-thompson-F5Tdr`
+
+**맥락:** "개발 준비" + "네이버/구글 키워드검색·AI Times·오토메이션월드 수집(제목·본문·이미지) 잘 되는지 검증" 지시. 이 원격 환경은 allowlist 프록시라 라이브 수집이 막힘(`example.com` 포함 `host_not_allowed` 403). 사용자가 설정에서 "모든 도메인 허용"으로 바꿨으나 **현 세션 프록시는 시작 시점 정책 고정** → 새 세션부터 적용.
+
+**한 일:**
+- `scripts/verify_scrape.py` 신규 — 4소스 리스트(제목/링크/이미지) + 상위 기사 본문 fetch(본문길이/대표이미지)를 한 줄로 점검하는 재사용 CLI(`daily_scrape.py` 컨벤션). 403 allowlist 차단을 자동 감지·안내·`exit 1`.
+- 파서 로직은 오프라인 테스트 42건(enrich/google/tech_sites/custom_rss/news_db)으로 정상 재확인 — 제목·본문(스크립트/nav/광고 노이즈 제거·문단 전체 보존)·대표이미지(og→picture[srcset]→lazy data-src) 매핑.
+- fresh 컨테이너 의존성 설치(streamlit 1.58·pandas 3.0·pyarrow 24·openai 2.40·pytest 9 등). **테스트는 `python -m pytest`** 로 실행 — 시스템 `pytest` 는 프로젝트 deps 없는 stale uv shim(`/root/.local/share/uv/...`).
+
+**다음:** 새 세션(도메인 허용 정책 적용)에서 `python -m scripts.verify_scrape` 로 라이브 4소스 실측. **네이버 리스트 파서는 단위 테스트가 없어** 셀렉터 깨짐 가능 → 1순위 확인.
+
+**검증:** pytest **698 passed** · 금지패턴(requests/on_click) 0 · py_compile OK · 스크립트 차단감지 동작 확인(exit 1).
 
 ---
 

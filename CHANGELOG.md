@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (라이브 수집 검증 CLI — scripts/verify_scrape.py)
+- **`scripts/verify_scrape.py` 신규** — 네이버·구글 키워드검색 + AI Times·오토메이션월드에서 리스트(제목·링크·리스트이미지)를 수집하고 상위 기사 본문을 실제 fetch 해 **제목 / 본문 전체 / 대표이미지** 가 채워지는지 한 번에 출력하는 재사용 CLI. `--keywords/--sources/--max-results/--bodies` 옵션, `daily_scrape.py` 컨벤션(argparse·`main()→int`).
+- `tests/`(network mock)가 파서 *로직*을 검증한다면, 이 스크립트는 셀렉터가 **현재 라이브 사이트 구조와 맞는지**를 새 세션에서 눈으로 확인하는 용도 — 특히 단위 테스트가 없는 **네이버 리스트 파서**.
+- `host_not_allowed`/allowlist 403 을 감지하면 "도메인 허용 정책은 새 세션부터 적용" 안내 + `exit 1` → 이 원격 환경의 네트워크 프록시 차단을 코드 결함과 명확히 구분. 검증: pytest **698 passed** · 금지패턴 0 · py_compile OK · 차단감지 동작 확인.
+
 ### Fixed (scraping — tech 사이트 HTTP 실패를 '수집 헬스'에 표면화, Phase F 후속)
 - 라이브 수집 검증 중 발견 — `tech_sites.search_site` 가 HTTP 상태를 체크하지 않아 403/500 응답을 받아도 본문을 파싱해 **조용히 0건** 반환 → 방금 추가한 '수집 헬스'에 AI Times/오토메이션월드 장애가 안 잡히던 빈틈.
 - `search_site`: `resp.raise_for_status()` 추가 → naver/google 과 일관되게 HTTP 오류를 `RuntimeError` 로 표면화.
