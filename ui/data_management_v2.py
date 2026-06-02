@@ -40,6 +40,37 @@ _DEFAULT_GRADIENT = "linear-gradient(135deg,#475569,#94A3B8)"
 _DM_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "data_management_main.html"
 
 
+def _strip_dm_mockups(html: str) -> str:
+    """정적 목업 블록 제거 (Phase C-3) — 실데이터/실위젯이 대체하는 시안 잔재.
+
+    - 죽은 필터바(검색 input·필터칩·출처/기간/정렬 셀렉트 — 핸들러 없음)
+    - 죽은 페이저(1–6 / 1,247 … 208 — 핸들러 없음)
+    - 가짜 서브카드 3종(키워드 매니저/작업 정의/출처 설정 — 실제 탭이 대체하는 가짜 통계)
+    뉴스 카드 그리드·수집 잡·헤더 통계 등 실데이터는 보존. 마커 슬라이스라 div 균형 비의존.
+    """
+    # dm-filters: 필터바 시작 ~ 기사 그리드 직전
+    i = html.find('<div class="dm-filters">')
+    if i != -1:
+        j = html.find("<!-- Article grid -->", i)
+        if j == -1:
+            j = html.find('<ul class="dm-art-grid">', i)
+        if j != -1:
+            html = html[:i] + html[j:]
+    # dm-pager: 페이저 시작 ~ 섹션 닫힘
+    i = html.find('<div class="dm-pager">')
+    if i != -1:
+        j = html.find("</section>", i)
+        if j != -1:
+            html = html[:i] + html[j:]
+    # dm-sub-grid: 가짜 서브카드 ~ 끝 (dm-shell 닫는 </div> 보존)
+    i = html.find('<div class="dm-sub-grid">')
+    if i != -1:
+        end = html.rfind("</div>")
+        if end != -1 and end > i:
+            html = html[:i] + html[end:]
+    return html
+
+
 @st.cache_data(ttl=60)
 def _dm_stats() -> dict[str, str | int]:
     """헤더 4 stats 실데이터.
@@ -1387,4 +1418,5 @@ def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
         .replace("{{DM_MAIN_BODY_OPEN}}", body_open)
         .replace("{{DM_MAIN_BODY_CLOSE}}", body_close)
     )
+    html_out = _strip_dm_mockups(html_out)
     st.html(html_out)

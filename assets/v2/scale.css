@@ -275,7 +275,9 @@ body:has(.db-stories) .db-stories {
    jobs 380px 고정 → 1fr (가변, news 와 비슷한 폭)
    결과: 수집잡 박스의 정보 표시 여유 + 뉴스 카드 그리드 유지 */
 body:has(.dm-split) .dm-split {
-  grid-template-columns: 1fr 1.35fr !important;
+  /* Phase C-3: 좁은 main_col 에서 수집 잡 / 뉴스 라이브러리를 세로 스택(심플 스크롤) */
+  grid-template-columns: 1fr !important;
+  gap: 20px !important;
 }
 
 /* S1 — SOLA 작업실 ws-threads 가로 overflow

@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-06-01 · Phase C-3 — 데이터 관리 정리 + 심플 세로 스크롤
+
+**브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
+
+**한 일:**
+- `_strip_dm_mockups` — 죽은 필터바·페이저 + 가짜 서브카드 3종(키워드/작업정의/출처 — 실제 탭이 대체) 마커 슬라이스 제거.
+- 템플릿: 가짜 "5개 작업"→"매일 새벽 자동 실행", disabled 스케줄 버튼·가짜 news-meta(1,247 등) 제거.
+- `dm-split` 세로 스택(scale.css D1). 헤더 stats·탭·수집잡·뉴스카드·CRUD 등 기능 전부 보존.
+- `tests/test_dm_cleanup.py` (+3).
+
+**주의:** `_strip_dm_mockups` 의 sub-grid 제거는 비-jobs 탭에서도 안전 — 탭 본문은 sub-grid 앞에 삽입돼 `rfind('</div>')`(dm-shell 닫힘) 슬라이스가 본문을 보존.
+
+**검증:** pytest 681/681 · 금지 패턴 0 · playwright 데이터관리 죽은요소 0·우측 채팅 노출.
+
+**다음:** Phase C-4 보관함(하단 45건 표·페이저·미리보기 패널·일괄/내보내기 목업 정리) → D(설정 테마·폰트).
+
+---
+
 ## 2026-06-01 · Phase C-2 — 보드 정리 + 심플 세로 스크롤
 
 **브랜치:** `claude/charming-sagan-REsgM` (PR #90 누적)
