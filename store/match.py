@@ -13,6 +13,11 @@ import pandas as pd
 _TOKEN_RE = re.compile(r"[가-힣A-Za-z0-9]{2,}")
 _NOISE = {"작업", "공정", "기술", "관련", "통해", "대한", "위한", "그리고", "또는"}
 
+# enrich 된 기사의 LLM 키워드(`keywords_llm`)는 본문/룰 신호보다 강한 토픽 신호다
+# (LLM 이 핵심 주제로 추출). 작업 토큰이 기사 LLM 키워드와 겹치면 1건당 이 가중치만큼
+# 점수 보너스를 더한다 → enrich 된 기사가 동일 작업에 대해 더 높은 점수 (결정-2 A).
+_LLM_KW_WEIGHT = 2.0
+
 
 def _tokens(text: str) -> list[str]:
     return [w for w in _TOKEN_RE.findall((text or "").lower()) if w not in _NOISE]
@@ -43,6 +48,11 @@ def score_matches(
     has_task_def_json = "task_def_json" in roadmap_df.columns
 
     news_tokens = [Counter(_tokens(_row_text(row, news_cols))) for _, row in news_df.iterrows()]
+    # enrich 된 기사의 LLM 키워드 토큰 집합 (가중 보너스용). enrich 안 된 기사는 빈 집합 → 무영향.
+    if "keywords_llm" in news_df.columns:
+        news_llm_sets = [set(_tokens(str(row.get("keywords_llm", "") or ""))) for _, row in news_df.iterrows()]
+    else:
+        news_llm_sets = [set() for _ in range(len(news_df))]
 
     # task_def_json (신엑셀) 의 평탄 텍스트도 매칭에 합산 — 자동화 영역·품질
     # 리스크·objectives 같은 풍부한 신호가 추가되어 정확도↑. JSON 파싱 비용은
@@ -60,11 +70,15 @@ def score_matches(
         if not tk_counter:
             continue
         scored: list[tuple[float, int]] = []
+        task_keys = set(tk_counter)
         for idx, nc in enumerate(news_tokens):
-            common = set(tk_counter) & set(nc)
-            if not common:
-                continue
-            score = float(sum(min(tk_counter[w], nc[w]) for w in common))
+            common = task_keys & set(nc)
+            score = float(sum(min(tk_counter[w], nc[w]) for w in common)) if common else 0.0
+            # enrich LLM 키워드 보너스 — 작업 토큰과 겹치는 고유 LLM 키워드 1건당 가중 추가
+            # (작업 텍스트의 토큰 중복에 휘둘리지 않게 distinct 매칭 수 기준).
+            llm_common = task_keys & news_llm_sets[idx]
+            if llm_common:
+                score += _LLM_KW_WEIGHT * float(len(llm_common))
             if score > 0:
                 scored.append((score, idx))
         if not scored:
