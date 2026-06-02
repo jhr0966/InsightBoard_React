@@ -8,13 +8,14 @@
 ## 🚩 다음 세션 시작점 (2026-06-02 기준) — 여기부터 읽으세요
 
 **현재 상태**
-- **PR #90 (UI 전면 재정비 A~D) ✅ 머지** + **PR #91 (Phase E — enrich→매칭 가중) ✅ 머지** → `main 7debc32`. 결정-1(제안서·요약)·결정-2(enrich 가중) 모두 구현 완료.
+- **PR #90(UI 재정비 A~D)·#91(Phase E enrich→매칭)·#92(Phase 3 데드 청산)·#93(Phase F 수집 관측성)·#94(tech 수집 헬스 보강) 전부 ✅ 머지** → `main 6d6f5dc`. 결정-1(제안서·요약)·결정-2(enrich 가중) 구현 완료.
 - **Phase 3 (데드 코드 삭제) ✅ 완료** — 모듈 4종(`ui/layout`·`ui/task_tree`·`sola/{insight,chat_ctx}`) + no-op 패널(`app_shell.render_app_side/sola`+토글 클러스터) + `chat_panel.render` + `_SOLA_TEMPLATE`/`sola_main.html` + `task_defs_db.upsert_many` + `persona_page._archive_stats` 삭제. 보존: `sola/{propose,summarize}`(부활)·`side_context`(orphan).
 - **Phase F (수집 관측성) ✅ 완료** — `store/run_log.py`(수집 런을 `data/logs/runs.jsonl` 영속) + cron·새로고침·보드 3경로 기록 + 데이터 관리 '수집 헬스' 1행. 조용한 수집 실패를 화면에서 감지.
-- **스크래퍼 라이브 검증**: 이 원격 환경은 네트워크 allowlist 프록시라 외부 수집 차단("Host not in allowlist" 403 — example.com 포함). 파싱 로직은 fixture 42건으로 정상 확인. 검증 중 tech 사이트가 HTTP 오류를 조용히 0건 처리하던 빈틈 발견·보강(`raise_for_status`+`on_error` → 수집 헬스 표면화).
+- **스크래퍼 라이브 검증**: 이 원격 환경은 네트워크 allowlist 프록시라 외부 수집 차단("Host not in allowlist" 403 — example.com 포함). 파싱 로직은 fixture 42건으로 정상 확인. 검증 중 tech 사이트가 HTTP 오류를 조용히 0건 처리하던 빈틈 발견·보강(`raise_for_status`+`on_error` → 수집 헬스 표면화). **🔁 사용자가 네트워크 정책을 변경함 → 다음 세션에서 `python -m scripts.verify_scrapers` 로 라이브 재검증 예정**(이 세션은 차단 상태라 미실증).
 - 중복/stale PR 정리: #88(계획서, REFACTOR_PLAN 으로 대체) close · #49(TS 프로토타입) 는 디자인 채택 판단 대기.
 
-**바로 할 일 (택1)**
+**바로 할 일**
+0. **⭐ 라이브 스크래퍼 재검증 (사용자 요청 · 네트워크 정책 변경됨)** — `python -m scripts.verify_scrapers --keywords "스마트 조선소" --n 3` 실행. 네이버·구글·AI Times·오토메이션월드 4개 소스가 제목·요약·썸네일 + 본문 전체·대표 이미지를 채우는지 확인. 여전히 403 'Host not in allowlist' 면 정책 미반영 → 사용자에게 알림. 정상 수집되면 결과 샘플 보고.
 1. **수집 헬스 고도화**: 14일 sparkline 을 news_db 추정 대신 `run_log` 실제 런 기반으로 · 최근 N회 런 미니 타임라인 노출.
 2. **풀 다크 폴리시 / 의미기반 매칭(RAG)**: 차트 색·매트릭스/히트맵 SVG 인터랙션(img 변환으로 클릭 비활성) 정교화 · 임베딩 유사도 하이브리드 매칭.
 3. **PR #49(글래스모피즘 TS 프로토타입) 디자인 판단**: 채택(현 v2 셸에 반영)할지 close 할지 — 미머지 브랜치에만 존재.
@@ -26,6 +27,20 @@
 - 레이아웃: `app.py` 가 소유 — 좌 네이티브 `st.sidebar` + `st.columns([2.7,1])` 메인/채팅. 우측 채팅 = `chat_panel.render_side`. (`docs/ARCHITECTURE.md` 갱신됨.)
 
 **검증 베이스라인**: `pytest -q` = **698 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
+
+---
+
+## 2026-06-02 · 세션 정리 — Phase E/3/F + tech 보강 머지 + 라이브 검증 스크립트
+
+**브랜치:** `claude/laughing-pascal-pCbik` → `main 6d6f5dc`
+
+**이번 세션 머지 (5건)**: #91(Phase E enrich→매칭)·#92(Phase 3 데드 청산, 약 −1,390줄)·#93(Phase F 수집 관측성)·#94(tech 수집 헬스 보강). #88 close. 보고 규칙을 패치노트 형식으로 `CLAUDE.md §8` 에 명문화.
+
+**스크래퍼 검증**: 이 환경은 네트워크 allowlist 라 라이브 수집 차단(403 "Host not in allowlist") — 파싱은 fixture 42건으로 정상 확인. 재검증용 `scripts/verify_scrapers.py` 추가.
+
+**다음 세션 (사용자 지시)**: 네트워크 정책 변경 완료 → `python -m scripts.verify_scrapers` 로 4개 소스 라이브 수집(제목·본문·사진) 재검증.
+
+**검증:** pytest 698/698 · 금지 패턴 0 · py_compile OK.
 
 ---
 

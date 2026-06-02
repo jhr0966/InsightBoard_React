@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Added (scripts — 라이브 스크래퍼 수집 검증 CLI)
+- `scripts/verify_scrapers.py` 신규 — 네이버·구글 키워드 검색 + AI Times·오토메이션월드 메인에서 실제 수집을 돌려 소스별 제목/요약/썸네일 + `enrich.fetch_article` 의 본문 전체/대표 이미지를 콘솔로 확인. `python -m scripts.verify_scrapers [--keywords …] [--n N]`. 전 소스 0건이면 네트워크 allowlist 차단 안내 출력. (라이브 수집 회귀 검증·온보딩용 — 네트워크 의존이라 단위 테스트 비대상.)
+
 ### Fixed (scraping — tech 사이트 HTTP 실패를 '수집 헬스'에 표면화, Phase F 후속)
 - 라이브 수집 검증 중 발견 — `tech_sites.search_site` 가 HTTP 상태를 체크하지 않아 403/500 응답을 받아도 본문을 파싱해 **조용히 0건** 반환 → 방금 추가한 '수집 헬스'에 AI Times/오토메이션월드 장애가 안 잡히던 빈틈.
 - `search_site`: `resp.raise_for_status()` 추가 → naver/google 과 일관되게 HTTP 오류를 `RuntimeError` 로 표면화.
