@@ -447,6 +447,36 @@ a.dm-btn-primary, a.dm-btn-primary:visited { color: #fff; }
   color: var(--text-muted);
 }
 
+/* ── 최근 수집 런 타임라인 (run_log 기반) ───────────────── */
+.dm-runs {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--surface-divider);
+}
+.dm-run-track {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 44px;
+  margin: 2px 0;
+}
+.dm-run-cell {
+  flex: 1 1 0;
+  min-width: 5px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--surface-divider);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.dm-run-fill {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 3px;
+  transition: height 120ms;
+}
+
 /* ── News library ─────────────────────────────────────── */
 .dm-news-head {
   display: flex;

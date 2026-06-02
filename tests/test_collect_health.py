@@ -38,3 +38,49 @@ def test_health_li_flags_error_sources():
     out = dm._collect_health_li()
     assert "오류" in out
     assert "google" in out  # 오류 소스 노출 → 조용한 실패 가시화
+
+
+# ── 최근 수집 런 타임라인 (run_log 기반 고도화) ──────────────
+
+def test_run_timeline_empty_when_no_runs():
+    assert dm._run_timeline_html() == ""
+
+
+def test_run_timeline_renders_cell_per_run():
+    for i in range(3):
+        run_log.record_run(
+            _rep(saved=[{"source": "naver", "count": i + 1, "path": "p"}]),
+            trigger="cron", run_id=f"t{i}",
+        )
+    out = dm._run_timeline_html()
+    assert "최근 수집 런" in out
+    assert out.count('class="dm-run-cell"') == 3
+    assert "3/3 정상" in out  # 전부 오류 0건 → ok
+
+
+def test_run_timeline_marks_ok_and_error_runs():
+    run_log.record_run(
+        _rep(saved=[{"source": "naver", "count": 5, "path": "p"}]),
+        trigger="cron", run_id="ok1",
+    )
+    run_log.record_run(
+        _rep(
+            saved=[{"source": "naver", "count": 1, "path": "p"}],
+            errors=[{"source": "google", "error": "boom"}],
+        ),
+        trigger="manual", run_id="err1",
+    )
+    out = dm._run_timeline_html()
+    assert "var(--semantic-success)" in out  # 정상 런 = 초록
+    assert "var(--semantic-warning)" in out  # 오류 런 = 주황
+    assert "1/2 정상" in out
+
+
+def test_run_timeline_caps_at_limit():
+    for i in range(dm._RUN_TIMELINE_N + 5):
+        run_log.record_run(
+            _rep(saved=[{"source": "naver", "count": 1, "path": "p"}]),
+            trigger="cron", run_id=f"c{i}",
+        )
+    out = dm._run_timeline_html()
+    assert out.count('class="dm-run-cell"') == dm._RUN_TIMELINE_N
