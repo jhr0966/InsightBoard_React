@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (UI 다크 모드 2차 — 작업 정의 상세 뷰 · 콜아웃 배너 일관성)
+- **작업 정의 상세/카드 뷰**(`ui/task_def_manage.py`)가 고정 라이트색(흰 카드 `#fff`·`#0F172A` 등)이라 다크에서 밝은 섬으로 떠 보이던 것 → 스타일 상수 전체를 토큰화(`var(--surface-card/soft)`·`var(--text-primary/secondary/muted)`·`var(--surface-divider)`·danger 는 `var(--semantic-danger)` 틴트). 토큰 라이트값이 기존 hex 와 동일/근접이라 **라이트 무변경**(테스트 78건 green).
+- **콜아웃 배너 다크 변형**(`_DARK_CSS`) — LLM 미설정 배너(`.app-llm-banner`, amber)·브리프 핸드오프(`.ws-brief-handoff`, blue)가 라이트 고정색이라 다크에서 밝게 떠 보이던 것 → 다크 틴트(반투명 amber/blue + 밝은 텍스트) 오버라이드.
+- 메인 5화면(보드/데이터관리/인사이트/작업실/보관함)은 1차로 이미 다크 정상 확인(playwright). 잔여: sparkline SVG(data-URI라 CSS var 불가, 현재도 라이트 바라 다크에서 가독은 됨) — 필요 시 테마별 색 생성으로 후속.
+- pytest **719 passed** · 금지 패턴 0 · py_compile OK.
+
 ### Fixed (UI 다크 모드 — 입력창·카드 배경이 다크에서 하얗게 남던 문제)
 - **입력창(검색·채팅 textarea·select) 흰색** — `_DARK_CSS` 가 안쪽 `input`/`textarea` 만 다크화하고 baseweb 래퍼는 안 칠해, Streamlit 1.58 의 `[data-baseweb="base-input"]` 래퍼가 흰색으로 남아 다크에서 입력창이 하얗게 보였다. 래퍼(`base-input`/`input`/`textarea`)까지 다크화. (playwright 로 textarea 래퍼 `rgb(255,255,255)→rgb(15,23,42)` 확인)
 - **카드 배경 흰색** — 화면 CSS 8곳(`board.css`·`card.css`·`archive.css`·`sola.css`)이 카드 배경에 고정 `#FFFFFF`/`#FAFBFD` 그라데이션을 써서 다크에서 흰 카드로 남았다(특히 보드 인사+KPI `.db-greet`). `var(--surface-card)`/`var(--surface-soft)`/`var(--surface-inset-bg)` 로 토큰화 → 다크 추종. **라이트 토큰값이 원래 hex 와 동일**(`--surface-card`=#FFFFFF, `--surface-soft`=#F5F7FB)이라 라이트 모드 무변경(playwright 회귀 확인).

@@ -78,6 +78,10 @@ body:has(.db-topbar) .persona-profile-card,
 body:has(.db-topbar) .persona-profile-card-empty{ background:#172033 !important; }
 body:has(.db-topbar) .persona-profile-head-empty{ background:#0F172A !important; border-color:#334155 !important; color:#94A3B8 !important; }
 body:has(.db-topbar) .sidebar-nav-item.active{ background:rgba(96,165,250,.16) !important; border-color:rgba(96,165,250,.30) !important; }
+/* 콜아웃 배너 — 라이트 고정색(amber/blue)이라 다크에서 밝은 섬으로 떠 보임 → 다크 틴트 변형 */
+body:has(.db-topbar) .app-llm-banner{ background:rgba(180,83,9,.18) !important; border-color:rgba(180,83,9,.42) !important; color:#FCD34D !important; }
+body:has(.db-topbar) .app-llm-banner b{ color:#FCD34D !important; }
+body:has(.db-topbar) .ws-brief-handoff{ background:rgba(37,99,235,.16) !important; border-color:rgba(37,99,235,.36) !important; color:#BFDBFE !important; }
 """
 
 # 강조 색상 테마 (라이트 베이스 + accent 토큰 교체) — 네이티브 primary 버튼도 추종.
