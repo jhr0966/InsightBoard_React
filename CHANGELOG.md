@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Fixed (CI — flaky 테스트 결정화)
+- `tests/test_sola_composer.py::test_append_message_persists_to_chat_log` — 첫 user 메시지의 thread 제목 자동생성이 LLM 가용성에 의존(가용 시 압축 제목, 미설정 시 raw fallback)해 CI 에서 간헐 실패(`assert '인사 분석하기' == 'hello'`)하던 것을 `sola.thread_title.generate` 목으로 결정화. 제목 생성기 동작 자체는 `test_thread_title_llm` 가 검증하고, 본 테스트는 chat_log 영속+message_count+제목 wiring 에 집중. (UI 셸/CSS/사이드바 변경과 무관한 기존 취약점.)
+
 ### Changed (UI Phase A 후속 — 사이드바 프로필 카드 재설계)
 - `ui/sidebar._persona_card_html` 깔끔한 프로필 카드로 재설계. **설정 시**: 아바타 + 이름/역할 + 편집펜(✎) + 팀/관심 구분선. **미설정 시**: 👤 프로필 이모지 + "프로필 미설정" + 안내 문구 + "＋ 프로필 설정하기" CTA. 카드 전체가 `?persona_editor=1` 링크라 **이모지·이름·안내 문구 어디를 눌러도 설정 화면이 열림**(playwright 클릭 검증).
 - `assets/v2/sidebar.css` 프로필 카드 스타일을 새 구조(`.persona-profile-row`/`-id`/`-head-empty`/`-edit`/`-empty-hint`/`-cta`)로 교체.
