@@ -32,6 +32,21 @@
 
 ---
 
+## 2026-06-03 · 개선 백로그 최우선 3건 착수 (관측성·성능)
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #104 머지 후 origin/main `fc98fb2` reset → 재사용).
+
+**한 일 (3 커밋):**
+- **#1 수집 degraded 가시화** — `data_management._collect_alert_html`(최근 런 실패=빨강/24h+ 정체=주황 상단 배너, run_log 기반) + `daily_scrape --fail-on-empty`(0건 exit 1, `scrape-daily.yml` ON). 조용한 starvation 을 화면·CI 양쪽에 표면화.
+- **#2 `load_news_for_days` 디스크 재읽기 memo** — 디렉토리별 키 + 일별 mtime/parquet수 시그니처(새 수집 시 자동 무효화) + `.copy()` 반환. 호출부 34곳 무변경. (매칭 결과 캐시 2.1 은 보류.)
+- **#3 `ui/_safe.guard(label)`** — silent except 를 WARN+스택트레이스 로깅으로 표면화하는 컨텍스트매니저. `data_management` 데이터-경로 5곳 적용(패턴 확립, ~40 site 롤아웃은 후속).
+
+**검증:** pytest 719→**735 passed**(+11: 배너4·fail-on-empty2·memo1·guard4) · 금지 0 · compile OK. REFACTOR_PLAN 백로그에 ✅/부분완료 반영.
+
+**다음:** #2 매칭 결과 캐시 · #3 board/insights 롤아웃 · RAG/PR #49(외부).
+
+---
+
 ## 2026-06-03 · docs 최신화·정리 + 개선 백로그 발굴
 
 **브랜치:** `claude/kind-volta-IWxix` (PR #103 머지 후 origin/main `e87f6e7` reset → 재사용).
