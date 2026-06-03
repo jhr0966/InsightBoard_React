@@ -19,6 +19,7 @@ from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
 from ui import app_shell
 from ui import components as _components
+from ui._safe import guard
 from ui.styles import inject_screen_css
 
 
@@ -82,18 +83,13 @@ def _dm_stats() -> dict[str, str | int]:
       total_chunks:   '8.4k' — 30일 누적 뉴스 row 수 (human-friendly)
       last_update:    '08:24' — 가장 최근 수집 시각 (없으면 현재 시각)
     """
-    try:
+    today_df = week_df = month_df = None
+    with guard("데이터 관리 통계 — 오늘자 로드"):
         today_df = _news_db.load_all_today()
-    except Exception:
-        today_df = None
-    try:
+    with guard("데이터 관리 통계 — 주간(7d) 로드"):
         week_df = _news_db.load_news_for_days(days=7)
-    except Exception:
-        week_df = None
-    try:
+    with guard("데이터 관리 통계 — 월간(30d) 로드"):
         month_df = _news_db.load_news_for_days(days=30)
-    except Exception:
-        month_df = None
 
     today_count = int(len(today_df)) if today_df is not None else 0
 
@@ -387,10 +383,9 @@ def _ingest_jobs_html() -> str:
     source 별 그룹 카운트(오늘자). 실시간 진행 상태 트래킹은 후속.
     """
     health = _collect_health_li()
-    try:
+    today_df = None
+    with guard("수집잡 — 오늘자 로드"):
         today_df = _news_db.load_all_today()
-    except Exception:
-        today_df = None
 
     if today_df is None or today_df.empty:
         # display:block 로 .dm-job 의 grid(5px 1fr auto) 를 무력화 — 안 그러면 빈 문구가
@@ -480,10 +475,9 @@ def _hist_html(dark: bool = False) -> dict[str, str]:
     SVG 는 img src='data:image/svg+xml,...' 형식이라 큰따옴표 escape 필요 →
     src 내부는 모두 단일 따옴표.
     """
-    try:
+    hist_df = None
+    with guard("14일 sparkline — 로드"):
         hist_df = _news_db.load_news_for_days(days=14)
-    except Exception:
-        hist_df = None
 
     # daily volume
     daily_counts: list[int] = [0] * 14
