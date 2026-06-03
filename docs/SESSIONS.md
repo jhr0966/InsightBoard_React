@@ -8,16 +8,14 @@
 ## 🚩 다음 세션 시작점 (2026-06-02 기준) — 여기부터 읽으세요
 
 **현재 상태**
-- **PR #90 (UI 전면 재정비 A~D) ✅ 머지** + **PR #91 (Phase E — enrich→매칭 가중) ✅ 머지** → `main 7debc32`. 결정-1(제안서·요약)·결정-2(enrich 가중) 모두 구현 완료.
-- **Phase 3 (데드 코드 삭제) ✅ 완료** — 모듈 4종(`ui/layout`·`ui/task_tree`·`sola/{insight,chat_ctx}`) + no-op 패널(`app_shell.render_app_side/sola`+토글 클러스터) + `chat_panel.render` + `_SOLA_TEMPLATE`/`sola_main.html` + `task_defs_db.upsert_many` + `persona_page._archive_stats` 삭제. 보존: `sola/{propose,summarize}`(부활)·`side_context`(orphan).
-- **Phase F (수집 관측성) ✅ 완료** — `store/run_log.py`(수집 런을 `data/logs/runs.jsonl` 영속) + cron·새로고침·보드 3경로 기록 + 데이터 관리 '수집 헬스' 1행. 조용한 수집 실패를 화면에서 감지.
-- **스크래퍼 라이브 검증**: 이 원격 환경은 네트워크 allowlist 프록시라 외부 수집 차단("Host not in allowlist" 403 — example.com 포함). 파싱 로직은 fixture 42건으로 정상 확인. 검증 중 tech 사이트가 HTTP 오류를 조용히 0건 처리하던 빈틈 발견·보강(`raise_for_status`+`on_error` → 수집 헬스 표면화).
-- 중복/stale PR 정리: #88(계획서, REFACTOR_PLAN 으로 대체) close · #49(TS 프로토타입) 는 디자인 채택 판단 대기.
+- **`main e87f6e7` 기준 — M1~M3 완성 + post-M3 완성도 하드닝 완료.** `pytest 724 passed` · 금지패턴 0 · 70 모듈·69 테스트·13.6k LOC. 3대 축 end-to-end 완전 배선, graceful degradation(무데이터/LLM미설정/네트워크실패) 우수.
+- **이 세션(`claude/kind-volta-IWxix`) 누적 머지** — #97 수집헬스 런 타임라인+네이버 파서 테스트 · #98 사이드바 펼치기버튼 복구+채팅패널(안내 영속·추천 클릭·표시영역) · #99 의미유사도(TF-IDF) 하이브리드 매칭+sparkline 런 오버레이 · #100 다크 1차(입력창·카드) · #101 다크 2차(작업정의 뷰·배너) · #102 완성도 점검 결함 4건(collected_at 계약·데이터-경로 로깅·archive 목업 제거·SQLite 마이그/표면화) · #103 A3 문서드리프트+다크 sparkline. (#95·#96 verify CLI 중복 close.)
+- **완성도 점검 결론**: 구조적 결함 없음. 과거 잠재 데이터-계약 버그(`collected_at` 미존재 → 데일리 브리핑 매칭경로 silent death 등) 전부 수정. 라이브 수집은 환경 네트워크 allowlist 로 여전히 차단(파서는 정상).
 
-**바로 할 일 (택1)**
-1. ✅(부분) **수집 헬스 고도화**: '최근 N회 런 미니 타임라인'(`_run_timeline_html`, run_log 기반) 완료(PR #97). 남은 선택지 — 14일 **볼륨** sparkline 은 news_db 유지(run_log 14일 히스토리 부재로 즉시 전환 시 빈 차트). run_log 가 14일 쌓이면 일별 '런 성공/실패' 오버레이를 sparkline 에 추가 검토.
-2. **풀 다크 폴리시 / 의미기반 매칭(RAG)**: 차트 색·매트릭스/히트맵 SVG 인터랙션(img 변환으로 클릭 비활성) 정교화 · 임베딩 유사도 하이브리드 매칭.
-3. **PR #49(글래스모피즘 TS 프로토타입) 디자인 판단**: 채택(현 v2 셸에 반영)할지 close 할지 — 미머지 브랜치에만 존재.
+**바로 할 일 (남은 건 외부 의존/결정)**
+1. **임베딩 RAG** — 의미 매칭이 현재 TF-IDF 코사인(`store/match.semantic_weight`). 신경망 임베딩은 백엔드(groq 미지원·환경 네트워크 차단) 확보 시 `_tfidf_vec`/`_cosine` 스왑으로 확장.
+2. **PR #49** — 글래스모피즘 TS 프로토타입 채택(현 v2 셸 반영)/close 디자인 결정 대기.
+3. **개선포인트** — 별도 forward-looking 리뷰로 발굴(테스트 커버리지·성능·UX·기술부채·관측성). 결과는 본 문서 상단 세션 기록 참조.
 
 **핵심 함정 (재학습 방지)**
 - `st.html` 은 **인라인 `<svg>` 를 sanitize 로 제거** + `data:image/svg+xml;utf8,<svg…#…>` 는 `#`/공백이 잘려 깨짐 → 화면 템플릿은 `ui/components.prepare_screen_html()` 통과 필수(아이콘 인코딩 + 인라인 svg→data-URI img). 각 화면 메인 렌더·`render_topbar` 가 이미 적용.
@@ -31,6 +29,27 @@
 **검증 베이스라인**: `pytest -q` = **724 passed** · 금지 패턴(on_click/raw requests) 0 · `py_compile` OK · playwright `scripts/verify_screens.py`(+ 페르소나 `data/persona/profile.json` 미리 저장해야 온보딩 모달 회피).
 
 **⚠ 라이브 수집은 여전히 막힘**: 사용자가 "전체 도메인 허용 + 새 세션"을 했다 했으나, 이 컨테이너의 네트워크는 아직 **제한적 allowlist**(pypi.org만 200, news 도메인·google.com·example.com 전부 403 `Host not in allowlist`, WebFetch 동일). 네트워크 정책은 **환경 생성 시점에 고정**되므로 이 세션은 정책 변경 전 환경. → 정책=전체 허용으로 설정된 환경에서 **진짜 새 세션**을 열어야 라이브 검증 가능. 라이브 시 허용 필요 호스트: `search.naver.com`·`www.naver.com`·`n.news.naver.com`·`news.google.com`·구글 RSS 가 링크하는 **임의 언론사 도메인**(그래서 '전체 허용'이 맞음)·`www.aitimes.com`·`automation-world.co.kr`.
+
+---
+
+## 2026-06-03 · docs 최신화·정리 + 개선 백로그 발굴
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #103 머지 후 origin/main `e87f6e7` reset → 재사용).
+
+**한 일 (docs only):**
+- README 셸 설명 최신화(구 `app-side`/`app-sola` 고정패널 → 현행 네이티브 사이드바 + `[2.3,1]` 중앙/우측 채팅) · 테스트 수 720+.
+- SESSIONS '다음 세션 시작점' 블록을 현재(`main e87f6e7`·#97~#103 누적·완성도 결론)로 갱신.
+- REFACTOR_PLAN 에 `post-M3 완성도 하드닝(완료)` + **개선 백로그 16건**(우선순위) 캡처.
+- (CHANGELOG `## [Unreleased]` "중복"은 ```md 코드펜스 안 템플릿이라 실제 중복 아님 — 무수정.)
+
+**개선 백로그 최우선 3 (forward-looking 리뷰 발굴):**
+1. **수집 degraded 가시화** — cron 0건/실패가 화면·CI 무신호 → `daily_scrape`/workflow `exit 1` + `data_management` 상단 경고 배너(`run_log.daily_status` 활용). [high·S]
+2. **매칭/뉴스 캐시 통합** — `score_matches`(O(news×tasks)) 4곳 독립 재계산 + `load_news_for_days` 렌더당 다수 재읽기 → 공유 캐시. [high·M]
+3. **silent except 로깅 가드** — ~45개 `except: pass` 무신호 → `ui/_safe.guard()` WARN 로깅. [high·M]
+
+**검증:** 코드 무변경 → pytest **724 passed** 유지 · 금지 0.
+
+**다음:** 위 백로그 1~3 착수(지시 시) · RAG/PR #49 는 외부 의존/결정.
 
 ---
 
