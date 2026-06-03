@@ -53,9 +53,10 @@ jobs:
           KEYWORDS_INPUT="${{ github.event.inputs.keywords }}"
           MAX_RESULTS="${{ github.event.inputs.max_results || '10' }}"
           SKIP_RSS="${{ github.event.inputs.skip_custom_rss || 'false' }}"
-          EXTRA_FLAGS=""
+          # --fail-on-empty: 0건 수집(보통 차단/셀렉터 파손)을 워크플로 실패로 표면화.
+          EXTRA_FLAGS="--fail-on-empty"
           if [ "$SKIP_RSS" = "true" ]; then
-            EXTRA_FLAGS="--skip-custom-rss"
+            EXTRA_FLAGS="$EXTRA_FLAGS --skip-custom-rss"
           fi
           if [ -n "$KEYWORDS_INPUT" ]; then
             # shellcheck disable=SC2086

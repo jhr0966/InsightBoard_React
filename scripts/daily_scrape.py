@@ -9,7 +9,9 @@ Usage:
     python -m scripts.daily_scrape --max-results 20
     python -m scripts.daily_scrape --skip-custom-rss            # 커스텀 RSS 스킵
 
-Exit code: 항상 0 (네트워크 일시 오류로 cron 이 실패 처리되지 않도록).
+Exit code: 기본 0 (네트워크 일시 오류로 cron 이 실패 처리되지 않도록).
+  `--fail-on-empty` 지정 시 저장 0건이면 exit 1 — cron 의 조용한 starvation 을
+  GitHub Actions 가 빨갛게 표면화(scrape-daily.yml 이 이 플래그를 켠다).
 오류는 stdout 으로 보고하되 saved 0 건이면 stderr 경고만 남긴다.
 """
 from __future__ import annotations
@@ -53,6 +55,12 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--skip-custom-rss",
         action="store_true",
         help="store.sources 에 등록된 커스텀 RSS 출처 수집을 건너뜁니다.",
+    )
+    parser.add_argument(
+        "--fail-on-empty",
+        action="store_true",
+        help="저장된 기사가 0건이면 exit 1 (cron 무신호 starvation 을 GitHub 가 빨갛게 표면화). "
+             "기본은 항상 exit 0 (일시 오류로 cron 이 실패 처리되지 않게).",
     )
     return parser.parse_args(argv)
 
@@ -117,6 +125,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
             flush=True,
         )
+        if args.fail_on_empty:
+            # 0건은 보통 '조용한 날'이 아니라 수집 파손(차단/셀렉터) → 신호로 실패 처리.
+            print("[daily_scrape] --fail-on-empty: 0건이므로 exit 1.",
+                  file=sys.stderr, flush=True)
+            return 1
     return 0
 
 
