@@ -90,6 +90,26 @@ def load_all_today() -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True).drop_duplicates(subset=["link"], keep="last")
 
 
+# 디스크 재읽기 캐시 — 같은 뉴스 윈도가 한 렌더에서 여러 cached wrapper(board/insights/
+# data_management 등)로 반복 로드되던 것을 dedup (개선 백로그 #2). 디렉토리별 키 +
+# mtime/parquet수 시그니처 → 새 수집(parquet 추가)이 있으면 자동 무효화(stale 없음).
+_news_window_memo: dict = {}
+
+
+def _day_dirs_sig(days: int, cur: datetime) -> tuple:
+    """최근 `days` 일 디렉토리의 (날짜, mtime_ns, parquet 수) — 변하면 캐시 무효."""
+    parts: list[tuple] = []
+    for i in range(days):
+        d = (cur - timedelta(days=i)).strftime("%Y-%m-%d")
+        day_dir = NEWS_DIR / d
+        try:
+            mtime = day_dir.stat().st_mtime_ns
+        except OSError:
+            continue  # 없는 날 → 스킵
+        parts.append((d, mtime, len(list(day_dir.glob("*.parquet")))))
+    return tuple(parts)
+
+
 def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.DataFrame:
     """오늘 포함 최근 `days` 일치 일자 디렉토리의 모든 Parquet 합본.
 
@@ -98,11 +118,19 @@ def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.Data
         now: 테스트용 시점 주입 (UTC).
 
     각 일자 디렉토리는 `data/news/YYYY-MM-DD/`. 존재하지 않으면 스킵.
-    중복 link 는 마지막(=최신 저장 시점) 항목 보존.
+    중복 link 는 마지막(=최신 저장 시점) 항목 보존. 결과는 디렉토리 시그니처가
+    동일하면 메모이즈본을 `.copy()` 로 반환(호출부의 in-place 변형으로부터 캐시 보호).
     """
     if days < 1:
         raise ValueError("days must be >= 1")
     cur = now or datetime.now(timezone.utc)
+
+    key = (str(NEWS_DIR), days)
+    sig = _day_dirs_sig(days, cur)
+    cached = _news_window_memo.get(key)
+    if cached is not None and cached[0] == sig:
+        return cached[1].copy()
+
     frames: list[pd.DataFrame] = []
     for i in range(days):
         d = (cur - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -115,9 +143,12 @@ def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.Data
             except Exception:  # noqa: BLE001 — 깨진 parquet 은 스킵(어느 파일인지 로깅)
                 logger.warning("깨진 parquet 스킵: %s", p, exc_info=True)
                 continue
-    if not frames:
-        return pd.DataFrame(columns=list(_ARTICLE_COLS))
-    return pd.concat(frames, ignore_index=True).drop_duplicates(subset=["link"], keep="last")
+    result = (
+        pd.DataFrame(columns=list(_ARTICLE_COLS)) if not frames
+        else pd.concat(frames, ignore_index=True).drop_duplicates(subset=["link"], keep="last")
+    )
+    _news_window_memo[key] = (sig, result)
+    return result.copy()
 
 
 def upsert_articles(articles: list[dict], *, source: str) -> Path | None:

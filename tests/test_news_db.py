@@ -86,3 +86,20 @@ def test_missing_optional_field_is_empty_not_nan():
     assert by.loc["l1", "image_url"] == "http://x/a.jpg"
     assert by.loc["l2", "image_url"] == ""          # NaN → "" (not "nan")
     assert by.loc["l2", "summary"] == ""
+
+
+# ── load_news_for_days 디스크 재읽기 memo (개선 백로그 #2) ──────
+
+def test_load_news_for_days_memo_hit_invalidate_and_copy():
+    from store.news_db import load_news_for_days
+    save_articles([{"title": "a", "link": "l1", "source": "naver"}], source="naver")
+    df1 = load_news_for_days(days=1)
+    assert len(df1) == 1
+    df1b = load_news_for_days(days=1)            # 캐시 hit
+    assert len(df1b) == 1 and df1b is not df1    # .copy() → 다른 객체
+    # 반환본을 변형해도 캐시는 오염되지 않는다
+    df1b.loc[:, "title"] = "MUTATED"
+    assert load_news_for_days(days=1).iloc[0]["title"] == "a"
+    # 새 parquet 저장 → 디렉토리 mtime/수 변화 → 캐시 무효화 → 신규 반영
+    save_articles([{"title": "b", "link": "l2", "source": "google"}], source="google")
+    assert len(load_news_for_days(days=1)) == 2
