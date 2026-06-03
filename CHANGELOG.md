@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (완성도 점검 잔여 — 문서/코드 드리프트 A3 + 다크 sparkline)
+- **A3 문서/코드 드리프트** — `docs/ARCHITECTURE.md`·`docs/INVARIANTS.md` 가 "SOLA 작업실은 풀스크린·우측 채팅 컬럼 미렌더" 라고 적었으나, `app.py` 는 **모든 화면 통일**로 작업실도 `chat_panel.render_side` 를 우측에 렌더(작업실 중앙=산출물 작업대, 우측=글로벌 채팅). 코드가 현재 의도이므로 **문서를 코드에 맞춤**(작업실 예외 제거). 부수로 `st.columns([2.7,1])`→실제 `[2.3,1]` 도 정정. *(작업실에서 우측 채팅을 억제하려면 별도 코드 변경 — 현재는 의도적 미억제로 명시.)*
+- **다크 sparkline** (`data_management_v2._hist_html`) — 14일 수집량 SVG 가 data-URI img 라 CSS 변수를 못 써 고정 라이트색(#2563EB/#CBD5E1/#E5E7EB)이던 것 → `dark` 파라미터(캐시 키)로 테마별 색 분기(다크: #60A5FA/#475569/#334155). 호출부가 `ui_prefs` 테마를 읽어 전달.
+- 검증: pytest **724 passed** · 금지 패턴 0 · py_compile OK · 다크/라이트 SVG 색 분기 스모크 확인.
+
 ### Fixed (완성도 점검 후속 — 데이터-계약·관측성·목업·SQLite 견고성)
 시스템 완성도 점검에서 발견한 잠재 결함 4건을 순차 수정(719→**724 passed**).
 - **[C1/C2/D4] 데일리 브리핑 매칭경로 부활 + null 안전** (`store/news_db.py`) — `board_v2` 가 select 하던 `collected_at` 컬럼이 **어떤 스크래퍼·스토어도 안 쓰던** 컬럼이라 매번 KeyError→broad except 로 삼켜져 '아침 7분' 브리핑의 매칭-뉴스 분기가 **조용히 죽어** '최근 3건' 폴백만 돌던 것 → `collected_at` 을 `_ARTICLE_COLS` 에 추가하고 저장 시 `enriched_at→published_at` 폴백으로 채움(단일 '수집 시각'). `_to_df`/`_normalize_loaded` 에 `fillna("")` — null `image_url` 이 `astype(str)` 로 `"nan"` 문자열이 돼 `if image_url:` 가 truthy→깨진 `<img src=nan>` 나던 것 차단.

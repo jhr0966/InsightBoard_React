@@ -34,6 +34,20 @@
 
 ---
 
+## 2026-06-02 · 완성도 점검 잔여 — A3 문서/코드 드리프트 + 다크 sparkline
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #102 머지 후 origin/main `b318881` reset → 재사용).
+
+**한 일:**
+- **A3** 문서를 코드에 맞춤 — ARCHITECTURE/INVARIANTS 가 "SOLA 작업실=풀스크린·우측 채팅 미렌더"라 했으나 app.py 는 모든 화면 통일로 작업실도 `render_side` 렌더. 코드가 현재 의도라 문서 정정(작업실 예외 제거 + `[2.7,1]`→`[2.3,1]`). *작업실 채팅 억제를 원하면 코드 변경 필요 — 명시함.*
+- **다크 sparkline** — `_hist_html(dark)` 파라미터로 14일 수집량 SVG 색을 테마별 분기(data-URI 라 CSS var 불가). 호출부가 ui_prefs 테마 전달.
+
+**검증:** pytest **724 passed** · 금지 0 · compile OK · SVG 색 분기 스모크.
+
+**남은(블록/결정):** 임베딩 RAG(백엔드 부재) · PR #49 디자인 판단 — 둘 다 사용자 결정/외부 의존.
+
+---
+
 ## 2026-06-02 · 시스템 완성도 점검 + 잠재 결함 4건 순차 수정
 
 **브랜치:** `claude/kind-volta-IWxix` (PR #101 머지 후 origin/main `1e83b2a` reset → 재사용).

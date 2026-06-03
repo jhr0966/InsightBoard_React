@@ -15,10 +15,10 @@
 │  app.py (평탄 디스패처 — 레이아웃 소유: Phase A 네이티브 셸)  │
 │   with st.sidebar: sidebar.render() → area 슬러그          │
 │   chat_panel.consume_send_if_any() (어느 area든 송신)      │
-│   main_col, chat_col = st.columns([2.7, 1])               │
+│   main_col, chat_col = st.columns([2.3, 1])               │
 │     with main_col: if/elif 5분기 → 화면 render()          │
 │     with chat_col: chat_panel.render_side()               │
-│   (SOLA 작업실만 풀폭 — 자체 스레드+채팅+ctx)              │
+│   (모든 화면 동일 — 작업실도 중앙 작업대 + 우측 채팅)     │
 └─────────────────────────────────────────────────────────┘
   │
   ├── ui/sidebar    (네이티브 좌측 사이드바 = nav 단일 소스 · 페르소나 · 통계 · LLM 상태)
@@ -30,7 +30,7 @@
         ├── 📊 board_v2          → KPI · 기회 · 트렌드 · 매트릭스 · 탑스토리
         ├── 🧱 data_management_v2 → 뉴스 수집 · 라이브러리 · 작업 정의 CRUD
         ├── 🔎 insights_v2        → 트렌드 · 매칭 · 자동화 기회
-        ├── 🤖 sola_workshop_v2   → 풀스크린 LLM 채팅 (자체 채팅, 우측 컬럼 미사용)
+        ├── 🤖 sola_workshop_v2   → 중앙 산출물 작업대 + 우측 채팅 (모든 화면 통일)
         └── 📦 archive_v2         → 북마크 · 채택 의사결정
 ```
 
@@ -47,13 +47,13 @@
 | `📊 오늘의 보드` | `ui/board_v2.py` | ✔ | ✔ |
 | `🧱 데이터 관리` | `ui/data_management_v2.py` | ✔ | ✔ |
 | `🔎 인사이트 분석` | `ui/insights_v2.py` | ✔ | ✔ |
-| `🤖 SOLA 작업실` | `ui/sola_workshop_v2.py` | ✔ | (자체 풀스크린, 글로벌 패널 미렌더) |
+| `🤖 SOLA 작업실` | `ui/sola_workshop_v2.py` | ✔ | ✔ (중앙 작업대 + 우측 render_side) |
 | `📦 산출물 보관함` | `ui/archive_v2.py` | ✔ | ✔ |
 | (모달) 프로필 설정 | `ui/persona_page.py` | ✔ | ✔ |
 
 - **area 선택**: `?app_area=<quoted>` 쿼리 파라미터 → `sidebar.render()` 가 읽고 `session_state["app_area"]` 에 저장 후 반환.
 - **chat_context_block(persona)**: 현재 화면이 보여주는 데이터를 채팅 LLM 컨텍스트로 직렬화. `chat_panel.consume_send_if_any` 가 `session_state["_chat_context_for_sola"]` 를 함께 전송.
-- **SOLA 작업실**: 풀스크린 채팅. 본문 끝 글로벌 채팅 패널 (`chat_panel.render`) 은 호출하지 않는다 (중복 방지).
+- **SOLA 작업실**: 중앙은 산출물 작업대(스레드 + composer), 우측은 글로벌 채팅(`render_side`) — 모든 화면과 동일한 main/chat 2-컬럼. (구 본문-끝 `chat_panel.render` bottom expander 는 Phase 3 에서 삭제됨.)
 - **인계 URL**: `?app_area=...&from=<kind>&dept=...` 으로 보드/인사이트 카드 → SOLA 작업실 prefill. 단일 진입점 `board_v2._sola_handoff_href` / `archive_v2._edit_handoff_href` (→ INVARIANTS I-16).
 
 ---
