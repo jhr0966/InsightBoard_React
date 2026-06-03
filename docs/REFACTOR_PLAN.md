@@ -145,3 +145,40 @@ git fetch origin main && git checkout main && git pull
 git checkout -b feat-sola-propose-summarize   # 또는 feat-enrich-match-weight
 python -m pytest -q                            # 656/656 baseline 확인
 ```
+
+---
+
+## ✅ post-M3 완성도 하드닝 (2026-06, 완료)
+
+M1~M3 + Phase 0~3·E·F 이후 **시스템 완성도 점검**에서 발견한 잠재 결함 4건 + 문서 드리프트를 수정(PR #102·#103). `pytest 724 passed` · 금지패턴 0 · 70 모듈·69 테스트.
+- **C1/C2/D4** `news_db`: `collected_at` 컬럼이 없어 board 데일리 브리핑 매칭경로가 KeyError→broad except 로 **silent death** 하던 것 → `_ARTICLE_COLS` 추가 + `enriched_at→published_at` 폴백. `fillna("")` 로 null→`""`(깨진 `<img src=nan>` 차단).
+- **B4** 데이터-경로 silent 실패 로깅(board 매칭조인·news_db 깨진 parquet·enrich 파싱).
+- **D1/D2** archive 정적 목업을 `archive_main.html` 에서 직접 제거 + 런타임 `_strip_oa_mockups` 삭제.
+- **C3/C4** SQLite 동기화 실패 `IngestResult.sqlite_error` 표면화 + `task_defs_db._migrate`(user_version + 누락 컬럼 ALTER).
+- **A3** ARCHITECTURE/INVARIANTS 를 코드(모든 화면 통일·작업실도 `render_side`·`[2.3,1]`)에 맞춤.
+
+---
+
+## 개선 백로그 (forward-looking, 2026-06) — 우선순위
+
+점검 후 forward-looking 리뷰로 도출. 효과(high/med/low) × 노력(S/M/L).
+
+### 🔴 우선 (high)
+- **수집 degraded 가시화** — cron 0건/실패가 화면·CI 모두 무신호. ① `scrape-daily.yml`+`daily_scrape.py`: `total_articles==0` 시 `exit 1`/job-summary. ② `data_management_v2`: `run_log.daily_status` 의 fail/stale(>24h)를 상단 경고 배너로 승격. [S]
+- **매칭/뉴스 재계산·재읽기 캐시 통합** — `score_matches`(O(news×tasks))가 board/insights/opportunity 4곳에서 독립 재계산, `load_news_for_days` 가 렌더당 다수 디스크 재읽기. 공유 `@st.cache_data`(news-window+tasks-hash 키) + `news_db` 레이어 캐시. [M]
+- **silent except → 로깅 가드** — broad except 127건 중 ~45건이 `pass`/`continue` 무신호. `ui/_safe.guard(label)` 헬퍼(WARN 로깅)로 교체 + v2 화면 logger 부재 해소. [M]
+
+### 🟡 다음 (med)
+- **screen `render()` 스모크 테스트** — 5개 v2 화면 render() 오케스트레이션(pending→rerun·topbar·handoff) 무커버리지 → Streamlit mock 스모크. [S]
+- **네이버 파서 실HTML fixture** — 합성 HTML만 검증, 10-셀렉터 fallback·`≥2` 휴리스틱이 실파손 지점 → 실 SERP fixture 1~2건. [M]
+- **SOLA 작업실 2-채팅 정리** — 중앙 작업대 + 우측 채팅 분산 → 작업대 액션을 사이드 채팅 quick-action 으로 흡수 검토. [M]
+- **handoff 배너 LLM 배선 완료/제거** — `?from=brief` prefill→LLM 미배선(docstring 인정). [M]
+- **HTML placeholder 소비 검증** — `{{token}}` 미소비 시 silent 빈 렌더 → 템플릿 토큰 전수 소비 assert. [M]
+- **`sola.client.chat` 타임아웃/재시도** — SDK 기본 타임아웃, 행 시 rerun 정지 → 명시 `timeout=`+1회 재시도. [S]
+- **oversized 모듈 분할** — `board_v2`(~1.7k)·`data_management_v2`(~1.6k)의 `_*_html` 빌더를 `*_render.py`(순수) 추출. [S~L]
+
+### ⚪ 여력 시 (low)
+매칭 `iterrows()`→vectorize · `run_log._trim` 조건부 · 의미매칭 엣지케이스 +2~3 · 라이브 수집 백그라운드+폴링.
+
+### 🚧 외부 의존/결정 (단독 처리 불가)
+임베딩 RAG(임베딩 백엔드 부재 — 현재 TF-IDF 대체, `_tfidf_vec`/`_cosine` 스왑으로 확장) · PR #49(글래스모피즘 디자인 채택/close 결정).

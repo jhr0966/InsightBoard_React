@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Docs (최신화·정리 + 개선 백로그 캡처)
+- **README** 셸 설명 최신화 — 삭제된 구 고정패널(`app-side` nav · `app-sola` 패널) 서술을 현행(좌 네이티브 `st.sidebar` + 본문 in-flow 헤더 + `st.columns([2.3,1])` 중앙/우측 채팅 `render_side`)으로 교체. 테스트 수 `60+`→`720+`(69파일).
+- **SESSIONS** '다음 세션 시작점' 블록 갱신 — stale 한 현재상태(`main 7debc32`·PR #90/#91)를 `main e87f6e7`·이 세션 누적(#97~#103) + 완성도 점검 결론으로 교체. 남은 일을 외부 의존/결정(RAG·PR #49)으로 정리.
+- **REFACTOR_PLAN** — `post-M3 완성도 하드닝(완료)` 섹션 + **개선 백로그(forward-looking)** 추가. 점검 후 도출한 개선포인트 16건을 우선순위(🔴 high / 🟡 med / ⚪ low / 🚧 외부)로 캡처 — 수집 degraded 가시화·매칭/뉴스 캐시 통합·silent except 로깅가드가 최우선.
+- 코드 변경 없음(docs only) — pytest 724 passed 유지.
+
 ### Fixed (완성도 점검 잔여 — 문서/코드 드리프트 A3 + 다크 sparkline)
 - **A3 문서/코드 드리프트** — `docs/ARCHITECTURE.md`·`docs/INVARIANTS.md` 가 "SOLA 작업실은 풀스크린·우측 채팅 컬럼 미렌더" 라고 적었으나, `app.py` 는 **모든 화면 통일**로 작업실도 `chat_panel.render_side` 를 우측에 렌더(작업실 중앙=산출물 작업대, 우측=글로벌 채팅). 코드가 현재 의도이므로 **문서를 코드에 맞춤**(작업실 예외 제거). 부수로 `st.columns([2.7,1])`→실제 `[2.3,1]` 도 정정. *(작업실에서 우측 채팅을 억제하려면 별도 코드 변경 — 현재는 의도적 미억제로 명시.)*
 - **다크 sparkline** (`data_management_v2._hist_html`) — 14일 수집량 SVG 가 data-URI img 라 CSS 변수를 못 써 고정 라이트색(#2563EB/#CBD5E1/#E5E7EB)이던 것 → `dark` 파라미터(캐시 키)로 테마별 색 분기(다크: #60A5FA/#475569/#334155). 호출부가 `ui_prefs` 테마를 읽어 전달.
