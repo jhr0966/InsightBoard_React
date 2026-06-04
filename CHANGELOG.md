@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (render() 스모크 테스트 — 화면 조립 경로 커버리지)
+- **`tests/test_screen_smoke.py` (+13)** — 6개 화면(board/data/insights/sola/archive/persona)의 `render()` 가 빈 데이터(conftest tmp 격리)에서 **예외 없이 끝까지 통과**하는지 + 각 `chat_context_block(persona)` 가 문자열 반환 + SOLA 작업실 인계(`?from=opp`) 경로까지 스모크. 개별 `_*_html` 빌더·pending consumer 는 단위 테스트가 덮지만 render() **조립**(topbar→핸드오프→본문+pending 소비)은 무커버리지였음. Streamlit 이 ScriptRunContext 없이 위젯 기본값 반환(st.button→False)이라 실제 render() 호출로 조립 깨짐(빠진 속성·잘못된 호출·빌더 예외)을 싸게 잡음(mock 은 `st.rerun` no-op 하나뿐 — brittle 회피). 빈 데이터에서 6 render 전부 clean 통과 확인.
+- **conftest sola_threads 격리 (테스트 인프라 버그픽스)** — 스모크가 노출: `store.sola_threads` 는 `from config import SOLA_DIR` 를 import 시점에 가져가는데 conftest 가 `cache`/`chat_log` 만 동기화하고 `sola_threads` 는 빠뜨려, `sola_workshop.render()` 가 **실제** `data/sola/threads.json` 에 쓰려다 fresh clone(CI)에서 `FileNotFoundError`. conftest 에 `sola_threads.SOLA_DIR` tmp 동기화 추가(cache/chat_log 와 동일 패턴) → 모든 thread-touch 테스트가 tmp 격리.
+- 검증: pytest **756→769 passed**(+13) · 금지 패턴 0 · py_compile OK · CI(#110) 재확인.
+
 ### Added/Changed (개선 백로그 잔여 — 의미매칭 엣지 테스트 + guard 확대)
 - **[의미매칭 엣지케이스]** `tests/test_match_semantic.py` +6 — 내부 TF-IDF 헬퍼 직접 검증: `_build_idf`(빈 코퍼스→{} · 흔한 토큰도 smoothed 양수 idf · 희소어>흔한어), `_tfidf_vec`(빈 counter→norm 1.0 · idf 없는 토큰 제외), `_cosine`(disjoint=0 · 자기자신=1 · **작은쪽 순회 최적화의 대칭성** a·b==b·a). 신경망 임베딩 스왑 시 회귀 가드.
 - **[#3 guard 확대]** `board_v2` 의 silent 데이터-로드 6곳(`try: x=load() except: x=None`)을 `ui._safe.guard` 로 — 기회 매트릭스(html·svg)·보드 KPI·키워드 관리·채팅 컨텍스트의 뉴스/작업 로드. 실패 시 None 폴백은 유지하되 WARN+스택트레이스가 로그에 남아 "보드가 왜 비었나" 추적 가능. (의도적 graceful empty-state·cache-clear except 은 미변경.)

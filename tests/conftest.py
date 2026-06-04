@@ -55,6 +55,14 @@ def _isolated_data_dirs(monkeypatch, tmp_path):
     except ImportError:
         pass
 
+    # store.sola_threads 도 import 시 SOLA_DIR 를 from-import 함 (threads.json)
+    try:
+        import store.sola_threads as sola_threads_mod
+
+        monkeypatch.setattr(sola_threads_mod, "SOLA_DIR", sola, raising=True)
+    except ImportError:
+        pass
+
     # store.news_db 가 NEWS_DIR 를 from-import 함 (load_news_for_days 용)
     try:
         import store.news_db as news_db_mod
