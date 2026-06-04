@@ -32,6 +32,26 @@
 
 ---
 
+## 2026-06-04 · 잔여 백로그 — 스모크 테스트 · 모듈 분할 · 의미매칭/guard
+
+**브랜치:** `claude/kind-volta-IWxix` (순차 PR #108~#111).
+
+**맥락:** "잔여 항목들 진행해. 결정이 필요한건 질문해." → 결정 2건 확정 후, 남은 백로그를 위험도순으로. AskUserQuestion 으로 "모듈 분할(안전)+render 스모크" 선택받음(고위험 매칭캐시는 제외).
+
+**한 일 (PR별):**
+- **#108** SOLA UX — 채팅 단일 진입점 통합 + handoff LLM 자동 실행(위 결정).
+- **#109** 의미매칭 엣지 테스트(+6: `_build_idf`/`_tfidf_vec`/`_cosine`/대칭성) + board_v2 guard 6곳.
+- **#110** 화면 render() 스모크(+13) — 6화면 빈데이터 통과 + chat_context + SOLA 인계. **conftest sola_threads 격리 버그**를 스모크가 노출(CI fresh clone `FileNotFoundError`) → conftest 에 `sola_threads.SOLA_DIR` tmp 동기화 추가.
+- **#111** 오버사이즈 모듈 분할 — `data_management_v2`(1623→1406) 순수 빌더를 `ui/data_management_render.py`(259) 추출, re-import 하위호환(동작 불변).
+
+**검증:** pytest 742→**769 passed** · 금지패턴 0 · py_compile OK · CI 전부 green.
+
+**함정:** ① 스모크는 Streamlit ScriptRunContext 없이도 위젯 기본값 반환이라 실제 render() 호출로 조립깨짐을 잡음(brittle 아님). ② `from config import X` 한 모듈은 conftest 가 개별 동기화해야 tmp 격리됨(sola_threads 누락이 스모크로 드러남). ③ 모듈 분할은 re-import(`# noqa: F401`)로 기존 참조 보존 — 순수(st·I/O 없는) 빌더만 이동.
+
+**남음:** board_v2 분할(데이터-결합 빌더라 신중), 고위험 매칭 공유 캐시(#2, 캐시키 staleness), 차단(임베딩 RAG·네이버 실HTML·라이브 수집).
+
+---
+
 ## 2026-06-04 · SOLA UX — 채팅 단일 진입점 통합 + 인계 자동 실행
 
 **브랜치:** `claude/kind-volta-IWxix` (origin/main `e26b2dd` 기준).

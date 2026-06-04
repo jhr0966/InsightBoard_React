@@ -60,7 +60,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
 | 페르소나 | `persona/{schema,store,context}.py` |
 | 📊 오늘의 보드 | `ui/board_v2.py` |
-| 🧱 데이터 관리 | `ui/data_management_v2.py` (+ `ui/task_def_manage.py`, `ui/data_health.py`) |
+| 🧱 데이터 관리 | `ui/data_management_v2.py` (+ `ui/data_management_render.py` 순수 빌더, `ui/task_def_manage.py`, `ui/data_health.py`) |
 | 🔎 인사이트 분석 | `ui/insights_v2.py` |
 | 🤖 SOLA 작업실 | `ui/sola_workshop_v2.py` |
 | 📦 산출물 보관함 | `ui/archive_v2.py` |
