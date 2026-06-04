@@ -31,6 +31,7 @@ from store.match import DEFAULT_SEMANTIC_WEIGHT as _SEM_W, score_matches as _sco
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
 from ui import components as _components
+from ui._safe import guard
 from ui.styles import inject_screen_css
 
 logger = logging.getLogger(__name__)
@@ -475,14 +476,12 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
     시 룰 fallback) 가 생성. 그 외 list/cites/cta/tts_btn 은 score_matches
     상위 3건 기반.
     """
-    try:
+    news_df = None
+    with guard("보드 브리핑 — 뉴스(3d) 로드"):
         news_df = _news_db.load_news_for_days(days=3)
-    except Exception:
-        news_df = None
-    try:
+    tasks_df = None
+    with guard("보드 브리핑 — 작업 정의 로드"):
         tasks_df = _load_tasks()
-    except Exception:
-        tasks_df = None
 
     items: list[dict] = []
     if (

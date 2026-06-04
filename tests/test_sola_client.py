@@ -68,3 +68,35 @@ def test_chat_calls_openai_when_configured(monkeypatch):
     with patch("openai.OpenAI", _FakeOpenAI):
         out = sola_client.chat([{"role": "user", "content": "hi"}])
     assert out == "안녕하세요."
+
+
+def test_client_configured_with_timeout_and_retries(monkeypatch):
+    """행 걸린 백엔드 방지 — 클라이언트에 명시 timeout + 재시도 설정 (백로그 4.4)."""
+    sola_client._client.cache_clear()
+    monkeypatch.setenv("LLM_BACKEND", "groq")
+    monkeypatch.setenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_MODEL", "llama-3.3-70b-versatile")
+
+    captured: dict = {}
+
+    class _Msg:
+        content = "ok"
+
+    class _Resp:
+        choices = [type("C", (), {"message": _Msg()})()]
+
+    class _Completions:
+        def create(self, **kw):
+            return _Resp()
+
+    class _FakeOpenAI:
+        def __init__(self, **kw):
+            captured.update(kw)
+            self.chat = type("Chat", (), {"completions": _Completions()})()
+
+    with patch("openai.OpenAI", _FakeOpenAI):
+        sola_client.chat([{"role": "user", "content": "hi"}])
+    assert captured.get("timeout") == sola_client._CHAT_TIMEOUT
+    assert captured.get("max_retries") == sola_client._MAX_RETRIES
+    sola_client._client.cache_clear()  # 다른 테스트에 누수 방지
