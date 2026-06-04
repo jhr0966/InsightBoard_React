@@ -56,9 +56,6 @@ if not st.session_state.get("_did_expire_check"):
 with st.sidebar:
     area = sidebar.render()
 
-# ⌘K 빠른 이동 팔레트 — topbar 검색창 label 로 연결되는 모달.
-app_shell.render_command_palette()
-
 _persona = st.session_state.get("persona") or _persona_store.load()
 st.session_state["persona"] = _persona
 

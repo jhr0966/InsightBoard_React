@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (상단 검색을 진짜 키워드 검색으로 — 가짜 ⌘K 팔레트 제거)
+- **문제**: 상단 "검색창"이 클릭하면 타이핑 대신 **빠른 이동 메뉴(CSS-only ⌘K 팔레트)** 가 떴고, 입력이 불가능했으며 윈도우에 무의미한 `⌘K` 배지가 노출됐다.
+- **수정(결정: 데이터 관리에서 필터)** — 가짜 검색 라벨/⌘K 팔레트(`render_command_palette`·`_NAV_ITEMS`·`v2-cmdk*`)를 **전부 제거**하고, `_render_topbar_search` 로 **실제 `st.text_input`** 을 헤더 아래에 렌더(커서·타이핑 O). Enter 또는 🔎 버튼으로 제출하면 `_news_search_q` 설정 + **🧱 데이터 관리** 뉴스 라이브러리로 이동해 제목·본문·요약·키워드에 그 단어가 든 뉴스만 필터(`_filter_news_by_query`, 30일, 대소문자 무시) + 결과 칩(`N건` · ✕ 해제). `.db-topbar` 그리드 3→2열(제목 | 액션).
+- **함정 회피**: `st.form` 은 bare 모드(스모크)에서 전역 'active form' 상태를 남겨 이후 AppTest 가 nested-form 으로 깨지므로 **미사용** — `text_input`(Enter=rerun)+button+`_topbar_q_seen` 변화감지로 제출 검출. `_news_cards_html(q)` 는 검색어를 **인자**로 받아 `st.cache_data` 가 q 별 캐시 키를 잡음(세션 직접참조 시 stale + `.clear()` 깨짐 회피).
+- 검증: playwright 시드 뉴스 4건 중 "용접" 검색 → 2건 정확 필터·데이터관리 이동·⌘K 부재 확인 · pytest **770 passed**(cmdk 테스트→검색 테스트 교체) · 금지 패턴 0.
+
 ### Fixed (다크 팔레트 점검 + LLM 채팅 패널 크기/sticky)
 - **다크모드 ⌘K 팔레트·드롭다운 허옇게** — ⌘K 모달이 `background:#fff` 하드코딩이라 다크에서 흰 배경+밝은 글자로 안 읽혔다(`app_shell` `.v2-cmdk-modal`→`var(--surface-card)`). 추가로 다크에서 색이 안 잡히던 표면 보강: 네이티브 selectbox **드롭다운 팝오버**(body 루트 포털 `[data-baseweb="popover"]` 메뉴/옵션), `st.dialog` 모달, 토스트 → 다크화. `data_management_v2` 인라인 `background:#fff` 3곳 → `var(--surface-card)`.
 - **LLM 채팅 패널이 한 화면에 안 들어오고 스크롤 시 따라 움직임** — 근본 원인: 스타일 주입용 `st.markdown("<style>")` 컨테이너(전역·테마·화면 CSS) 3개가 **보이지 않지만 루트 flex 자식**이라 본문/채팅 컬럼을 ~48px(top 56) 아래로 밀어 패널 하단(입력창)이 뷰포트 밖으로 넘쳤다. → `[data-testid="stElementContainer"]:has([data-testid="stMarkdown"] style)` 를 `display:none`(스타일은 숨겨진 요소에서도 전역 적용 → 안전, st.html=stHtml 미해당이라 cmdk/배너 영향 0). 효과: 채팅 컬럼 top **56→24px**, 700px 스크롤 시 이동 **−36→−4px**(사실상 고정), 입력창까지 한 화면에. 패널에 `align-self:flex-start`(stretch 로 늘어나 sticky 무력화되던 것 방지)+`height:calc(100vh-24px)`+내부만 스크롤+배경 토큰화.
