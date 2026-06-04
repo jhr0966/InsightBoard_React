@@ -32,6 +32,21 @@
 
 ---
 
+## 2026-06-03 · 개선 백로그 잔여 — LLM 회복력·템플릿 검증·guard 확대
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #105 머지 후 origin/main `5c370a1` reset → 재사용).
+
+**한 일:**
+- **4.4** `sola.client`: OpenAI 클라이언트 `timeout=45s`+`max_retries=2` 명시(행 걸린 백엔드가 rerun 멈추는 것 방지).
+- **4.3** `tests/test_template_placeholders.py`: 4화면 `{{TOKEN}}` 전수 소비 정적 교차검증(드리프트→silent 빈 렌더 차단).
+- **#3 guard 확대**: `board_v2` 데일리 브리핑 뉴스/작업 로드 2곳 → `ui._safe.guard`.
+
+**검증:** pytest 735→**740 passed**(+5: client 1·placeholder 4) · 금지 0 · compile OK. REFACTOR_PLAN 백로그 4.3/4.4 ✅.
+
+**다음(남은 백로그):** #2 매칭 결과 공유 캐시 · #3 board/insights ~38 site guard 롤아웃 · render 스모크·네이버 실HTML fixture·작업실 2채팅·handoff LLM·oversized 분할 · 외부(RAG·#49).
+
+---
+
 ## 2026-06-03 · 개선 백로그 최우선 3건 착수 (관측성·성능)
 
 **브랜치:** `claude/kind-volta-IWxix` (PR #104 머지 후 origin/main `fc98fb2` reset → 재사용).
