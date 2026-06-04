@@ -73,3 +73,51 @@ def test_semantic_weight_empty_inputs_safe():
     assert match.score_matches(empty, tasks, semantic_weight=4.0).empty
     news = _news([{"title": "용접 로봇", "summary": "", "keywords": "", "link": "a"}])
     assert match.score_matches(news, pd.DataFrame(), semantic_weight=4.0).empty
+
+
+# ── 내부 TF-IDF 헬퍼 엣지케이스 (_build_idf / _tfidf_vec / _cosine) ──
+
+def test_build_idf_empty_corpus_returns_empty():
+    assert match._build_idf([]) == {}
+
+
+def test_build_idf_is_always_positive_even_for_ubiquitous_token():
+    """모든 문서에 등장하는 흔한 토큰도 smoothed idf 라 양수(>0) — 음수 가중 방지."""
+    idf = match._build_idf([{"로봇"}, {"로봇"}, {"로봇"}])
+    assert idf["로봇"] > 0
+    # 희소어가 흔한어보다 idf 높다
+    idf2 = match._build_idf([{"로봇", "레이저"}, {"로봇"}, {"로봇"}])
+    assert idf2["레이저"] > idf2["로봇"]
+
+
+def test_tfidf_vec_empty_counter_safe_norm():
+    """빈 counter → 빈 벡터 + norm 1.0(0 나눗셈 방지)."""
+    from collections import Counter
+    vec, norm = match._tfidf_vec(Counter(), {"로봇": 1.0})
+    assert vec == {}
+    assert norm == 1.0
+
+
+def test_tfidf_vec_drops_tokens_without_idf():
+    """idf 에 없는 토큰(코퍼스 밖)은 벡터에서 제외 — KeyError 없이 0 가중."""
+    from collections import Counter
+    vec, _norm = match._tfidf_vec(Counter({"로봇": 2, "미지어": 1}), {"로봇": 1.5})
+    assert "로봇" in vec and "미지어" not in vec
+
+
+def test_cosine_disjoint_is_zero_and_identical_is_one():
+    from collections import Counter
+    idf = match._build_idf([{"a", "b"}, {"b", "c"}, {"a", "c"}])
+    va = match._tfidf_vec(Counter({"a": 1}), idf)
+    vb = match._tfidf_vec(Counter({"b": 1}), idf)
+    assert match._cosine(va, vb) == 0.0          # 공유 토큰 없음
+    assert abs(match._cosine(va, va) - 1.0) < 1e-9  # 자기 자신 = 1
+
+
+def test_cosine_is_symmetric_regardless_of_vector_size():
+    """작은 쪽을 순회하는 최적화가 대칭성을 깨지 않는지(a·b == b·a)."""
+    from collections import Counter
+    idf = match._build_idf([{"a", "b", "c"}, {"a"}, {"b"}, {"c"}])
+    big = match._tfidf_vec(Counter({"a": 2, "b": 1, "c": 1}), idf)
+    small = match._tfidf_vec(Counter({"a": 1}), idf)
+    assert abs(match._cosine(big, small) - match._cosine(small, big)) < 1e-12
