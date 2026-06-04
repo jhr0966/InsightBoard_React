@@ -19,6 +19,7 @@ from store import bookmarks as bookmarks_store
 from store import news_db as _news_db
 from ui import app_shell
 from ui import components as _components
+from ui._safe import guard
 from ui.styles import inject_screen_css
 
 
@@ -82,18 +83,13 @@ def _dm_stats() -> dict[str, str | int]:
       total_chunks:   '8.4k' — 30일 누적 뉴스 row 수 (human-friendly)
       last_update:    '08:24' — 가장 최근 수집 시각 (없으면 현재 시각)
     """
-    try:
+    today_df = week_df = month_df = None
+    with guard("데이터 관리 통계 — 오늘자 로드"):
         today_df = _news_db.load_all_today()
-    except Exception:
-        today_df = None
-    try:
+    with guard("데이터 관리 통계 — 주간(7d) 로드"):
         week_df = _news_db.load_news_for_days(days=7)
-    except Exception:
-        week_df = None
-    try:
+    with guard("데이터 관리 통계 — 월간(30d) 로드"):
         month_df = _news_db.load_news_for_days(days=30)
-    except Exception:
-        month_df = None
 
     today_count = int(len(today_df)) if today_df is not None else 0
 
@@ -264,6 +260,56 @@ def _collect_health_li() -> str:
 
 
 _RUN_TIMELINE_N = 12  # 최근 N회 런
+_STALE_HOURS = 24     # 이 시간 넘게 갱신 없으면 'stale' 경고
+
+
+def _collect_alert_html() -> str:
+    """수집이 degraded(최근 런 실패 OR `_STALE_HOURS`+ 갱신 없음)면 상단 경고 배너.
+
+    '수집 헬스' 1행은 조용한 readout 이라 실패/정체를 놓치기 쉬움(개선 백로그 #1).
+    런 기록이 없으면(빈 상태) 알림 없음 — 그건 '수집을 시작하세요' 안내가 담당.
+    """
+    try:
+        from store import run_log
+        run = run_log.latest_run()
+    except Exception:  # noqa: BLE001
+        run = None
+    if not run:
+        return ""
+
+    from datetime import datetime, timezone
+    ts = str(run.get("ts", ""))
+    ok = bool(run.get("ok"))
+    hours = None
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        hours = (datetime.now(timezone.utc) - dt).total_seconds() / 3600.0
+    except (ValueError, TypeError):
+        pass
+    stale = hours is not None and hours > _STALE_HOURS
+
+    if ok and not stale:
+        return ""  # 정상 + 최근 → 경고 없음
+
+    if not ok:
+        errs = [str(s) for s in (run.get("error_sources") or []) if s]
+        body = ("최근 수집에 오류가 있었습니다"
+                + (f" — 오류 소스: {_html.escape(', '.join(errs))}" if errs else ""))
+        color, bg, icon = "var(--semantic-danger)", "rgba(185,28,28,0.10)", "⛔"
+    else:  # stale
+        body = f"수집이 {int(hours)}시간째 갱신되지 않았습니다 — 자동 수집(cron) 점검이 필요합니다"
+        color, bg, icon = "var(--semantic-warning)", "rgba(180,83,9,0.12)", "⚠"
+
+    when = ts.split("T")[1][:5] if "T" in ts else (ts[:16] or "—")
+    return (
+        f'<div class="dm-collect-alert" style="display:flex; align-items:center; gap:10px; '
+        f'margin:0 0 14px; padding:11px 16px; background:{bg}; '
+        f'border:1px solid {color}; border-radius:10px;">'
+        f'<span style="font-size:16px; flex-shrink:0;">{icon}</span>'
+        f'<div style="flex:1; font-size:13.5px; color:{color}; font-weight:600; line-height:1.45;">'
+        f'{body}.<span style="color:var(--text-muted); font-weight:500;"> · 마지막 런 {_html.escape(when)}</span>'
+        f'</div></div>'
+    )
 
 
 def _run_when_parts(ts: str) -> tuple[str, str]:
@@ -337,10 +383,9 @@ def _ingest_jobs_html() -> str:
     source 별 그룹 카운트(오늘자). 실시간 진행 상태 트래킹은 후속.
     """
     health = _collect_health_li()
-    try:
+    today_df = None
+    with guard("수집잡 — 오늘자 로드"):
         today_df = _news_db.load_all_today()
-    except Exception:
-        today_df = None
 
     if today_df is None or today_df.empty:
         # display:block 로 .dm-job 의 grid(5px 1fr auto) 를 무력화 — 안 그러면 빈 문구가
@@ -430,10 +475,9 @@ def _hist_html(dark: bool = False) -> dict[str, str]:
     SVG 는 img src='data:image/svg+xml,...' 형식이라 큰따옴표 escape 필요 →
     src 내부는 모두 단일 따옴표.
     """
-    try:
+    hist_df = None
+    with guard("14일 sparkline — 로드"):
         hist_df = _news_db.load_news_for_days(days=14)
-    except Exception:
-        hist_df = None
 
     # daily volume
     daily_counts: list[int] = [0] * 14
@@ -638,6 +682,11 @@ def render() -> None:
         refresh_label=refresh,
         fresh_kind="fresh",
     )
+
+    # 수집 degraded 경고 — 최근 런 실패/정체 시 상단에 prominent 배너 (개선 백로그 #1).
+    alert = _collect_alert_html()
+    if alert:
+        st.html(alert)
 
     # 업로드/액션 송신 처리 (위젯 인스턴스화 이전, 최상단)
     _consume_task_def_upload_if_any()

@@ -137,3 +137,20 @@ def test_workflow_cron_schedule_is_set():
     assert "cron:" in text
     # 명시적인 시간대 주석 (KST 09:00)
     assert "KST" in text
+
+
+def test_main_fail_on_empty_returns_1_when_zero_articles(isolated_sources):
+    from scripts import daily_scrape
+    from scraping.run_daily import CollectionReport
+    fake = CollectionReport(saved=[], errors=[])  # total_articles == 0
+    with patch("scripts.daily_scrape.collect_batch", return_value=fake):
+        assert daily_scrape.main(["--fail-on-empty", "--keywords", "X", "--skip-custom-rss"]) == 1
+        assert daily_scrape.main(["--keywords", "X", "--skip-custom-rss"]) == 0   # 플래그 없으면 0
+
+
+def test_main_fail_on_empty_returns_0_when_articles_saved(isolated_sources):
+    from scripts import daily_scrape
+    from scraping.run_daily import CollectionReport
+    fake = CollectionReport(saved=[{"source": "naver", "keywords": ["X"], "count": 3, "path": "p"}], errors=[])
+    with patch("scripts.daily_scrape.collect_batch", return_value=fake):
+        assert daily_scrape.main(["--fail-on-empty", "--keywords", "X", "--skip-custom-rss"]) == 0

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added/Changed (개선 백로그 최우선 3건 — 관측성·성능)
+완성도 점검 후 forward-looking 리뷰로 도출한 high-priority 3건 착수(719→**735 passed**).
+- **[#1 관측성] 수집 degraded 가시화** — cron 0건/실패가 화면·CI 모두 무신호던 것: ① `data_management` 상단 경고 배너(`_collect_alert_html`) — 최근 런 실패(빨강)·24h+ 정체(주황) 시 prominent 알림(`run_log.latest_run()` 기반, 런 없으면 무알림). ② `daily_scrape --fail-on-empty` — 0건 저장 시 `exit 1` 로 GitHub Actions 가 silent starvation 을 빨갛게 표면화(`scrape-daily.yml` 이 플래그 ON, 기본은 여전히 exit 0).
+- **[#2 성능] `load_news_for_days` 디스크 재읽기 memo** — 같은 뉴스 윈도가 한 렌더에서 여러 `@st.cache_data` wrapper 로 각각 parquet 재읽기·재concat 하던 것 dedup. 디렉토리별 키 + 일별 mtime/parquet수 시그니처(새 수집 시 자동 무효화·stale 없음), `.copy()` 반환(캐시 보호). 호출부 34곳 무변경. *(매칭 결과 캐시 2.1 은 캐시키 위험 커 보류.)*
+- **[#3 관측성] silent except 로깅 가드** — `ui/_safe.guard(label)` 컨텍스트매니저 신규(예외 삼키되 WARN+스택트레이스 로깅, UX 무변화). `data_management_v2` 데이터-경로 silent 로드 5곳 전환(패턴 확립). 남은 ~40 site 롤아웃은 후속.
+- 검증: pytest **735 passed**(+11: 배너 4·fail-on-empty 2·news memo 1·guard 4) · 금지 패턴 0 · py_compile OK.
+
 ### Docs (최신화·정리 + 개선 백로그 캡처)
 - **README** 셸 설명 최신화 — 삭제된 구 고정패널(`app-side` nav · `app-sola` 패널) 서술을 현행(좌 네이티브 `st.sidebar` + 본문 in-flow 헤더 + `st.columns([2.3,1])` 중앙/우측 채팅 `render_side`)으로 교체. 테스트 수 `60+`→`720+`(69파일).
 - **SESSIONS** '다음 세션 시작점' 블록 갱신 — stale 한 현재상태(`main 7debc32`·PR #90/#91)를 `main e87f6e7`·이 세션 누적(#97~#103) + 완성도 점검 결론으로 교체. 남은 일을 외부 의존/결정(RAG·PR #49)으로 정리.
