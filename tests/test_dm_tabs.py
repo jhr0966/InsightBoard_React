@@ -172,61 +172,50 @@ def test_dm_tab_body_html_dispatches_by_tab():
     assert jobs_html == ""
 
 
-# ── render() — selected_tab 분기 ───────────────────────────
+# ── render() — st.tabs(네이티브) 헤더/본문 분리 ─────────────
 
-def test_render_main_hides_split_for_non_jobs_tab():
-    """jobs 가 아닌 탭은 dm-split 을 display:none 으로 숨긴다."""
+def test_render_dm_header_has_kpis_and_no_tab_bar():
+    """헤더는 KPI 4종만(1회 고정). 탭 전환은 st.tabs 클라이언트사이드라 헤더에
+    앵커 탭(<a dm-tab>)·`?dm_tab=` 앵커·{{DM_TABS}} placeholder 가 남지 않는다."""
+    from ui import data_management_v2 as dm
+    stats = {"active_sources": 4, "today_count": 1, "total_chunks": 100, "last_update": "06:00"}
+    captured = []
+    with patch("streamlit.html", side_effect=lambda s: captured.append(s)):
+        dm._render_dm_header(stats)
+    assert captured
+    html = captured[0]
+    # KPI 값이 헤더에 박힘
+    assert "100" in html        # total_chunks
+    assert "06:00" in html      # last_update
+    # 앵커 탭 바·핸드오프 앵커·placeholder 잔재 없음
+    assert 'class="dm-tab"' not in html
+    assert 'href="?dm_tab=' not in html
+    assert "{{DM_TABS}}" not in html
+
+
+def test_render_jobs_split_emits_split_no_anchor_tabs():
+    """jobs 탭 본문은 dm-split(수집잡+뉴스 라이브러리)만. 헤더는 _render_dm_header 가
+    이미 그렸으므로 여기엔 KPI 가 없고, 앵커 탭/`?dm_tab=` 앵커도 없다."""
     from ui import data_management_v2 as dm
     stats = {"active_sources": 4, "today_count": 1, "total_chunks": 100, "last_update": "06:00"}
     captured = []
     with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
          patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(dm, "_load_tasks", return_value=pd.DataFrame()), \
          patch.object(dm, "_news_cards_html", return_value=""), \
          patch.object(dm, "_ingest_jobs_html", return_value=""), \
          patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
-        dm._render_main(stats, selected_tab="kw")
+        dm._render_jobs_split(stats)
     assert captured
     html = captured[0]
-    # 숨김 wrapper + 탭 본문 모두 존재
-    assert 'style="display:none;"' in html
-    assert "키워드 관리" in html
-
-
-def test_render_main_jobs_tab_no_hidden_wrapper():
-    from ui import data_management_v2 as dm
-    stats = {"active_sources": 4, "today_count": 1, "total_chunks": 100, "last_update": "06:00"}
-    captured = []
-    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
-         patch.object(dm, "_news_cards_html", return_value=""), \
-         patch.object(dm, "_ingest_jobs_html", return_value=""), \
-         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
-        dm._render_main(stats, selected_tab="jobs")
-    html = captured[0]
-    # 숨김 wrapper 없음
-    assert 'style="display:none;"' not in html
     # 기본 split 정상 노출
     assert "dm-split" in html
-
-
-def test_render_main_no_longer_bakes_anchor_tab_bar():
-    """탭 바는 segmented control 위젯이 담당 → _render_main blob 에 앵커 탭(<a dm-tab>)
-    을 더 이상 굽지 않는다(전체 리로드 유발하던 `?dm_tab=` 앵커 제거)."""
-    from ui import data_management_v2 as dm
-    stats = {"active_sources": 4, "today_count": 1, "total_chunks": 100, "last_update": "06:00"}
-    captured = []
-    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
-         patch.object(dm, "_news_cards_html", return_value=""), \
-         patch.object(dm, "_ingest_jobs_html", return_value=""), \
-         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
-        dm._render_main(stats, selected_tab="jobs")
-    html = captured[0]
+    # 앵커 탭/핸드오프 앵커 없음(전체 리로드 유발하던 `?dm_tab=` 제거)
     assert 'class="dm-tab"' not in html
     assert 'href="?dm_tab=' not in html
-    assert "{{DM_TABS}}" not in html  # placeholder 는 ""(빈 값)으로 치환됨
+    assert "{{DM_TABS}}" not in html  # 본문 슬라이스라 placeholder 자체가 없음
 
 
-# ── fragment 기반 탭 전환 (segmented control, 전체 리로드 없음) ──────
+# ── st.tabs(네이티브) — 모든 패널 eager 렌더, 전환은 클라이언트사이드 ──────
 
 def _dm_app():
     from streamlit.testing.v1 import AppTest
@@ -239,30 +228,28 @@ def _dm_app():
     return at
 
 
-def test_dm_tab_switch_via_widget_state_swaps_body_no_exception():
-    """탭 바가 위젯 → 위젯 세션(_dm_tab_seg)으로 탭을 바꾸면 본문만 교체되고 예외 없음
-    (앵커 리로드가 아니라 fragment 스코프 전환)."""
+def test_dm_tabs_eager_render_all_panels_no_exception():
+    """st.tabs 는 한 런에서 모든 패널을 eager 렌더 → jobs(dm-split)·kw(키워드 관리)
+    본문이 동시에 출력되고 예외 없음. 탭 전환은 100% 클라이언트사이드(서버 rerun 0)라
+    예전 앵커 탭 바(<a dm-tab>)는 더 이상 굽지 않는다."""
     at = _dm_app()
     at.run()
     assert not at.exception
-    base = "\n".join(h.proto.body for h in at.get("html"))
-    assert "dm-split" in base               # 기본 jobs = 뉴스 라이브러리 split
-    assert 'class="dm-tab"' not in base     # 앵커 탭 바 제거됨(위젯이 대체)
-
-    at.session_state["_dm_tab_seg"] = "kw"   # 위젯 선택값 변경
-    at.run()
-    assert not at.exception
-    kw = "\n".join(h.proto.body for h in at.get("html"))
-    assert "키워드 관리" in kw               # kw 본문 렌더
-    assert 'style="display:none;"' in kw     # jobs split 은 숨김(제거 아니라 display:none)
+    combined = "\n".join(h.proto.body for h in at.get("html"))
+    assert "dm-split" in combined            # jobs 패널 (뉴스 라이브러리 split)
+    assert "키워드 관리" in combined          # kw 패널 본문 — 동시에 렌더됨
+    assert 'class="dm-tab"' not in combined  # 앵커 탭 바 제거됨(st.tabs 가 대체)
 
 
-def test_dm_tab_query_handoff_still_lands_on_tab():
-    """출처 토글 등 핸드오프 `?dm_tab=src` → src 탭 본문 착지 + 위젯 세션 동기화."""
+def test_dm_tabs_handoff_query_cleaned_and_panels_render():
+    """레거시 핸드오프 `?dm_tab=src` 는 st.tabs 에선 탭을 못 고르므로 1회 정리된다.
+    모든 패널은 여전히 eager 렌더되어 출처 본문이 출력된다."""
     at = _dm_app()
     at.query_params["dm_tab"] = "src"
     at.run()
     assert not at.exception
-    htmls = "\n".join(h.proto.body for h in at.get("html"))
-    assert "출처" in htmls
-    assert at.session_state["_dm_tab_seg"] == "src"
+    combined = "\n".join(h.proto.body for h in at.get("html"))
+    assert "출처" in combined                 # src 패널 본문
+    assert "dm-split" in combined             # jobs 패널도 함께 eager 렌더
+    # 핸드오프 query 는 정리됨(URL 만 지저분해지므로)
+    assert "dm_tab" not in at.query_params

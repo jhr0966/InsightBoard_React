@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UX: 탭 전환 진짜 무깜빡임 — st.tabs 클라이언트사이드 + 채팅칩 위치 복구)
+- **왜 Phase 1+2 가 부족했나(계측으로 규명)**: 서버에 실행 카운터를 심고 playwright 로 실측한 결과, fragment 는 **rerun 을 제대로 격리**하고 있었다(탭 클릭→`_dm_body_fragment` 만, 칩→`_chat_composer` 만, 문서 reload 0). 그런데도 "전체 새로고침"으로 보인 건 **시각적** 이유였다 — ① 데이터 관리 본문 전체(헤더 KPI + 수집잡 + 히스토그램 + 탭 본문)가 **하나의 거대한 `st.html` 덩어리**라 탭 전환 시 그 덩어리가 통째로 다시 칠해졌고, ② 추천 칩(`st.pills`)이 채팅 컬럼 **맨 아래로 밀려 안내문과 칩 사이에 큰 빈 공간**이 생겼다(`margin-top:auto` 바텀 핀).
+- **데이터 관리 탭 → 네이티브 `st.tabs`**(`ui/data_management_v2.py`): `st.segmented_control`+`@st.fragment`(`_dm_body_fragment`) 와 monolithic `_render_main` 을 제거. 헤더(KPI)는 `_render_dm_header` 로 **탭 위에 1회만** 그리고, 5개 탭 본문을 `st.tabs` 패널(`_render_dm_tabs`)에 나눠 담았다(`_render_jobs_split` = 수집잡+뉴스 라이브러리). **탭 전환은 100% 클라이언트사이드(JS) → 서버 rerun·문서 reload·리페인트 전부 0.** 헤더·다른 탭·우측 채팅은 손도 안 탄다. legacy 앵커 빌더(`_dm_tabs_html` 등)는 테스트 호환용 보존. 단, `st.tabs` 는 코드로 탭을 못 고르므로 레거시 `?dm_grp/?dm_tab` 핸드오프는 1회 정리만 한다(출처 토글 앵커는 새로고침 후 첫 탭으로 복귀 — 토글 자체는 정상).
+- **채팅 추천 칩 위치 복구**(`assets/v2/streamlit-overrides.css`): 입력 form 래퍼의 `margin-top:auto`(칩+입력을 컬럼 바닥으로 밀던 핀)를 `margin-top:4px` 로 바꿔 **추천 칩이 안내문 바로 밑에 다시 붙도록** 했다(큰 빈 공간 제거). 칩 클릭=fragment rerun 으로 입력창만 채우는 동작은 그대로. `st.tabs` 라이트·다크 가독성 토큰 스타일 추가.
+- **검증(계측+playwright 실측)**: 데이터 관리에서 "출처 설정"·"키워드" 탭 연속 클릭 → 서버 `XRUN:APP` **0건 추가**(=클라이언트사이드 확정) · `window` 플래그 생존(문서 reload 0) · 5개 탭(`수집잡 · 뉴스 라이브러리`/`키워드`/`출처 설정`/`📊 엑셀 업로드`/`✏️ 작업 정의 관리`) 모두 렌더 · 칩이 안내문 바로 밑 배치 확인(스크린샷). pytest **774 passed** · 금지패턴 0.
+
 ### Changed (UX: 클릭/탭 시 전체 흰 깜빡임 제거 — fragment 스코프 전환 · Phase 1+2)
 - **근본 원인**: 앱의 거의 모든 네비게이션이 `<a href="?param=…">` 앵커였다. 앵커 클릭은 **브라우저 문서 전체 reload**(빈 화면→프론트 재부팅→전 CSS 재주입→리페인트) → 클릭/탭/이동마다 흰 깜빡임. `@st.fragment`·`st.tabs`·`st.pills` 미사용이라 부분 갱신 수단이 전혀 없었다.
 - **Phase 1 — 채팅 프롬프트 예시칩**(`ui/chat_panel.py`): 추천 질문을 전체 리로드 앵커(`?sola_prefill=`)에서 **입력창 바로 위 `st.pills`로 이동**하고, pill+입력 form 을 `@st.fragment`(`_chat_composer`)로 묶었다. 칩 클릭은 **이 fragment 만 rerun**(소켓) → 입력창에 텍스트만 채우고(`_apply_pending_prefill`), 채운 뒤 선택 즉시 해제(`__reset_pills`)해 편집/재선택해도 값이 안 덮인다. 북마크 `?sola_prefill=` URL 호환은 `_consume_prefill` 로 유지. **검증(playwright): 칩 클릭 → textarea 에 정확히 그 텍스트 + `window` 플래그 생존 = 문서 reload 없음.**

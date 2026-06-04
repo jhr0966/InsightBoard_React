@@ -93,36 +93,32 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
   flex-direction: column;
   height: 100%;
 }
-/* 입력 form 래퍼(마지막 자식)를 하단으로 밀어 채팅 영역이 위를 채우게 */
+/* 입력 form 래퍼(추천 칩 + 입력 폼) — 예전엔 margin-top:auto 로 컬럼 맨 아래에 못박혀
+   인트로 카드와 추천 사이에 큰 빈 공간이 생겼다. 4px 로 바꿔 인트로/메시지 바로 아래로
+   흐르게 한다(추천 + 입력이 위에 붙음). */
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
     [data-testid="stLayoutWrapper"]:has([data-testid="stForm"]) {
-  margin-top: auto;
+  margin-top: 4px;
   width: 100%;
 }
 
-/* 데이터 관리 탭 바 — st.segmented_control × 2(그룹/하위탭), _dm_body_fragment.
-   앵커(<a ?dm_tab=>) 대신 위젯이라 탭 전환이 전체 리로드 없이 fragment 만 rerun.
-   두 컨트롤을 가깝게 붙이고(2단 탭바 느낌), 본문과 간격만 띄운다. 앱 내 유일한
-   segmented_control 이라 컨테이너 key 클래스로 스코프하면 다른 화면 영향 없다. */
-.st-key-dm_tabbar { margin: 2px 0 12px; }
-.st-key-dm_tabbar [data-testid="stElementContainer"] { margin-bottom: 4px; }
-/* Streamlit 가 segmented control 의 비활성 세그먼트 배경을 정적 라이트로 하드코딩
-   → 다크에서 흰 글자가 흰 배경에 묻힌다(라벨 안 보임). 토큰으로 강제해 라이트·
-   다크 모두 읽히게: 비활성=카드 표면+보조 텍스트, 활성=accent. */
-.st-key-dm_tabbar [data-testid="stBaseButton-segmented_control"] {
-  background: var(--surface-card, #fff) !important;
+/* 데이터 관리 탭 — st.tabs(네이티브). 전환은 클라이언트사이드라 흰 깜빡임 없음.
+   Streamlit 가 탭 배경/글자를 정적 라이트로 하드코딩 → 다크 가독성 위해 토큰 강제. */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+  gap: 2px;
+  border-bottom: 1px solid var(--surface-divider, #E5E7EB);
+  flex-wrap: wrap;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
   color: var(--text-secondary, #475569) !important;
-  border-color: var(--surface-divider, #E5E7EB) !important;
+  background: transparent !important;
 }
-.st-key-dm_tabbar [data-testid="stBaseButton-segmented_control"]:hover {
-  color: var(--text-primary, #0F172A) !important;
-  border-color: var(--accent-primary, #2563EB) !important;
-}
-.st-key-dm_tabbar [data-testid="stBaseButton-segmented_controlActive"] {
-  background: var(--accent-ring, rgba(37,99,235,0.12)) !important;
+[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
   color: var(--accent-primary, #2563EB) !important;
-  border-color: var(--accent-primary, #2563EB) !important;
 }
+[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+[data-testid="stTabs"] [data-baseweb="tab-border"] { background: var(--accent-primary, #2563EB) !important; }
+[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding-top: 10px; }
 
 /* 채팅 스크롤 영역 — 안내+추천+대화가 한 컨테이너에서 스크롤(위로 올리면 안내가
    최상단에 남음). 입력 form 위 공간을 채우고 넘치면 자체 스크롤. */
