@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (SOLA UX — 채팅 단일 진입점 통합 + 인계 자동 실행)
+SOLA 작업실의 LLM 상호작용이 중앙 작업대 버튼과 우측 채팅 두 곳에 분산돼 헷갈리던 것과, 보드/인사이트 인계 배너가 prefill 만 하고 멈추던 것을 해소(사용자 결정 반영, 719+ 누적 → **750 passed**).
+- **[SOLA 채팅 통합]** 중앙 작업대의 액션(📝 제안서 생성 · 📰 뉴스 요약 · ➕ 새 대화)을 우측 채팅 상단 **빠른 작업** quick-action 칩으로 흡수 → 채팅 단일 진입점. `chat_panel._quick_actions_html(area_key)` 가 SOLA 작업실 area 에만 칩을 그리고(`?sola_action=<name>` 링크, on_click 미사용, dept/lv3/from 인계 컨텍스트 보존), `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 기존 pending flag(`_do_generate_proposal`/`_do_summarize`/`_do_new_thread`/`_do_save_proposal`)로 매핑해 같은 run 의 후속 consumer 가 처리(LLM 호출·rerun 위임). 작업대의 중복 버튼 3개(`wb_gen_proposal`/`wb_summarize`/`wb_new_thread`) 제거 → 채팅으로 안내. 문서 산출물·저장/다시생성·세션 목록은 작업대에 유지.
+- **[handoff LLM 자동 실행 배선]** 그간 휴면(테스트만 트리거)이던 `_do_ask_prefill` 흐름을 인계에 배선. `_auto_run_handoff_if_any` 가 `?from=brief/opp/matrix/ia_map/edit` 인계 도착 시 prefill 이 있으면 **자동으로** 새 thread 생성 + LLM 전송까지 1회 실행(`_handoff_signature` 로 같은 인계 재전송 차단, prefill 빈 인계는 무시). 배너에 "✓ SOLA 가 자동으로 검토를 시작했어요" 확인 줄 추가(우측 채팅으로 시선 유도). 배너 docstring 의 "LLM wire 후속 PR" 인정 문구 제거.
+- `assets/v2/streamlit-overrides.css` — `.side-chat-actions`/`.side-chat-action`(primary 톤 quick-action 칩, 추천질문 chip 과 시각 구분) + 배너 `.ws-brief-autorun`(점선 구분 confirm 줄) 스타일.
+- 테스트 +8 — `test_chat_panel`(quick-action 노출/area 한정/컨텍스트 보존 2), `test_sola_composer`(action→flag 매핑 3 · handoff 자동실행 1회성/빈prefill/비인계 3).
+- 검증: pytest **742→750 passed**(+8) · 금지 패턴 0(on_click/requests) · py_compile OK.
+
 ### Performance/Changed (개선 백로그 저위험 잔여 마무리)
 - **[2.3] `match.score_matches` iterrows 제거** — news/tasks 를 `df.iterrows()`(행마다 Series 생성) 로 4회 순회하던 것을 `to_dict("records")` 1회 변환으로 대체. 결과 불변(기존 매칭 테스트 green), 큰 프레임에서 체감.
 - **[2.4] `run_log._trim` 사이즈 게이트** — `record_run` 마다 전체 JSONL 을 읽어 줄 수 세던 것을, 파일 크기가 확실히 `max_keep` 미만(`size < max_keep*80B`)이면 읽기 스킵. 트림 동작은 동일.

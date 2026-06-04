@@ -129,6 +129,32 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
 }
 .side-chat-chip:hover { border-color: var(--accent-primary, #2563EB); background: var(--accent-ring, rgba(37,99,235,0.12)); }
 
+/* 빠른 작업(quick-action) — SOLA 작업실 채팅 상단에 흡수된 작업대 액션
+   (?sola_action=). 추천질문 chip 보다 강조(primary 톤)해 '실행' 의도를 구분. */
+.side-chat-actions {
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: var(--accent-ring, rgba(37,99,235,0.08));
+  border: 1px solid var(--surface-divider, #E5E7EB);
+  border-radius: 10px;
+}
+.side-chat-actions-h {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted, #64748B); margin-bottom: 6px;
+}
+.side-chat-actions-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.side-chat-action {
+  display: inline-block;
+  padding: 6px 11px;
+  background: var(--accent-primary, #2563EB);
+  border: 1px solid var(--accent-primary, #2563EB);
+  border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; line-height: 1.4;
+  color: #fff; text-decoration: none; cursor: pointer;
+  transition: opacity 120ms;
+}
+.side-chat-action:hover { opacity: 0.88; }
+
 /* 사이드바를 접으면 좌상단 펼치기 버튼이 페이지 헤더 첫 글자를 가리지 않도록
    페이지 헤더(.db-topbar)만 좌측으로 살짝 민다 (aria-expanded="false" = 접힘). */
 body:has(.db-topbar):has([data-testid="stSidebar"][aria-expanded="false"]) .db-topbar {

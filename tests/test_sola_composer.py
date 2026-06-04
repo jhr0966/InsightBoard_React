@@ -313,3 +313,104 @@ def test_delete_action_removes_thread_and_resets_active(clean_chat_log):
     # 활성 thread id 가 삭제된 것이면 초기화됨 (다음 _active_thread 가 재선정)
     assert st.session_state.get("_sola_thread_id") is None
     assert sola_threads.get(keep.id) is not None
+
+
+# ── 채팅 quick-action(?sola_action=) → 작업대 pending flag 매핑 ──
+
+def test_sola_action_generate_proposal_maps_to_payload_with_context():
+    """`?sola_action=generate_proposal` → `_do_generate_proposal` (dept/lv3/from 보존)."""
+    import streamlit as st
+    st.query_params.clear()
+    st.query_params["sola_action"] = "generate_proposal"
+    st.query_params["dept"] = "도장"
+    st.query_params["lv3"] = "비전 검사"
+    st.query_params["from"] = "opp"
+    try:
+        sola_v2._consume_sola_action_from_query_if_any()
+        payload = st.session_state.get("_do_generate_proposal")
+        assert payload == {"dept": "도장", "lv3": "비전 검사", "kind": "opp"}
+        # sola_action 만 소비, dept/lv3 는 보존
+        assert "sola_action" not in st.query_params
+        assert st.query_params.get("dept") == "도장"
+    finally:
+        st.query_params.clear()
+        st.session_state.pop("_do_generate_proposal", None)
+
+
+def test_sola_action_simple_flags_map_to_true():
+    """summarize/new_thread/save_proposal → 각 pending flag True."""
+    import streamlit as st
+    for action, flag in (
+        ("summarize", "_do_summarize"),
+        ("new_thread", "_do_new_thread"),
+        ("save_proposal", "_do_save_proposal"),
+    ):
+        st.query_params.clear()
+        st.query_params["sola_action"] = action
+        try:
+            sola_v2._consume_sola_action_from_query_if_any()
+            assert st.session_state.get(flag) is True
+            assert "sola_action" not in st.query_params
+        finally:
+            st.query_params.clear()
+            st.session_state.pop(flag, None)
+
+
+def test_sola_action_unknown_is_consumed_without_side_effect():
+    """알 수 없는 action 은 쿼리만 소비, pending flag 미설정."""
+    import streamlit as st
+    st.query_params.clear()
+    st.query_params["sola_action"] = "bogus"
+    try:
+        sola_v2._consume_sola_action_from_query_if_any()
+        assert "sola_action" not in st.query_params
+        assert "_do_generate_proposal" not in st.session_state
+    finally:
+        st.query_params.clear()
+
+
+# ── 인계(?from=) 자동 LLM 전송 배선 ──────────────────────────
+
+def test_auto_run_handoff_triggers_ask_prefill_once():
+    """opp 인계가 처음 도착하면 `_do_ask_prefill` 1회 set, 같은 인계 재실행 안 함."""
+    import streamlit as st
+    st.query_params.clear()
+    st.query_params["from"] = "opp"
+    st.query_params["dept"] = "도장"
+    st.query_params["lv3"] = "비전 검사"
+    try:
+        sola_v2._auto_run_handoff_if_any()
+        assert st.session_state.get("_do_ask_prefill") is True
+        # 1회성 — 시그니처 기록 후 재호출 시 다시 set 하지 않음
+        st.session_state.pop("_do_ask_prefill", None)
+        sola_v2._auto_run_handoff_if_any()
+        assert "_do_ask_prefill" not in st.session_state
+    finally:
+        st.query_params.clear()
+        st.session_state.pop("_do_ask_prefill", None)
+        st.session_state.pop("_handoff_autorun_done", None)
+
+
+def test_auto_run_handoff_skips_when_prefill_empty():
+    """컨텍스트 없는 인계(dept/lv3 없음)는 자동 전송하지 않음."""
+    import streamlit as st
+    st.query_params.clear()
+    st.query_params["from"] = "opp"  # dept/lv3 없음 → prefill 빈 문자열
+    try:
+        sola_v2._auto_run_handoff_if_any()
+        assert "_do_ask_prefill" not in st.session_state
+    finally:
+        st.query_params.clear()
+        st.session_state.pop("_handoff_autorun_done", None)
+
+
+def test_auto_run_handoff_ignores_non_handoff_query():
+    """`?from` 없거나 미지원 종류면 아무것도 안 함."""
+    import streamlit as st
+    st.query_params.clear()
+    try:
+        sola_v2._auto_run_handoff_if_any()
+        assert "_do_ask_prefill" not in st.session_state
+    finally:
+        st.query_params.clear()
+        st.session_state.pop("_handoff_autorun_done", None)

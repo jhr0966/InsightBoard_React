@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import html as _html
 from datetime import datetime, timezone
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import streamlit as st
 
 from persona.schema import Persona
 from sola.client import is_configured as _llm_ready
+
+
+_SOLA_AREA = "🤖 SOLA 작업실"
 
 
 # ── area 별 안내 & 추천 질문 ─────────────────────────────────
@@ -110,6 +113,48 @@ def _intro_card_html(area_key: str) -> str:
     )
 
 
+_SOLA_QUICK_ACTIONS: list[tuple[str, str]] = [
+    ("📝 제안서 생성", "generate_proposal"),
+    ("📰 뉴스 요약", "summarize"),
+    ("➕ 새 대화", "new_thread"),
+]
+
+
+def _quick_actions_html(area_key: str) -> str:
+    """SOLA 작업실 area 전용 — 중앙 작업대 액션을 채팅 상단 quick-action 칩으로 흡수.
+
+    "채팅으로 통합" 결정에 따라 제안서 생성·뉴스 요약·새 대화를 채팅 단일
+    진입점으로 끌어온다. 각 칩은 `?sola_action=<name>` 링크(on_click 미사용)이며
+    인계 컨텍스트(dept/lv3/from)를 보존해 제안서 생성이 인계 작업을 그대로 쓴다.
+    `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 소비한다.
+    다른 area 는 빈 문자열(칩 미노출).
+    """
+    if area_key != _SOLA_AREA:
+        return ""
+    ctx = {
+        k: v for k, v in (
+            ("dept", st.query_params.get("dept", "")),
+            ("lv3", st.query_params.get("lv3", "")),
+            ("from", st.query_params.get("from", "")),
+        ) if v
+    }
+
+    def _href(action: str) -> str:
+        return "?" + urlencode({"sola_action": action, **ctx})
+
+    chip_html = "".join(
+        f'<a class="side-chat-action" href="{_html.escape(_href(action))}" '
+        f'target="_self">{_html.escape(label)}</a>'
+        for label, action in _SOLA_QUICK_ACTIONS
+    )
+    return (
+        '<div class="side-chat-actions">'
+        '<div class="side-chat-actions-h">빠른 작업</div>'
+        f'<div class="side-chat-actions-row">{chip_html}</div>'
+        '</div>'
+    )
+
+
 def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
     """최근 cap 개 메시지를 버블 마크업으로. 스크롤은 바깥 `.side-chat-scroll` 가 담당.
 
@@ -168,6 +213,12 @@ def render_side(persona: Persona, area_key: str) -> None:
         f'<span style="font-size:12px; color:var(--text-muted); font-weight:600;">· {title_safe}</span>'
         '</div>'
     )
+
+    # SOLA 작업실 — 작업대 액션을 채팅 상단 quick-action 칩으로(헤더 아래 고정,
+    # 스크롤에 묻히지 않음). 다른 area 는 빈 문자열이라 아무것도 그리지 않는다.
+    qa_html = _quick_actions_html(area_key)
+    if qa_html:
+        st.html(qa_html)
 
     try:
         messages = sw._load_messages()
