@@ -21,6 +21,7 @@ from store.match import DEFAULT_SEMANTIC_WEIGHT as _SEM_W, score_matches as _sco
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
 from ui import components as _components
+from ui._safe import guard
 from ui.styles import inject_screen_css
 
 
@@ -948,18 +949,13 @@ def _ia_stats() -> dict[str, str]:
       matched_processes: 뉴스가 매칭된 Lv3 공정 unique 수
       poc_candidates: 자동화 기회 + 채택 대기 합 (검토 대기 후보)
     """
-    try:
+    news_30d = news_7d = tasks_df = None
+    with guard("인사이트 — 뉴스(30d) 로드"):
         news_30d = _news_db.load_news_for_days(days=30)
-    except Exception:
-        news_30d = None
-    try:
+    with guard("인사이트 — 뉴스(7d) 로드"):
         news_7d = _news_db.load_news_for_days(days=7)
-    except Exception:
-        news_7d = None
-    try:
+    with guard("인사이트 — 작업 정의 로드"):
         tasks_df = _load_tasks()
-    except Exception:
-        tasks_df = None
 
     n_30d = int(len(news_30d)) if news_30d is not None else 0
 

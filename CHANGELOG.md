@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Performance/Changed (개선 백로그 저위험 잔여 마무리)
+- **[2.3] `match.score_matches` iterrows 제거** — news/tasks 를 `df.iterrows()`(행마다 Series 생성) 로 4회 순회하던 것을 `to_dict("records")` 1회 변환으로 대체. 결과 불변(기존 매칭 테스트 green), 큰 프레임에서 체감.
+- **[2.4] `run_log._trim` 사이즈 게이트** — `record_run` 마다 전체 JSONL 을 읽어 줄 수 세던 것을, 파일 크기가 확실히 `max_keep` 미만(`size < max_keep*80B`)이면 읽기 스킵. 트림 동작은 동일.
+- **[#3 guard 확대]** — `insights_v2` 데이터-로드 3곳(news 30d/7d·tasks)을 `ui._safe.guard` 로. (insights/board 의 `except: return empty` 형 graceful 빈-상태 except 는 의도적 유지.)
+- 검증: pytest **740→742 passed**(+2 trim) · 금지 패턴 0 · py_compile OK.
+
 ### Added/Changed (개선 백로그 잔여 — LLM 회복력·템플릿 검증·guard 확대)
 - **[4.4] LLM 타임아웃/재시도** (`sola/client.py`) — OpenAI 클라이언트에 `timeout=45s` + `max_retries=2` 명시. 행이 걸린 백엔드가 Streamlit rerun 을 무한정 멈추던 것 방지(SDK 기본 무한 대기 → 명시 한계). `scraping.http` 단일-진입 회복력과 동일 철학.
 - **[4.3] 템플릿 placeholder 소비 검증** (`tests/test_template_placeholders.py`) — `screens/*_main.html` 의 `{{TOKEN}}` 이 대응 `ui/*_v2.py` 에서 모두 소비되는지 정적 교차검증(4화면). placeholder 리네임 드리프트가 silent 빈/리터럴 렌더로 새는 것을 차단.

@@ -94,10 +94,12 @@ def score_matches(
     task_cols = [c for c in ("task", "sub_task", "task_def", "sws_name", "lv3") if c in roadmap_df.columns]
     has_task_def_json = "task_def_json" in roadmap_df.columns
 
-    news_tokens = [Counter(_tokens(_row_text(row, news_cols))) for _, row in news_df.iterrows()]
+    # iterrows 는 행마다 Series 를 만들어 느리다 → records(dict) 1회 변환으로 대체.
+    news_records = news_df.to_dict("records")
+    news_tokens = [Counter(_tokens(_row_text(row, news_cols))) for row in news_records]
     # enrich 된 기사의 LLM 키워드 토큰 집합 (가중 보너스용). enrich 안 된 기사는 빈 집합 → 무영향.
     if "keywords_llm" in news_df.columns:
-        news_llm_sets = [set(_tokens(str(row.get("keywords_llm", "") or ""))) for _, row in news_df.iterrows()]
+        news_llm_sets = [set(_tokens(str(row.get("keywords_llm", "") or ""))) for row in news_records]
     else:
         news_llm_sets = [set() for _ in range(len(news_df))]
 
@@ -107,8 +109,9 @@ def score_matches(
     from roadmap.task_def_json import flatten_for_match
 
     # 작업 토큰 카운터 미리 계산 (semantic idf corpus + 본 루프 공용).
+    task_records = roadmap_df.to_dict("records")
     task_counters: list[Counter] = []
-    for _, task_row in roadmap_df.iterrows():
+    for task_row in task_records:
         task_text = _row_text(task_row, task_cols)
         if has_task_def_json:
             extra = flatten_for_match(task_row.get("task_def_json", ""))
@@ -125,7 +128,7 @@ def score_matches(
         task_vecs = [_tfidf_vec(c, idf) for c in task_counters]
 
     rows: list[dict] = []
-    for ti, (_, task_row) in enumerate(roadmap_df.iterrows()):
+    for ti, task_row in enumerate(task_records):
         tk_counter = task_counters[ti]
         if not tk_counter:
             continue

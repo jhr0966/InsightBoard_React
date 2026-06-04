@@ -32,6 +32,22 @@
 
 ---
 
+## 2026-06-03 · 저위험 잔여 마무리 — match vectorize · run_log trim · insights guard
+
+**브랜치:** `claude/kind-volta-IWxix` (PR #106 머지 후 origin/main `72488da` reset → 재사용).
+
+**한 일:**
+- **2.3** `match.score_matches`: iterrows 4곳 → `to_dict("records")` 1회(결과 불변).
+- **2.4** `run_log._trim`: 사이즈 게이트(size < max_keep*80B → 읽기 스킵).
+- **#3 guard 확대**: `insights_v2` 데이터-로드 3곳 → `ui._safe.guard`. (insights/board 의 `except: return empty` graceful 빈-상태 except 는 의도적 유지 — guard 부적합.)
+- tests: run_log trim +2.
+
+**검증:** pytest 740→**742 passed** · 금지 0 · compile OK. REFACTOR_PLAN ⚪ 2.3/2.4 ✅.
+
+**남은 백로그(전부 결정/차단/대규모):** #2 매칭 결과 공유 캐시(캐시키 위험) · oversized 모듈 분할 · render 스모크(brittle) · 작업실 2채팅(UX 결정) · handoff LLM(결정) · 네이버 실HTML fixture·RAG(네트워크 차단) · PR #49(디자인 결정). → **저위험 actionable 백로그 소진.**
+
+---
+
 ## 2026-06-03 · 개선 백로그 잔여 — LLM 회복력·템플릿 검증·guard 확대
 
 **브랜치:** `claude/kind-volta-IWxix` (PR #105 머지 후 origin/main `5c370a1` reset → 재사용).
