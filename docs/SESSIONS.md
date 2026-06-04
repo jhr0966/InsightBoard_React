@@ -32,6 +32,27 @@
 
 ---
 
+## 2026-06-04 · UX: 탭 진짜 무깜빡임 (st.tabs) + 채팅칩 위치 복구 — Phase 1+2 후속
+
+**브랜치:** `claude/kind-volta-IWxix`.
+
+**맥락:** Phase 1+2 머지(#119) 후에도 사용자: "여전히 데이터관리 탭(키워드/출처설정) 누르면 화면 전체 새로고침. 채팅 예시칩도 표시가 이상해졌고 눌러도 전체 새로고침. 누른 개체만 갱신돼야." → 질문 후 "탭=네이티브 st.tabs / 칩=스타일 복구" 선택.
+
+**진단(계측으로 확정 — 핵심 교훈):** app.py·fragment 에 `print("XRUN:…")` 카운터를 심고 playwright 로 클릭→로그 상관분석. 결과 **fragment 는 rerun 을 제대로 격리하고 있었다**(탭클릭=`_dm_body_fragment`만, 칩=`_chat_composer`만, 문서 reload 0). "전체 새로고침"은 **시각 현상**이었음: ① 데이터관리 본문 전체가 **하나의 거대한 `st.html`** → 탭 전환 시 통째 리페인트(헤더 KPI 까지 깜빡), ② `st.pills` 가 `margin-top:auto` 로 컬럼 **맨 아래로 밀려** 안내문과 칩 사이 큰 빈 공간(= "이상해짐"). → **rerun 격리만으론 부족, 시각 단위까지 쪼개야 함.**
+
+**수정:**
+- `data_management_v2`: `segmented_control`+`_dm_body_fragment`+monolithic `_render_main` 제거 → 헤더 `_render_dm_header`(탭 위 1회) + `st.tabs` 5패널(`_render_dm_tabs`/`_render_jobs_split`). 탭 전환 **100% 클라이언트사이드(서버 rerun 0)**. 템플릿은 `{{DM_TABS}}` 기준으로 split(헤더/본문). `st.tabs` 는 프로그램적 탭선택 불가 → 레거시 `?dm_grp/?dm_tab` 는 1회 정리만(출처 토글 앵커는 새로고침 후 첫 탭 복귀, 토글은 동작).
+- `streamlit-overrides.css`: 입력 form 래퍼 `margin-top:auto→4px`(칩을 안내문 밑으로 복귀) + `[data-testid="stTabs"]` 라이트/다크 토큰 스타일.
+- `tests/test_dm_tabs.py`: `_render_main`/`_dm_tab_seg` 테스트 5건 → `_render_dm_header`/`_render_jobs_split`/st.tabs eager-render 검증으로 교체.
+
+**검증:** playwright 실측 — "출처설정"·"키워드" 연속 탭클릭 → `XRUN:APP` 0건 추가(클라이언트사이드 확정) + window 플래그 생존 + 5탭 모두 렌더 + 칩 안내문 밑 배치(스크린샷). pytest **774 passed** · 금지패턴 0.
+
+**남은 것:** 사이드바 메뉴 이동(`?app_area=`)·출처 토글(`?src_action=`)·"지금 뉴스 수집"(`?refresh=now`)·SOLA 작업실 quick-action·보드 액션 등은 아직 앵커(문서 reload). 다음 단계로 위젯화(소켓 rerun) 하면 마지막 흰 깜빡임도 제거. (st.tabs 와 함께 쓰려면 in-tab 액션은 반드시 위젯이어야 탭 상태 유지.)
+
+**라이브 검증 환경 메모:** `pip install playwright` 후 버전 불일치 → `executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome"` 로 기존 빌드 직접 지정. 서버는 `--server.fileWatcherType none` 로 띄우고 코드 변경 시 재시작. 페르소나(`data/persona/profile.json`) 있으면 온보딩 모달 회피. 데이터관리 화면은 첫 렌더가 느리니 7s+ 대기.
+
+---
+
 ## 2026-06-04 · UX: 전체 흰 깜빡임 제거 (fragment 스코프) — Phase 1+2
 
 **브랜치:** `claude/kind-volta-IWxix`.

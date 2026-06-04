@@ -713,81 +713,81 @@ def render() -> None:
     _render_task_def_toast_if_needed()
     _render_src_action_toast_if_needed()
 
-    # 활성 그룹·탭 — segmented control 위젯(세션)이 주도. 단, 핸드오프/북마크
-    # query(`?dm_grp`/`?dm_tab`; 예: 출처 토글 후 src 탭, 상단 검색 후 jobs)는 그쪽으로
-    # 1회 동기화한다(기존 `?dm_tab=` 단독 북마크 URL 도 그룹 자동 추론).
-    _dm_sync_tab_from_query()
-
-    # ── 3) 탭 바 + 활성 탭 본문 — fragment 스코프 ──
-    # 탭/그룹 전환은 이 fragment 만 rerun → 본문만 갱신되고 전체 리로드(흰 깜빡임)·
-    # 우측 채팅/상단 topbar 재렌더가 없다. 본문은 기존대로 활성 탭만 lazy 렌더.
-    _dm_body_fragment(dm_stats, persona)
-
-
-def _dm_sync_tab_from_query() -> None:
-    """핸드오프/북마크 `?dm_grp`·`?dm_tab` → 탭 위젯 세션(_dm_grp_seg/_dm_tab_seg)으로
-    1회 반영 후 query 제거.
-
-    출처 토글(`_src_action_href` 가 `?dm_tab=src`)·상단 검색(`?dm_grp=news`) 등은
-    query 로 특정 탭에 착지해야 하므로, query 가 있으면 위젯 세션을 그 값으로 맞춘다.
-    query 는 1회성 — 제거해 이후 탭 클릭(위젯)이 주도하게 한다. (프로그램적 query_params
-    변경은 소켓 rerun 일 뿐 브라우저 리로드가 아니라 흰 깜빡임이 없다.)
-    """
-    qgrp = st.query_params.get("dm_grp")
-    qtab = st.query_params.get("dm_tab")
-    if not qgrp and not qtab:
-        return
-    grp, tab = _dm_resolve_group_and_tab(qgrp, qtab)
-    st.session_state["_dm_grp_seg"] = grp
-    st.session_state["_dm_tab_seg"] = tab
-    for k in ("dm_grp", "dm_tab"):
-        if k in st.query_params:
-            del st.query_params[k]
+    # 레거시 핸드오프 query(?dm_grp/?dm_tab)는 st.tabs(클라이언트사이드)에선 탭을 못 고른다.
+    # 남으면 URL 만 지저분 → 1회 정리.
+    for _k in ("dm_grp", "dm_tab"):
+        if _k in st.query_params:
+            del st.query_params[_k]
+    # 헤더(KPI)는 1회만, 본문은 st.tabs 패널 — 탭 전환은 100% 클라이언트사이드라
+    # 서버 rerun·문서 리로드 0 (헤더·우측 채팅·다른 탭 재렌더 없음).
+    _render_dm_header(dm_stats)
+    _render_dm_tabs(dm_stats, persona)
 
 
-@st.fragment
-def _dm_body_fragment(dm_stats: dict[str, str | int],
-                      persona: Persona | None) -> None:
-    """데이터 관리 탭 바(segmented control × 2) + 활성 탭 본문 — **fragment 스코프**.
+# 탭 표시 순서 — 뉴스 그룹(jobs·kw·src) 다음 작업 그룹(task·manage).
+_DM_DISPLAY_TABS: tuple[str, ...] = ("jobs", "kw", "src", "task", "manage")
 
-    탭/그룹 전환은 위젯 상호작용 → 이 fragment 만 rerun(전체 리로드/흰 깜빡임 없음).
-    본문은 기존 경로(`_render_main` + 탭별 위젯)를 그대로 써 **활성 탭만 lazy 렌더**
-    한다 — 무거운 작업정의 관리/업로드 위젯은 해당 탭일 때만 인스턴스화된다.
-    이미 활성인 탭을 다시 누르면 segmented control 이 None(해제)을 반환하므로, 위젯
-    재생성 전에 유효값으로 보정해 '탭이 비는' 현상을 막는다(탭은 항상 1개 선택).
-    """
-    with st.container(key="dm_tabbar"):
-        # 그룹 (📰 뉴스 데이터 / 📋 작업 데이터)
-        if st.session_state.get("_dm_grp_seg") not in _DM_GROUPS:
-            st.session_state["_dm_grp_seg"] = "news"
-        grp = st.segmented_control(
-            "데이터 그룹", list(_DM_GROUPS),
-            format_func=lambda g: _DM_GROUP_LABEL[g],
-            key="_dm_grp_seg", label_visibility="collapsed",
-        ) or st.session_state["_dm_grp_seg"]
 
-        # 현재 그룹의 sub-탭 — 그룹이 바뀌었거나 해제됐으면 그룹 기본 탭으로 보정
-        visible = list(_DM_GROUP_TABS[grp])
-        if st.session_state.get("_dm_tab_seg") not in visible:
-            st.session_state["_dm_tab_seg"] = _DM_GROUP_DEFAULT_TAB[grp]
-        tab = st.segmented_control(
-            "탭", visible,
-            format_func=lambda t: _DM_TAB_LABEL[t],
-            key="_dm_tab_seg", label_visibility="collapsed",
-        ) or st.session_state["_dm_tab_seg"]
+def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
+    """상단 고정 헤더(브레드크럼·설명·KPI 4종) — st.tabs 위에 1회만.
 
-    if tab not in _DM_TABS:
-        tab = "jobs"
+    탭 전환은 st.tabs 의 클라이언트사이드 전환이라 이 헤더는 다시 그려지지 않는다
+    (탭마다 KPI 가 깜빡이던 monolithic st.html 문제 제거)."""
+    template = _DM_TEMPLATE.read_text(encoding="utf-8")
+    head = template.split("{{DM_TABS}}", 1)[0]  # <div class=dm-shell>…<header>…</header>
+    head_html = (
+        head
+        .replace("{{ACTIVE_SOURCES}}", _html.escape(str(dm_stats["active_sources"])))
+        .replace("{{TODAY_COUNT}}", _html.escape(str(dm_stats["today_count"])))
+        .replace("{{TOTAL_CHUNKS}}", _html.escape(str(dm_stats["total_chunks"])))
+        .replace("{{LAST_UPDATE}}", _html.escape(str(dm_stats["last_update"])))
+    ) + "</div>"  # split 로 잘려나간 dm-shell 닫기 보강
+    st.html(_components.prepare_screen_html(head_html))
 
-    # 활성 탭 본문 (기존 경로 — lazy)
-    _render_main(dm_stats, selected_tab=tab, persona=persona)
-    if tab == "task":
-        _render_task_def_upload()
-    elif tab == "manage":
-        from ui import task_def_manage as tdm
-        tdm.render(st.query_params)
-    elif tab == "src":
-        _render_src_add_form()
+
+def _render_jobs_split(dm_stats: dict[str, str | int]) -> None:
+    """jobs 탭 본문 — 수집잡 + 뉴스 라이브러리(.dm-split). 헤더는 _render_dm_header 가
+    이미 그렸으므로 여기선 {{DM_TABS}} 이후 본문만."""
+    template = _DM_TEMPLATE.read_text(encoding="utf-8")
+    body = template.split("{{DM_TABS}}", 1)[1]
+    from store import ui_prefs as _uiprefs
+    hist = _hist_html(_uiprefs.load().get("theme") == "dark")
+    html_out = (
+        '<div class="dm-shell">' + body
+        .replace("{{NEWS_CARDS}}", _news_cards_html(
+            str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()))
+        .replace("{{INGEST_JOBS}}", _ingest_jobs_html())
+        .replace("{{INGEST_REFRESH_CTA}}", _refresh_cta_html())
+        .replace("{{HIST_HEAD}}", hist["head"])
+        .replace("{{HIST_SVG}}", hist["svg"])
+        .replace("{{HIST_X}}", hist["foot"])
+        .replace("{{HIST_RUNS}}", hist["runs"])
+        .replace("{{DM_MAIN_BODY_OPEN}}", "")
+        .replace("{{DM_MAIN_BODY_CLOSE}}", "")
+    )
+    html_out = _strip_dm_mockups(html_out)
+    st.html(_components.prepare_screen_html(html_out))
+
+
+def _render_dm_tabs(dm_stats: dict[str, str | int], persona) -> None:
+    """5개 탭을 st.tabs 로 — 전환은 클라이언트사이드(서버 rerun 0). 각 패널은 해당
+    탭 본문만 담는다(헤더·다른 탭·우측 채팅 재렌더 없음). st.tabs 는 모든 패널을
+    1회 eager 렌더하지만, 전환 자체는 JS 로만 일어나 흰 깜빡임이 없다."""
+    panels = st.tabs([_DM_TAB_LABEL[t] for t in _DM_DISPLAY_TABS])
+    for tab_key, panel in zip(_DM_DISPLAY_TABS, panels):
+        with panel:
+            if tab_key == "jobs":
+                _render_jobs_split(dm_stats)
+            elif tab_key == "manage":
+                from ui import task_def_manage as tdm
+                tdm.render(st.query_params)
+            else:
+                st.html(_components.prepare_screen_html(
+                    _dm_tab_body_html(tab_key, persona=persona, dm_stats=dm_stats)))
+                if tab_key == "task":
+                    _render_task_def_upload()
+                elif tab_key == "src":
+                    _render_src_add_form()
 
 
 def _refresh_cta_html() -> str:
@@ -1493,50 +1493,3 @@ def _render_src_add_form() -> None:
         st.rerun()
 
 
-def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
-                 persona: Persona | None = None) -> None:
-    """data_management_main.html 템플릿 로드 + placeholder 치환.
-
-    Args:
-        dm_stats: 헤더 4 stats 데이터.
-        selected_tab: 현재 활성 탭 — "jobs" / "kw" / "task" / "src".
-            "jobs" 가 아니면 기존 dm-split 은 display:none 으로 숨기고
-            탭별 본문 HTML 을 그 자리에 렌더한다.
-        persona: 키워드 탭 본문에서 사용 (관심사 chip).
-    """
-    template = _DM_TEMPLATE.read_text(encoding="utf-8")
-    from store import ui_prefs as _uiprefs
-    hist = _hist_html(_uiprefs.load().get("theme") == "dark")
-
-    if selected_tab == "jobs":
-        body_open = ""
-        body_close = ""
-    else:
-        # 기본 split 은 숨기고, 닫는 div 직후에 탭별 본문을 inline 으로 끼워넣는다.
-        body_open = '<div style="display:none;" aria-hidden="true">'
-        body_close = "</div>" + _dm_tab_body_html(selected_tab, persona=persona,
-                                                  dm_stats=dm_stats)
-
-    html_out = (
-        template
-        .replace("{{LAST_UPDATE}}", _html.escape(str(dm_stats["last_update"])))
-        .replace("{{ACTIVE_SOURCES}}", _html.escape(str(dm_stats["active_sources"])))
-        .replace("{{TODAY_COUNT}}", _html.escape(str(dm_stats["today_count"])))
-        .replace("{{TOTAL_CHUNKS}}", _html.escape(str(dm_stats["total_chunks"])))
-        .replace("{{NEWS_CARDS}}", _news_cards_html(
-            str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()))
-        .replace("{{INGEST_JOBS}}", _ingest_jobs_html())
-        .replace("{{INGEST_REFRESH_CTA}}", _refresh_cta_html())
-        .replace("{{HIST_HEAD}}", hist["head"])
-        .replace("{{HIST_SVG}}", hist["svg"])
-        .replace("{{HIST_X}}", hist["foot"])
-        .replace("{{HIST_RUNS}}", hist["runs"])
-        # 탭 바는 이제 _dm_body_fragment 의 segmented control 위젯이 담당(앵커 리로드
-        # 제거). 템플릿 placeholder 는 비워둔다(legacy 빌더 _dm_tabs_html/_dm_groups_html
-        # 는 테스트·북마크 호환용으로 보존).
-        .replace("{{DM_TABS}}", "")
-        .replace("{{DM_MAIN_BODY_OPEN}}", body_open)
-        .replace("{{DM_MAIN_BODY_CLOSE}}", body_close)
-    )
-    html_out = _strip_dm_mockups(html_out)
-    st.html(_components.prepare_screen_html(html_out))
