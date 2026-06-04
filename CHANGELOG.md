@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (오늘의 보드 상단 헤더 ↔ 사이드바 간섭 — 전 화면 통일)
+- **board 상단 헤더가 네이티브 사이드바를 침범/가리던 문제** — `assets/v2/screens/board.css` 가 `.db-topbar { position: fixed; left:0; right:0 }` 로 **재정의**해, 보드에서만 헤더가 풀폭 fixed 로 튀어나와 좌측 `st.sidebar` 와 겹쳤다(다른 화면은 전역 `shell.css` 의 `position: static` in-flow 헤더를 그대로 사용). 이 override 는 제거된 구 v2 셸(고정 좌/우 패널 `.app-side`/`.app-sola`) 시절의 잔재였고, `.db-topbar-*` 내부 스타일까지 다른 값으로 덮어써(제목 28px·eyebrow 숨김 등) 보드 헤더만 다르게 보였다.
+- **수정** — board.css 상단의 stale topbar + 제거-패널 레이아웃 블록(160줄: `.db-topbar` fixed override · `.db-topbar-*` 중복 · `.v2-scroll-fade` · `.app-with-*`/`.app-side`/`.app-sola` · `.hub-back` · `.db-app{padding-top}`)을 전부 삭제. 보드도 이제 전역 `shell.css` 의 in-flow `.db-topbar` 를 써 **5개 화면 헤더가 완전 동일**(WORKFLOW eyebrow + 제목 + 갱신시각 + 검색, 사이드바와 겹침 0).
+- 검증 — playwright 전 화면 스크린샷(`scripts/verify_screens.py`)으로 board/data/insights/sola/archive 헤더가 동일 in-flow 임을 시각 확인. pytest **769 passed**(CSS only) · 금지 패턴 0.
+
 ### Refactor (오버사이즈 모듈 분할 — data_management_v2 프레젠테이션 추출)
 - **`ui/data_management_render.py` 신규(259줄)** — `data_management_v2.py`(1623줄, 오버사이즈)에서 **부작용 없는**(st·데이터 I/O 없는) 순수 프레젠테이션/라우팅 빌더를 분리: 뉴스 카드(`_news_age_label`/`_news_card_html`/`_news_empty_html`), 탭·그룹 라우팅+HTML(`_dm_group_of`/`_dm_resolve_group_and_tab`/`_dm_tab_href`/`_dm_group_href`/`_dm_groups_html`/`_dm_tabs_html`/`_src_action_href`) + 관련 상수(그라데이션·탭/그룹 정의·아이콘 SVG). 데이터를 읽거나 `st.*` 를 호출하는 빌더(수집 헬스·타임라인·탭 본문)는 화면 모듈에 잔류.
 - **하위호환** — `data_management_v2` 가 이 심볼들을 re-import(`# noqa: F401`)해 기존 참조(테스트 `test_dm_tabs` 포함)·내부 호출 전부 무변경. 동작 100% 동일(769 passed). 스테일 `import pandas as pd`(이동 후 미사용) 제거.
