@@ -32,6 +32,25 @@
 
 ---
 
+## 2026-06-04 · "지금 뉴스 수집" — 빈 페르소나 폴백 + 버튼 개명
+
+**브랜치:** `claude/kind-volta-IWxix`.
+
+**맥락:** "지금 새로고침 누르면 수집이 바로 되는 거 아냐? 수집이 안 돼." + "버튼을 '지금 뉴스 수집'으로 바꿔" + (질문 후 결정) "관심사 비면 '자동화'·'AI' 두 키워드로 수집하고 키워드 무관 소스도 수집해."
+
+**원인 규명(실측):** `collect_batch(['용접'])` 직접 실행 → ① 네이버·구글·AI Times·오토메이션월드 **전부 403**(심지어 `example.com` 도 403 → 환경 egress 프록시 차단, 코드 무관 = 위 🚩 라이브 차단과 동일). ② 이 컨테이너 페르소나는 부서만 있고 **관심사 키워드 0개** → `_consume_refresh_if_any`/`consume_kw_action_if_any` 의 `if not kws and not extra_feeds:` 가드가 **수집을 통째 스킵**(캐시만 비움) → "버튼 눌러도 수집 안 됨"의 직접 원인.
+
+**수정:**
+- `ui/board_v2.py`: `DEFAULT_COLLECT_KEYWORDS=("자동화","AI")` + `_collect_keywords_with_default(persona)->(kws, used_default)` 추가(관심사 비면 폴백). `collect` 분기에서 스킵 가드 제거 → 항상 `collect_batch` 호출(tech·RSS 는 키워드 무관 수집). 토스트 폴백 시 "기본 키워드(자동화·AI)" 표기.
+- `ui/data_management_v2.py`: `_consume_refresh_if_any` 동일하게 폴백+항상 수집. 버튼/툴팁/빈상태/런로그 라벨 **"지금 새로고침"→"지금 뉴스 수집"**, trigger 라벨 `수동 새로고침→수동 수집`.
+- 테스트: 빈 키워드 skip 단언 3건(`test_collect_trigger`·`test_v2_screens`·`test_kw_actions`) → 폴백 호출(`call_args.args[0]==["자동화","AI"]`) 검증으로 교체, `test_dm_cleanup` 라벨 단언 갱신.
+
+**검증:** pytest **770 passed** · 금지 패턴 0 · py_compile OK.
+
+**주의:** ②는 코드로 고쳐 빈 페르소나에서도 버튼이 수집을 *실행*한다. 단 ①(환경 403)이 남은 환경에서는 실제 기사 0건 + error 토스트가 정상 동작이다 — 인터넷 열린 배포에서 실수집된다.
+
+---
+
 ## 2026-06-04 · 오늘의 보드 헤더↔사이드바 간섭 수정 (전 화면 통일)
 
 **브랜치:** `claude/kind-volta-IWxix` (origin/main `2862c20` 기준).

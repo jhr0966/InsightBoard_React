@@ -63,6 +63,6 @@ def test_refresh_cta_centered_and_icon_encoded():
     html = dm._refresh_cta_html()
     assert "justify-content:center" in html
     assert "data:image/svg+xml," in html
-    assert "지금 새로고침" in html
+    assert "지금 뉴스 수집" in html
     src = html.split('src="', 1)[1].split('"', 1)[0]
     assert "#" not in src  # stroke='#fff' 인코딩됨

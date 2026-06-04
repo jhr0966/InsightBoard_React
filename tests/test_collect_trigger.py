@@ -96,20 +96,27 @@ def test_refresh_error_toast_when_all_failed():
     assert "boom" in toast[1]
 
 
-# ── 페르소나 관심사 없을 때 ─────────────────────────────────
+# ── 페르소나 관심사 없을 때 — 기본 키워드(자동화·AI)로 폴백 ──
 
-def test_refresh_skips_collect_when_no_keywords():
+def test_refresh_falls_back_to_default_keywords_when_no_keywords():
+    """관심사가 비어도 스킵하지 않고 기본 키워드(자동화·AI)로 collect_batch 호출."""
     from ui import data_management_v2 as dm
+    from scraping.run_daily import CollectionReport
     import streamlit as st
 
     st.query_params["refresh"] = "now"
+    fake = CollectionReport(
+        saved=[{"source": "tech", "keywords": [], "count": 4, "path": "t.parquet"}],
+        errors=[],
+    )
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=[]), \
-         patch("scraping.run_daily.collect_batch") as mock_cb:
+         patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
         assert dm._consume_refresh_if_any() is True
-    mock_cb.assert_not_called()
+    mock_cb.assert_called_once()
+    assert mock_cb.call_args.args[0] == ["자동화", "AI"]
     toast = st.session_state.get("_dm_refresh_toast")
-    assert toast[0] == "warn"
-    assert "관심사" in toast[1]
+    assert toast[0] == "ok"
+    assert "자동화" in toast[1] and "AI" in toast[1]
 
 
 # ── 캐시 무효화는 항상 수행 ─────────────────────────────────

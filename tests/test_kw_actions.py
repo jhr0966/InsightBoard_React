@@ -179,9 +179,11 @@ def test_consume_kw_action_collect_calls_batch_with_persona_keywords(isolated_pe
     assert toast and toast[0] == "ok" and "수집" in toast[1]
 
 
-def test_consume_kw_action_collect_no_keywords_noop(isolated_persona):
+def test_consume_kw_action_collect_falls_back_to_default(isolated_persona):
+    """관심사 없을 때 collect → 스킵하지 않고 기본 키워드(자동화·AI)로 수집."""
     from ui import board_v2
     from persona.schema import Persona
+    from scraping.run_daily import CollectionReport
     import streamlit as st
 
     p = Persona(dept="도장")
@@ -190,11 +192,16 @@ def test_consume_kw_action_collect_no_keywords_noop(isolated_persona):
 
     st.query_params.clear()
     st.query_params["kw_action"] = "collect"
-    with patch("scraping.run_daily.collect_batch") as mock_cb:
+    fake_report = CollectionReport(
+        saved=[{"source": "tech", "keywords": [], "count": 2, "path": "t"}],
+        errors=[],
+    )
+    with patch("scraping.run_daily.collect_batch", return_value=fake_report) as mock_cb:
         board_v2.consume_kw_action_if_any()
-    mock_cb.assert_not_called()
+    mock_cb.assert_called_once()
+    assert mock_cb.call_args.args[0] == ["자동화", "AI"]
     toast = st.session_state.get("_kw_action_toast")
-    assert toast and toast[0] == "ok" and "키워드" in toast[1]
+    assert toast and toast[0] == "ok" and "자동화" in toast[1]
 
 
 # ── 모르는 액션 무시 ────────────────────────────────────────

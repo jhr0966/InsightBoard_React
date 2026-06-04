@@ -162,7 +162,7 @@ def _collect_health_li() -> str:
     badge = "정상" if ok else "오류"
     ts = str(run.get("ts", ""))
     when = ts.split("T")[1][:5] if "T" in ts else (ts[:16] or "—")
-    trig_map = {"cron": "자동(cron)", "manual": "수동 새로고침", "board": "보드 수집"}
+    trig_map = {"cron": "자동(cron)", "manual": "수동 수집", "board": "보드 수집"}
     trig = trig_map.get(str(run.get("trigger", "")), str(run.get("trigger", "")) or "—")
     total = int(run.get("total_articles", 0) or 0)
     files = int(run.get("total_files", 0) or 0)
@@ -326,7 +326,7 @@ def _ingest_jobs_html() -> str:
                 'padding:18px 14px; text-align:center; color: var(--text-muted); '
                 'font-size: 14px; line-height:1.6;">'
                 '오늘 실행된 수집잡이 없습니다.<br>'
-                '<span style="font-size:12.5px;">우측 상단 [지금 새로고침] 으로 수집을 시작하세요</span>'
+                '<span style="font-size:12.5px;">우측 상단 [지금 뉴스 수집] 으로 수집을 시작하세요</span>'
                 '</li>')
 
     if "source" not in today_df.columns:
@@ -754,9 +754,9 @@ def _refresh_cta_html() -> str:
     return (
         f'<a class="dm-btn-primary" href="{href}" target="_self" '
         f'style="justify-content:center;" '
-        f'title="페르소나 관심사 키워드로 지금 수집을 실행하고 캐시를 새로 그립니다.">'
+        f'title="페르소나 관심사 키워드(없으면 자동화·AI)로 지금 뉴스를 수집하고 화면을 새로 그립니다.">'
         f'<img src="data:image/svg+xml,{_q(icon_svg)}" width="12" height="12" alt="" />'
-        '지금 새로고침'
+        '지금 뉴스 수집'
         '</a>'
     )
 
@@ -764,8 +764,9 @@ def _refresh_cta_html() -> str:
 def _consume_refresh_if_any() -> bool:
     """`?refresh=now` 1회 소비 — collect_batch 동기 호출 + 캐시 무효화 + 토스트.
 
-    수집 키워드는 페르소나 관심사(interest_tasks + interest_lv3).
-    키워드가 없으면 수집은 스킵하고 캐시만 무효화한다.
+    수집 키워드는 페르소나 관심사(interest_tasks + interest_lv3). 비어 있으면
+    기본 키워드(자동화·AI)로 폴백하고, tech 사이트·커스텀 RSS 는 키워드 무관하게
+    항상 함께 수집한다 — 빈 페르소나에서도 버튼이 실제로 수집을 실행한다.
     수집 실패 시 error 토스트(캐시는 안전하게 무효화 — 다음 렌더가 최신).
     """
     if st.query_params.get("refresh") != "now":
@@ -780,43 +781,42 @@ def _consume_refresh_if_any() -> bool:
         if hasattr(fn, "clear"):
             fn.clear()
 
-    # 수집 실행 — 페르소나 관심사 키워드 + 등록된 커스텀 RSS 출처
+    # 수집 실행 — 페르소나 관심사 키워드(없으면 자동화·AI 폴백) + 등록된 커스텀 RSS.
+    # tech 사이트·RSS 는 키워드 무관하게 수집되므로 빈 페르소나에서도 건너뛰지 않는다.
     try:
-        from ui.board_v2 import _collect_keywords_for_persona, _collect_extra_feeds
+        from ui.board_v2 import _collect_keywords_with_default, _collect_extra_feeds
         from scraping.run_daily import collect_batch
         persona = app_shell.get_persona()
-        kws = _collect_keywords_for_persona(persona)
+        kws, used_default = _collect_keywords_with_default(persona)
         extra_feeds = _collect_extra_feeds()
-        if not kws and not extra_feeds:
+        report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
+        try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
+            from store import run_log
+            run_log.record_run(report, trigger="manual")
+        except Exception:  # noqa: BLE001
+            pass
+        n_articles = report.total_articles
+        n_files = report.total_files
+        n_err = len(report.errors)
+        if n_err and n_articles == 0:
             st.session_state["_dm_refresh_toast"] = (
-                "warn",
-                "ℹ️ 페르소나 관심사가 비어 있어 수집은 건너뛰었어요 — 캐시만 새로 그렸습니다.",
+                "error",
+                f"⚠️ 수집 실패 — 첫 오류: {report.errors[0].get('error','unknown')}",
             )
         else:
-            report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
-            try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
-                from store import run_log
-                run_log.record_run(report, trigger="manual")
-            except Exception:  # noqa: BLE001
-                pass
-            n_articles = report.total_articles
-            n_files = report.total_files
-            n_err = len(report.errors)
-            if n_err and n_articles == 0:
-                st.session_state["_dm_refresh_toast"] = (
-                    "error",
-                    f"⚠️ 수집 실패 — 첫 오류: {report.errors[0].get('error','unknown')}",
-                )
-            else:
-                feeds_label = (
-                    f", RSS {len(extra_feeds)}건" if extra_feeds else ""
-                )
-                err_tail = f", 일부 오류 {n_err}건" if n_err else ""
-                st.session_state["_dm_refresh_toast"] = (
-                    "ok",
-                    f"✓ {len(kws)}개 키워드{feeds_label}로 {n_articles}건 수집 "
-                    f"({n_files}개 파일){err_tail}.",
-                )
+            feeds_label = (
+                f", RSS {len(extra_feeds)}건" if extra_feeds else ""
+            )
+            err_tail = f", 일부 오류 {n_err}건" if n_err else ""
+            kw_label = (
+                "관심사가 비어 기본 키워드(자동화·AI)" if used_default
+                else f"{len(kws)}개 키워드"
+            )
+            st.session_state["_dm_refresh_toast"] = (
+                "ok",
+                f"✓ {kw_label}{feeds_label}로 {n_articles}건 수집 "
+                f"({n_files}개 파일){err_tail}.",
+            )
     except Exception as exc:
         st.session_state["_dm_refresh_toast"] = (
             "error", f"⚠️ 수집 처리 실패: {type(exc).__name__}: {exc}",
