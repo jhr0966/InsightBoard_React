@@ -713,25 +713,81 @@ def render() -> None:
     _render_task_def_toast_if_needed()
     _render_src_action_toast_if_needed()
 
-    # 활성 그룹·탭 — `?dm_grp=news|tasks&dm_tab=jobs|kw|task|src` (기본 news/jobs).
-    # 기존 `?dm_tab=` 만 있는 북마크 URL 도 정상 동작 (그룹 자동 추론).
-    selected_grp, selected_tab = _dm_resolve_group_and_tab(
-        st.query_params.get("dm_grp"), st.query_params.get("dm_tab"),
-    )
+    # 활성 그룹·탭 — segmented control 위젯(세션)이 주도. 단, 핸드오프/북마크
+    # query(`?dm_grp`/`?dm_tab`; 예: 출처 토글 후 src 탭, 상단 검색 후 jobs)는 그쪽으로
+    # 1회 동기화한다(기존 `?dm_tab=` 단독 북마크 URL 도 그룹 자동 추론).
+    _dm_sync_tab_from_query()
 
-    # ── 3) 본문 main 템플릿 ──
-    _render_main(dm_stats, selected_tab=selected_tab, persona=persona)
+    # ── 3) 탭 바 + 활성 탭 본문 — fragment 스코프 ──
+    # 탭/그룹 전환은 이 fragment 만 rerun → 본문만 갱신되고 전체 리로드(흰 깜빡임)·
+    # 우측 채팅/상단 topbar 재렌더가 없다. 본문은 기존대로 활성 탭만 lazy 렌더.
+    _dm_body_fragment(dm_stats, persona)
 
-    # ── 3.5) 탭 전용 Streamlit 위젯 ──
-    if selected_tab == "task":
+
+def _dm_sync_tab_from_query() -> None:
+    """핸드오프/북마크 `?dm_grp`·`?dm_tab` → 탭 위젯 세션(_dm_grp_seg/_dm_tab_seg)으로
+    1회 반영 후 query 제거.
+
+    출처 토글(`_src_action_href` 가 `?dm_tab=src`)·상단 검색(`?dm_grp=news`) 등은
+    query 로 특정 탭에 착지해야 하므로, query 가 있으면 위젯 세션을 그 값으로 맞춘다.
+    query 는 1회성 — 제거해 이후 탭 클릭(위젯)이 주도하게 한다. (프로그램적 query_params
+    변경은 소켓 rerun 일 뿐 브라우저 리로드가 아니라 흰 깜빡임이 없다.)
+    """
+    qgrp = st.query_params.get("dm_grp")
+    qtab = st.query_params.get("dm_tab")
+    if not qgrp and not qtab:
+        return
+    grp, tab = _dm_resolve_group_and_tab(qgrp, qtab)
+    st.session_state["_dm_grp_seg"] = grp
+    st.session_state["_dm_tab_seg"] = tab
+    for k in ("dm_grp", "dm_tab"):
+        if k in st.query_params:
+            del st.query_params[k]
+
+
+@st.fragment
+def _dm_body_fragment(dm_stats: dict[str, str | int],
+                      persona: Persona | None) -> None:
+    """데이터 관리 탭 바(segmented control × 2) + 활성 탭 본문 — **fragment 스코프**.
+
+    탭/그룹 전환은 위젯 상호작용 → 이 fragment 만 rerun(전체 리로드/흰 깜빡임 없음).
+    본문은 기존 경로(`_render_main` + 탭별 위젯)를 그대로 써 **활성 탭만 lazy 렌더**
+    한다 — 무거운 작업정의 관리/업로드 위젯은 해당 탭일 때만 인스턴스화된다.
+    이미 활성인 탭을 다시 누르면 segmented control 이 None(해제)을 반환하므로, 위젯
+    재생성 전에 유효값으로 보정해 '탭이 비는' 현상을 막는다(탭은 항상 1개 선택).
+    """
+    with st.container(key="dm_tabbar"):
+        # 그룹 (📰 뉴스 데이터 / 📋 작업 데이터)
+        if st.session_state.get("_dm_grp_seg") not in _DM_GROUPS:
+            st.session_state["_dm_grp_seg"] = "news"
+        grp = st.segmented_control(
+            "데이터 그룹", list(_DM_GROUPS),
+            format_func=lambda g: _DM_GROUP_LABEL[g],
+            key="_dm_grp_seg", label_visibility="collapsed",
+        ) or st.session_state["_dm_grp_seg"]
+
+        # 현재 그룹의 sub-탭 — 그룹이 바뀌었거나 해제됐으면 그룹 기본 탭으로 보정
+        visible = list(_DM_GROUP_TABS[grp])
+        if st.session_state.get("_dm_tab_seg") not in visible:
+            st.session_state["_dm_tab_seg"] = _DM_GROUP_DEFAULT_TAB[grp]
+        tab = st.segmented_control(
+            "탭", visible,
+            format_func=lambda t: _DM_TAB_LABEL[t],
+            key="_dm_tab_seg", label_visibility="collapsed",
+        ) or st.session_state["_dm_tab_seg"]
+
+    if tab not in _DM_TABS:
+        tab = "jobs"
+
+    # 활성 탭 본문 (기존 경로 — lazy)
+    _render_main(dm_stats, selected_tab=tab, persona=persona)
+    if tab == "task":
         _render_task_def_upload()
-    elif selected_tab == "manage":
+    elif tab == "manage":
         from ui import task_def_manage as tdm
         tdm.render(st.query_params)
-    elif selected_tab == "src":
+    elif tab == "src":
         _render_src_add_form()
-
-    # 수집 잡·뉴스 라이브러리·작업 정의 등은 위 _render_main / 탭 위젯이 담당.
 
 
 def _refresh_cta_html() -> str:
@@ -1475,11 +1531,10 @@ def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
         .replace("{{HIST_SVG}}", hist["svg"])
         .replace("{{HIST_X}}", hist["foot"])
         .replace("{{HIST_RUNS}}", hist["runs"])
-        .replace(
-            "{{DM_TABS}}",
-            _dm_groups_html(_dm_group_of(selected_tab))
-            + _dm_tabs_html(selected_tab, dm_stats),
-        )
+        # 탭 바는 이제 _dm_body_fragment 의 segmented control 위젯이 담당(앵커 리로드
+        # 제거). 템플릿 placeholder 는 비워둔다(legacy 빌더 _dm_tabs_html/_dm_groups_html
+        # 는 테스트·북마크 호환용으로 보존).
+        .replace("{{DM_TABS}}", "")
         .replace("{{DM_MAIN_BODY_OPEN}}", body_open)
         .replace("{{DM_MAIN_BODY_CLOSE}}", body_close)
     )

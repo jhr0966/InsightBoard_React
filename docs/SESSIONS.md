@@ -32,6 +32,33 @@
 
 ---
 
+## 2026-06-04 · UX: 전체 흰 깜빡임 제거 (fragment 스코프) — Phase 1+2
+
+**브랜치:** `claude/kind-volta-IWxix`.
+
+**맥락:** "버튼/메뉴/탭 누를 때마다 전체가 하얗게 깜빡였다 다시 뜸. 기존 렌더 유지하고 변동분만 갱신해라. 예) 채팅 예시칩=입력창만 채워야, 데이터관리 탭=그 탭만 바뀌어야." → 계획 후 사용자 선택 "예시 2개 먼저(Phase 1+2)".
+
+**근본 원인(확정):** 앱의 거의 모든 네비가 `<a href="?param=">` 앵커 → 클릭 = **브라우저 문서 전체 reload**(빈화면→프론트 재부팅→CSS 재주입→리페인트)가 흰 깜빡임. `@st.fragment`/`st.tabs`/`st.pills` 한 곳도 미사용(1.58 인데). 상단 검색만 `st.query_params+st.rerun`(소켓, 리로드 아님) 써서 정답 방향이었음.
+
+**핵심 전략:** query-param 소비자(`_consume_*`)·테스트 계약·invariant 는 유지하고 **트리거만** 앵커→위젯/fragment 로, **변하는 영역만** fragment 로 감쌈.
+
+**수정:**
+- **Phase 1 채팅칩**(`chat_panel.py`): 추천질문 `?sola_prefill=` 앵커 → 입력창 위 `st.pills`, pill+form 을 `@st.fragment _chat_composer` 로. 칩 클릭=fragment rerun→`_apply_pending_prefill` 가 입력창만 채우고 `__reset_pills` 로 선택 해제(편집/재선택 안 덮임). 북마크 URL 은 `_consume_prefill` 유지.
+- **Phase 2 데이터관리 탭**(`data_management_v2.py`): `{{DM_TABS}}` 앵커 바 제거(""), 그룹·하위탭 = `st.segmented_control`×2, 본문 전체 `@st.fragment _dm_body_fragment` → 탭 전환=fragment rerun(본문만, 채팅·topbar 안 건드림). 본문은 기존 `_render_main`(활성 탭 lazy) 유지. `_dm_sync_tab_from_query` 가 `?dm_grp/?dm_tab`(출처토글·상단검색) → 위젯 세션 1회 동기화. legacy `_dm_tabs_html/_dm_groups_html/_dm_tab_href` 보존(테스트·호환).
+- **다크 가독성**(`streamlit-overrides.css`): Streamlit 이 pills·segmented_control 비활성 배경을 정적 라이트로 박아 다크에서 흰 글자가 흰 배경에 묻힘(playwright 로 확인: inactive `color #F1F5F9` on `bg #F3F5F8`). `.st-key-side_chat_suggest`/`.st-key-dm_tabbar` 스코프 토큰 강제로 라이트·다크 모두 노출.
+
+**검증:** pytest **775 passed**(빈키워드/탭 단언 갱신 + fragment 탭전환 e2e 3건·`_apply_pending_prefill` 2건 추가) · 금지패턴 0 · **playwright 실측**: 칩 클릭→textarea 정확 채움 + `window` 플래그 생존(=문서 reload 없음), "키워드" 탭 클릭→kw 본문 전환 + 플래그 생존. 두 화면 다크 스크린샷 라벨 정상.
+
+**핵심 함정(재학습 방지):**
+- **`<a href="?x">` = 풀 문서 reload(흰 깜빡임)**, `st.query_params=…;st.rerun()`·위젯 상호작용 = 소켓 rerun(리로드 아님). 부분 갱신은 `@st.fragment`(그 조각만 rerun)·`st.tabs`(클라 전환)·`st.pills/segmented_control`(fragment 안). on_click[I-3] 금지는 fragment 내 위젯+`st.rerun(scope="fragment")` 로 준수.
+- **native pills/segmented_control 은 다크에서 흰배경 하드코딩** → 컨테이너 key 클래스(`.st-key-<key>`)로 토큰 강제 필요(입력창·드롭다운 다크화와 동류).
+- segmented_control single 모드는 **활성 세그 재클릭 시 None(해제)** 반환 → 위젯 재생성 전 유효값 보정해 '탭 빔' 방지.
+- AppTest 는 `st.pills/segmented_control` 을 이름으로 노출 안 함(`at.get("pills")`=0) → 세션키(`_dm_tab_seg`) 세팅+본문 단언으로 검증. `at.exception` 은 빈 `ElementList()` 가 정상(no error).
+
+**다음 단계(미진행 — 사용자 결정 대기):** Phase 3(사이드바 `?app_area=` nav→소켓 rerun, 메인 영역 fragment) · Phase 4(보드 CTA·`kw_action`·`src_action`·`?sola_action=` 등 잔여 앵커→위젯/fragment, I-19 CTA 스타일 회복). 효과 확인 후 진행.
+
+---
+
 ## 2026-06-04 · "지금 뉴스 수집" — 빈 페르소나 폴백 + 버튼 개명
 
 **브랜치:** `claude/kind-volta-IWxix`.

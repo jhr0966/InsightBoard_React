@@ -207,3 +207,62 @@ def test_render_main_jobs_tab_no_hidden_wrapper():
     assert 'style="display:none;"' not in html
     # 기본 split 정상 노출
     assert "dm-split" in html
+
+
+def test_render_main_no_longer_bakes_anchor_tab_bar():
+    """탭 바는 segmented control 위젯이 담당 → _render_main blob 에 앵커 탭(<a dm-tab>)
+    을 더 이상 굽지 않는다(전체 리로드 유발하던 `?dm_tab=` 앵커 제거)."""
+    from ui import data_management_v2 as dm
+    stats = {"active_sources": 4, "today_count": 1, "total_chunks": 100, "last_update": "06:00"}
+    captured = []
+    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
+         patch.object(dm, "_news_cards_html", return_value=""), \
+         patch.object(dm, "_ingest_jobs_html", return_value=""), \
+         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
+        dm._render_main(stats, selected_tab="jobs")
+    html = captured[0]
+    assert 'class="dm-tab"' not in html
+    assert 'href="?dm_tab=' not in html
+    assert "{{DM_TABS}}" not in html  # placeholder 는 ""(빈 값)으로 치환됨
+
+
+# ── fragment 기반 탭 전환 (segmented control, 전체 리로드 없음) ──────
+
+def _dm_app():
+    from streamlit.testing.v1 import AppTest
+    from persona import store as ps
+    from persona.schema import Persona
+    ps.reset(); ps.clear_onboarding_dismiss()
+    ps.save(Persona(name="홍길동", dept="도장1팀", team="자동화1팀"))
+    at = AppTest.from_file("app.py", default_timeout=60)
+    at.session_state["app_area"] = "🧱 데이터 관리"
+    return at
+
+
+def test_dm_tab_switch_via_widget_state_swaps_body_no_exception():
+    """탭 바가 위젯 → 위젯 세션(_dm_tab_seg)으로 탭을 바꾸면 본문만 교체되고 예외 없음
+    (앵커 리로드가 아니라 fragment 스코프 전환)."""
+    at = _dm_app()
+    at.run()
+    assert not at.exception
+    base = "\n".join(h.proto.body for h in at.get("html"))
+    assert "dm-split" in base               # 기본 jobs = 뉴스 라이브러리 split
+    assert 'class="dm-tab"' not in base     # 앵커 탭 바 제거됨(위젯이 대체)
+
+    at.session_state["_dm_tab_seg"] = "kw"   # 위젯 선택값 변경
+    at.run()
+    assert not at.exception
+    kw = "\n".join(h.proto.body for h in at.get("html"))
+    assert "키워드 관리" in kw               # kw 본문 렌더
+    assert 'style="display:none;"' in kw     # jobs split 은 숨김(제거 아니라 display:none)
+
+
+def test_dm_tab_query_handoff_still_lands_on_tab():
+    """출처 토글 등 핸드오프 `?dm_tab=src` → src 탭 본문 착지 + 위젯 세션 동기화."""
+    at = _dm_app()
+    at.query_params["dm_tab"] = "src"
+    at.run()
+    assert not at.exception
+    htmls = "\n".join(h.proto.body for h in at.get("html"))
+    assert "출처" in htmls
+    assert at.session_state["_dm_tab_seg"] == "src"

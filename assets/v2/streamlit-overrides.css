@@ -100,6 +100,30 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
   width: 100%;
 }
 
+/* 데이터 관리 탭 바 — st.segmented_control × 2(그룹/하위탭), _dm_body_fragment.
+   앵커(<a ?dm_tab=>) 대신 위젯이라 탭 전환이 전체 리로드 없이 fragment 만 rerun.
+   두 컨트롤을 가깝게 붙이고(2단 탭바 느낌), 본문과 간격만 띄운다. 앱 내 유일한
+   segmented_control 이라 컨테이너 key 클래스로 스코프하면 다른 화면 영향 없다. */
+.st-key-dm_tabbar { margin: 2px 0 12px; }
+.st-key-dm_tabbar [data-testid="stElementContainer"] { margin-bottom: 4px; }
+/* Streamlit 가 segmented control 의 비활성 세그먼트 배경을 정적 라이트로 하드코딩
+   → 다크에서 흰 글자가 흰 배경에 묻힌다(라벨 안 보임). 토큰으로 강제해 라이트·
+   다크 모두 읽히게: 비활성=카드 표면+보조 텍스트, 활성=accent. */
+.st-key-dm_tabbar [data-testid="stBaseButton-segmented_control"] {
+  background: var(--surface-card, #fff) !important;
+  color: var(--text-secondary, #475569) !important;
+  border-color: var(--surface-divider, #E5E7EB) !important;
+}
+.st-key-dm_tabbar [data-testid="stBaseButton-segmented_control"]:hover {
+  color: var(--text-primary, #0F172A) !important;
+  border-color: var(--accent-primary, #2563EB) !important;
+}
+.st-key-dm_tabbar [data-testid="stBaseButton-segmented_controlActive"] {
+  background: var(--accent-ring, rgba(37,99,235,0.12)) !important;
+  color: var(--accent-primary, #2563EB) !important;
+  border-color: var(--accent-primary, #2563EB) !important;
+}
+
 /* 채팅 스크롤 영역 — 안내+추천+대화가 한 컨테이너에서 스크롤(위로 올리면 안내가
    최상단에 남음). 입력 form 위 공간을 채우고 넘치면 자체 스크롤. */
 .side-chat-scroll {
@@ -119,23 +143,30 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
 }
 .side-chat-intro-h { font-weight: 700; font-size: 14px; color: var(--text-primary, #0F172A); margin-bottom: 4px; }
 .side-chat-intro-sub { font-size: 12.5px; color: var(--text-muted, #64748B); margin-bottom: 8px; }
-.side-chat-chips { display: flex; flex-wrap: wrap; }
-/* 추천 질문 chip — 클릭 시 입력창에 채워지는 링크 (?sola_prefill=) */
-.side-chat-chip {
-  display: inline-block;
-  padding: 6px 11px;
-  margin: 4px 4px 0 0;
-  background: var(--surface-card, #fff);
-  border: 1px solid var(--surface-divider, #E5E7EB);
-  border-radius: 999px;
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: var(--accent-primary, #2563EB);
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 120ms, border-color 120ms;
+/* 추천 질문 — st.pills (_chat_composer fragment, .st-key-side_chat_suggest 컨테이너).
+   칩 클릭이 전체 리로드 없이 fragment 만 rerun → 입력창에 텍스트만 채운다.
+   좁은 채팅 컬럼에 맞춰 compact + 긴 한글 질문은 pill 안에서 줄바꿈. 앱 내 유일한
+   pills 라 컨테이너 key 클래스로 스코프하면 다른 화면에 영향 없다. */
+.st-key-side_chat_suggest { margin-bottom: 6px; }
+.st-key-side_chat_suggest button {
+  padding: 4px 10px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  border-radius: 999px !important;
+  white-space: normal !important;
+  text-align: left !important;
+  /* Streamlit 가 native pills 배경을 정적 라이트로 하드코딩 → 다크에서 흰 글자가
+     흰 배경에 묻힌다. 토큰으로 강제해 라이트·다크 모두 읽히게(구 .side-chat-chip 룩). */
+  background: var(--surface-card, #fff) !important;
+  color: var(--accent-primary, #2563EB) !important;
+  border: 1px solid var(--surface-divider, #E5E7EB) !important;
 }
-.side-chat-chip:hover { border-color: var(--accent-primary, #2563EB); background: var(--accent-ring, rgba(37,99,235,0.12)); }
+.st-key-side_chat_suggest button:hover {
+  border-color: var(--accent-primary, #2563EB) !important;
+  background: var(--accent-ring, rgba(37,99,235,0.12)) !important;
+}
 
 /* 빠른 작업(quick-action) — SOLA 작업실 채팅 상단에 흡수된 작업대 액션
    (?sola_action=). 추천질문 chip 보다 강조(primary 톤)해 '실행' 의도를 구분. */
