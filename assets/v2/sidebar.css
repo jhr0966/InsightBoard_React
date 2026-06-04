@@ -12,9 +12,10 @@
   border-right: 1px solid var(--surface-divider);
 }
 [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-  padding-top: 14px;
+  padding-top: 16px;
 }
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem; }
+/* 사이드바 블록(타이틀·페르소나·통계·메뉴·푸터) 사이 기본 간격 — 구분감 위해 넉넉히. */
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.7rem; }
 
 /* ── 페르소나 프로필 카드 (클릭 → 편집) ───────────────────── */
 .persona-profile-link,
@@ -185,6 +186,8 @@
   text-transform: uppercase;
   color: var(--text-muted, #94A3B8);
 }
+/* 메뉴(Workflow) 영역을 위 페르소나/통계 영역과 더 분명히 분리 + 라벨은 메뉴에 밀착 */
+.sidebar-section-nav { margin: 16px 2px 6px; }
 
 /* ── 5-nav (업무 흐름) ────────────────────────────────────── */
 .sidebar-nav { display: flex; flex-direction: column; gap: 3px; }

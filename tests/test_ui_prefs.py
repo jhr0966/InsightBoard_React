@@ -51,10 +51,19 @@ def test_inject_user_prefs_injects_theme_and_font(isolated_prefs, monkeypatch):
     assert "zoom:1.12" in out        # 큰 글자
 
 
-def test_inject_user_prefs_light_medium_is_noop(isolated_prefs, monkeypatch):
+def test_inject_user_prefs_always_single_block_for_constant_dom(isolated_prefs, monkeypatch):
+    """light(빈 CSS)·dark 모두 정확히 1개의 <style> 블록을 주입해야 한다.
+
+    주입 블록 '개수'가 테마마다 다르면 Streamlit 루트 수직 블록의 flex gap 이
+    하나 더/덜 생겨 테마 토글 시 색뿐 아니라 레이아웃이 밀린다 → 개수를 고정.
+    light+medium 은 테마/zoom 규칙이 없는 (사실상 빈) 단일 블록.
+    """
     from ui import styles
     isolated_prefs.save(theme="light", font="medium")
     captured = []
     monkeypatch.setattr(styles.st, "markdown", lambda s, **k: captured.append(s))
     styles.inject_user_prefs()
-    assert captured == []            # 기본값이면 주입 없음
+    assert len(captured) == 1                 # 테마 무관 항상 단일 블록 (DOM 개수 고정)
+    assert captured[0].startswith("<style>")
+    assert "#0F172A" not in captured[0]       # light 라 다크 토큰 없음
+    assert "zoom" not in captured[0]          # medium 이라 zoom 없음

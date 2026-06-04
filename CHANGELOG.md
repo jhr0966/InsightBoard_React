@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (사이드바 간격 · 테마 토글 레이아웃 밀림 · 다크 placeholder)
+- **테마 토글 시 레이아웃 밀림** (`ui/styles.py inject_user_prefs`) — light(빈 CSS)는 `st.markdown(<style>)` 를 **안 그리고** dark/ocean/sunset 은 그려서, Streamlit 루트 수직 블록의 자식(=주입 블록) 개수가 테마마다 달라졌다. 그 차이만큼 flex `gap` 이 하나 더/덜 생겨 **색뿐 아니라 위치가 밀렸다**. → 내용이 비어도 **항상 단일 `<style>` 블록**을 주입해 DOM 개수를 고정. playwright 측정으로 light↔dark 시 `.db-topbar`·브랜드 좌표 Δ=0(이전엔 어긋남) 확인.
+- **다크모드 입력 placeholder 안 보임** (`_DARK_CSS`) — 입력 배경만 다크화(#0F172A)하고 placeholder 색은 안 잡아, 기본 회색 placeholder 가 어두운 배경에 묻혔다. → native `stTextInput`/`stTextArea` + baseweb 래퍼의 `::placeholder` 를 밝은 muted(`rgba(241,245,249,.5)`)로(+`-webkit-text-fill-color`·`opacity:1`). 세션 검색·SOLA 채팅창 등 가시화 확인.
+- **사이드바 섹션 간격** (`assets/v2/sidebar.css`) — 블록 간 구분감이 없던 것: 수직 블록 `gap` 0.4→0.7rem, `stSidebarUserContent` padding-top 14→16px, 메뉴(`.sidebar-section-nav`) 위 여백 확대로 타이틀·페르소나·통계·메뉴 영역을 분명히 분리.
+- 검증: playwright 라이트/다크 스크린샷·좌표 측정 · pytest **769 passed**(ui_prefs 계약 테스트 갱신) · 금지 패턴 0.
+
 ### Changed (사이드바 메인 로고 — 더 크고 멋지게)
 - **메인 로고 리디자인** (`ui/sidebar.py` + `assets/v2/sidebar.css`) — 작던 "IB" 텍스트 배지(30px)를 **그라데이션 마크(44px) + 인사이트 글리프 + 두-톤 워드마크 + 태그라인** 로 격상.
   - 마크: `linear-gradient(135deg, #2563EB→#4F46E5→#7C3AED)` 라운드 스퀘어 + soft glow 그림자, 안에 흰색 SVG 글리프(상승 막대 3개 + 인사이트 스파크).

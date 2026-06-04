@@ -70,6 +70,13 @@ body:has(.db-topbar) [data-baseweb="base-input"],
 body:has(.db-topbar) [data-baseweb="input"],
 body:has(.db-topbar) [data-baseweb="textarea"]{ background:#0F172A !important; border-color:#334155 !important; }
 body:has(.db-topbar) [data-baseweb="select"] > div{ background:#0F172A !important; border-color:#334155 !important; color:#F1F5F9 !important; }
+/* placeholder — 다크 입력 배경(#0F172A)에 기본 회색 placeholder 가 묻혀 안 보이던
+   문제. 밝은 muted 색으로 가시화 (native st.text_input/text_area + baseweb 래퍼). */
+body:has(.db-topbar) [data-testid="stTextInput"] input::placeholder,
+body:has(.db-topbar) [data-testid="stTextArea"] textarea::placeholder,
+body:has(.db-topbar) [data-baseweb="input"] input::placeholder,
+body:has(.db-topbar) [data-baseweb="base-input"] input::placeholder,
+body:has(.db-topbar) [data-baseweb="textarea"] textarea::placeholder{ color:rgba(241,245,249,.50) !important; -webkit-text-fill-color:rgba(241,245,249,.50) !important; opacity:1 !important; }
 body:has(.db-topbar) button[kind="secondary"]{ background:#1E293B !important; color:#F1F5F9 !important; border-color:#334155 !important; }
 body:has(.db-topbar) [data-testid="stMain"] label,
 body:has(.db-topbar) [data-testid="stMain"] [data-testid="stMarkdownContainer"]{ color:#F1F5F9 !important; }
@@ -108,8 +115,11 @@ def inject_user_prefs() -> None:
     if zoom:
         css += (f'\nbody:has(.db-topbar) [data-testid="stMain"],'
                 f'\nbody:has(.db-topbar) [data-testid="stSidebar"]{{ zoom:{zoom}; }}')
-    if css.strip():
-        st.markdown("<style>" + css + "</style>", unsafe_allow_html=True)
+    # 항상 단일 <style> 블록으로 주입한다(내용이 비어도). light(빈 CSS)와
+    # dark/ocean/sunset 사이에 '주입 블록 개수'가 달라지면 Streamlit 루트 수직
+    # 블록의 flex gap 이 하나 더/덜 생겨, 테마 토글 시 색뿐 아니라 레이아웃이
+    # 밀린다. 개수를 고정해 토글이 색상만 바꾸게 한다.
+    st.markdown("<style>" + css + "</style>", unsafe_allow_html=True)
 
 
 def inject_screen_css(name: str) -> None:
