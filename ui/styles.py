@@ -89,6 +89,22 @@ body:has(.db-topbar) .sidebar-nav-item.active{ background:rgba(96,165,250,.16) !
 body:has(.db-topbar) .app-llm-banner{ background:rgba(180,83,9,.18) !important; border-color:rgba(180,83,9,.42) !important; color:#FCD34D !important; }
 body:has(.db-topbar) .app-llm-banner b{ color:#FCD34D !important; }
 body:has(.db-topbar) .ws-brief-handoff{ background:rgba(37,99,235,.16) !important; border-color:rgba(37,99,235,.36) !important; color:#BFDBFE !important; }
+/* 네이티브 selectbox/드롭다운 팝오버 — body 루트 포털이라 토큰만으론 안 잡힘.
+   라이트 흰 메뉴가 다크 위에 뜨던 문제 → 메뉴/옵션 다크화. */
+body:has(.db-topbar) [data-baseweb="popover"] [data-baseweb="menu"],
+body:has(.db-topbar) [data-baseweb="popover"] ul[role="listbox"],
+body:has(.db-topbar) [data-baseweb="popover"] [role="listbox"]{ background:#1E293B !important; border-color:#334155 !important; }
+body:has(.db-topbar) [data-baseweb="popover"] li[role="option"],
+body:has(.db-topbar) [data-baseweb="popover"] [role="option"]{ background:#1E293B !important; color:#F1F5F9 !important; }
+body:has(.db-topbar) [data-baseweb="popover"] li[role="option"]:hover,
+body:has(.db-topbar) [data-baseweb="popover"] [role="option"][aria-selected="true"]{ background:#334155 !important; }
+/* st.dialog(온보딩 등) 모달 표면 다크화 */
+body:has(.db-topbar) [data-testid="stDialog"] [role="dialog"],
+body:has(.db-topbar) [role="dialog"][aria-modal="true"]{ background:#1E293B !important; color:#F1F5F9 !important; }
+/* 다크 토스트/팝오버 일반 표면 */
+body:has(.db-topbar) [data-testid="stToast"]{ background:#1E293B !important; color:#F1F5F9 !important; border:1px solid #334155 !important; }
+/* ⌘K 팔레트 아이콘 박스 — 다크에서 본문보다 어둡게 해 대비 확보 */
+body:has(.db-topbar) .v2-cmdk-ic{ background:#0F172A !important; }
 """
 
 # 강조 색상 테마 (라이트 베이스 + accent 토큰 교체) — 네이티브 primary 버튼도 추종.

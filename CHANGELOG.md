@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (다크 팔레트 점검 + LLM 채팅 패널 크기/sticky)
+- **다크모드 ⌘K 팔레트·드롭다운 허옇게** — ⌘K 모달이 `background:#fff` 하드코딩이라 다크에서 흰 배경+밝은 글자로 안 읽혔다(`app_shell` `.v2-cmdk-modal`→`var(--surface-card)`). 추가로 다크에서 색이 안 잡히던 표면 보강: 네이티브 selectbox **드롭다운 팝오버**(body 루트 포털 `[data-baseweb="popover"]` 메뉴/옵션), `st.dialog` 모달, 토스트 → 다크화. `data_management_v2` 인라인 `background:#fff` 3곳 → `var(--surface-card)`.
+- **LLM 채팅 패널이 한 화면에 안 들어오고 스크롤 시 따라 움직임** — 근본 원인: 스타일 주입용 `st.markdown("<style>")` 컨테이너(전역·테마·화면 CSS) 3개가 **보이지 않지만 루트 flex 자식**이라 본문/채팅 컬럼을 ~48px(top 56) 아래로 밀어 패널 하단(입력창)이 뷰포트 밖으로 넘쳤다. → `[data-testid="stElementContainer"]:has([data-testid="stMarkdown"] style)` 를 `display:none`(스타일은 숨겨진 요소에서도 전역 적용 → 안전, st.html=stHtml 미해당이라 cmdk/배너 영향 0). 효과: 채팅 컬럼 top **56→24px**, 700px 스크롤 시 이동 **−36→−4px**(사실상 고정), 입력창까지 한 화면에. 패널에 `align-self:flex-start`(stretch 로 늘어나 sticky 무력화되던 것 방지)+`height:calc(100vh-24px)`+내부만 스크롤+배경 토큰화.
+- **부수**: 위 collapse 로 테마 토글 레이아웃 밀림도 더 견고히 차단(숨겨진 블록은 개수 무관 gap 0).
+- 검증: playwright 다크 스크린샷(⌘K·채팅) + 스크롤/좌표 측정 · pytest **769 passed** · 금지 패턴 0.
+
 ### Fixed (사이드바 간격 · 테마 토글 레이아웃 밀림 · 다크 placeholder)
 - **테마 토글 시 레이아웃 밀림** (`ui/styles.py inject_user_prefs`) — light(빈 CSS)는 `st.markdown(<style>)` 를 **안 그리고** dark/ocean/sunset 은 그려서, Streamlit 루트 수직 블록의 자식(=주입 블록) 개수가 테마마다 달라졌다. 그 차이만큼 flex `gap` 이 하나 더/덜 생겨 **색뿐 아니라 위치가 밀렸다**. → 내용이 비어도 **항상 단일 `<style>` 블록**을 주입해 DOM 개수를 고정. playwright 측정으로 light↔dark 시 `.db-topbar`·브랜드 좌표 Δ=0(이전엔 어긋남) 확인.
 - **다크모드 입력 placeholder 안 보임** (`_DARK_CSS`) — 입력 배경만 다크화(#0F172A)하고 placeholder 색은 안 잡아, 기본 회색 placeholder 가 어두운 배경에 묻혔다. → native `stTextInput`/`stTextArea` + baseweb 래퍼의 `::placeholder` 를 밝은 muted(`rgba(241,245,249,.5)`)로(+`-webkit-text-fill-color`·`opacity:1`). 세션 검색·SOLA 채팅창 등 가시화 확인.
