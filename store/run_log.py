@@ -112,12 +112,24 @@ def record_run(report, **kwargs) -> dict:
     return entry
 
 
+# 런 1줄의 보수적 최소 바이트 — 사이즈 게이트용(실제는 ~300~700B). 이보다 작게 잡아야
+# "size < max_keep*이값 → 줄 수 < max_keep" 이 항상 참(트림 누락 없음).
+_MIN_LINE_BYTES = 80
+
+
 def _trim(path: Path, max_keep: int = _MAX_KEEP) -> None:
-    """파일이 너무 커지면 최근 max_keep 줄만 남긴다."""
+    """파일이 max_keep 줄을 넘으면 최근 max_keep 줄만 남긴다.
+
+    매 append 마다 전체 파일을 읽지 않도록, 파일 크기가 확실히 max_keep 미만인
+    동안에는(size < max_keep*_MIN_LINE_BYTES) 읽기를 건너뛴다 (개선 백로그 2.4).
+    """
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except FileNotFoundError:
+        size = path.stat().st_size
+    except OSError:
         return
+    if size < max_keep * _MIN_LINE_BYTES:
+        return  # 확실히 max_keep 미만 — 읽기/리라이트 생략
+    lines = path.read_text(encoding="utf-8").splitlines()
     if len(lines) > max_keep:
         path.write_text("\n".join(lines[-max_keep:]) + "\n", encoding="utf-8")
 

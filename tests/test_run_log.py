@@ -109,3 +109,25 @@ def test_daily_status_fail_takes_priority_same_day():
     run_log.record_run(_report(errors=[{"source": "x", "error": "e"}]),
                        trigger="manual", run_id="er", ts=now.isoformat())
     assert run_log.daily_status(days=14)[-1] == "fail"  # 하루 중 하나라도 실패 → fail
+
+
+def test_trim_keeps_recent_when_over_max_past_size_gate():
+    """사이즈 게이트를 넘는 파일은 여전히 max_keep 로 트림된다 (2.4)."""
+    for i in range(12):
+        run_log.record_run(_report(saved=[{"source": "naver", "count": 1, "path": "p"}]), run_id=f"t{i}")
+    p = run_log._runs_path()
+    run_log._trim(p, max_keep=3)               # 게이트(3*80=240B) 초과 → 트림
+    runs = run_log.load_runs(limit=0)
+    assert len(runs) == 3
+    assert [r["run_id"] for r in runs][0] == "t11"  # 최신 우선, 최근 3개 보존
+
+
+def test_trim_skips_read_when_size_under_gate():
+    """파일 크기가 게이트(max_keep*_MIN_LINE_BYTES) 미만이면 줄 수가 많아도 건드리지 않는다.
+
+    (실데이터는 줄당 ~300B 라 이 degenerate 케이스는 안 생기지만 게이트 로직 검증.)
+    """
+    p = run_log._runs_path(create=True)
+    p.write_text("\n".join(["x"] * 5) + "\n", encoding="utf-8")  # 5줄 ~10B << 2*80
+    run_log._trim(p, max_keep=2)
+    assert len(p.read_text(encoding="utf-8").splitlines()) == 5  # 게이트 미만 → 스킵(트림 안 함)
