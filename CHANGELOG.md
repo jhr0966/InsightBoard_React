@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (사이드바 메인 로고 — 더 크고 멋지게)
+- **메인 로고 리디자인** (`ui/sidebar.py` + `assets/v2/sidebar.css`) — 작던 "IB" 텍스트 배지(30px)를 **그라데이션 마크(44px) + 인사이트 글리프 + 두-톤 워드마크 + 태그라인** 로 격상.
+  - 마크: `linear-gradient(135deg, #2563EB→#4F46E5→#7C3AED)` 라운드 스퀘어 + soft glow 그림자, 안에 흰색 SVG 글리프(상승 막대 3개 + 인사이트 스파크).
+  - 워드마크: "Insight **Board**" 19px(기존 15.5px), "Board" 만 accent 컬러로 두-톤.
+  - 태그라인: "조선소 작업 인사이트"(uppercase muted) 추가.
+- **SVG 렌더 함정 처리** — 인라인 `<svg>` 는 `st.html` 이 sanitize 하므로 `prepare_screen_html` 로 data-URI `<img>` 변환(보드 topbar 패턴). 변환 시 `<svg>` 에 **`xmlns` 필수**(없으면 data-URI img 가 broken) — 추가함.
+- 검증: playwright 사이드바 스크린샷으로 글리프·그라데이션·워드마크 정상 렌더 확인 · pytest **769 passed** · 금지 패턴 0.
+
 ### Changed (사이드바 — 대표 브랜드를 최상단으로)
 - **사이드바 순서 재배치** (`ui/sidebar.py`) — `render()` 가 페르소나 카드를 맨 위에 그리던 것을, **사이트 대표 로고(IB)+타이틀 "Insight Board" 를 최상단 헤더로** 올림(브랜드 → 프로필 → 통계 → 네비 → 푸터). 사이드바 정체성이 맨 위에 오는 일반적 패턴.
 - `assets/v2/sidebar.css` — `.sidebar-brand-top` 신규: 최상단 브랜드를 약간 강조(로고 26→30px·타이틀 14→15.5px) + 하단 구분선으로 아래 프로필 카드와 분리. (구 `.sidebar-brand.compact` 중간 배치 클래스 대체.)
