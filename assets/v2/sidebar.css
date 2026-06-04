@@ -143,6 +143,17 @@
   font-size: 14px; font-weight: 800; letter-spacing: -0.01em;
   color: var(--text-primary, #0F172A);
 }
+/* 최상단 대표 헤더 — 브랜드를 사이드바 맨 위 고정 헤더로(로고+타이틀 약간 강조)
+   + 하단 구분선으로 아래 프로필 카드와 분리. */
+.sidebar-brand-top {
+  margin: 2px 2px 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--surface-divider);
+}
+.sidebar-brand-top .sidebar-brand-mark {
+  width: 30px; height: 30px; font-size: 12px; border-radius: 9px;
+}
+.sidebar-brand-top .sidebar-brand-text { font-size: 15.5px; }
 
 /* ── 섹션 레이블 ──────────────────────────────────────────── */
 .sidebar-section {
