@@ -16,6 +16,12 @@ class LLMNotConfigured(RuntimeError):
     """API key 또는 base_url 미설정."""
 
 
+# 행이 걸린 LLM 백엔드가 Streamlit rerun 을 무한정 멈추지 않게 명시 타임아웃 +
+# 일시 오류 자동 재시도(SDK 내장). scraping.http 의 단일-진입 회복력과 동일 철학.
+_CHAT_TIMEOUT = 45.0
+_MAX_RETRIES = 2
+
+
 @lru_cache(maxsize=4)
 def _client():
     """OpenAI SDK 클라이언트. backend 가 바뀌면 캐시 키도 바뀐다."""
@@ -30,7 +36,7 @@ def _client():
         key = "ollama" if llm_backend() == "ollama" else ""
         if not key:
             raise LLMNotConfigured("LLM_API_KEY 가 비어 있습니다 (.env 확인).")
-    return OpenAI(base_url=base, api_key=key)
+    return OpenAI(base_url=base, api_key=key, timeout=_CHAT_TIMEOUT, max_retries=_MAX_RETRIES)
 
 
 def chat(

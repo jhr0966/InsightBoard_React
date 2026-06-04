@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added/Changed (개선 백로그 잔여 — LLM 회복력·템플릿 검증·guard 확대)
+- **[4.4] LLM 타임아웃/재시도** (`sola/client.py`) — OpenAI 클라이언트에 `timeout=45s` + `max_retries=2` 명시. 행이 걸린 백엔드가 Streamlit rerun 을 무한정 멈추던 것 방지(SDK 기본 무한 대기 → 명시 한계). `scraping.http` 단일-진입 회복력과 동일 철학.
+- **[4.3] 템플릿 placeholder 소비 검증** (`tests/test_template_placeholders.py`) — `screens/*_main.html` 의 `{{TOKEN}}` 이 대응 `ui/*_v2.py` 에서 모두 소비되는지 정적 교차검증(4화면). placeholder 리네임 드리프트가 silent 빈/리터럴 렌더로 새는 것을 차단.
+- **[#3 guard 확대]** — `board_v2` 데일리 브리핑 데이터-로드(news/tasks) 2곳을 `ui._safe.guard` 로 전환. board/insights 잔여 ~38 site 는 후속.
+- 검증: pytest **735→740 passed**(+5) · 금지 패턴 0 · py_compile OK.
+
 ### Added/Changed (개선 백로그 최우선 3건 — 관측성·성능)
 완성도 점검 후 forward-looking 리뷰로 도출한 high-priority 3건 착수(719→**735 passed**).
 - **[#1 관측성] 수집 degraded 가시화** — cron 0건/실패가 화면·CI 모두 무신호던 것: ① `data_management` 상단 경고 배너(`_collect_alert_html`) — 최근 런 실패(빨강)·24h+ 정체(주황) 시 prominent 알림(`run_log.latest_run()` 기반, 런 없으면 무알림). ② `daily_scrape --fail-on-empty` — 0건 저장 시 `exit 1` 로 GitHub Actions 가 silent starvation 을 빨갛게 표면화(`scrape-daily.yml` 이 플래그 ON, 기본은 여전히 exit 0).
