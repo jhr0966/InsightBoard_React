@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Refactor (오버사이즈 모듈 분할 — data_management_v2 프레젠테이션 추출)
+- **`ui/data_management_render.py` 신규(259줄)** — `data_management_v2.py`(1623줄, 오버사이즈)에서 **부작용 없는**(st·데이터 I/O 없는) 순수 프레젠테이션/라우팅 빌더를 분리: 뉴스 카드(`_news_age_label`/`_news_card_html`/`_news_empty_html`), 탭·그룹 라우팅+HTML(`_dm_group_of`/`_dm_resolve_group_and_tab`/`_dm_tab_href`/`_dm_group_href`/`_dm_groups_html`/`_dm_tabs_html`/`_src_action_href`) + 관련 상수(그라데이션·탭/그룹 정의·아이콘 SVG). 데이터를 읽거나 `st.*` 를 호출하는 빌더(수집 헬스·타임라인·탭 본문)는 화면 모듈에 잔류.
+- **하위호환** — `data_management_v2` 가 이 심볼들을 re-import(`# noqa: F401`)해 기존 참조(테스트 `test_dm_tabs` 포함)·내부 호출 전부 무변경. 동작 100% 동일(769 passed). 스테일 `import pandas as pd`(이동 후 미사용) 제거.
+- **효과** — `data_management_v2` 1623→**1406줄**(−217), 순수 빌더가 테스트하기 쉬운 독립 모듈로. (board_v2 분할은 후속 — 빌더가 데이터-결합도가 높아 별도 신중 PR.)
+- 검증: pytest **769 passed**(불변) · 금지 패턴 0 · py_compile OK.
+
 ### Added (render() 스모크 테스트 — 화면 조립 경로 커버리지)
 - **`tests/test_screen_smoke.py` (+13)** — 6개 화면(board/data/insights/sola/archive/persona)의 `render()` 가 빈 데이터(conftest tmp 격리)에서 **예외 없이 끝까지 통과**하는지 + 각 `chat_context_block(persona)` 가 문자열 반환 + SOLA 작업실 인계(`?from=opp`) 경로까지 스모크. 개별 `_*_html` 빌더·pending consumer 는 단위 테스트가 덮지만 render() **조립**(topbar→핸드오프→본문+pending 소비)은 무커버리지였음. Streamlit 이 ScriptRunContext 없이 위젯 기본값 반환(st.button→False)이라 실제 render() 호출로 조립 깨짐(빠진 속성·잘못된 호출·빌더 예외)을 싸게 잡음(mock 은 `st.rerun` no-op 하나뿐 — brittle 회피). 빈 데이터에서 6 render 전부 clean 통과 확인.
 - **conftest sola_threads 격리 (테스트 인프라 버그픽스)** — 스모크가 노출: `store.sola_threads` 는 `from config import SOLA_DIR` 를 import 시점에 가져가는데 conftest 가 `cache`/`chat_log` 만 동기화하고 `sola_threads` 는 빠뜨려, `sola_workshop.render()` 가 **실제** `data/sola/threads.json` 에 쓰려다 fresh clone(CI)에서 `FileNotFoundError`. conftest 에 `sola_threads.SOLA_DIR` tmp 동기화 추가(cache/chat_log 와 동일 패턴) → 모든 thread-touch 테스트가 tmp 격리.
