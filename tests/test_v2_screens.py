@@ -511,22 +511,28 @@ def test_data_management_refresh_clears_caches_and_sets_toast():
     assert data_management_v2._consume_refresh_if_any() is False
 
 
-def test_refresh_warn_toast_when_persona_has_no_keywords():
-    """페르소나 관심사 없을 때 → collect 스킵 + warn 토스트."""
+def test_refresh_uses_default_keywords_when_persona_has_no_keywords():
+    """페르소나 관심사 없을 때 → 스킵하지 않고 기본 키워드(자동화·AI)로 수집."""
     from ui import data_management_v2
     from unittest.mock import patch
+    from scraping.run_daily import CollectionReport
     import streamlit as st
 
     st.query_params.clear()
     st.session_state.pop("_dm_refresh_toast", None)
     st.query_params["refresh"] = "now"
 
+    fake = CollectionReport(
+        saved=[{"source": "tech", "keywords": [], "count": 2, "path": "t"}],
+        errors=[],
+    )
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=[]), \
-         patch("scraping.run_daily.collect_batch") as mock_cb:
+         patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
         data_management_v2._consume_refresh_if_any()
-    mock_cb.assert_not_called()
+    mock_cb.assert_called_once()
+    assert mock_cb.call_args.args[0] == ["자동화", "AI"]
     toast = st.session_state.get("_dm_refresh_toast")
-    assert isinstance(toast, tuple) and toast[0] == "warn"
+    assert isinstance(toast, tuple) and toast[0] == "ok"
 
 
 def test_refresh_error_toast_on_collect_exception():

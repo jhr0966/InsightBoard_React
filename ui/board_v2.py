@@ -234,38 +234,38 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
             )
 
         elif action == "collect":
-            kws = _collect_keywords_for_persona(persona)
+            # 관심사가 비어도 기본 키워드(자동화·AI)로 폴백 + 키워드 무관 소스
+            # (tech·RSS)는 항상 수집 → '지금 뉴스 수집' 이 빈 페르소나에서도 동작.
+            kws, used_default = _collect_keywords_with_default(persona)
             extra_feeds = _collect_extra_feeds()
-            if not kws and not extra_feeds:
+            from scraping.run_daily import collect_batch
+            report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
+            try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
+                from store import run_log
+                run_log.record_run(report, trigger="board")
+            except Exception:  # noqa: BLE001
+                pass
+            n_files = report.total_files
+            n_articles = report.total_articles
+            n_err = len(report.errors)
+            if n_err and n_articles == 0:
                 st.session_state["_kw_action_toast"] = (
-                    "ok", "ℹ️ 수집할 키워드가 없어요. 페르소나 관심사를 먼저 추가해 주세요."
+                    "error",
+                    f"⚠️ 수집 실패: {report.errors[0].get('error','unknown')}",
                 )
             else:
-                from scraping.run_daily import collect_batch
-                report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
-                try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
-                    from store import run_log
-                    run_log.record_run(report, trigger="board")
-                except Exception:  # noqa: BLE001
-                    pass
-                n_files = report.total_files
-                n_articles = report.total_articles
-                n_err = len(report.errors)
-                if n_err and n_articles == 0:
-                    st.session_state["_kw_action_toast"] = (
-                        "error",
-                        f"⚠️ 수집 실패: {report.errors[0].get('error','unknown')}",
-                    )
-                else:
-                    st.session_state["_kw_action_toast"] = (
-                        "ok",
-                        f"✅ {len(kws)}개 키워드로 {n_articles}건 수집 "
-                        f"({n_files}개 파일){f', 일부 오류 {n_err}건' if n_err else ''}.",
-                    )
-                try:
-                    _board_kpis.clear()
-                except Exception:
-                    pass
+                kw_label = (
+                    "기본 키워드(자동화·AI)" if used_default else f"{len(kws)}개 키워드"
+                )
+                st.session_state["_kw_action_toast"] = (
+                    "ok",
+                    f"✅ {kw_label}로 {n_articles}건 수집 "
+                    f"({n_files}개 파일){f', 일부 오류 {n_err}건' if n_err else ''}.",
+                )
+            try:
+                _board_kpis.clear()
+            except Exception:
+                pass
     except Exception as exc:
         st.session_state["_kw_action_toast"] = (
             "error", f"⚠️ 처리 실패: {type(exc).__name__}: {exc}",
@@ -289,6 +289,23 @@ def _collect_keywords_for_persona(persona: Persona) -> list[str]:
             seen.add(k)
             out.append(k)
     return out
+
+
+# 페르소나 관심사가 비어 있을 때 네이버/구글 검색에 쓰는 기본 키워드.
+# (tech 사이트·커스텀 RSS 는 키워드 무관하게 항상 수집되므로 여기엔 키워드 기반
+#  소스용 폴백만 둔다.) 이게 있어야 '지금 뉴스 수집' 이 빈 페르소나에서도 동작한다.
+DEFAULT_COLLECT_KEYWORDS: tuple[str, ...] = ("자동화", "AI")
+
+
+def _collect_keywords_with_default(persona: Persona) -> tuple[list[str], bool]:
+    """수집 키워드 — 페르소나 관심사, 비어 있으면 기본 키워드(자동화·AI)로 폴백.
+
+    반환: (키워드 리스트(항상 1개 이상), 기본 키워드 폴백 사용 여부).
+    """
+    kws = _collect_keywords_for_persona(persona)
+    if kws:
+        return kws, False
+    return list(DEFAULT_COLLECT_KEYWORDS), True
 
 
 def _collect_extra_feeds() -> list[tuple[str, str]]:
