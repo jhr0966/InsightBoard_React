@@ -843,7 +843,7 @@ def _render_task_def_upload() -> None:
     """
     st.html(
         '<div style="margin: 24px 24px 4px; padding: 14px 18px; '
-        'background: #fff; border: 1px solid var(--surface-divider); border-radius: 12px;">'
+        'background: var(--surface-card); border: 1px solid var(--surface-divider); border-radius: 12px;">'
         '<div style="font-size: 18px; font-weight: 800; color: #0F172A; '
         'letter-spacing: -0.01em; margin-bottom: 4px;">📂 작업 정의 데이터 업로드</div>'
         '<div style="font-size: 13px; color: #64748B; line-height: 1.5;">'
@@ -948,7 +948,7 @@ def _render_task_def_diff_preview(pending: dict) -> None:
 
     # 헤더 카드 — 카운트 요약
     summary_html = (
-        '<div style="margin: 18px 24px 8px; padding: 14px 18px; background: #fff; '
+        '<div style="margin: 18px 24px 8px; padding: 14px 18px; background: var(--surface-card); '
         'border: 1px solid var(--surface-divider); border-radius: 12px;">'
         '<div style="font-size: 16px; font-weight: 800; color: #0F172A; '
         'letter-spacing: -0.01em; margin-bottom: 8px;">📊 업로드 미리보기 — 변경 사항</div>'
@@ -1340,7 +1340,7 @@ def _render_src_add_form() -> None:
     """
     st.html(
         '<div style="margin: 18px 24px 4px; padding: 14px 18px; '
-        'background: #fff; border: 1px solid var(--surface-divider); border-radius: 12px;">'
+        'background: var(--surface-card); border: 1px solid var(--surface-divider); border-radius: 12px;">'
         '<div style="font-size: 16px; font-weight: 800; color: #0F172A; '
         'margin-bottom: 4px;">＋ 커스텀 RSS 출처 추가</div>'
         '<div style="font-size: 13px; color: #64748B; line-height: 1.5;">'

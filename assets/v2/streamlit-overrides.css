@@ -58,19 +58,27 @@ body:has(.db-topbar) [data-testid="stMain"] .block-container {
   padding-right: 28px !important;
   padding-bottom: 36px !important;
 }
+/* 스타일 주입용 st.markdown("<style>") 컨테이너는 보이지 않지만 flex 자식이라
+   루트 수직블록에 gap 을 더해 본문/채팅 컬럼을 ~48px 아래로 민다(+ 테마마다 개수가
+   달라지면 토글 시 레이아웃 밀림). display:none 으로 레이아웃에서 제거 — <style>은
+   숨겨진 요소 안에서도 전역 적용되므로 안전. (st.html=stHtml 컨테이너는 미해당 → cmdk/배너 영향 없음.) */
+body:has(.db-topbar) [data-testid="stElementContainer"]:has([data-testid="stMarkdown"] style) {
+  display: none !important;
+}
 
 /* ── 우측 채팅 컬럼 (chat_panel.render_side) — sticky 패널화 ──────────
    컬럼 안에 렌더된 `.side-chat-marker` 를 :has() 로 잡아 컬럼 자체를 패널로. */
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker) {
   position: sticky;
   top: 12px;
-  background: #FFFFFF;
+  align-self: flex-start;        /* flex 컬럼이 stretch 로 늘어나 sticky 가 무력화되지 않게 */
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--surface-divider, #E5E7EB);
   border-radius: 14px;
   padding: 12px 14px 14px;
   box-shadow: var(--shadow-2, 0 4px 12px rgba(15,23,42,0.06));
-  height: calc(100vh - 28px);    /* 뷰포트 높이를 채워 하단 빈 공간 제거 */
-  overflow-y: auto;
+  height: calc(100vh - 24px);    /* 뷰포트에 맞춰 한 화면에 들어오게(상단 12 + 하단 12) */
+  overflow: hidden;              /* 내부 .side-chat-scroll 만 스크롤 */
 }
 /* 패널 안쪽을 flex column 으로 — 입력 form 을 하단에 붙이고 그 위는 메시지/안내가 채움.
    DOM: stColumn > … > stVerticalBlock(마커 포함) > [stElementContainer ×2, stLayoutWrapper>stForm]. */

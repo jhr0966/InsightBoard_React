@@ -182,7 +182,7 @@ def render_command_palette() -> None:
             display: none; position: fixed; z-index: 91;
             top: 84px; left: 50%; transform: translateX(-50%);
             width: min(560px, calc(100vw - 48px));
-            background: #fff; border: 1px solid var(--surface-divider, #E5E7EB);
+            background: var(--surface-card, #fff); border: 1px solid var(--surface-divider, #E5E7EB);
             border-radius: 14px; box-shadow: 0 24px 60px rgba(15,23,42,0.28);
             overflow: hidden;
           }}
