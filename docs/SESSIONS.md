@@ -32,6 +32,22 @@
 
 ---
 
+## 2026-06-04 · 오늘의 보드 헤더↔사이드바 간섭 수정 (전 화면 통일)
+
+**브랜치:** `claude/kind-volta-IWxix` (origin/main `2862c20` 기준).
+
+**맥락:** "오늘의보드 화면 상단 메인헤더가 사이드바와 간섭되어 가려진다. 다른 화면들과 통일. + 나머지 화면 UI 점검."
+
+**원인:** `board.css` 가 `.db-topbar { position: fixed; left:0; right:0; z-index:50 }` 로 재정의 → 보드에서만 헤더가 풀폭 fixed 로 튀어 네이티브 `st.sidebar` 와 겹침. 구 v2 셸(고정 패널 `.app-side`/`.app-sola`) 잔재. 다른 화면은 전역 `shell.css` 의 `position: static` in-flow 헤더 사용(정상).
+
+**한 일:** board.css 상단 stale 블록 160줄(fixed topbar override + `.db-topbar-*` 중복 + `.v2-scroll-fade`/`.app-with-*`/`.app-side`/`.app-sola`/`.hub-back`/`.db-app{padding-top}`) 삭제 → 보드도 shell.css in-flow 헤더 상속 → 5화면 헤더 완전 동일.
+
+**검증:** playwright 전 화면 스크린샷(`verify_screens.py`)으로 board/data/insights/sola/archive 헤더 in-flow 동일 + 사이드바 겹침 0 시각 확인. 나머지 화면 UI 구성도 `[사이드바│본문(in-flow 헤더+콘텐츠)│SOLA 채팅]` 으로 일관·건강. pytest **769 passed**(CSS only).
+
+**함정:** 화면 CSS(`screens/<name>.css`)는 전역 `shell.css` 뒤에 주입돼 **override 가능** — `.db-topbar` 같은 공유 셸 셀렉터를 화면 CSS 에서 재정의하면 그 화면만 깨진다. 공유 헤더는 shell.css 단일 소유 유지.
+
+---
+
 ## 2026-06-04 · 잔여 백로그 — 스모크 테스트 · 모듈 분할 · 의미매칭/guard
 
 **브랜치:** `claude/kind-volta-IWxix` (순차 PR #108~#111).
