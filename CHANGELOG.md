@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added/Changed (개선 백로그 잔여 — 의미매칭 엣지 테스트 + guard 확대)
+- **[의미매칭 엣지케이스]** `tests/test_match_semantic.py` +6 — 내부 TF-IDF 헬퍼 직접 검증: `_build_idf`(빈 코퍼스→{} · 흔한 토큰도 smoothed 양수 idf · 희소어>흔한어), `_tfidf_vec`(빈 counter→norm 1.0 · idf 없는 토큰 제외), `_cosine`(disjoint=0 · 자기자신=1 · **작은쪽 순회 최적화의 대칭성** a·b==b·a). 신경망 임베딩 스왑 시 회귀 가드.
+- **[#3 guard 확대]** `board_v2` 의 silent 데이터-로드 6곳(`try: x=load() except: x=None`)을 `ui._safe.guard` 로 — 기회 매트릭스(html·svg)·보드 KPI·키워드 관리·채팅 컨텍스트의 뉴스/작업 로드. 실패 시 None 폴백은 유지하되 WARN+스택트레이스가 로그에 남아 "보드가 왜 비었나" 추적 가능. (의도적 graceful empty-state·cache-clear except 은 미변경.)
+- 검증: pytest **750→756 passed**(+6) · 금지 패턴 0 · py_compile OK.
+
 ### Changed (SOLA UX — 채팅 단일 진입점 통합 + 인계 자동 실행)
 SOLA 작업실의 LLM 상호작용이 중앙 작업대 버튼과 우측 채팅 두 곳에 분산돼 헷갈리던 것과, 보드/인사이트 인계 배너가 prefill 만 하고 멈추던 것을 해소(사용자 결정 반영, 719+ 누적 → **750 passed**).
 - **[SOLA 채팅 통합]** 중앙 작업대의 액션(📝 제안서 생성 · 📰 뉴스 요약 · ➕ 새 대화)을 우측 채팅 상단 **빠른 작업** quick-action 칩으로 흡수 → 채팅 단일 진입점. `chat_panel._quick_actions_html(area_key)` 가 SOLA 작업실 area 에만 칩을 그리고(`?sola_action=<name>` 링크, on_click 미사용, dept/lv3/from 인계 컨텍스트 보존), `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 기존 pending flag(`_do_generate_proposal`/`_do_summarize`/`_do_new_thread`/`_do_save_proposal`)로 매핑해 같은 run 의 후속 consumer 가 처리(LLM 호출·rerun 위임). 작업대의 중복 버튼 3개(`wb_gen_proposal`/`wb_summarize`/`wb_new_thread`) 제거 → 채팅으로 안내. 문서 산출물·저장/다시생성·세션 목록은 작업대에 유지.

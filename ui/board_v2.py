@@ -875,12 +875,11 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
       - 우상단(쉬움+ROI높음) → db-mx-strong, 좌하단 → db-mx-soft 토글
       - 선택된 버블 → db-mx-on 활성 클래스 + 상세 패널 그 셀로 갱신
     """
-    try:
+    news_df = None
+    tasks_df = None
+    with guard("기회 매트릭스 SVG — 뉴스(14d)·작업 정의 로드"):
         news_df = _news_db.load_news_for_days(days=14)
         tasks_df = _load_tasks()
-    except Exception:
-        news_df = None
-        tasks_df = None
 
     if news_df is None or news_df.empty or tasks_df is None or tasks_df.empty:
         return _matrix_empty_html()
@@ -1016,20 +1015,18 @@ def _board_kw_mgr_html(persona: Persona) -> str:
              count 로 히트 산출
     Summary: 키워드 수 / 예상 일별 수집량(전체 30d/30) / 출처 수
     """
-    try:
+    news_30 = None
+    with guard("키워드 관리 — 뉴스(30d) 로드"):
         news_30 = _news_db.load_news_for_days(days=30)
-    except Exception:
-        news_30 = None
     if news_30 is None or news_30.empty:
         return _kw_mgr_empty_html()
 
     # Group 1
     muted = {str(m).strip() for m in (persona.muted_keywords or []) if str(m).strip()}
-    try:
+    top_df = None
+    with guard("키워드 관리 — 상위 키워드 산출"):
         # 숨김 키워드를 고려해 여유롭게 가져온 뒤 필터링.
         top_df = _trends.top_keywords(news_30, top_n=6 + len(muted))
-    except Exception:
-        top_df = None
     auto_chips: list[str] = []
     if top_df is not None and not top_df.empty:
         # 숨김 처리 + 상위 6개로 truncate
@@ -1163,14 +1160,12 @@ def _opportunities_html() -> str:
     각 cell: dept × lv3 + sample_tasks/sample_news 보유. 시안의 ROI/TRL/기간/
     예산 메트릭은 score 기반 휴리스틱 (실제 cost/timeline 수집 후속 PR).
     """
-    try:
+    news_df = None
+    with guard("기회 매트릭스 — 뉴스(14d) 로드"):
         news_df = _news_db.load_news_for_days(days=14)
-    except Exception:
-        news_df = None
-    try:
+    tasks_df = None
+    with guard("기회 매트릭스 — 작업 정의 로드"):
         tasks_df = _load_tasks()
-    except Exception:
-        tasks_df = None
 
     if (
         news_df is None or news_df.empty
@@ -1370,14 +1365,12 @@ def _board_kpis() -> dict[str, int]:
       opp:     자동화 기회 셀 수 (dept × lv3)
       pending: 채택 대기 제안서 수
     """
-    try:
+    news_df = None
+    with guard("보드 KPI — 뉴스(1d) 로드"):
         news_df = _news_db.load_news_for_days(days=1)
-    except Exception:
-        news_df = None
-    try:
+    tasks_df = None
+    with guard("보드 KPI — 작업 정의 로드"):
         tasks_df = _load_tasks()
-    except Exception:
-        tasks_df = None
 
     collect = int(len(news_df)) if news_df is not None else 0
 
@@ -1451,12 +1444,11 @@ def chat_context_block(persona: Persona) -> str:
             parts.append(f"  {i}. {t} ({src})")
 
     # ③ + ④ + ⑤ + ⑥ — 매칭/기회 데이터 재사용
-    try:
+    news = None
+    tasks = None
+    with guard("채팅 컨텍스트 — 뉴스(14d)·작업 정의 로드"):
         news = _news_db.load_news_for_days(days=14)
         tasks = _load_tasks()
-    except Exception:
-        news = None
-        tasks = None
 
     # ③ 탑스토리 — 최근 3일 매칭 강한 뉴스 헤드라인
     if news is not None and not news.empty and tasks is not None and not tasks.empty:
