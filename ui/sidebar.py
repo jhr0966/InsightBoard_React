@@ -231,22 +231,22 @@ def render() -> str:
     tasks_df = load_tasks()
     persona = _load_persona_into_state()
 
-    # 최상단 사용자 프로필
-    _render_persona_block(persona, tasks_df)
-
-    # 실데이터 통계 3칸 (보드 KPI 와 동일 소스)
-    render_html(_side_stats_html(_load_side_stats()), unsafe_allow_html=True)
-
-    # 브랜드
+    # 최상단 브랜드 — 사이트 대표 로고(IB) + 타이틀. 사이드바 맨 위 고정 헤더.
     render_html(
         """
-        <div class="sidebar-brand compact">
+        <div class="sidebar-brand sidebar-brand-top">
           <div class="sidebar-brand-mark">IB</div>
           <div class="sidebar-brand-text">Insight Board</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+    # 브랜드 아래 사용자 프로필
+    _render_persona_block(persona, tasks_df)
+
+    # 실데이터 통계 3칸 (보드 KPI 와 동일 소스)
+    render_html(_side_stats_html(_load_side_stats()), unsafe_allow_html=True)
 
     # 업무 흐름 네비
     _consume_area_query()

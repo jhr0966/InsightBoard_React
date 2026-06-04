@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Changed (사이드바 — 대표 브랜드를 최상단으로)
+- **사이드바 순서 재배치** (`ui/sidebar.py`) — `render()` 가 페르소나 카드를 맨 위에 그리던 것을, **사이트 대표 로고(IB)+타이틀 "Insight Board" 를 최상단 헤더로** 올림(브랜드 → 프로필 → 통계 → 네비 → 푸터). 사이드바 정체성이 맨 위에 오는 일반적 패턴.
+- `assets/v2/sidebar.css` — `.sidebar-brand-top` 신규: 최상단 브랜드를 약간 강조(로고 26→30px·타이틀 14→15.5px) + 하단 구분선으로 아래 프로필 카드와 분리. (구 `.sidebar-brand.compact` 중간 배치 클래스 대체.)
+- 검증: playwright 사이드바 스크린샷으로 브랜드 최상단·프로필 그 아래 시각 확인 · pytest **769 passed**(sidebar 6 green) · 금지 패턴 0.
+
 ### Fixed (오늘의 보드 상단 헤더 ↔ 사이드바 간섭 — 전 화면 통일)
 - **board 상단 헤더가 네이티브 사이드바를 침범/가리던 문제** — `assets/v2/screens/board.css` 가 `.db-topbar { position: fixed; left:0; right:0 }` 로 **재정의**해, 보드에서만 헤더가 풀폭 fixed 로 튀어나와 좌측 `st.sidebar` 와 겹쳤다(다른 화면은 전역 `shell.css` 의 `position: static` in-flow 헤더를 그대로 사용). 이 override 는 제거된 구 v2 셸(고정 좌/우 패널 `.app-side`/`.app-sola`) 시절의 잔재였고, `.db-topbar-*` 내부 스타일까지 다른 값으로 덮어써(제목 28px·eyebrow 숨김 등) 보드 헤더만 다르게 보였다.
 - **수정** — board.css 상단의 stale topbar + 제거-패널 레이아웃 블록(160줄: `.db-topbar` fixed override · `.db-topbar-*` 중복 · `.v2-scroll-fade` · `.app-with-*`/`.app-side`/`.app-sola` · `.hub-back` · `.db-app{padding-top}`)을 전부 삭제. 보드도 이제 전역 `shell.css` 의 in-flow `.db-topbar` 를 써 **5개 화면 헤더가 완전 동일**(WORKFLOW eyebrow + 제목 + 갱신시각 + 검색, 사이드바와 겹침 0).
