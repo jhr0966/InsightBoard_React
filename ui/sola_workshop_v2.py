@@ -135,8 +135,10 @@ def render() -> None:
 
     # ── pending 핸들러 (위젯 인스턴스화 이전) ──
     # send 는 app.py 의 chat_panel.consume_send_if_any 가 처리(우측 채팅과 thread 공유).
+    _consume_sola_action_from_query_if_any()  # 채팅 quick-action(?sola_action=) → pending flag
     _consume_thread_actions_if_any()
     _switch_thread_from_query_if_any()
+    _auto_run_handoff_if_any()                # 인계(?from=) 1회 자동 LLM 전송 (배선)
     _consume_prefill_ask_if_any()
     _consume_generate_proposal_if_any(persona)
     _consume_summarize_if_any(persona)
@@ -191,11 +193,16 @@ _HANDOFF_LABELS: dict[str, tuple[str, str]] = {
 
 
 def _render_brief_handoff_banner_if_needed() -> None:
-    """`?from=...` 에 따라 인계 컨텍스트 배너 렌더 (LLM 입력 wire 는 후속 PR).
+    """`?from=...` 에 따라 인계 컨텍스트 배너 렌더 + 자동 검토 상태 표시.
 
-    지원 from: brief / opp / matrix / ia_map.
+    지원 from: brief / opp / matrix / ia_map / edit.
       - brief : session_state["_board_brief_items"] 3건 제목 노출
       - opp / matrix / ia_map : URL query 의 dept · lv3 노출
+      - edit : URL query 의 제안서 제목 노출
+
+    `_auto_run_handoff_if_any` 가 이 인계를 자동 전송했으면(시그니처가
+    `_handoff_autorun_done` 에 있으면) "SOLA 가 자동으로 검토를 시작했어요" 확인
+    줄을 덧붙인다 — 사용자가 우측 채팅을 보도록 안내.
     """
     from_kind = st.query_params.get("from")
     if from_kind not in _HANDOFF_LABELS:
@@ -233,6 +240,15 @@ def _render_brief_handoff_banner_if_needed() -> None:
             f'<span class="ws-brief-target-eye">대상</span>'
             f'<span class="ws-brief-target-v">{_html.escape(target)}</span>'
             f'</div>'
+        )
+
+    # 자동 검토가 이미 시작됐으면(시그니처 기록됨) 확인 줄 — 우측 채팅으로 시선 유도.
+    done = st.session_state.get("_handoff_autorun_done") or set()
+    if _handoff_signature(from_kind) in done:
+        body_html += (
+            '<div class="ws-brief-autorun">'
+            '✓ SOLA 가 자동으로 검토를 시작했어요 — 오른쪽 채팅에서 답변을 확인하세요.'
+            '</div>'
         )
 
     st.html(
@@ -274,6 +290,10 @@ def _render_brief_handoff_banner_if_needed() -> None:
             font-size: 11px; color: var(--accent-active); opacity: 0.7; letter-spacing: 0.04em;
           }}
           body:has(.db-topbar) .ws-brief-target-v {{ font-weight: 700; }}
+          body:has(.db-topbar) .ws-brief-autorun {{
+            margin-top: 8px; padding-top: 8px; border-top: 1px dashed #BFDBFE;
+            font-size: 12px; font-weight: 600; color: #047857;
+          }}
         </style>
         <div class="ws-brief-handoff">
           <div class="ws-brief-handoff-h">
@@ -688,6 +708,42 @@ def _render_sola_action_toasts() -> None:
     st.toast(f"{icon} {text}".strip())
 
 
+_SOLA_ACTION_FLAGS: dict[str, str] = {
+    "generate_proposal": "_do_generate_proposal",
+    "summarize": "_do_summarize",
+    "new_thread": "_do_new_thread",
+    "save_proposal": "_do_save_proposal",
+}
+
+
+def _consume_sola_action_from_query_if_any() -> None:
+    """우측 채팅의 quick-action 칩(`?sola_action=<name>`)을 작업대 pending flag 로 변환.
+
+    "채팅으로 통합" 결정 — 중앙 작업대 버튼을 우측 채팅 칩이 대신한다. 칩은
+    on_click 없는 링크라 query 로 들어오므로, 여기서 기존 pending flag 로 매핑하면
+    같은 run 의 후속 `_consume_*_if_any` 들이 그대로 처리한다(LLM 호출·rerun 위임).
+
+    `generate_proposal` 은 인계 컨텍스트(dept/lv3/from)를 페이로드로 보존한다.
+    """
+    action = st.query_params.get("sola_action")
+    if not action:
+        return
+    flag = _SOLA_ACTION_FLAGS.get(str(action))
+    # dept/lv3/from 은 제안서 컨텍스트라 보존 — sola_action 만 소비.
+    if "sola_action" in st.query_params:
+        del st.query_params["sola_action"]
+    if not flag:
+        return
+    if action == "generate_proposal":
+        st.session_state[flag] = {
+            "dept": st.query_params.get("dept", ""),
+            "lv3": st.query_params.get("lv3", ""),
+            "kind": st.query_params.get("from", ""),
+        }
+    else:
+        st.session_state[flag] = True
+
+
 def _consume_thread_actions_if_any() -> None:
     """Thread 관련 pending → 실행 후 rerun.
 
@@ -876,6 +932,44 @@ from urllib.parse import quote as _urlquote
 _AREA_QUOTED = _urlquote("🤖 SOLA 작업실")
 
 
+def _handoff_signature(from_kind: str) -> str:
+    """현재 인계(`?from=...`)의 식별 시그니처 — 같은 인계의 자동 재전송 방지용.
+
+    같은 부서·공정(또는 brief 3건 제목)으로 들어온 인계는 매 rerun 마다 같은
+    시그니처를 내므로, 세션에 1회 기록하면 자동 전송이 정확히 한 번만 일어난다.
+    """
+    dept = st.query_params.get("dept", "")
+    lv3 = st.query_params.get("lv3", "")
+    title = st.query_params.get("title", "")
+    brief_sig = ""
+    if from_kind == "brief":
+        items = st.session_state.get("_board_brief_items") or []
+        brief_sig = "|".join((it.get("title", "") or "")[:40] for it in items[:3])
+    return "::".join([from_kind, dept, lv3, title, brief_sig])
+
+
+def _auto_run_handoff_if_any() -> None:
+    """인계(`?from=...`)가 처음 도착하면 prefill 을 **자동으로** SOLA 에게 전송(LLM 배선).
+
+    배너만 띄우고 멈추던 것을, 인계 1회당 새 thread 생성 + LLM 호출까지 자동으로
+    이어준다(`_do_ask_prefill` 트리거). 같은 인계에서 매 rerun 재전송하지 않도록
+    세션에 시그니처를 기록해 정확히 한 번만 실행한다. prefill 이 비면(컨텍스트
+    부족) 아무것도 하지 않아 빈 인계가 thread 를 만들지 않는다.
+    """
+    from_kind = st.query_params.get("from")
+    if from_kind not in _HANDOFF_LABELS:
+        return
+    prefill, _ph, _pins = _composer_prefill()
+    if not prefill.strip():
+        return
+    sig = _handoff_signature(from_kind)
+    done = st.session_state.setdefault("_handoff_autorun_done", set())
+    if sig in done:
+        return
+    done.add(sig)
+    st.session_state["_do_ask_prefill"] = True
+
+
 def _consume_prefill_ask_if_any() -> None:
     """`_do_ask_prefill` pending → **새 thread 생성** 후 prefill 텍스트로 전송.
 
@@ -933,32 +1027,18 @@ def _render_workbench(persona: Persona) -> None:
         'background:var(--surface-soft); border:1px solid var(--surface-divider); border-radius:999px; font-size:12.5px; '
         'font-weight:600; color:var(--text-secondary);">👤 페르소나 컨텍스트</span>'
     )
+    # 액션(제안서 생성·뉴스 요약·새 대화)은 우측 채팅의 '빠른 작업' 칩으로
+    # 통합됨(채팅 단일 진입점) → 작업대는 컨텍스트 표시 + 안내만.
     st.html(
         '<div style="display:flex; justify-content:space-between; align-items:center; '
         'gap:12px; flex-wrap:wrap; margin:2px 0 12px;"><div>'
         '<div style="font-size:12px; font-weight:800; letter-spacing:0.1em; '
         'text-transform:uppercase; color:var(--text-muted);">작업대</div>'
         '<div style="font-size:14px; color:var(--text-secondary); margin-top:2px;">'
-        '제안서·요약을 만들고 산출물로 저장하세요</div></div>'
+        '오른쪽 <b>SOLA 채팅</b>의 <b>빠른 작업</b>(📝 제안서 생성 · 📰 뉴스 요약 · '
+        '➕ 새 대화)으로 시작하면 결과가 여기 문서로 정리됩니다</div></div>'
         f'<div>{chip}</div></div>'
     )
-    a1, a2, a3 = st.columns([1.4, 1.2, 1.1])
-    with a1:
-        if st.button("📝 제안서 생성", key="wb_gen_proposal", type="primary",
-                     use_container_width=True,
-                     help="인계 컨텍스트(부서·공정) + 관련 뉴스로 자동화 과제 제안서 초안을 생성"):
-            st.session_state["_do_generate_proposal"] = gen_payload
-            st.rerun()
-    with a2:
-        if st.button("📰 뉴스 요약", key="wb_summarize", use_container_width=True,
-                     help="최근 7일 수집 뉴스를 요약"):
-            st.session_state["_do_summarize"] = True
-            st.rerun()
-    with a3:
-        if st.button("➕ 새 대화", key="wb_new_thread", use_container_width=True,
-                     help="새 세션 시작 (현 세션은 아래 목록에 보존)"):
-            st.session_state["_do_new_thread"] = True
-            st.rerun()
 
     # ── 2) 현재 산출물 (캔버스) ──
     st.html(_SEC.format(m="18px 0 8px", t="현재 산출물"))

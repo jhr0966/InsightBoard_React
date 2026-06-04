@@ -32,6 +32,24 @@
 
 ---
 
+## 2026-06-04 · SOLA UX — 채팅 단일 진입점 통합 + 인계 자동 실행
+
+**브랜치:** `claude/kind-volta-IWxix` (origin/main `e26b2dd` 기준).
+
+**맥락:** "잔여 항목들 진행해. 결정이 필요한건 질문해." → 백로그 중 결정 필요 2건을 `AskUserQuestion` 으로 확정(SOLA 2-채팅=**채팅으로 통합**, handoff 배너=**LLM 자동 실행**) 후 구현.
+
+**한 일:**
+- **SOLA 채팅 통합** — 중앙 작업대 액션 3개(제안서 생성·뉴스 요약·새 대화)를 우측 채팅 상단 **빠른 작업** 칩으로 흡수. `chat_panel._quick_actions_html`(SOLA area 한정, `?sola_action=` 링크, dept/lv3/from 보존) + `sola_workshop_v2._consume_sola_action_from_query_if_any`(→ 기존 pending flag 매핑). 작업대 중복 버튼(`wb_gen_proposal`/`wb_summarize`/`wb_new_thread`) 제거 → 안내로 대체.
+- **handoff 자동 실행** — 휴면이던 `_do_ask_prefill` 를 `_auto_run_handoff_if_any` 로 배선: `?from=` 인계 도착 시 prefill 있으면 1회 자동 새 thread + LLM 전송(`_handoff_signature` 중복차단, 빈prefill 무시). 배너에 "✓ 자동 검토 시작" confirm 줄.
+- CSS — `.side-chat-actions`/`.side-chat-action`(primary 칩) + `.ws-brief-autorun`.
+- 테스트 +8(chat_panel 2 · sola_composer 6).
+
+**검증:** pytest **742→750 passed** · 금지패턴 0 · py_compile OK.
+
+**함정:** `?sola_action` 만 소비하고 dept/lv3/from 은 보존해야 제안서 생성이 인계 컨텍스트를 그대로 씀. `_handoff_autorun_done` 시그니처는 brief 의 경우 session `_board_brief_items` 제목까지 포함해야 같은 from 다른 컨텍스트를 구분.
+
+---
+
 ## 2026-06-03 · 저위험 잔여 마무리 — match vectorize · run_log trim · insights guard
 
 **브랜치:** `claude/kind-volta-IWxix` (PR #106 머지 후 origin/main `72488da` reset → 재사용).

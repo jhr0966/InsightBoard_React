@@ -121,6 +121,8 @@ v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st
 - **금지**: 화면별 고정 HTML 우측 패널(구 `app_shell.render_app_sola` 의 disabled 목업)을 부활시키지 말 것. 우측 LLM 채팅은 `render_side` 단일 경로(**모든 area 동일** — 작업실 예외 없음).
 - **area_key 네임스페이스**: area 슬러그(이모지 포함)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 분리 저장 (I-15).
 - **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 저장돼 다음 send 에서 사용된다.
+- **SOLA 작업실 = 채팅 단일 진입점**: 작업대 액션(제안서 생성·뉴스 요약·새 대화)은 중앙 버튼이 아니라 우측 채팅 상단 **빠른 작업** 칩(`chat_panel._quick_actions_html`, SOLA area 한정, `?sola_action=<name>` 링크)으로 노출된다. `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 이를 기존 pending flag 로 매핑하고, 같은 run 의 후속 consumer 가 LLM 호출·rerun 을 위임받는다. `sola_action` 만 소비하고 `dept`/`lv3`/`from` 인계 컨텍스트는 보존한다(제안서 생성이 인계 작업을 그대로 사용).
+- **인계 자동 실행**: `?from=brief/opp/matrix/ia_map/edit` 인계는 `_auto_run_handoff_if_any` 가 prefill 이 있을 때 **1회 자동 전송**한다(`_handoff_signature` 로 같은 인계 재전송 차단, 빈 prefill 무시). 배너는 자동검토 confirm 줄을 덧붙인다.
 - **데드 정리 완료 (Phase 3)**: 좌측은 네이티브 `st.sidebar`, 우측 LLM 채팅은 `chat_panel.render_side` 단일 경로. 구 고정 HTML 패널 `app_shell.render_app_side`/`render_app_sola`(no-op)·패널 토글 클러스터·`chat_panel.render`(구 bottom expander)·`ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`task_defs_db.upsert_many` 모두 삭제됨.
 
 ## I-14 — LLM 설정은 `config._env_or_secret()` 경유

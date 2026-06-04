@@ -48,6 +48,41 @@ def test_each_intro_has_headline_and_at_least_3_suggestions():
         assert len(intro["suggestions"]) >= 3, f"{area}: 추천 질문 3건 미만"
 
 
+# ── 빠른 작업(quick-action) — SOLA 작업실 채팅 통합 ────────────
+
+def test_quick_actions_only_for_sola_workshop():
+    """SOLA 작업실 area 에만 quick-action 칩, 나머지는 빈 문자열."""
+    import streamlit as st
+    st.query_params.clear()
+    try:
+        out = chat_panel._quick_actions_html("🤖 SOLA 작업실")
+        assert "빠른 작업" in out
+        # 3 액션 모두 노출 + sola_action 링크
+        for _label, action in chat_panel._SOLA_QUICK_ACTIONS:
+            assert f"sola_action={action}" in out
+        # 다른 area 는 칩 미노출
+        for other in ("📊 오늘의 보드", "🔎 인사이트 분석", "📦 산출물 보관함"):
+            assert chat_panel._quick_actions_html(other) == ""
+    finally:
+        st.query_params.clear()
+
+
+def test_quick_actions_preserve_handoff_context():
+    """제안서 생성 링크가 인계 컨텍스트(dept/lv3/from)를 보존."""
+    import streamlit as st
+    st.query_params.clear()
+    st.query_params["dept"] = "도장"
+    st.query_params["lv3"] = "비전 검사"
+    st.query_params["from"] = "opp"
+    try:
+        out = chat_panel._quick_actions_html("🤖 SOLA 작업실")
+        # urlencode 라 한글은 percent-encoding — 키 존재로 검증
+        assert "dept=" in out and "lv3=" in out and "from=opp" in out
+        assert "sola_action=generate_proposal" in out
+    finally:
+        st.query_params.clear()
+
+
 # ── 메시지 렌더 ─────────────────────────────────────────────
 
 def test_format_recent_messages_empty_returns_empty():
