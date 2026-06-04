@@ -6,7 +6,7 @@ from urllib.parse import quote, unquote
 
 import streamlit as st
 
-from ui.components import render_html
+from ui.components import render_html, prepare_screen_html
 
 from config import llm_backend, llm_model
 from persona import store as persona_store
@@ -231,16 +231,26 @@ def render() -> str:
     tasks_df = load_tasks()
     persona = _load_persona_into_state()
 
-    # 최상단 브랜드 — 사이트 대표 로고(IB) + 타이틀. 사이드바 맨 위 고정 헤더.
-    render_html(
+    # 최상단 메인 로고 — 그라데이션 마크(상승 막대 + 인사이트 스파크) + 워드마크 + 태그라인.
+    # 인라인 <svg> 는 st.html 이 sanitize 하므로 prepare_screen_html 로 data-URI <img> 변환.
+    render_html(prepare_screen_html(
         """
         <div class="sidebar-brand sidebar-brand-top">
-          <div class="sidebar-brand-mark">IB</div>
-          <div class="sidebar-brand-text">Insight Board</div>
+          <div class="sidebar-brand-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#FFFFFF">
+              <rect x="3" y="13.4" width="3.9" height="7.1" rx="1.5"/>
+              <rect x="10.05" y="9.7" width="3.9" height="10.8" rx="1.5"/>
+              <rect x="17.1" y="7.2" width="3.9" height="13.3" rx="1.5"/>
+              <path d="M18.95 1.4l.74 1.78 1.78.74-1.78.74-.74 1.78-.74-1.78-1.78-.74 1.78-.74z"/>
+            </svg>
+          </div>
+          <div class="sidebar-brand-copy">
+            <div class="sidebar-brand-text">Insight<span class="sidebar-brand-accent">Board</span></div>
+            <div class="sidebar-brand-tag">조선소 작업 인사이트</div>
+          </div>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        """
+    ))
 
     # 브랜드 아래 사용자 프로필
     _render_persona_block(persona, tasks_df)

@@ -143,17 +143,40 @@
   font-size: 14px; font-weight: 800; letter-spacing: -0.01em;
   color: var(--text-primary, #0F172A);
 }
-/* 최상단 대표 헤더 — 브랜드를 사이드바 맨 위 고정 헤더로(로고+타이틀 약간 강조)
-   + 하단 구분선으로 아래 프로필 카드와 분리. */
+
+/* ── 최상단 메인 로고 (사이드바 대표 헤더) ──────────────────────
+   그라데이션 마크(상승 막대 + 인사이트 스파크) + 두-톤 워드마크 + 태그라인.
+   하단 구분선으로 아래 프로필 카드와 분리. */
 .sidebar-brand-top {
-  margin: 2px 2px 12px;
-  padding-bottom: 12px;
+  align-items: center;
+  gap: 11px;
+  margin: 4px 2px 14px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--surface-divider);
 }
-.sidebar-brand-top .sidebar-brand-mark {
-  width: 30px; height: 30px; font-size: 12px; border-radius: 9px;
+.sidebar-brand-logo {
+  flex: none;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #2563EB 0%, #4F46E5 52%, #7C3AED 100%);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.34),
+              inset 0 1px 0 rgba(255, 255, 255, 0.30);
 }
-.sidebar-brand-top .sidebar-brand-text { font-size: 15.5px; }
+.sidebar-brand-logo img, .sidebar-brand-logo svg { display: block; }
+.sidebar-brand-copy {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+}
+.sidebar-brand-top .sidebar-brand-text {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.022em; line-height: 1.0;
+  color: var(--text-primary, #0F172A);
+}
+.sidebar-brand-accent { color: var(--accent-primary, #2563EB); margin-left: 4px; }
+.sidebar-brand-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94A3B8);
+}
 
 /* ── 섹션 레이블 ──────────────────────────────────────────── */
 .sidebar-section {
