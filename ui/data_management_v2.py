@@ -491,21 +491,100 @@ def _hist_html(dark: bool = False) -> dict[str, str]:
     return {"head": head_html, "svg": svg_img, "foot": foot_html, "runs": _run_timeline_html()}
 
 
+# 뉴스 라이브러리 검색 세션 키 — 검색어는 _news_cards_html 에 인자로 전달(캐시키 분리).
+_NEWS_SEARCH_KEY = "_news_search_q"
+_NEWS_SEARCH_COLS = ("title", "content", "summary", "keywords")
+_MAX_SEARCH_CARDS = 24  # 검색 모드에선 더 많이 노출
+
+
+def _filter_news_by_query(news, q: str):
+    """제목·본문·요약·키워드에 `q`(대소문자 무시)가 포함된 뉴스만. 순수 함수(테스트용)."""
+    ql = (q or "").strip().lower()
+    if not ql or news is None or news.empty:
+        return news
+    cols = [c for c in _NEWS_SEARCH_COLS if c in news.columns]
+    if not cols:
+        return news.iloc[0:0]
+    hay = news[cols[0]].fillna("").astype(str)
+    for c in cols[1:]:
+        hay = hay.str.cat(news[c].fillna("").astype(str), sep=" ")
+    return news[hay.str.lower().str.contains(ql, regex=False, na=False)]
+
+
+def _news_search_banner_html(q: str, n: int) -> str:
+    """검색 활성 시 결과 칩 + 해제(×) 링크. 해제는 `?dm_clear_q=1`."""
+    from urllib.parse import quote as _q
+    q_safe = _html.escape(q)
+    clear_href = "?app_area=" + _q("🧱 데이터 관리") + "&dm_clear_q=1"
+    return (
+        '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; '
+        'margin:0 0 12px; padding:10px 14px; background:var(--accent-ring,rgba(37,99,235,.10)); '
+        'border:1px solid var(--surface-divider); border-radius:10px;">'
+        f'<span style="font-size:13px; color:var(--text-primary);">🔎 '
+        f'<b>“{q_safe}”</b> 검색 결과 <b>{n}건</b></span>'
+        f'<a href="{clear_href}" target="_self" style="margin-left:auto; font-size:12.5px; '
+        'font-weight:600; color:var(--accent-primary); text-decoration:none;">✕ 검색 해제</a>'
+        '</div>'
+    )
+
+
+def _news_no_match_html(q: str) -> str:
+    return (
+        '<li class="dm-art" style="grid-column:1/-1; padding:28px 18px; text-align:center; '
+        'color:var(--text-muted); font-size:14px; border:1px dashed var(--surface-divider); '
+        'border-radius:12px;">'
+        f'“{_html.escape(q)}” 와 일치하는 뉴스가 최근 30일 내 없어요.<br>'
+        '<span style="font-size:12.5px;">다른 키워드로 검색하거나 ✕ 로 해제하세요.</span>'
+        '</li>'
+    )
+
+
+def _consume_news_search_clear_if_any() -> None:
+    """`?dm_clear_q=1` → 상단 검색 해제: `_news_search_q`·입력 위젯(`_topbar_q`) 비우고 rerun.
+
+    입력 위젯 값은 위젯 인스턴스화 **전**에만 세팅 가능하므로 render_topbar 호출 전에 실행.
+    """
+    if not st.query_params.get("dm_clear_q"):
+        return
+    st.session_state[_NEWS_SEARCH_KEY] = ""
+    st.session_state["_topbar_q"] = ""
+    st.session_state["_topbar_q_seen"] = ""   # 변화감지 시드도 리셋(해제 후 재제출 방지)
+    if "dm_clear_q" in st.query_params:
+        del st.query_params["dm_clear_q"]
+    st.rerun()
+
+
 @st.cache_data(ttl=60)
-def _news_cards_html() -> str:
-    """최근 뉴스 6건 → 카드 HTML 결합."""
+def _news_cards_html(q: str = "") -> str:
+    """최근 뉴스 카드 — `q`(검색어) 가 있으면 30일 내 제목·본문·키워드 매칭 뉴스 필터.
+
+    검색어는 **인자**로 받는다(세션 직접 참조 X) — `st.cache_data` 가 q 별로 캐시 키를
+    잡아 검색 결과가 올바르게 분리/갱신되고, 새로고침 시 `.clear()` 도 유지된다.
+    """
+    q = (q or "").strip()
+    days = 30 if q else 3
     try:
-        news = _news_db.load_news_for_days(days=3)
+        news = _news_db.load_news_for_days(days=days)
     except Exception:
         news = None
     if news is None or news.empty:
-        return _news_empty_html()
+        return (_news_search_banner_html(q, 0) if q else "") + _news_empty_html()
 
     # collected_at 내림차순 정렬 (있으면)
     if "collected_at" in news.columns:
         news = news.sort_values("collected_at", ascending=False)
     elif "published_at" in news.columns:
         news = news.sort_values("published_at", ascending=False)
+
+    if q:
+        matched = _filter_news_by_query(news, q)
+        if matched is None or matched.empty:
+            return _news_search_banner_html(q, 0) + _news_no_match_html(q)
+        cards = "\n".join(
+            _news_card_html(row, is_strong=False)
+            for _, row in matched.head(_MAX_SEARCH_CARDS).iterrows()
+        )
+        return _news_search_banner_html(q, int(len(matched))) + cards
 
     top = news.head(_MAX_NEWS_CARDS)
     parts = []
@@ -600,6 +679,7 @@ def render() -> None:
     inject_screen_css("data_management")
 
     _consume_refresh_if_any()
+    _consume_news_search_clear_if_any()  # ?dm_clear_q=1 → 검색 해제 (render_topbar 전: 입력 위젯 리셋)
 
     persona = app_shell.get_persona()
     stats = _archive_stats_dm()
@@ -1387,7 +1467,8 @@ def _render_main(dm_stats: dict[str, str | int], *, selected_tab: str = "jobs",
         .replace("{{ACTIVE_SOURCES}}", _html.escape(str(dm_stats["active_sources"])))
         .replace("{{TODAY_COUNT}}", _html.escape(str(dm_stats["today_count"])))
         .replace("{{TOTAL_CHUNKS}}", _html.escape(str(dm_stats["total_chunks"])))
-        .replace("{{NEWS_CARDS}}", _news_cards_html())
+        .replace("{{NEWS_CARDS}}", _news_cards_html(
+            str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()))
         .replace("{{INGEST_JOBS}}", _ingest_jobs_html())
         .replace("{{INGEST_REFRESH_CTA}}", _refresh_cta_html())
         .replace("{{HIST_HEAD}}", hist["head"])

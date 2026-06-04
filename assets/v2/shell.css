@@ -18,14 +18,14 @@
    ════════════════════════════════════════════════════════════ */
 .db-topbar {
   /* Phase A: fixed 풀폭 헤더 → in-flow 페이지 헤더 (네이티브 사이드바와 겹침 제거).
-     본문 컬럼 최상단에 흐르며, 좁은 폭에서도 안전하게 줄어든다. */
+     검색은 헤더 아래 실제 입력(_render_topbar_search)으로 분리 → 헤더는 제목 | 액션 2-열. */
   position: static;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 300px) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: center;
-  padding: 4px 2px 14px;
-  margin-bottom: 14px;
+  padding: 4px 2px 12px;
+  margin-bottom: 10px;
   background: transparent;
   border-bottom: 1px solid var(--surface-divider);
 }

@@ -1,8 +1,7 @@
 """v2 디자인 시스템의 글로벌 크롬 — 모든 화면 공유.
 
 글로벌 크롬:
-  - render_topbar()          : 풀폭 fixed 헤더 (60px) — WORKFLOW / 페이지명 + 검색 + 알림/아바타
-  - render_command_palette() : ⌘K 빠른 이동 모달
+  - render_topbar()          : 페이지 헤더 (WORKFLOW / 페이지명 + 알림/아바타) + 실제 키워드 검색
   - get_persona()            : 세션 페르소나 단일 진입점
 
 좌측 nav 는 네이티브 `st.sidebar`(`ui/sidebar.py`), 우측 LLM 채팅은
@@ -38,47 +37,6 @@ def get_persona() -> Persona:
     p = persona_store.load()
     st.session_state["persona"] = p
     return p
-
-
-# ── 5-nav 정의 (sidebar.AREAS 와 1:1 대응) ─────────────────────
-_NAV_ITEMS: tuple[tuple[str, str, str, str], ...] = (
-    # (area_key, title, subtitle, svg_d_path)
-    (
-        "📊 오늘의 보드",
-        "오늘의 보드",
-        "맞춤 인사이트",
-        "<rect x='3' y='3' width='7' height='9' rx='1'/>"
-        "<rect x='14' y='3' width='7' height='5' rx='1'/>"
-        "<rect x='14' y='12' width='7' height='9' rx='1'/>"
-        "<rect x='3' y='16' width='7' height='5' rx='1'/>",
-    ),
-    (
-        "🧱 데이터 관리",
-        "데이터 관리",
-        "수집 · 둘러보기",
-        "<ellipse cx='12' cy='5' rx='9' ry='3'/>"
-        "<path d='M3 5v14a9 3 0 0018 0V5M3 12a9 3 0 0018 0'/>",
-    ),
-    (
-        "🔎 인사이트 분석",
-        "인사이트 분석",
-        "트렌드 · 매트릭스",
-        "<circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/>",
-    ),
-    (
-        "🤖 SOLA 작업실",
-        "SOLA 작업실",
-        "초안 · 대화",
-        "<path d='M12 2L9.5 8.5 3 11l6.5 2.5L12 20l2.5-6.5L21 11l-6.5-2.5z'/>",
-    ),
-    (
-        "📦 산출물 보관함",
-        "산출물 보관함",
-        "북마크 · 채택",
-        "<path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/>"
-        "<path d='M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12'/>",
-    ),
-)
 
 
 def _avatar_letter(persona: Persona) -> str:
@@ -128,109 +86,6 @@ def render_setup_banner_if_needed() -> bool:
         """
     )
     return True
-
-
-def render_command_palette() -> None:
-    """⌘K / Ctrl+K 커맨드 팔레트 (CSS-only, JS 없음).
-
-    Streamlit 의 `st.html` 은 인라인 `<script>` 를 실행하지 않으므로, 키보드
-    단축키 대신 checkbox 해킹으로 토글한다:
-      - topbar 검색창(`<label for="v2-cmdk">`) 클릭 → 모달 open
-      - 백드롭 클릭 → close
-    모달 항목은 모두 `<a href="?app_area=...">` 라 선택 시 실제 네비게이션이
-    동작한다 (query-param 단일 진실 패턴과 일치).
-
-    `?app_area` 인코딩은 `_NAV_ITEMS` 와 동일 규칙(quote)을 사용. 호출은 페이지당
-    1회 (app.py), `.db-topbar` 가 있는 v2 셸에서만 노출.
-    """
-    rows = []
-    for area_key, title, subtitle, svg_d in _NAV_ITEMS:
-        href = f"?app_area={quote(area_key)}"
-        rows.append(
-            f'<a class="v2-cmdk-row" href="{href}" target="_self">'
-            f'<span class="v2-cmdk-ic">'
-            f"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' "
-            f"fill='none' stroke='#475569' stroke-width='2' stroke-linecap='round' "
-            f"stroke-linejoin='round'>{svg_d}</svg></span>"
-            f'<span class="v2-cmdk-txt"><b>{_html.escape(title)}</b>'
-            f'<small>{_html.escape(subtitle)}</small></span>'
-            f'<span class="v2-cmdk-go">↵</span>'
-            f'</a>'
-        )
-    # 페르소나 편집 바로가기
-    rows.append(
-        '<a class="v2-cmdk-row" href="?persona_editor=1" target="_self">'
-        '<span class="v2-cmdk-ic">'
-        "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' "
-        "fill='none' stroke='#475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
-        "<path d='M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2'/><circle cx='12' cy='7' r='4'/></svg></span>"
-        '<span class="v2-cmdk-txt"><b>프로필 / 페르소나 편집</b><small>관심 공정 · 부서 설정</small></span>'
-        '<span class="v2-cmdk-go">↵</span>'
-        '</a>'
-    )
-    rows_html = "\n".join(rows)
-
-    st.html(
-        f"""
-        <style>
-          body:has(.db-topbar) .v2-cmdk-toggle {{ display: none; }}
-          body:has(.db-topbar) .v2-cmdk-backdrop {{
-            display: none; position: fixed; inset: 0; z-index: 90;
-            background: rgba(15,23,42,0.40); backdrop-filter: blur(2px);
-          }}
-          body:has(.db-topbar) .v2-cmdk-modal {{
-            display: none; position: fixed; z-index: 91;
-            top: 84px; left: 50%; transform: translateX(-50%);
-            width: min(560px, calc(100vw - 48px));
-            background: var(--surface-card, #fff); border: 1px solid var(--surface-divider, #E5E7EB);
-            border-radius: 14px; box-shadow: 0 24px 60px rgba(15,23,42,0.28);
-            overflow: hidden;
-          }}
-          body:has(.db-topbar) .v2-cmdk-toggle:checked ~ .v2-cmdk-backdrop {{ display: block; }}
-          body:has(.db-topbar) .v2-cmdk-toggle:checked ~ .v2-cmdk-modal {{ display: block; }}
-          body:has(.db-topbar) .v2-cmdk-head {{
-            display: flex; align-items: center; gap: 8px;
-            padding: 12px 16px; border-bottom: 1px solid var(--surface-divider, #E5E7EB);
-            font-size: 13px; color: var(--text-muted, #6B7280);
-          }}
-          body:has(.db-topbar) .v2-cmdk-head b {{ color: var(--text-primary, #0F172A); }}
-          body:has(.db-topbar) .v2-cmdk-kbd {{
-            margin-left: auto; font-size: 11px; color: var(--text-muted, #9CA3AF);
-            border: 1px solid var(--surface-divider, #E5E7EB); border-radius: 5px;
-            padding: 1px 6px; font-family: var(--font-mono, monospace);
-          }}
-          body:has(.db-topbar) .v2-cmdk-list {{ padding: 6px; max-height: 60vh; overflow-y: auto; }}
-          body:has(.db-topbar) .v2-cmdk-row {{
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px 12px; border-radius: 9px; text-decoration: none;
-            color: var(--text-primary, #0F172A);
-          }}
-          body:has(.db-topbar) .v2-cmdk-row:hover {{ background: var(--surface-soft, #F3F5F8); }}
-          body:has(.db-topbar) .v2-cmdk-ic {{
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 30px; height: 30px; border-radius: 7px;
-            background: var(--surface-soft, #F3F5F8); flex-shrink: 0;
-          }}
-          body:has(.db-topbar) .v2-cmdk-txt {{ display: flex; flex-direction: column; line-height: 1.3; }}
-          body:has(.db-topbar) .v2-cmdk-txt b {{ font-size: 14px; font-weight: 700; }}
-          body:has(.db-topbar) .v2-cmdk-txt small {{ font-size: 12px; color: var(--text-muted, #6B7280); }}
-          body:has(.db-topbar) .v2-cmdk-go {{
-            margin-left: auto; font-size: 13px; color: var(--text-muted, #9CA3AF);
-          }}
-        </style>
-        <input type="checkbox" id="v2-cmdk" class="v2-cmdk-toggle" aria-hidden="true">
-        <label class="v2-cmdk-backdrop" for="v2-cmdk" aria-label="팔레트 닫기"></label>
-        <div class="v2-cmdk-modal" role="dialog" aria-label="빠른 이동">
-          <div class="v2-cmdk-head">
-            🔎 <b>빠른 이동</b> — 작업 화면으로 점프
-            <label class="v2-cmdk-kbd" for="v2-cmdk" style="cursor:pointer;">닫기  esc</label>
-          </div>
-          <div class="v2-cmdk-list">
-            {rows_html}
-          </div>
-        </div>
-        """
-    )
 
 
 def _notif_count() -> int:
@@ -319,18 +174,6 @@ def render_topbar(
             </div>
           </div>
 
-          <div class="db-topbar-c">
-            <label class="db-hdr-search" for="v2-cmdk" style="cursor:pointer;" title="빠른 이동 (⌘K)">
-              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#475475'
-                   stroke-width='2' stroke-linecap='round' stroke-linejoin='round'
-                   style='color:var(--text-muted);'>
-                <circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/>
-              </svg>" width="15" height="15" alt="" />
-              <span class="db-hdr-search-ph">뉴스 · 작업 · 키워드 검색</span>
-              <span class="db-hdr-search-kbd">⌘K</span>
-            </label>
-          </div>
-
           <div class="db-topbar-r">
             <a class="db-hdr-btn" href="{archive_href}" title="{notif_title}" target="_self" aria-label="알림">
               <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#475569'
@@ -353,6 +196,43 @@ def render_topbar(
         <div class="v2-scroll-fade" aria-hidden="true"></div>
         """
     ))
+    _render_topbar_search()
+
+
+def _render_topbar_search() -> None:
+    """상단 실제 키워드 검색 — 타이핑 가능한 `st.text_input`(구 CSS-only ⌘K 대체).
+
+    Enter(텍스트 확정) 또는 🔎 버튼으로 제출하면 '🧱 데이터 관리' 뉴스 라이브러리로
+    이동해 제목·본문·키워드에 그 단어가 든 뉴스만 필터한다(`_news_search_q`). 빈 값으로
+    제출하면 필터 해제. 모든 화면 상단에 노출되는 글로벌 검색.
+
+    `st.form` 을 쓰지 않는다 — bare 모드(스모크 테스트)에서 form 컨텍스트가 전역
+    'active form' 상태를 남겨 이후 AppTest 가 'nested form' 으로 깨지기 때문. 대신
+    text_input(Enter 시 rerun) + button + '직전 적용값과 다르면 적용' 변화감지로 구현.
+    """
+    c1, c2 = st.columns([8, 1])
+    with c1:
+        q = st.text_input(
+            "키워드 검색", key="_topbar_q",
+            placeholder="🔎 뉴스 키워드 검색 — 입력 후 Enter (데이터 관리에서 결과)",
+            label_visibility="collapsed",
+        )
+    with c2:
+        go = st.button("검색", key="_topbar_search_btn", use_container_width=True)
+
+    q_norm = (q or "").strip()
+    # Enter 는 값이 바뀔 때만 rerun 하므로, '직전에 본 입력값'과 달라졌을 때만 제출로 본다.
+    # (적용된 _news_search_q 가 아니라 별도 _topbar_q_seen 와 비교 → 테스트/네비 상태
+    #  오염으로 인한 의도치 않은 rerun 방지. 첫 렌더는 현재값으로 시드해 무반응.)
+    seen = str(st.session_state.get("_topbar_q_seen", q_norm))
+    st.session_state["_topbar_q_seen"] = q_norm
+    if go or q_norm != seen:
+        st.session_state["_news_search_q"] = q_norm
+        st.session_state["app_area"] = "🧱 데이터 관리"
+        st.query_params["dm_grp"] = "news"
+        if "dm_tab" in st.query_params:
+            del st.query_params["dm_tab"]
+        st.rerun()
 
 
 def _get_persona() -> Persona:
