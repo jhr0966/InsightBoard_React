@@ -11,13 +11,16 @@ from ui import chat_panel
 
 # ── intro 카드 + 추천 질문 ───────────────────────────────────
 
-def test_intro_card_includes_area_headline_and_chips():
+def test_intro_card_includes_area_headline():
     out = chat_panel._intro_card_html("📊 오늘의 보드")
     assert "📊 오늘의 보드" in out
-    # 5 개 추천 질문 모두 chip 으로 노출
-    suggestions = chat_panel._AREA_INTROS["📊 오늘의 보드"]["suggestions"]
-    for s in suggestions:
-        assert s in out
+    # 추천 질문은 더 이상 전체 리로드 앵커가 아니라 입력창 위 st.pills(fragment)로
+    # 노출 → intro 카드 HTML 에는 칩 앵커가 들어가지 않는다.
+    assert "side-chat-chip" not in out
+    assert "?sola_prefill=" not in out
+    # 추천 질문 목록 자체는 _suggestions_for 가 제공한다(= pills 옵션).
+    assert chat_panel._suggestions_for("📊 오늘의 보드") == \
+        chat_panel._AREA_INTROS["📊 오늘의 보드"]["suggestions"]
 
 
 def test_intro_card_falls_back_to_default_for_unknown_area():
@@ -117,15 +120,37 @@ def test_format_recent_messages_role_styling():
     assert "Q" in user_part
 
 
-# ── 추천 질문 chip 은 클릭 링크(?sola_prefill=) ─────────────
+# ── 추천 질문은 pills(fragment) — 전체 리로드 앵커 아님 ─────
 
-def test_intro_card_chips_are_prefill_links():
-    """추천 질문이 정적 span 이 아니라 ?sola_prefill= 링크여야 클릭 시 입력창에 채워진다."""
+def test_suggestions_no_longer_full_reload_anchors():
+    """추천 질문이 전체 리로드 앵커(?sola_prefill=)가 아니라 pills 옵션으로 제공된다."""
     out = chat_panel._intro_card_html("📊 오늘의 보드")
-    assert "side-chat-chip" in out
-    assert "?sola_prefill=" in out
-    # 질문 텍스트가 href 로 인코딩돼 들어간다 (예: 공백 → %20)
-    assert "href=\"?sola_prefill=" in out
+    assert 'href="?sola_prefill=' not in out  # 전체 리로드 앵커 제거됨
+    suggestions = chat_panel._suggestions_for("📊 오늘의 보드")
+    assert len(suggestions) >= 3
+    assert all(isinstance(s, str) and s for s in suggestions)
+
+
+def test_apply_pending_prefill_fills_input_and_pops_pending():
+    """pill 클릭 pending → 입력창 키에 주입 + pending 제거(재적용 방지)."""
+    from types import SimpleNamespace
+
+    ik = "_side_chat_input_board"
+    fake = SimpleNamespace(session_state={f"{ik}__prefill": "트렌드 요약해줘"})
+    with patch.object(chat_panel, "st", fake):
+        assert chat_panel._apply_pending_prefill(ik) is True
+    assert fake.session_state[ik] == "트렌드 요약해줘"
+    assert f"{ik}__prefill" not in fake.session_state
+
+
+def test_apply_pending_prefill_noop_when_no_pending():
+    from types import SimpleNamespace
+
+    ik = "_side_chat_input_board"
+    fake = SimpleNamespace(session_state={})
+    with patch.object(chat_panel, "st", fake):
+        assert chat_panel._apply_pending_prefill(ik) is False
+    assert fake.session_state == {}
 
 
 def test_consume_prefill_sets_input_value_and_clears_param():

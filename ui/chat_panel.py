@@ -89,28 +89,28 @@ _AREA_INTROS: dict[str, dict[str, list[str] | str]] = {
 
 
 def _intro_card_html(area_key: str) -> str:
-    """area 별 안내 + 추천 질문 카드 — 채팅 스크롤 최상단에 **항상** 노출.
+    """area 별 안내 카드 — 채팅 스크롤 최상단에 **항상** 노출(헤드라인 + 한 줄 안내).
 
-    추천 질문 chip 은 `?sola_prefill=<질문>` 링크라 클릭하면 입력창에 그대로
-    채워진다(`_consume_prefill` 이 소비). 색은 모두 토큰 → 다크 추종.
+    추천 질문은 더 이상 전체 새로고침을 일으키는 `?sola_prefill=` 앵커가 아니라
+    입력창 바로 위의 `st.pills`(`_chat_composer` fragment)로 렌더한다 → 칩을 눌러도
+    화면 전체가 리로드되지 않고 입력창에 텍스트만 채워진다.
     """
     intro = _AREA_INTROS.get(area_key) or _AREA_INTROS["📊 오늘의 보드"]
     headline = _html.escape(str(intro["headline"]))
-    items = intro["suggestions"]
-    chip_html = "".join(
-        f'<a class="side-chat-chip" href="?sola_prefill={quote(str(s), safe="")}" '
-        f'target="_self">{_html.escape(str(s))}</a>'
-        for s in items
-    )
     return (
         '<div class="side-chat-intro">'
         f'<div class="side-chat-intro-h">{headline}</div>'
         '<div class="side-chat-intro-sub">'
         '아래 입력창에 직접 적거나, 추천 질문을 눌러 시작하세요.'
         '</div>'
-        f'<div class="side-chat-chips">{chip_html}</div>'
         '</div>'
     )
+
+
+def _suggestions_for(area_key: str) -> list[str]:
+    """area 별 추천 질문 리스트 (정의 없으면 보드 기본)."""
+    intro = _AREA_INTROS.get(area_key) or _AREA_INTROS["📊 오늘의 보드"]
+    return [str(s) for s in (intro.get("suggestions") or [])]
 
 
 _SOLA_QUICK_ACTIONS: list[tuple[str, str]] = [
@@ -228,17 +228,46 @@ def render_side(persona: Persona, area_key: str) -> None:
     safe_area = quote(area_key, safe="")
     input_key = f"_side_chat_input_{safe_area}"
 
-    # 추천 질문 chip 클릭(`?sola_prefill=…`) → 입력창에 채움. 위젯 생성 전에 소비.
-    _consume_prefill(input_key)
-
-    # 안내 + 추천 질문은 **항상** 스크롤 최상단에 두고 그 아래 대화 — 대화를
-    # 시작해도 위로 스크롤하면 안내·추천이 그대로 남아있다.
+    # 안내(헤드라인+한 줄)와 대화는 스크롤 영역에. 추천 질문 pill·입력창은 그 아래
+    # _chat_composer(fragment)로 분리 — pill 클릭이 전체 리로드 없이 입력창만 채운다.
     st.html(
         '<div class="side-chat-scroll">'
         + _intro_card_html(area_key)
         + _format_recent_messages(messages)
         + '</div>'
     )
+
+    _chat_composer(area_key, input_key, safe_area)
+
+
+@st.fragment
+def _chat_composer(area_key: str, input_key: str, safe_area: str) -> None:
+    """추천 질문 pill + 입력 form — **fragment 스코프**.
+
+    pill 클릭은 이 fragment 만 rerun 한다(전체 리로드/흰 깜빡임 없음): 선택값을
+    입력창에 채우고 pill 선택을 즉시 해제해, 채운 뒤 사용자가 편집·재선택해도
+    값이 덮어써지지 않는다(`__reset_pills` → 위젯 재생성 전에 선택 해제).
+    보내기는 전체 rerun(`_do_sola_send` → app.py 상단 `consume_send_if_any`).
+    """
+    pills_key = f"{input_key}__pills"
+    # (위젯 생성 전) 직전 pill 선택 해제 → pending prefill 주입 → 북마크 URL prefill.
+    if st.session_state.pop(f"{input_key}__reset_pills", False):
+        st.session_state[pills_key] = None
+    _apply_pending_prefill(input_key)
+    _consume_prefill(input_key)
+
+    with st.container(key="side_chat_suggest"):
+        picked = st.pills(
+            "추천 질문",
+            _suggestions_for(area_key),
+            selection_mode="single",
+            key=pills_key,
+            label_visibility="collapsed",
+        )
+    if picked:
+        st.session_state[f"{input_key}__prefill"] = picked
+        st.session_state[f"{input_key}__reset_pills"] = True
+        st.rerun(scope="fragment")
 
     with st.form(key=f"_side_chat_form_{safe_area}", clear_on_submit=True):
         user_input = st.text_area(
@@ -252,6 +281,19 @@ def render_side(persona: Persona, area_key: str) -> None:
     if sent and user_input and user_input.strip():
         st.session_state["_do_sola_send"] = user_input.strip()
         st.rerun()
+
+
+def _apply_pending_prefill(input_key: str) -> bool:
+    """추천 질문 pill 클릭으로 세팅된 pending 값을 입력창 위젯 값으로 주입.
+
+    `st.text_area` 위젯 생성 **전에** 호출해야 초기값으로 반영된다(on_click 미사용).
+    pill 클릭은 query_param 을 건드리지 않으므로 전체가 아닌 fragment rerun 만 난다.
+    """
+    pend = st.session_state.pop(f"{input_key}__prefill", None)
+    if pend is None:
+        return False
+    st.session_state[input_key] = pend
+    return True
 
 
 def _consume_prefill(input_key: str) -> None:

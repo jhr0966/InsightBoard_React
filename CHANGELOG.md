@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (UX: 클릭/탭 시 전체 흰 깜빡임 제거 — fragment 스코프 전환 · Phase 1+2)
+- **근본 원인**: 앱의 거의 모든 네비게이션이 `<a href="?param=…">` 앵커였다. 앵커 클릭은 **브라우저 문서 전체 reload**(빈 화면→프론트 재부팅→전 CSS 재주입→리페인트) → 클릭/탭/이동마다 흰 깜빡임. `@st.fragment`·`st.tabs`·`st.pills` 미사용이라 부분 갱신 수단이 전혀 없었다.
+- **Phase 1 — 채팅 프롬프트 예시칩**(`ui/chat_panel.py`): 추천 질문을 전체 리로드 앵커(`?sola_prefill=`)에서 **입력창 바로 위 `st.pills`로 이동**하고, pill+입력 form 을 `@st.fragment`(`_chat_composer`)로 묶었다. 칩 클릭은 **이 fragment 만 rerun**(소켓) → 입력창에 텍스트만 채우고(`_apply_pending_prefill`), 채운 뒤 선택 즉시 해제(`__reset_pills`)해 편집/재선택해도 값이 안 덮인다. 북마크 `?sola_prefill=` URL 호환은 `_consume_prefill` 로 유지. **검증(playwright): 칩 클릭 → textarea 에 정확히 그 텍스트 + `window` 플래그 생존 = 문서 reload 없음.**
+- **Phase 2 — 데이터 관리 탭**(`ui/data_management_v2.py`): 앵커 탭 바(`{{DM_TABS}}` 의 `<a ?dm_tab=>`)를 제거하고, 그룹·하위탭을 **`st.segmented_control` × 2 위젯**으로 바꿔 본문 전체를 `@st.fragment`(`_dm_body_fragment`)로 감쌌다. 탭 전환은 **fragment 만 rerun** → 본문만 교체, 우측 채팅·상단 topbar 재렌더·흰 깜빡임 없음. 본문은 기존 `_render_main`(활성 탭만 lazy 렌더) 유지. 핸드오프/북마크(`?dm_tab=src` 출처 토글·`?dm_grp=news` 상단검색)는 `_dm_sync_tab_from_query` 가 위젯 세션으로 1회 동기화. legacy 빌더(`_dm_tabs_html`/`_dm_groups_html`/`_dm_tab_href`)는 테스트·호환용으로 보존. **검증(playwright): "키워드" 탭 클릭 → kw 본문 전환 + `window` 플래그 생존 = reload 없음.**
+- **다크 모드 가독성**(`assets/v2/streamlit-overrides.css`): Streamlit 이 native pills·segmented_control 의 비활성 배경을 정적 라이트로 하드코딩 → 다크에서 흰 글자가 흰 배경에 묻혔다. `.st-key-side_chat_suggest`/`.st-key-dm_tabbar` 스코프로 토큰(`--surface-card`·`--accent-ring`·`--text-secondary`) 강제 → 라이트·다크 모두 라벨 노출. 구 `.side-chat-chip(s)` 앵커 CSS 는 pills 스타일로 교체.
+- 검증: pytest **775 passed**(빈 키워드/탭 테스트 갱신 + fragment 탭전환 e2e 3건 추가, `_apply_pending_prefill` 단위 2건) · 금지 패턴(on_click/raw requests) 0 · py_compile OK · playwright 로 두 화면 다크 스크린샷 + 무(無)reload 인터랙션 실측. (on_click 금지[I-3]는 fragment 내 위젯+`st.rerun(scope="fragment")` 로 준수.)
+
 ### Changed (수집 버튼: 빈 페르소나에서도 동작 + "지금 뉴스 수집"으로 개명)
 - **문제**: "지금 새로고침" 버튼이 페르소나 관심사 키워드가 **0개면 수집을 통째로 건너뛰고**(`if not kws and not extra_feeds:` 가드) 캐시만 비워, 버튼을 눌러도 뉴스가 안 들어오는 것처럼 보였다. (별개로, 샌드박스 환경은 아웃바운드 HTTP 가 403 으로 차단됨 — `example.com` 까지 403 — 이는 환경 네트워크 정책이라 코드와 무관.)
 - **수정 — 기본 키워드 폴백 + 키워드 무관 소스 항상 수집**: `board_v2`에 `DEFAULT_COLLECT_KEYWORDS=("자동화","AI")` 와 `_collect_keywords_with_default()`(관심사 비면 폴백 + 사용여부 플래그) 추가. `_consume_refresh_if_any`(데이터 관리)와 `consume_kw_action_if_any`의 `collect` 분기(보드) 모두 **스킵 가드를 제거**하고 폴백 키워드로 `collect_batch` 를 호출 → 네이버/구글은 자동화·AI 로 검색, tech 사이트(AI Times·오토메이션월드)·커스텀 RSS 는 키워드 무관하게 함께 수집. 토스트도 폴백 시 "관심사가 비어 기본 키워드(자동화·AI)로 N건 수집" 으로 안내.
