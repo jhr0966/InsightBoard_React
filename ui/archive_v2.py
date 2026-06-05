@@ -34,31 +34,22 @@ _MAX_CARDS_PER_COL = 4
 _COL_KEYS = ("pending", "adopted", "rejected")
 
 
-def _expanded_cols_from_query() -> frozenset[str]:
-    """`?expand=pending,adopted` → {"pending","adopted"}.
+def _expanded_cols() -> frozenset[str]:
+    """현재 펼쳐진 칸반 컬럼 set — 세션(`_oa_expanded`) 기반.
 
-    유효 값만 통과시킨다(미지 키 무시). 빈 값이면 빈 frozenset.
+    구 `?expand=` 앵커(클릭 시 문서 reload)를 세션 토글로 대체. 유효 키만 통과.
     """
-    raw = (st.query_params.get("expand") or "").strip()
-    if not raw:
-        return frozenset()
-    toks = (t.strip() for t in raw.split(","))
-    return frozenset(t for t in toks if t in _COL_KEYS)
+    raw = st.session_state.get("_oa_expanded")
+    if isinstance(raw, frozenset):
+        return frozenset(c for c in raw if c in _COL_KEYS)
+    return frozenset()
 
 
-def _archive_expand_href(col: str, current: frozenset[str]) -> str:
-    """현재 expanded set 을 기준으로 `col` 토글한 URL.
-
-    - col 이 이미 포함 → 제거 (접기)
-    - col 이 미포함 → 추가 (펴기)
-    빈 set 이면 `expand` 파라미터 자체를 생략(깨끗한 URL).
-    """
-    new_set = (current - {col}) if col in current else (current | {col})
-    parts = [f"app_area={quote('📦 산출물 보관함')}"]
-    if new_set:
-        ordered = [c for c in _COL_KEYS if c in new_set]
-        parts.append(f"expand={quote(','.join(ordered))}")
-    return "?" + "&".join(parts)
+def _toggle_expanded(col: str) -> None:
+    """칸반 컬럼 펼침/접힘 토글(세션). 펼침 버튼이 호출한 뒤 st.rerun()."""
+    cur = set(_expanded_cols())
+    cur.symmetric_difference_update({col})
+    st.session_state["_oa_expanded"] = frozenset(c for c in cur if c in _COL_KEYS)
 
 # 카드 액션 URL 매핑 — `?action=...` 키를 set_status 의 값으로 변환.
 _STATUS_TOAST: dict[str, str] = {
@@ -99,13 +90,19 @@ def _edit_handoff_href(bm: Bookmark) -> str:
 
 
 def _consume_action_if_any() -> tuple[str, str] | None:
-    """`?action=...&bm_id=...` 가 있으면 1회 소비 후 set_status.
+    """카드 액션(채택/기각/되돌리기) 1회 소비 후 set_status.
 
+    트리거는 둘 중 하나: 카드 버튼이 세팅한 `_do_archive_action`=(action, bm_id) pending
+    (신규, 문서 reload 없음) 또는 레거시 `?action=…&bm_id=…` 쿼리(북마크/딥링크 호환).
     Returns: (status, bm_id) 가 적용되면 그 튜플, 아니면 None.
     부수효과: 캐시 invalidate + query_params 에서 action/bm_id 제거.
     """
-    action = st.query_params.get("action")
-    bm_id = st.query_params.get("bm_id")
+    pend = st.session_state.pop("_do_archive_action", None)
+    if pend:
+        action, bm_id = pend[0], pend[1]
+    else:
+        action = st.query_params.get("action")
+        bm_id = st.query_params.get("bm_id")
     if not action or not bm_id or action not in _ACTION_TO_STATUS:
         return None
     new_status = _ACTION_TO_STATUS[action]
@@ -114,7 +111,7 @@ def _consume_action_if_any() -> tuple[str, str] | None:
     except Exception:
         pass
     # 캐시 invalidate — 다음 렌더에서 최신 칸반 반영
-    _oa_stats_and_cards.clear()
+    _oa_data.clear()
     # query 정리 — 재방문 / 새로고침에서 액션 재실행 방지
     for k in ("action", "bm_id"):
         if k in st.query_params:
@@ -160,8 +157,12 @@ def _type_label_class(t: str) -> tuple[str, str]:
     return mapping.get(t, (t or "산출물", ""))
 
 
-def _card_html(bm: Bookmark, *, with_actions: bool = False) -> str:
-    """단일 북마크 → 칸반 카드 HTML."""
+def _card_html(bm: Bookmark) -> str:
+    """단일 북마크 → 칸반 카드 HTML(표시 전용).
+
+    채택/수정/기각·되돌리기 액션은 더 이상 카드 안 앵커가 아니라 컬럼 상단의 위젯
+    버튼(`_render_card_actions`)이 담당한다(클릭 시 문서 reload=흰 깜빡임 제거).
+    """
     type_label, type_cls = _type_label_class(bm.type)
     title = _html.escape(bm.title or "(제목 없음)")
     desc = _html.escape((bm.content or "").strip()[:120])
@@ -174,18 +175,6 @@ def _card_html(bm: Bookmark, *, with_actions: bool = False) -> str:
     for tag in (bm.tags or [])[:3]:
         tag_chips += f'<span class="oa-mini">{_html.escape(tag)}</span>'
 
-    actions_html = ""
-    if with_actions and bm.id:
-        # 1순위 카드만 액션 노출 — 같은 화면 유지 + status 변경
-        edit_href = _edit_handoff_href(bm)
-        actions_html = (
-            '<div class="oa-card-actions">'
-            f'<a class="oa-act oa-act-good" href="{_archive_action_href("adopt", bm.id)}" target="_self">채택</a>'
-            f'<a class="oa-act" href="{edit_href}" target="_self">수정</a>'
-            f'<a class="oa-act oa-act-warn" href="{_archive_action_href("reject", bm.id)}" target="_self">기각</a>'
-            '</div>'
-        )
-
     return f"""<article class="oa-card">
       <div class="oa-card-top">
         <span class="oa-tag {type_cls}">{_html.escape(type_label)}</span>
@@ -197,7 +186,6 @@ def _card_html(bm: Bookmark, *, with_actions: bool = False) -> str:
       <div class="oa-card-foot">
         <span class="oa-card-age">{age}</span>
       </div>
-      {actions_html}
     </article>"""
 
 
@@ -213,78 +201,27 @@ def _empty_col_html(status_label: str) -> str:
     </div>"""
 
 
-def _restore_action_html(bm: Bookmark) -> str:
-    """채택/기각 컬럼 1순위 카드에 노출되는 '되돌리기' 액션."""
-    if not bm.id:
-        return ""
-    return (
-        '<div class="oa-card-actions">'
-        f'<a class="oa-act" href="{_archive_action_href("restore", bm.id)}" target="_self">'
-        '↶ 대기로 되돌리기</a>'
-        '</div>'
-    )
+def _cards_block_html(items: list[Bookmark], *, status_label: str,
+                      expanded: bool) -> str:
+    """컬럼의 보이는 카드들을 `.oa-cards` 블록 HTML 로(액션·더보기 앵커 없음).
 
-
-def _build_cards_html(items: list[Bookmark], *, status_label: str,
-                      with_actions_first: bool = False,
-                      with_restore_first: bool = False,
-                      col_key: str = "",
-                      expanded: bool = False,
-                      expanded_set: frozenset[str] = frozenset()) -> str:
-    """컬럼 카드 리스트 → HTML. 빈 리스트는 empty placeholder.
-
-    Args:
-        col_key: 컬럼 키("pending"/"adopted"/"rejected"). "+N건 더 보기" /
-            "− 접기" 토글 링크 빌드에 사용.
-        expanded: True 면 모든 카드 노출 + "− 접기" 링크.
-        expanded_set: 다른 컬럼 expand 상태를 보존한 토글 URL 빌드에 사용.
+    비면 empty placeholder. expanded 가 아니면 최대 `_MAX_CARDS_PER_COL` 장만.
+    '더 보기/접기' 토글과 카드 액션은 위젯 버튼(`_render_kanban_column`)이 담당한다.
     """
     if not items:
         return _empty_col_html(status_label)
-
-    if expanded:
-        visible = items
-        overflow = 0
-    else:
-        visible = items[:_MAX_CARDS_PER_COL]
-        overflow = len(items) - len(visible)
-
-    parts = []
-    for idx, bm in enumerate(visible):
-        card = _card_html(bm, with_actions=(with_actions_first and idx == 0))
-        if with_restore_first and idx == 0:
-            # 카드 article 닫기 직전에 restore action 삽입
-            card = card.replace("</article>", _restore_action_html(bm) + "</article>", 1)
-        parts.append(card)
-
-    if expanded and col_key and len(items) > _MAX_CARDS_PER_COL:
-        # 접기 토글 — 펴진 상태에서만 노출 (4건 이하면 굳이 노출 안 함)
-        href = _archive_expand_href(col_key, expanded_set)
-        parts.append(
-            f'<a class="oa-col-more oa-col-more-collapse" href="{href}" '
-            f'target="_self" aria-label="접기">− 접기 ({len(items)}건)</a>'
-        )
-    elif overflow > 0 and col_key:
-        href = _archive_expand_href(col_key, expanded_set)
-        parts.append(
-            f'<a class="oa-col-more" href="{href}" target="_self" '
-            f'aria-label="모두 보기">+ {overflow}건 더 보기</a>'
-        )
-    return "\n".join(parts)
+    visible = items if expanded else items[:_MAX_CARDS_PER_COL]
+    cards = "\n".join(_card_html(bm) for bm in visible)
+    return f'<div class="oa-cards">{cards}</div>'
 
 
 @st.cache_data(ttl=30)
-def _oa_stats_and_cards(expanded_csv: str = "") -> dict[str, str]:
-    """헤더 4 stats + 칸반 3 컬럼 카드 HTML 일괄 계산.
+def _oa_data() -> dict:
+    """칸반 데이터 — 헤더 4 stats + 컬럼별 정렬된 items.
 
-    Args:
-        expanded_csv: "pending,adopted" 같은 CSV. 빈 문자열이면 모든 컬럼 4건 노출.
-            캐시 키에 포함되므로 expand 토글마다 새 렌더.
+    카드 HTML 은 render 단계(`_cards_block_html`)에서 만들고, items 는 액션 버튼이
+    bm_id/title 을 쓰도록 그대로 노출. 액션/expand 후 `_oa_data.clear()` 로 무효화.
     """
-    expanded_set = frozenset(
-        c for c in expanded_csv.split(",") if c in _COL_KEYS
-    ) if expanded_csv else frozenset()
-
     items = bookmarks_store.list_all(type_="proposal")
     pending_items = [b for b in items if b.status == "pending"]
     adopted_items = [b for b in items if b.status == "adopted"]
@@ -299,26 +236,16 @@ def _oa_stats_and_cards(expanded_csv: str = "") -> dict[str, str]:
     adopted_pct = f"{(len(adopted_items) / decided) * 100:.1f}%" if decided > 0 else "—"
 
     return {
-        "total": str(total),
-        "adopted": str(len(adopted_items)),
-        "pending": str(len(pending_items)),
-        "rejected": str(len(rejected_items)),
-        "adopted_pct": adopted_pct,
-        "cards_pending": _build_cards_html(
-            pending_items, status_label="대기", with_actions_first=True,
-            col_key="pending", expanded=("pending" in expanded_set),
-            expanded_set=expanded_set,
-        ),
-        "cards_adopted": _build_cards_html(
-            adopted_items, status_label="채택", with_restore_first=True,
-            col_key="adopted", expanded=("adopted" in expanded_set),
-            expanded_set=expanded_set,
-        ),
-        "cards_rejected": _build_cards_html(
-            rejected_items, status_label="기각", with_restore_first=True,
-            col_key="rejected", expanded=("rejected" in expanded_set),
-            expanded_set=expanded_set,
-        ),
+        "stats": {
+            "total": str(total),
+            "adopted": str(len(adopted_items)),
+            "pending": str(len(pending_items)),
+            "rejected": str(len(rejected_items)),
+            "adopted_pct": adopted_pct,
+        },
+        "pending": pending_items,
+        "adopted": adopted_items,
+        "rejected": rejected_items,
     }
 
 
@@ -380,11 +307,106 @@ def chat_context_block(persona: Persona) -> str:
     return "\n".join(parts)
 
 
-def render() -> None:
-    """산출물 보관함 v2 — topbar + app-side + main + app-sola.
+# ── 칸반 컬럼 메타 (키 · 라벨 · 점 색 · 부제) ────────────────────
+_KANBAN_COLS: tuple[tuple[str, str, str, str], ...] = (
+    ("pending", "대기", "#0369A1", "SOLA가 만든 초안 · 검토 대기 중"),
+    ("adopted", "채택", "#15803D", "의사결정 완료 · SOLA 컨텍스트 자동 첨부"),
+    ("rejected", "기각", "#B45309", "사유와 함께 보관 · 향후 참고"),
+)
 
-    `?action=adopt|reject|restore&bm_id=...` 가 있으면 첫 단계에서 1회 소비.
-    캐시 invalidate 후 본 렌더가 갱신된 칸반을 그린다.
+
+def _header_html(stats: dict[str, str]) -> str:
+    """`.oa-head`(stats) 헤더 HTML — 칸반 보드는 st.columns 위젯으로 별도 렌더하므로
+    템플릿(`archive_main.html`)은 헤더 전용이다(보드 section 은 제거됨)."""
+    return (
+        _ARCHIVE_TEMPLATE.read_text(encoding="utf-8")
+        .replace("{{OA_TOTAL}}", _html.escape(stats["total"]))
+        .replace("{{OA_ADOPTED_PCT}}", _html.escape(stats["adopted_pct"]))
+        .replace("{{OA_ADOPTED}}", _html.escape(stats["adopted"]))
+        .replace("{{OA_PENDING}}", _html.escape(stats["pending"]))
+        .replace("{{OA_REJECTED}}", _html.escape(stats["rejected"]))
+    )
+
+
+def _col_head_html(label: str, dot: str, cnt: int, meta: str) -> str:
+    return (
+        '<div class="oa-col-head"><div class="oa-col-head-l">'
+        f'<span class="oa-col-dot" style="background:{dot};"></span>'
+        f'<h3 class="oa-col-t">{_html.escape(label)}</h3>'
+        f'<span class="oa-col-cnt">{cnt}</span>'
+        '</div></div>'
+        f'<div class="oa-col-meta">{_html.escape(meta)}</div>'
+    )
+
+
+def _handoff_edit_to_sola(bm: Bookmark) -> None:
+    """'수정' → SOLA 작업실 인계. 세션 app_area + 쿼리(from/bm_id/title) 세팅.
+
+    `st.query_params` 할당은 문서 reload 없이 URL 만 갱신하므로 SOLA 측 소비
+    (`?from=edit&bm_id=&title=`)는 기존 경로 그대로 — SOLA 코드 변경 불필요.
+    """
+    st.session_state["app_area"] = "🤖 SOLA 작업실"
+    st.session_state["show_persona_editor"] = False
+    st.query_params["from"] = "edit"
+    st.query_params["bm_id"] = bm.id or ""
+    st.query_params["title"] = (bm.title or "")[:80]
+
+
+def _render_card_actions(col_key: str, top_bm: Bookmark) -> None:
+    """컬럼 1순위 카드 액션 — 위젯 버튼(구 카드 안 앵커 대체).
+
+    pending: 채택 / 수정(→SOLA) / 기각. adopted·rejected: 대기로 되돌리기.
+    on_click 미사용 — 클릭 시 pending/세션 세팅 후 st.rerun()(소켓 rerun)."""
+    if not top_bm.id:
+        return
+    if col_key == "pending":
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("✅ 채택", key=f"_oa_adopt_{top_bm.id}",
+                         type="primary", use_container_width=True):
+                st.session_state["_do_archive_action"] = ("adopt", top_bm.id)
+                st.rerun()
+        with c2:
+            if st.button("✏️ 수정", key=f"_oa_edit_{top_bm.id}",
+                         use_container_width=True):
+                _handoff_edit_to_sola(top_bm)
+                st.rerun()
+        with c3:
+            if st.button("🗂 기각", key=f"_oa_reject_{top_bm.id}",
+                         use_container_width=True):
+                st.session_state["_do_archive_action"] = ("reject", top_bm.id)
+                st.rerun()
+    else:
+        if st.button("↶ 대기로 되돌리기", key=f"_oa_restore_{top_bm.id}",
+                     use_container_width=True):
+            st.session_state["_do_archive_action"] = ("restore", top_bm.id)
+            st.rerun()
+
+
+def _render_kanban_column(col_key: str, label: str, dot: str, meta: str,
+                          items: list[Bookmark], *, expanded: bool) -> None:
+    """칸반 1개 컬럼 — 컨테이너(.oa-col 룩) > 헤더 + 1순위 액션 + 카드 + 더보기 버튼."""
+    cnt = len(items)
+    with st.container(key=f"oa_col_{col_key}"):
+        st.html(_col_head_html(label, dot, cnt, meta))
+        if items:
+            _render_card_actions(col_key, items[0])
+        st.html(_components.prepare_screen_html(
+            _cards_block_html(items, status_label=label, expanded=expanded)))
+        if cnt > _MAX_CARDS_PER_COL:  # 5건+ 일 때만 더보기/접기
+            n_more = cnt - _MAX_CARDS_PER_COL
+            lbl = f"− 접기 ({cnt}건)" if expanded else f"+ {n_more}건 더 보기"
+            if st.button(lbl, key=f"_oa_more_{col_key}", use_container_width=True):
+                _toggle_expanded(col_key)
+                st.rerun()
+
+
+def render() -> None:
+    """산출물 보관함 v2 — topbar + stats 헤더(HTML) + 칸반(st.columns 위젯).
+
+    카드 액션(채택/수정/기각/되돌리기)·더보기는 위젯 버튼이라 클릭 시 문서 reload
+    (흰 깜빡임)가 없다. 액션 트리거(`_do_archive_action` / 레거시 `?action=`)는
+    첫 단계에서 1회 소비 → 캐시 무효화 후 갱신된 칸반을 그린다.
     """
     inject_screen_css("archive")
 
@@ -393,10 +415,7 @@ def render() -> None:
         _new_status, _ = _acted
         st.toast(_STATUS_TOAST.get(_new_status, "상태를 변경했습니다"))
 
-    persona = app_shell.get_persona()
-    stats = _archive_stats_oa()
-    expanded_csv = ",".join(sorted(_expanded_cols_from_query()))
-    oa = _oa_stats_and_cards(expanded_csv)
+    data = _oa_data()
     refresh = app_shell.refresh_label_now()
 
     app_shell.render_topbar(
@@ -405,17 +424,12 @@ def render() -> None:
         refresh_label=refresh,
         fresh_kind="accent",
     )
-    template = _ARCHIVE_TEMPLATE.read_text(encoding="utf-8")
-    html_out = (
-        template
-        .replace("{{OA_TOTAL}}", _html.escape(oa["total"]))
-        .replace("{{OA_ADOPTED_PCT}}", _html.escape(oa["adopted_pct"]))
-        .replace("{{OA_ADOPTED}}", _html.escape(oa["adopted"]))
-        .replace("{{OA_PENDING}}", _html.escape(oa["pending"]))
-        .replace("{{OA_REJECTED}}", _html.escape(oa["rejected"]))
-        .replace("{{OA_CARDS_PENDING}}", oa["cards_pending"])
-        .replace("{{OA_CARDS_ADOPTED}}", oa["cards_adopted"])
-        .replace("{{OA_CARDS_REJECTED}}", oa["cards_rejected"])
-    )
-    st.html(_components.prepare_screen_html(html_out))
+    st.html(_components.prepare_screen_html(_header_html(data["stats"])))
+
+    expanded = _expanded_cols()
+    cols = st.columns(3, gap="small")
+    for col_st, (key, label, dot, meta) in zip(cols, _KANBAN_COLS):
+        with col_st:
+            _render_kanban_column(
+                key, label, dot, meta, data[key], expanded=(key in expanded))
 

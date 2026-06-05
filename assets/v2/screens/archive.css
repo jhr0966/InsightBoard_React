@@ -1101,3 +1101,46 @@ a.oa-col-more-collapse, a.oa-col-more-collapse:visited { color: var(--accent-pri
   color: var(--accent-primary);
 }
 .oa-prev-foot-spacer { flex: 1; }
+
+/* ════════════════════════════════════════════════════════════
+   위젯화된 칸반 — st.columns(3) + 컬럼 컨테이너(.st-key-oa_col_*)가 구 .oa-col 룩,
+   액션(채택/수정/기각·되돌리기)·더보기는 st.button (문서 reload·흰 깜빡임 제거)
+   ════════════════════════════════════════════════════════════ */
+[class*="st-key-oa_col_"] {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-divider);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  box-shadow: var(--shadow-1);
+}
+.st-key-oa_col_pending  { border-top: 3px solid var(--semantic-info); }
+.st-key-oa_col_adopted  { border-top: 3px solid var(--semantic-success); }
+.st-key-oa_col_rejected { border-top: 3px solid var(--semantic-warning); }
+/* 컬럼 내부 버튼(액션/더보기) 컴팩트화 */
+[class*="st-key-oa_col_"] button {
+  min-height: 0 !important; height: auto !important;
+  padding: 5px 8px !important;
+  font-size: 12.5px !important; font-weight: 700 !important;
+  border-radius: 7px !important;
+}
+/* 채택=good(녹 채움) · 기각=warn(주황 테두리) — 구 .oa-act-good/.oa-act-warn 톤 */
+[class*="st-key-_oa_adopt_"] button,
+[class*="st-key-_oa_adopt_"] button:hover {
+  background: var(--semantic-success) !important;
+  border-color: var(--semantic-success) !important;
+  color: #fff !important;
+}
+[class*="st-key-_oa_reject_"] button {
+  color: var(--semantic-warning) !important;
+  border-color: rgba(180,83,9,0.35) !important;
+}
+[class*="st-key-_oa_reject_"] button:hover {
+  background: rgba(180,83,9,0.06) !important;
+}
+/* 더보기/접기 버튼 — 은은하게(구 .oa-col-more) */
+[class*="st-key-_oa_more_"] button {
+  background: transparent !important;
+  border: 1px dashed var(--surface-divider) !important;
+  color: var(--text-muted) !important;
+  font-weight: 600 !important;
+}

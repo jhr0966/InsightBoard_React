@@ -202,3 +202,12 @@ body:has(.db-topbar) [data-testid="stMain"]
 3. **다크 specificity** — 일반 `body:has(.db-topbar) button[kind="secondary"]`(다크 카드 채움, 0-2-2)가 `.st-key-sidebar_nav button`(0-1-1)보다 높아 nav 까지 #1E293B 로 채운다. `_DARK_CSS` 에서 `body:has(.db-topbar) .st-key-sidebar_nav button[kind="secondary"]`(0-3-2)로 투명 복구 + 활성 틴트 다크화.
 
 단, **컨텍스트 딥링크**(보드→SOLA·히트맵·알림 벨 등 `?app_area=`)는 여전히 앵커이며 `sidebar._consume_area_query` 가 소비한다 — 이건 사이드바 메뉴가 아니라 화면 내 교차 링크라 별개(후속 위젯화 대상).
+
+## I-23 — 흰 깜빡임 없는 화면/액션 전환: 앵커 대신 `st.button` + 세션/`st.query_params`
+
+화면 전환·액션을 거는 `<a href="?param=…">` 앵커는 클릭 시 **브라우저 문서 전체 reload**(흰 깜빡임)다. 같은 결과를 reload 없이 내려면 **`st.button`** 으로 바꾸고 클릭 핸들러에서 상태를 세팅한 뒤 `st.rerun()` 한다(`on_click` 금지 — CLAUDE.md #3):
+
+- **같은 화면 액션**(예: 산출물 채택/기각, 출처 토글, 수집): `st.session_state["_do_…"] = payload` pending → 다음 run 의 `_consume_…` 가 처리. 기존 `?param=` 소비 경로는 **레거시 호환으로 남겨** 둘 다 받게 한다(북마크/딥링크 + 기존 테스트).
+- **컨텍스트 딥링크**(예: 산출물 수정 → SOLA, dept/lv3/from 인계): 핸들러에서 `st.session_state["app_area"]=…` + **`st.query_params[k]=v`** 를 세팅하고 `st.rerun()`. **`st.query_params` 할당은 문서 reload 없이 URL 만 갱신**하므로, 소비자(SOLA 등)가 `st.query_params` 를 읽는 기존 경로를 **그대로 둬도** 된다(소비자 코드 변경 0) — 이게 딥링크 위젯화의 핵심 레버.
+- **레이아웃 함정**: 위젯은 `st.html` 블록 안에 못 넣는다. HTML 카드/그리드에 박힌 액션은 ① 카드를 **표시 전용 HTML** 로 두고 ② 컬럼/행을 `st.container`+`st.columns` 로 감싸 **컨테이너에 기존 룩(테두리·배경)** 을 주고 ③ 액션만 `st.button` 으로 그 안/옆에 배치한다(`.st-key-*` 스코프 CSS). SVG 시각화 셀(히트맵·매트릭스)은 위젯화하면 시각화가 깨지므로 제외.
+- **드리프트 주의**: 템플릿 일부만 쓰게 되면 `test_template_placeholders`·`test_*_cleanup` 가 미소비 `{{TOKEN}}` 을 잡는다 → 죽은 section 은 템플릿에서 **삭제**.
