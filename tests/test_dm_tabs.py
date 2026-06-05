@@ -215,7 +215,7 @@ def test_render_jobs_split_emits_split_no_anchor_tabs():
     assert "{{DM_TABS}}" not in html  # 본문 슬라이스라 placeholder 자체가 없음
 
 
-# ── st.tabs(네이티브) — 모든 패널 eager 렌더, 전환은 클라이언트사이드 ──────
+# ── segmented_control 탭 바 — 활성 탭만 조건부 렌더, 활성 탭 세션 보존 ──────
 
 def _dm_app():
     from streamlit.testing.v1 import AppTest
@@ -228,28 +228,26 @@ def _dm_app():
     return at
 
 
-def test_dm_tabs_eager_render_all_panels_no_exception():
-    """st.tabs 는 한 런에서 모든 패널을 eager 렌더 → jobs(dm-split)·kw(키워드 관리)
-    본문이 동시에 출력되고 예외 없음. 탭 전환은 100% 클라이언트사이드(서버 rerun 0)라
-    예전 앵커 탭 바(<a dm-tab>)는 더 이상 굽지 않는다."""
+def test_dm_tabs_default_renders_only_jobs_panel():
+    """기본(활성 탭=jobs)은 jobs 본문(dm-split)만 조건부 렌더한다. 비활성 kw 본문
+    (키워드 관리)은 계산조차 안 됨(st.tabs 의 eager 렌더 비용 제거). 탭 바는
+    segmented_control 이라 예전 앵커 탭(<a class=dm-tab>)은 더 이상 굽지 않는다."""
     at = _dm_app()
     at.run()
     assert not at.exception
     combined = "\n".join(h.proto.body for h in at.get("html"))
     assert "dm-split" in combined            # jobs 패널 (뉴스 라이브러리 split)
-    assert "키워드 관리" in combined          # kw 패널 본문 — 동시에 렌더됨
-    assert 'class="dm-tab"' not in combined  # 앵커 탭 바 제거됨(st.tabs 가 대체)
+    assert "키워드 관리" not in combined      # kw 본문은 비활성 → 조건부 미렌더
+    assert 'class="dm-tab"' not in combined  # 앵커 탭 바 제거됨(segmented_control 이 대체)
 
 
-def test_dm_tabs_handoff_query_cleaned_and_panels_render():
-    """레거시 핸드오프 `?dm_tab=src` 는 st.tabs 에선 탭을 못 고르므로 1회 정리된다.
-    모든 패널은 여전히 eager 렌더되어 출처 본문이 출력된다."""
+def test_dm_tabs_active_kw_renders_only_kw_panel():
+    """활성 탭을 kw 로 세션에 세팅하면 kw 본문(키워드 관리)만 렌더되고 jobs 본문
+    (dm-split)은 그려지지 않는다 — 활성 탭만 조건부 렌더 + 활성 탭 세션 보존."""
     at = _dm_app()
-    at.query_params["dm_tab"] = "src"
+    at.session_state["_dm_active_tab"] = "kw"
     at.run()
     assert not at.exception
     combined = "\n".join(h.proto.body for h in at.get("html"))
-    assert "출처" in combined                 # src 패널 본문
-    assert "dm-split" in combined             # jobs 패널도 함께 eager 렌더
-    # 핸드오프 query 는 정리됨(URL 만 지저분해지므로)
-    assert "dm_tab" not in at.query_params
+    assert "키워드 관리" in combined          # kw 패널 본문
+    assert "dm-split" not in combined         # jobs 본문은 비활성 → 미렌더

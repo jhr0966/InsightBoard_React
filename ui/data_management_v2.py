@@ -713,13 +713,14 @@ def render() -> None:
     _render_task_def_toast_if_needed()
     _render_src_action_toast_if_needed()
 
-    # 레거시 핸드오프 query(?dm_grp/?dm_tab)는 st.tabs(클라이언트사이드)에선 탭을 못 고른다.
-    # 남으면 URL 만 지저분 → 1회 정리.
+    # 레거시 핸드오프 query(?dm_grp/?dm_tab)는 segmented_control(세션 상태 기반)에선
+    # 탭을 못 고른다. 남으면 URL 만 지저분 → 1회 정리.
     for _k in ("dm_grp", "dm_tab"):
         if _k in st.query_params:
             del st.query_params[_k]
-    # 헤더(KPI)는 1회만, 본문은 st.tabs 패널 — 탭 전환은 100% 클라이언트사이드라
-    # 서버 rerun·문서 리로드 0 (헤더·우측 채팅·다른 탭 재렌더 없음).
+    # 헤더(KPI)는 1회만, 본문은 segmented_control 탭 바 + 활성 탭만 조건부 렌더
+    # (_render_dm_tabs 가 fragment). 탭 전환은 fragment rerun 이라 헤더·우측 채팅·
+    # 사이드바는 재렌더되지 않고 활성 탭 본문만 부분 갱신된다.
     _render_dm_header(dm_stats)
     _render_dm_tabs(dm_stats, persona)
 
@@ -729,10 +730,10 @@ _DM_DISPLAY_TABS: tuple[str, ...] = ("jobs", "kw", "src", "task", "manage")
 
 
 def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
-    """상단 고정 헤더(브레드크럼·설명·KPI 4종) — st.tabs 위에 1회만.
+    """상단 고정 헤더(브레드크럼·설명·KPI 4종) — 탭 바 위에 1회만.
 
-    탭 전환은 st.tabs 의 클라이언트사이드 전환이라 이 헤더는 다시 그려지지 않는다
-    (탭마다 KPI 가 깜빡이던 monolithic st.html 문제 제거)."""
+    탭 전환은 _render_dm_tabs fragment 안에서만 일어나므로 이 헤더는 다시 그려지지
+    않는다 (탭마다 KPI 가 깜빡이던 monolithic st.html 문제 제거)."""
     template = _DM_TEMPLATE.read_text(encoding="utf-8")
     head = template.split("{{DM_TABS}}", 1)[0]  # <div class=dm-shell>…<header>…</header>
     head_html = (
@@ -769,25 +770,48 @@ def _render_jobs_split(dm_stats: dict[str, str | int]) -> None:
     st.html(_components.prepare_screen_html(html_out))
 
 
+# 세그먼트 탭 바용 짧은 라벨(+아이콘) — 좁은 본문 컬럼에 5개가 안 넘치게.
+_DM_TAB_SHORT: dict[str, str] = {
+    "jobs": "🗞 수집잡", "kw": "🔑 키워드", "src": "⚙️ 출처",
+    "task": "📊 엑셀 업로드", "manage": "✏️ 작업 정의",
+}
+
+
+@st.fragment
 def _render_dm_tabs(dm_stats: dict[str, str | int], persona) -> None:
-    """5개 탭을 st.tabs 로 — 전환은 클라이언트사이드(서버 rerun 0). 각 패널은 해당
-    탭 본문만 담는다(헤더·다른 탭·우측 채팅 재렌더 없음). st.tabs 는 모든 패널을
-    1회 eager 렌더하지만, 전환 자체는 JS 로만 일어나 흰 깜빡임이 없다."""
-    panels = st.tabs([_DM_TAB_LABEL[t] for t in _DM_DISPLAY_TABS])
-    for tab_key, panel in zip(_DM_DISPLAY_TABS, panels):
-        with panel:
-            if tab_key == "jobs":
-                _render_jobs_split(dm_stats)
-            elif tab_key == "manage":
-                from ui import task_def_manage as tdm
-                tdm.render(st.query_params)
-            else:
-                st.html(_components.prepare_screen_html(
-                    _dm_tab_body_html(tab_key, persona=persona, dm_stats=dm_stats)))
-                if tab_key == "task":
-                    _render_task_def_upload()
-                elif tab_key == "src":
-                    _render_src_add_form()
+    """탭 바(segmented_control) + 활성 탭 본문만 조건부 렌더 — fragment 스코프.
+
+    탭 전환은 이 fragment 만 rerun → 헤더·사이드바·우측 채팅은 그대로, 활성 탭
+    본문만 부분 갱신. 비활성 탭 본문은 계산하지 않는다(조건부 렌더 — st.tabs 의
+    eager 렌더 비용 제거). 활성 탭은 session_state(`_dm_active_tab`)에 보존 →
+    출처 토글·수집 등 앵커 리로드 후에도 같은 탭 유지."""
+    if st.session_state.get("_dm_active_tab") not in _DM_TABS:
+        st.session_state["_dm_active_tab"] = "jobs"
+    with st.container(key="dm_tabbar"):
+        active = st.segmented_control(
+            "데이터 관리 탭", list(_DM_DISPLAY_TABS),
+            format_func=lambda t: _DM_TAB_SHORT[t],
+            key="_dm_active_tab", label_visibility="collapsed",
+        ) or st.session_state["_dm_active_tab"]
+    if active not in _DM_TABS:
+        active = "jobs"
+    _render_dm_tab_panel(active, dm_stats, persona)
+
+
+def _render_dm_tab_panel(tab_key: str, dm_stats: dict[str, str | int], persona) -> None:
+    """활성 탭 본문만 렌더(조건부). 무거운 jobs/manage 도 활성일 때만 계산."""
+    if tab_key == "jobs":
+        _render_jobs_split(dm_stats)
+    elif tab_key == "manage":
+        from ui import task_def_manage as tdm
+        tdm.render(st.query_params)
+    else:
+        st.html(_components.prepare_screen_html(
+            _dm_tab_body_html(tab_key, persona=persona, dm_stats=dm_stats)))
+        if tab_key == "task":
+            _render_task_def_upload()
+        elif tab_key == "src":
+            _render_src_add_form()
 
 
 def _refresh_cta_html() -> str:

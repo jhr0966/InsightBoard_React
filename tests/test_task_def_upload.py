@@ -105,9 +105,12 @@ def _fresh_app():
 
 
 def test_data_mgmt_renders_upload_section_with_helpful_text(isolated_dirs):
-    """데이터관리 진입 + 작업 정의 탭 선택 시 업로드 섹션 노출."""
+    """데이터관리 진입 + 작업 정의 탭 선택 시 업로드 섹션 노출.
+
+    탭 선택은 레거시 `?dm_tab=` 앵커가 아니라 segmented_control 의 세션 상태
+    (`_dm_active_tab`)로 한다 — render() 가 dm_tab query 를 1회 정리하므로."""
     at = _fresh_app()
-    at.query_params["dm_tab"] = "task"
+    at.session_state["_dm_active_tab"] = "task"
     at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
     assert "작업 정의 데이터 업로드" in htmls

@@ -92,8 +92,8 @@ def _intro_card_html(area_key: str) -> str:
     """area 별 안내 카드 — 채팅 스크롤 최상단에 **항상** 노출(헤드라인 + 한 줄 안내).
 
     추천 질문은 더 이상 전체 새로고침을 일으키는 `?sola_prefill=` 앵커가 아니라
-    입력창 바로 위의 `st.pills`(`_chat_composer` fragment)로 렌더한다 → 칩을 눌러도
-    화면 전체가 리로드되지 않고 입력창에 텍스트만 채워진다.
+    안내 바로 밑의 `st.pills`(`_render_chat_suggestions`)로 렌더한다 → 칩을 누르면
+    하단 입력창에 텍스트만 채워진다(메시지 영역은 그 사이 스크롤).
     """
     intro = _AREA_INTROS.get(area_key) or _AREA_INTROS["📊 오늘의 보드"]
     headline = _html.escape(str(intro["headline"]))
@@ -194,6 +194,9 @@ def render_side(persona: Persona, area_key: str) -> None:
 
     이전 `app_shell.render_app_sola` 의 disabled 목업을 대체한다.
     - 활성 thread 의 최근 메시지(없으면 area 별 안내 카드).
+    - 레이아웃: 안내 카드(상단) → 추천 질문 칩(`_render_chat_suggestions`, 안내 바로 밑)
+      → 대화 스크롤(중단) → 입력 form(`_render_chat_input`, 컬럼 하단 고정). 칩과
+      입력창이 분리돼 칩은 위에, 입력+보내기는 항상 맨 아래 핀.
     - `st.form`(text_area + submit) 송신 → `_do_sola_send` pending → 다음 run 의
       `consume_send_if_any` 가 LLM 호출 + append + chat_log 영구화.
     - `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 담기지 않으므로 form 사용.
@@ -228,56 +231,54 @@ def render_side(persona: Persona, area_key: str) -> None:
     safe_area = quote(area_key, safe="")
     input_key = f"_side_chat_input_{safe_area}"
 
-    # 안내(헤드라인+한 줄)와 대화는 스크롤 영역에. 추천 질문 pill·입력창은 그 아래
-    # _chat_composer(fragment)로 분리 — pill 클릭이 전체 리로드 없이 입력창만 채운다.
-    st.html(
-        '<div class="side-chat-scroll">'
-        + _intro_card_html(area_key)
-        + _format_recent_messages(messages)
-        + '</div>'
-    )
-
-    _chat_composer(area_key, input_key, safe_area)
-
-
-@st.fragment
-def _chat_composer(area_key: str, input_key: str, safe_area: str) -> None:
-    """추천 질문 pill + 입력 form — **fragment 스코프**.
-
-    pill 클릭은 이 fragment 만 rerun 한다(전체 리로드/흰 깜빡임 없음): 선택값을
-    입력창에 채우고 pill 선택을 즉시 해제해, 채운 뒤 사용자가 편집·재선택해도
-    값이 덮어써지지 않는다(`__reset_pills` → 위젯 재생성 전에 선택 해제).
-    보내기는 전체 rerun(`_do_sola_send` → app.py 상단 `consume_send_if_any`).
-    """
-    pills_key = f"{input_key}__pills"
-    # (위젯 생성 전) 직전 pill 선택 해제 → pending prefill 주입 → 북마크 URL prefill.
+    # 칩 클릭으로 세팅된 prefill 을 입력창(하단) 위젯 생성 전에 주입 + pill 선택 해제.
     if st.session_state.pop(f"{input_key}__reset_pills", False):
-        st.session_state[pills_key] = None
-    _apply_pending_prefill(input_key)
-    _consume_prefill(input_key)
+        st.session_state[f"{input_key}__pills"] = None
+    _apply_pending_prefill(input_key)   # {input_key}__prefill → session_state[input_key]
+    _consume_prefill(input_key)         # 레거시 ?sola_prefill= 북마크 URL 호환
 
+    # 안내 카드(상단)
+    st.html('<div class="side-chat-top">' + _intro_card_html(area_key) + '</div>')
+    # 추천 질문 칩 — 안내 바로 밑(상단). 클릭 시 하단 입력창에 텍스트만 채움.
+    _render_chat_suggestions(area_key, input_key)
+    # 대화 스크롤(중단) — 메시지만
+    st.html('<div class="side-chat-scroll">' + _format_recent_messages(messages) + '</div>')
+    # 입력창 + 보내기 — 하단 고정(CSS margin-top:auto)
+    _render_chat_input(input_key, safe_area)
+
+
+def _render_chat_suggestions(area_key: str, input_key: str) -> None:
+    """추천 질문 칩(안내 바로 밑, 상단). 칩 클릭은 하단 입력창에 텍스트만 채운다.
+
+    칩과 입력창이 분리된 별도 영역이라 fragment 스코프로는 못 채운다 → 전체 rerun
+    (소켓 rerun, 문서 리로드/흰 깜빡임 없음). on_click 미사용: pending(`__prefill`)을
+    세팅하고 st.rerun() → 다음 run 의 `_apply_pending_prefill` 이 입력창 값으로 주입."""
+    sugg = _suggestions_for(area_key)
+    if not sugg:
+        return
+    pills_key = f"{input_key}__pills"
     with st.container(key="side_chat_suggest"):
         picked = st.pills(
-            "추천 질문",
-            _suggestions_for(area_key),
-            selection_mode="single",
-            key=pills_key,
-            label_visibility="collapsed",
+            "추천 질문", sugg, selection_mode="single",
+            key=pills_key, label_visibility="collapsed",
         )
     if picked:
         st.session_state[f"{input_key}__prefill"] = picked
         st.session_state[f"{input_key}__reset_pills"] = True
-        st.rerun(scope="fragment")
+        st.rerun()
 
-    with st.form(key=f"_side_chat_form_{safe_area}", clear_on_submit=True):
-        user_input = st.text_area(
-            "SOLA 에게 질문",
-            key=input_key,
-            placeholder="이 화면에 대해 무엇이든 물어보세요…",
-            label_visibility="collapsed",
-            height=120,
-        )
-        sent = st.form_submit_button("➤ 보내기", use_container_width=True)
+
+def _render_chat_input(input_key: str, safe_area: str) -> None:
+    """입력 form(text_area + 보내기) — 컬럼 하단 고정(streamlit-overrides.css 가
+    margin-top:auto 로 핀). 제출 시 `_do_sola_send` pending → app.py 가 LLM 호출."""
+    with st.container(key="side_chat_inputbar"):
+        with st.form(key=f"_side_chat_form_{safe_area}", clear_on_submit=True):
+            user_input = st.text_area(
+                "SOLA 에게 질문", key=input_key,
+                placeholder="이 화면에 대해 무엇이든 물어보세요…",
+                label_visibility="collapsed", height=120,
+            )
+            sent = st.form_submit_button("➤ 보내기", use_container_width=True)
     if sent and user_input and user_input.strip():
         st.session_state["_do_sola_send"] = user_input.strip()
         st.rerun()

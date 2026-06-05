@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UX: 탭 룩 복원(segmented_control) + 채팅 입력창 하단 고정 + 조건부 렌더)
+- **배경**: 직전 변경(st.tabs)으로 무깜빡임은 확보했으나 사용자 피드백 — ① 탭이 **밋밋한 기본 컴포넌트**로 바뀌었고, ② 채팅 **입력창·보내기가 영역 중앙으로 떠서** 하단에 있어야 한다, ③ st.tabs 는 **비활성 탭까지 매 런 eager 렌더**(무거운 화면 불리).
+- **데이터 관리 탭 → 스타일드 `st.segmented_control` + 조건부 렌더**(`ui/data_management_v2.py`): `st.tabs` 를 제거하고 `_render_dm_tabs` 를 `@st.fragment` 로 — 탭 바는 아이콘 단축 라벨(`🗞 수집잡`·`🔑 키워드`·`⚙️ 출처`·`📊 엑셀 업로드`·`✏️ 작업 정의`)의 segmented_control(`key=_dm_active_tab`), 본문은 **활성 탭만 `_render_dm_tab_panel` 로 조건부 렌더**(비활성 탭 본문은 계산 안 함). 탭 전환은 **이 fragment 만 rerun**(헤더·사이드바·우측 채팅 그대로 → 부분 갱신) · 활성 탭은 `session_state` 보존이라 **출처 토글·수집 등 앵커 리로드 후에도 같은 탭 유지**(st.tabs 의 첫 탭 복귀 문제 해소). CSS 로 탭 바를 카드형 pill(활성=accent 채움)로 스타일.
+- **채팅 입력창 하단 고정 + 칩 분리**(`ui/chat_panel.py`, `assets/v2/streamlit-overrides.css`): `_chat_composer`(칩+입력 한 fragment) 를 **상단 추천칩(`_render_chat_suggestions`)** 과 **하단 입력 form(`_render_chat_input`)** 으로 분리. 입력 form 래퍼 `margin-top:auto` 로 **입력창·보내기를 컬럼 하단에 고정**, 추천칩은 안내문 바로 밑(상단). 칩 클릭은 `{key}__prefill` pending → `st.rerun()` → `_apply_pending_prefill` 이 다음 run 에 하단 입력창 값으로 주입(**`on_click` 미사용 — CLAUDE.md #3/CI 준수**, `value=` 대신 `key`+`session_state` 연결 원칙은 유지). 칩↔입력이 별도 영역이라 fragment 스코프 대신 소켓 full rerun(문서 reload·흰 깜빡임 없음).
+- **검증(계측+playwright 실측)**: 탭 클릭 → 서버 `XRUN:DMTABS` 만(앱 레벨 `XRUN:APP` 0) = fragment 스코프 확정 · 기본은 jobs 본문만 렌더(`키워드 관리` 부재)·키워드 탭 전환 시 kw 본문만 = 조건부 렌더 확정 · textarea bottom=858/950px = 하단 고정 확인 · 칩 클릭 → 하단 입력창 자동 채움 확인(스크린샷). pytest **774 passed** · 금지패턴(on_click) 0.
+
 ### Changed (UX: 탭 전환 진짜 무깜빡임 — st.tabs 클라이언트사이드 + 채팅칩 위치 복구)
 - **왜 Phase 1+2 가 부족했나(계측으로 규명)**: 서버에 실행 카운터를 심고 playwright 로 실측한 결과, fragment 는 **rerun 을 제대로 격리**하고 있었다(탭 클릭→`_dm_body_fragment` 만, 칩→`_chat_composer` 만, 문서 reload 0). 그런데도 "전체 새로고침"으로 보인 건 **시각적** 이유였다 — ① 데이터 관리 본문 전체(헤더 KPI + 수집잡 + 히스토그램 + 탭 본문)가 **하나의 거대한 `st.html` 덩어리**라 탭 전환 시 그 덩어리가 통째로 다시 칠해졌고, ② 추천 칩(`st.pills`)이 채팅 컬럼 **맨 아래로 밀려 안내문과 칩 사이에 큰 빈 공간**이 생겼다(`margin-top:auto` 바텀 핀).
 - **데이터 관리 탭 → 네이티브 `st.tabs`**(`ui/data_management_v2.py`): `st.segmented_control`+`@st.fragment`(`_dm_body_fragment`) 와 monolithic `_render_main` 을 제거. 헤더(KPI)는 `_render_dm_header` 로 **탭 위에 1회만** 그리고, 5개 탭 본문을 `st.tabs` 패널(`_render_dm_tabs`)에 나눠 담았다(`_render_jobs_split` = 수집잡+뉴스 라이브러리). **탭 전환은 100% 클라이언트사이드(JS) → 서버 rerun·문서 reload·리페인트 전부 0.** 헤더·다른 탭·우측 채팅은 손도 안 탄다. legacy 앵커 빌더(`_dm_tabs_html` 등)는 테스트 호환용 보존. 단, `st.tabs` 는 코드로 탭을 못 고르므로 레거시 `?dm_grp/?dm_tab` 핸드오프는 1회 정리만 한다(출처 토글 앵커는 새로고침 후 첫 탭으로 복귀 — 토글 자체는 정상).
