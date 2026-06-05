@@ -32,6 +32,20 @@
 
 ---
 
+## 2026-06-05 · fix: 데이터 관리 탭 간격 + 탭 전환 시 채팅 패널 흔들림 (CSS only)
+
+**브랜치:** `claude/kind-volta-IWxix`. **맥락:** "탭들 사이 갭 없어 답답 + 탭 이동할 때 LLM 채팅창 위치 달라지는 경우 있음."
+
+**진단(playwright 실측):** ① 탭 칩: 실제 flex 컨테이너가 `[role="radiogroup"]`(직전 CSS 는 `[role="group"]` 오타로 미적용) + 버튼 `margin-right:-1px`(테두리 공유) → 칩 맞붙음(gap=-1). ② 채팅: 컬럼 `position:sticky;top:12px` 인데 본문 높이가 탭마다 달라(작업정의 926 < 뷰포트 950 → 페이지 미스크롤) sticky flow 위치가 8px, 다른 탭은 20px 로 어긋남(12px 점프).
+
+**수정(`streamlit-overrides.css` 한 파일):** ① `[role="radiogroup"]{gap:6px}` + 버튼 `margin:0` → 칩 6px 간격. ② 본문 컬럼(`stHorizontalBlock:has(.side-chat-marker) > stColumn:not(:has(marker))`)에 `min-height:calc(100vh-4px)` → 항상 채팅(calc(100vh-24px))보다 커서 sticky 위치 고정.
+
+**검증:** 6개 탭(jobs/kw/src/task/manage/수집잡) 전부 채팅 top=20px 동일(이전 작업정의만 8→16→20 으로 min-height 튜닝) · 칩 gap 6px 균일(스크린샷) · pytest 774 passed.
+
+**팁:** min-height 를 calc(100vh-16px)=934 로 하면 작업정의 탭이 16px(4px 잔여) → calc(100vh-4px)=946(>본문 자연높이 939 한계) 에서 완전 일치. 채팅 컬럼 sticky top 은 본문 컬럼이 채팅보다 확실히 커야 안 튐.
+
+---
+
 ## 2026-06-05 · UX: 탭 룩 복원(segmented_control) + 채팅 입력창 하단 고정 + 조건부 렌더
 
 **브랜치:** `claude/kind-volta-IWxix`.
