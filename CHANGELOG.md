@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed (데이터 관리 탭 간격 + 탭 전환 시 채팅 패널 흔들림)
+- **탭 칩이 붙어 답답함**(`assets/v2/streamlit-overrides.css`): segmented_control 의 실제 flex 컨테이너는 `[role="radiogroup"]`(이전 CSS 는 `[role="group"]` 을 잡아 미적용) + 각 버튼에 `margin-right:-1px`(테두리 공유)이 걸려 칩이 맞붙어 있었다. 셀렉터를 `[role="radiogroup"]` 으로 고치고 `gap:6px`+버튼 `margin:0` 으로 **칩 사이 6px 간격** 확보(개별 pill 로 분리).
+- **탭 이동 시 우측 LLM 채팅창이 위아래로 12px 튐**: 채팅 컬럼이 `position:sticky` 라, 본문(좌측) 높이가 탭마다 달라 페이지가 안 스크롤되는 짧은 탭(예: 작업 정의)에서 sticky flow 위치가 어긋났다. 본문 컬럼에 `min-height: calc(100vh - 4px)` 를 줘 **항상 채팅 패널보다 살짝 크게** 만들어 sticky 가 늘 같은 위치에 고정되게 했다. **검증(playwright): 6개 탭 전부 채팅 top=20px 동일**(이전 작업 정의 탭만 8px) · 칩 간격 6px 균일 · pytest 774 passed.
+
 ### Changed (UX: 탭 룩 복원(segmented_control) + 채팅 입력창 하단 고정 + 조건부 렌더)
 - **배경**: 직전 변경(st.tabs)으로 무깜빡임은 확보했으나 사용자 피드백 — ① 탭이 **밋밋한 기본 컴포넌트**로 바뀌었고, ② 채팅 **입력창·보내기가 영역 중앙으로 떠서** 하단에 있어야 한다, ③ st.tabs 는 **비활성 탭까지 매 런 eager 렌더**(무거운 화면 불리).
 - **데이터 관리 탭 → 스타일드 `st.segmented_control` + 조건부 렌더**(`ui/data_management_v2.py`): `st.tabs` 를 제거하고 `_render_dm_tabs` 를 `@st.fragment` 로 — 탭 바는 아이콘 단축 라벨(`🗞 수집잡`·`🔑 키워드`·`⚙️ 출처`·`📊 엑셀 업로드`·`✏️ 작업 정의`)의 segmented_control(`key=_dm_active_tab`), 본문은 **활성 탭만 `_render_dm_tab_panel` 로 조건부 렌더**(비활성 탭 본문은 계산 안 함). 탭 전환은 **이 fragment 만 rerun**(헤더·사이드바·우측 채팅 그대로 → 부분 갱신) · 활성 탭은 `session_state` 보존이라 **출처 토글·수집 등 앵커 리로드 후에도 같은 탭 유지**(st.tabs 의 첫 탭 복귀 문제 해소). CSS 로 탭 바를 카드형 pill(활성=accent 채움)로 스타일.

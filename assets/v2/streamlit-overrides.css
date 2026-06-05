@@ -101,12 +101,24 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
   width: 100%;
 }
 
+/* 탭 본문 높이가 탭마다 달라 우측 채팅 컬럼(sticky)이 12px 가량 위아래로 튀던 문제:
+   본문(좌측) 컬럼을 항상 채팅 패널(calc(100vh-24px))보다 살짝 크게 잡아, 짧은 탭
+   (작업 정의 등 뷰포트보다 짧아 페이지가 안 스크롤되던 경우)에서도 sticky flow 위치가
+   바뀌지 않게 고정 → 탭 전환 시 채팅창이 안 움직인다. */
+body:has(.db-topbar) [data-testid="stHorizontalBlock"]:has(.side-chat-marker)
+    > [data-testid="stColumn"]:not(:has(.side-chat-marker)) {
+  min-height: calc(100vh - 4px);
+}
+
 /* 데이터 관리 탭 — st.segmented_control 을 탭 바처럼. 전환은 fragment rerun(부분 갱신). */
 .st-key-dm_tabbar { margin: 4px 0 14px; }
 .st-key-dm_tabbar [data-testid="stElementContainer"] { margin-bottom: 0; }
-.st-key-dm_tabbar [role="group"] { gap: 4px; flex-wrap: wrap; }
+/* radiogroup 이 실제 flex 컨테이너 — column-gap 0 + 버튼 margin-right:-1px(테두리 공유)
+   라 칩이 붙어 보였다. gap 주고 음수 마진 제거해 칩 사이 간격 확보. */
+.st-key-dm_tabbar [role="radiogroup"] { gap: 6px !important; flex-wrap: wrap; }
 .st-key-dm_tabbar [data-testid="stBaseButton-segmented_control"],
 .st-key-dm_tabbar [data-testid="stBaseButton-segmented_controlActive"] {
+  margin: 0 !important;
   border-radius: 10px !important;
   padding: 7px 14px !important;
   font-size: 13px !important;
