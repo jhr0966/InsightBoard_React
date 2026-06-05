@@ -59,9 +59,6 @@ _DARK_CSS = """
   --text-primary:#F1F5F9; --text-secondary:rgba(241,245,249,.74); --text-muted:rgba(241,245,249,.52);
 }
 body:has(.db-topbar) .stApp{ background:#0F172A !important; }
-/* sticky 헤더 배경 — 라이트는 --v2-bg(#F3F5F8), 다크는 앱 배경(#0F172A)과 맞춰
-   아래로 스크롤되는 카드가 헤더 밑으로 비치지 않게 한다. */
-body:has(.db-topbar) .db-topbar{ background:#0F172A !important; }
 body:has(.db-topbar) [data-testid="stSidebar"]{ background:#1E293B !important; border-right:1px solid #334155 !important; }
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker){ background:#1E293B !important; border-color:#334155 !important; }
 body:has(.db-topbar) [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"]{ background:#1E293B !important; border-color:#334155 !important; }
@@ -87,14 +84,7 @@ body:has(.db-topbar) [data-testid="stMain"] [data-testid="stMarkdownContainer"]{
 body:has(.db-topbar) .persona-profile-card,
 body:has(.db-topbar) .persona-profile-card-empty{ background:#172033 !important; }
 body:has(.db-topbar) .persona-profile-head-empty{ background:#0F172A !important; border-color:#334155 !important; color:#94A3B8 !important; }
-/* 5-nav 위젯(st.button, .st-key-sidebar_nav) 다크 — 일반 secondary 버튼 dark 규칙
-   (#1E293B 채움·#334155 테두리)이 nav 까지 먹지 않게 투명 유지(specificity 우선) +
-   활성(primary) 틴트/제목·인덱스 색 다크화. */
-body:has(.db-topbar) .st-key-sidebar_nav button[kind="secondary"]{ background:transparent !important; border-color:transparent !important; }
-body:has(.db-topbar) .st-key-sidebar_nav button:hover{ background:#172033 !important; }
-body:has(.db-topbar) .st-key-sidebar_nav button[kind="primary"]{ background:rgba(96,165,250,.16) !important; border-color:rgba(96,165,250,.30) !important; }
-body:has(.db-topbar) .st-key-sidebar_nav button[kind="primary"] strong{ color:#BFDBFE !important; }
-body:has(.db-topbar) .st-key-sidebar_nav button[kind="primary"]::before{ color:#93C5FD !important; }
+body:has(.db-topbar) .sidebar-nav-item.active{ background:rgba(96,165,250,.16) !important; border-color:rgba(96,165,250,.30) !important; }
 /* 콜아웃 배너 — 라이트 고정색(amber/blue)이라 다크에서 밝은 섬으로 떠 보임 → 다크 틴트 변형 */
 body:has(.db-topbar) .app-llm-banner{ background:rgba(180,83,9,.18) !important; border-color:rgba(180,83,9,.42) !important; color:#FCD34D !important; }
 body:has(.db-topbar) .app-llm-banner b{ color:#FCD34D !important; }

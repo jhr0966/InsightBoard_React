@@ -115,19 +115,6 @@ body:has(.db-topbar) [data-testid="stHorizontalBlock"]:has(.side-chat-marker)
   min-height: calc(100vh - 4px);
 }
 
-/* ── 메인 헤더(.db-topbar) 스크롤 고정 — 모든 화면 ──────────────────
-   헤더는 본문(메인 컬럼) 수직 스택의 첫 element-container 다. 그 컨테이너에 sticky 를
-   걸면 컨테이닝 블록이 '메인 컬럼 전체 높이'(콘텐츠만큼 큼)라 헤더가 상단(top:0)에
-   계속 붙는다. .db-topbar 직접 sticky 는 stHtml 래퍼가 헤더 높이로 shrink-wrap 돼
-   이동 여유가 0 이라 안 붙었다(그래서 래퍼 컨테이너를 sticky 대상으로 삼는다).
-   z-index 20: 아래로 스크롤되는 카드 위. (사이드바 펼치기 버튼 1001 / 토스트보다 아래) */
-body:has(.db-topbar) [data-testid="stMain"]
-    [data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar) {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
 /* 데이터 관리 탭 — st.segmented_control 을 탭 바처럼. 전환은 fragment rerun(부분 갱신). */
 .st-key-dm_tabbar { margin: 4px 0 14px; }
 .st-key-dm_tabbar [data-testid="stElementContainer"] { margin-bottom: 0; }
