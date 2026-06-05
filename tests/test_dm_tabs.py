@@ -203,6 +203,7 @@ def test_render_jobs_split_emits_split_no_anchor_tabs():
     with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
          patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
          patch.object(dm, "_news_cards_html", return_value=""), \
+         patch.object(dm, "_render_news_filter_form", return_value=((), 3, "newest")), \
          patch.object(dm, "_ingest_jobs_html", return_value=""), \
          patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
         dm._render_jobs_split(stats)
