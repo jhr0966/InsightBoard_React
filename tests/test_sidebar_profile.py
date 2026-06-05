@@ -48,34 +48,16 @@ def test_persona_page_options_helpers_handle_empty_and_columns():
     assert persona_page._lv3_options(df) == ["검사", "용접"]
 
 
-def test_nav_label_splits_title_and_desc_as_markdown():
-    """5-nav 라벨은 제목=`**…**`(strong)·설명=`*…*`(em) 로 분해돼 CSS 가 스타일한다."""
-    label = sidebar._nav_label(3, "🔎 인사이트 분석", "트렌드 · 기회 · 매칭")
-    assert "**🔎 인사이트 분석**" in label          # 제목 → <strong>
-    assert "*트렌드 · 기회 · 매칭*" in label          # 설명 → <em>
-    # 설명이 없으면 제목만 (빈 em 으로 둘째 줄을 만들지 않음)
-    assert sidebar._nav_label(1, "📊 오늘의 보드", "") == "**📊 오늘의 보드**"
+def test_sidebar_nav_html_uses_link_list_not_radio_buttons():
+    """업무 흐름 nav 는 환경 의존 없는 순수 HTML `<a>` 링크 리스트(위젯 X)."""
+    html = sidebar._sidebar_nav_html("🔎 인사이트 분석")
 
-
-def test_sidebar_nav_uses_buttons_and_click_switches_area_without_reload():
-    """업무 흐름 nav 가 앵커(?app_area=)가 아니라 st.button 위젯이고,
-    클릭 시 query param/리로드 없이 app_area 만 전환됨(흰 깜빡임 제거의 핵심)."""
-    from streamlit.testing.v1 import AppTest
-
-    at = AppTest.from_file("app.py", default_timeout=30)
-    at.session_state["app_area"] = "📊 오늘의 보드"
-    at.session_state["_onb_dismissed_session"] = True  # 온보딩 모달 억제
-    at.run()
-
-    nav_keys = [b.key for b in at.button if b.key and b.key.startswith("_nav_btn_")]
-    assert len(nav_keys) == len(sidebar.AREAS)  # 5개 area 모두 버튼
-
-    # _nav_btn_3 = 세 번째 area(🔎 인사이트 분석) 클릭 → app_area 전환, 쿼리 없음
-    target = next(b for b in at.button if b.key == "_nav_btn_3")
-    target.click()
-    at.run()
-    assert at.session_state["app_area"] == "🔎 인사이트 분석"
-    assert "app_area" not in at.query_params
+    assert 'class="sidebar-nav"' in html
+    assert html.count('class="sidebar-nav-item') == len(sidebar.AREAS)
+    assert 'aria-current="page"' in html
+    assert "%F0%9F%94%8E%20%EC%9D%B8%EC%82%AC%EC%9D%B4%ED%8A%B8%20%EB%B6%84%EC%84%9D" in html
+    assert "radio" not in html.lower()
+    assert "button" not in html.lower()
 
 
 def test_llm_footer_ready_shows_model_only():

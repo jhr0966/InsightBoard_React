@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-06-05 — 되돌림: 사이드바 메뉴 위젯화 + 메인 헤더 스크롤 고정 (사용자 요청) (`claude/kind-volta-IWxix`)
+
+**무엇을**: ① 사이드바 5-nav 위젯화가 **사용자 환경에서 메뉴가 깨져** 순수 HTML 앵커로 되돌림. ② 메인 헤더 스크롤 고정(sticky) 제거. (채팅 패널 고정은 요청 대상 아님 → 유지.)
+
+**왜/원인 추정**: 위젯 nav 는 `st.container(key=…)` 의 `st-key-*` 클래스 + 버튼 라벨 마크다운에 룩을 의존하는데, Streamlit 버전/환경 차이로 클래스/마크다운이 안 먹으면 기본 회색 버튼으로 깨질 수 있다. playwright(chromium·streamlit 1.58) 에선 정상 렌더라 재현 불가 → 환경 호환성이 확실한 원래 앵커 HTML 로 복원(흰 깜빡임은 감수).
+
+**어떻게**: `sidebar._render_sidebar_nav`/`_nav_label` 제거 → `_sidebar_nav_html`(앵커) 복원, `quote` import 복원, render 호출 복원. `sidebar.css` `.st-key-sidebar_nav`→`.sidebar-nav-item` 복원. `_DARK_CSS` 의 nav 위젯 다크룰→`.sidebar-nav-item.active` 복원. `.db-topbar` static·투명·그림자 제거. `streamlit-overrides.css` 헤더 sticky 룰 삭제. 테스트는 `test_sidebar_nav_html_uses_link_list_not_radio_buttons` 복원.
+
+**검증**: playwright — nav=`a.sidebar-nav-item`×5(위젯 제거 확인)·헤더 스크롤 ΔY=−400(고정 해제). pytest **772 passed** · 금지패턴 0. INVARIANTS I-20·I-22 '되돌림' 으로 갱신.
+
+**교훈**: Streamlit 위젯 룩을 `st-key-*` 풀-CSS 로 갈아끼우는 건 **실배포 환경 검증 없이 머지 금지**(로컬 chromium 만으론 부족). 데이터 관리·산출물 보관함 위젯화는 유지됐으나(작동), 항상 노출되는 사이드바는 깨짐이 즉시 눈에 띈다.
+
+---
+
 ## 2026-06-05 — 산출물 보관함 칸반 카드 액션 위젯화 (흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
 
 **무엇을**: 산출물 보관함 칸반의 카드 액션(채택/수정/기각·되돌리기)·더보기/접기가 앵커라 클릭마다 문서 reload(흰 깜빡임)였던 것을 위젯화. (UX 안정화 — 컨텍스트 딥링크 슬라이스 中 사용자 선택 "산출물 보관함 카드 액션".)

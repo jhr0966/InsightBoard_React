@@ -176,32 +176,17 @@ a.foo, a.foo:visited { color: <원래색>; }
 
 세 가지 모두 빠지면 미세한 시각 회귀 (밑줄/자주색 visited) 발생.
 
-## I-20 — 메인 헤더 sticky 는 `.db-topbar` 가 아니라 **감싼 element-container** 에 건다
+## I-20 — (제거됨) 메인 헤더 스크롤 고정
 
-헤더(`.db-topbar`)는 `render_topbar` 가 `st.html` 로 본문(메인 컬럼) 맨 위에 그린다. 스크롤 고정을 위해 `.db-topbar` 에 직접 `position:sticky` 를 걸면 **안 붙는다** — `st.html` 의 `stHtml` 래퍼가 헤더 높이로 shrink-wrap 돼 sticky 이동 여유가 0 이기 때문. 그래서 sticky 는 **헤더를 감싼 Streamlit element-container** 에 건다:
-
-```css
-body:has(.db-topbar) [data-testid="stMain"]
-    [data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar) {
-  position: sticky; top: 0; z-index: 20;
-}
-```
-
-이 컨테이너의 컨테이닝 블록은 '메인 컬럼 전체 수직 스택'(콘텐츠 높이만큼 큼)이라 헤더가 끝까지 상단에 붙는다. (우측 채팅 컬럼을 `[data-testid="stColumn"]:has(.side-chat-marker)` 로 sticky 화하는 것과 **같은 원리** — sticky 대상은 '이동 여유가 있는 큰 박스'여야 한다.) 배경은 라이트 `--v2-bg`·다크 `#0F172A`(`styles._DARK_CSS`) 로 앱 배경과 맞춰 불투명 — 아래로 스크롤되는 카드가 비치지 않게.
+메인 헤더(`.db-topbar`)를 스크롤 시 상단 고정하던 sticky 처리는 **되돌렸다**(사용자 요청, 2026-06-05). `.db-topbar` 는 다시 `position:static`(in-flow) — 본문과 함께 스크롤된다. 우측 채팅 패널 고정(I-21)은 별개로 유지. 다시 고정이 필요하면 '감싼 element-container 에 sticky' 방식이 출발점이었다(`.db-topbar` 직접 sticky 는 `stHtml` shrink-wrap 으로 무력화).
 
 ## I-21 — sticky 채팅 패널 높이는 row 밖 padding 을 고려해 충분히 낮춰야 한다
 
 우측 채팅 패널(`[data-testid="stColumn"]:has(.side-chat-marker)`)은 `position:sticky; top:12px` 에 높이 `calc(100vh - 72px)`. sticky 가 끝까지 고정되려면 **이동 여유**(`row_height − panel_height − top`)가 **페이지 최대 스크롤**보다 커야 한다. 그런데 `block-container` 하단 padding(36px)·`stMain` 상단 padding(8px)은 패널의 컨테이닝 블록(컬럼 row) **밖**에서 스크롤을 추가하므로, 패널이 row 와 비슷한 높이(`100vh-24px`)면 본문이 짧은 화면(SOLA·산출물 보관함) 바닥에서 패널이 row 끝에 닿아 ~32px 같이 밀린다. 패널을 `100vh-72px` 로 낮춰 여유를 확보(72 − 12 − 44 ≈ 16px 슬랙)했다. 본문 컬럼 `min-height: calc(100vh-4px)`(짧은 탭에서 sticky baseline 안정화, #122)와 함께 유지. **이 두 값(72/min-height)·row 밖 padding 을 바꾸면 playwright 로 5개 화면 채팅 ΔY=0 재검증.**
 
-## I-22 — 사이드바 5-nav 는 앵커가 아니라 `st.button` 위젯 (흰 깜빡임 방지)
+## I-22 — 사이드바 5-nav 는 순수 HTML `<a>` 링크 (환경 호환성 우선)
 
-좌측 업무 흐름 메뉴(`sidebar._render_sidebar_nav`)는 `<a href="?app_area=…">` 앵커가 **아니라** `st.button` 5개다. 앵커는 클릭 시 문서 전체 reload(흰 깜빡임) → 버튼은 소켓 rerun. **앵커로 되돌리지 말 것.** 클릭 핸들러는 `on_click` 금지 — `if st.button(): app_area 세팅 → st.rerun()`(CLAUDE.md #3). 룩은 `.st-key-sidebar_nav` 스코프 CSS 로 복제하며 세 가지 함정:
-
-1. **라벨은 핵심 markdown 만** — 제목 `**…**`(→`<strong>`), 설명 `*…*`(→`<em>`). 색(`:gray[]`)·코드(`` ` ` ``) directive 는 버튼 라벨 렌더에서 불안정하니 의존하지 않는다. 인덱스 01·02… 는 라벨이 아니라 CSS `counter(navidx, decimal-leading-zero)` `::before` 로 생성.
-2. **활성 항목 = `type="primary"`** → CSS `button[kind="primary"]` 로 accent 배경/테두리/인덱스·제목색. (별도 active 클래스 주입 불필요.)
-3. **다크 specificity** — 일반 `body:has(.db-topbar) button[kind="secondary"]`(다크 카드 채움, 0-2-2)가 `.st-key-sidebar_nav button`(0-1-1)보다 높아 nav 까지 #1E293B 로 채운다. `_DARK_CSS` 에서 `body:has(.db-topbar) .st-key-sidebar_nav button[kind="secondary"]`(0-3-2)로 투명 복구 + 활성 틴트 다크화.
-
-단, **컨텍스트 딥링크**(보드→SOLA·히트맵·알림 벨 등 `?app_area=`)는 여전히 앵커이며 `sidebar._consume_area_query` 가 소비한다 — 이건 사이드바 메뉴가 아니라 화면 내 교차 링크라 별개(후속 위젯화 대상).
+좌측 업무 흐름 메뉴(`sidebar._sidebar_nav_html`)는 순수 HTML `<a href="?app_area=…">` 링크 리스트다(`.sidebar-nav-item`). 한때 `st.button` 위젯으로 바꿔 흰 깜빡임을 없앴으나, **Streamlit 버전별 `st-key-*` 컨테이너 클래스/버튼 라벨 마크다운 렌더 차이로 환경에 따라 메뉴가 깨져** 사용자 요청으로 **되돌렸다**(2026-06-05). 순수 HTML 은 어디서나 동일하게 렌더되는 게 핵심 이점. 클릭 시 `?app_area=` 로 이동 → `_consume_area_query` 가 소비(문서 reload=흰 깜빡임은 감수). **다시 위젯화하려면 `st-key-*` 의존 없이 동작하는 방식이어야 하고 실배포 환경에서 검증 필수.**
 
 ## I-23 — 흰 깜빡임 없는 화면/액션 전환: 앵커 대신 `st.button` + 세션/`st.query_params`
 

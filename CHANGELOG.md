@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Reverted (사이드바 메뉴 위젯화 + 메인 헤더 스크롤 고정 — 사용자 요청)
+- **사이드바 5-nav 를 위젯(st.button) → 순수 HTML `<a>` 링크로 되돌림**(`ui/sidebar.py`, `assets/v2/sidebar.css`, `ui/styles.py`, `tests/test_sidebar_profile.py`): 위젯 nav 가 **사용자 환경에서 메뉴가 깨져** 보고됨. 원인 추정 — Streamlit 버전별 `st-key-*` 컨테이너 클래스/버튼 라벨 마크다운 렌더 차이(로컬 검증 환경에선 정상이라 재현 불가). 어디서나 동일하게 렌더되는 원래 `_sidebar_nav_html`(앵커 리스트)로 복원 — 메뉴 클릭 시 흰 깜빡임은 감수. `.st-key-sidebar_nav` 스코프 CSS·다크 오버라이드도 원복.
+- **메인 헤더(`.db-topbar`) 스크롤 고정 제거**(`assets/v2/shell.css`, `assets/v2/streamlit-overrides.css`, `ui/styles.py`): sticky 처리(감싼 element-container 에 `position:sticky`)·불투명 배경·그림자·다크 헤더 배경을 모두 제거하고 `position:static`(in-flow)로 복원 — 헤더는 본문과 함께 스크롤. **우측 채팅 패널 고정(I-21)은 사용자 요청 대상이 아니라 그대로 유지.**
+- **검증(playwright)**: 사이드바 = `a.sidebar-nav-item` 5개(위젯 `.st-key-sidebar_nav` 제거 확인) · 헤더 스크롤 시 ΔY=−400(고정 해제) · pytest **772 passed** · 금지패턴 0. invariant I-20(헤더 sticky)·I-22(nav 위젯)를 '되돌림'으로 갱신.
+
 ### Changed (산출물 보관함 칸반 카드 액션 위젯화 — 흰 깜빡임 제거)
 - **칸반을 템플릿 HTML → `st.columns(3)` 위젯 렌더로**(`ui/archive_v2.py`, `assets/v2/screens/archive_main.html`, `assets/v2/screens/archive.css`): 카드 액션(채택/수정/기각·되돌리기)·"더 보기/접기"가 모두 `<a href="?action=…">`·`<a href="?expand=…">` 앵커라 클릭마다 문서 전체 reload(흰 깜빡임)였다. 칸반 보드를 `st.columns(3)` 으로 렌더하고 각 컬럼 컨테이너(`.st-key-oa_col_*`)를 구 `.oa-col` 룩(테두리·상단 accent·그림자)으로 스타일. 카드(`_card_html`)는 **표시 전용**(액션 앵커 제거)으로 두고, 1순위 카드 액션은 컬럼 상단 `st.button` 으로 렌더(`_render_card_actions`).
 - **액션·expand 트리거를 세션/위젯으로**: 채택/기각/되돌리기 = `_do_archive_action`=(action, bm_id) pending → `_consume_action_if_any`(버튼 pending / 레거시 `?action=` 둘 다). 더보기/접기 = `?expand=` 앵커 → 세션(`_oa_expanded`) 토글(`_toggle_expanded`). 수정 = `_handoff_edit_to_sola` 가 세션 `app_area`=SOLA + `st.query_params`(from/bm_id/title) 세팅 — `st.query_params` 할당은 문서 reload 없이 URL 만 갱신하므로 **SOLA 측 소비 경로는 기존 그대로**(SOLA 코드 변경 0). `on_click` 미사용(CLAUDE.md #3).
