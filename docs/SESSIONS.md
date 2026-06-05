@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-05 — 데이터 관리 '지금 뉴스 수집' + 출처 토글/제거 위젯화 (흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
+
+**무엇을**: 데이터 관리의 남은 앵커 액션(① '지금 뉴스 수집' ② 출처 토글/제거)을 위젯화해 클릭 시 문서 reload(흰 깜빡임) 제거. (UX 안정화 — 사용자 승인: "둘 다 위젯화 + 스샷 확인".)
+
+**어떻게**:
+- '지금 뉴스 수집': `_refresh_cta_html`(`<a ?refresh=now>`) 제거 → `_render_collect_button`(st.button). 클릭=`_do_dm_collect` pending→`st.rerun()`→`_consume_refresh_if_any`(버튼 pending/레거시 쿼리 둘 다). 우측 정렬은 **column flex 라 `align-items:flex-end`**(justify 는 세로축이라 무효 — 함정).
+- 출처 토글/제거: `_dm_src_body_html`(앵커 박힌 `<ul>`) → `_render_src_table`(헤더 HTML + 행별 `st.columns([pill | 버튼])`). 컨테이너 `.st-key-_src_row_*` 가 테두리(구 `.dm-src-row` 룩), `_src_row_pill_html` 이 시각 격자. 클릭=`_do_src_action`=(action,name) pending→`_consume_src_action_if_any`(pending/레거시 쿼리 둘 다).
+
+**검증**: playwright — 출처 토글 클릭 시 `window` 플래그 생존(reload 0)·URL 깨끗·6행/4버튼·수집버튼 우측정렬·라이트/다크 룩 유지. pytest **777 passed**(`_dm_src_body_html`/`_refresh_cta_html` 테스트 → pill/header/pending 테스트로 교체) · 금지패턴 0.
+
+**핵심 함정**: ① Streamlit 컨테이너는 기본 **column flex** → 자식 우측 정렬은 `align-items:flex-end`(`justify-content` 아님). ② HTML 블록에 박힌 액션은 위젯으로 못 넣으므로 `st.columns([시각 HTML | 버튼])` 로 분리하고 **컨테이너에 테두리**를 줘 한 행처럼 보이게. ③ 레거시 쿼리 소비 경로(`?refresh=now`/`?src_action=`)는 유지해 북마크/딥링크 + 기존 테스트 호환.
+
+**파일**: `ui/data_management_v2.py`, `assets/v2/screens/data_management.css`, `tests/{test_collect_trigger,test_src_crud,test_dm_tabs,test_dm_cleanup}.py`.
+
+---
+
 ## 2026-06-05 — 사이드바 메뉴 이동 위젯화 (화면 전환 흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
 
 **무엇을**: 좌측 업무 흐름 5-nav 를 누를 때 나던 **화면 전환 흰 깜빡임** 제거. (UX 안정화 다음 단계 — 마지막 큰 흰 깜빡임 출처였던 사이드바 메뉴.)

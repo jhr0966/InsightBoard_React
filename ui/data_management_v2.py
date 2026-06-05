@@ -749,6 +749,10 @@ def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
 def _render_jobs_split(dm_stats: dict[str, str | int]) -> None:
     """jobs 탭 본문 — 수집잡 + 뉴스 라이브러리(.dm-split). 헤더는 _render_dm_header 가
     이미 그렸으므로 여기선 {{DM_TABS}} 이후 본문만."""
+    # '지금 뉴스 수집' — 앵커(?refresh=now)였던 CTA 를 st.button 위젯으로(소켓 rerun,
+    # 문서 reload·흰 깜빡임 없음). 본문(.dm-split) 위 우측에 핀. {{INGEST_REFRESH_CTA}}
+    # 자리는 비운다.
+    _render_collect_button()
     template = _DM_TEMPLATE.read_text(encoding="utf-8")
     body = template.split("{{DM_TABS}}", 1)[1]
     from store import ui_prefs as _uiprefs
@@ -758,7 +762,7 @@ def _render_jobs_split(dm_stats: dict[str, str | int]) -> None:
         .replace("{{NEWS_CARDS}}", _news_cards_html(
             str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()))
         .replace("{{INGEST_JOBS}}", _ingest_jobs_html())
-        .replace("{{INGEST_REFRESH_CTA}}", _refresh_cta_html())
+        .replace("{{INGEST_REFRESH_CTA}}", "")
         .replace("{{HIST_HEAD}}", hist["head"])
         .replace("{{HIST_SVG}}", hist["svg"])
         .replace("{{HIST_X}}", hist["foot"])
@@ -805,51 +809,46 @@ def _render_dm_tab_panel(tab_key: str, dm_stats: dict[str, str | int], persona) 
     elif tab_key == "manage":
         from ui import task_def_manage as tdm
         tdm.render(st.query_params)
+    elif tab_key == "src":
+        # 출처 표(토글/제거)는 위젯이라 HTML 단일 블록이 아니다 → 전용 렌더.
+        _render_src_table(dm_stats)
+        _render_src_add_form()
     else:
         st.html(_components.prepare_screen_html(
             _dm_tab_body_html(tab_key, persona=persona, dm_stats=dm_stats)))
         if tab_key == "task":
             _render_task_def_upload()
-        elif tab_key == "src":
-            _render_src_add_form()
 
 
-def _refresh_cta_html() -> str:
-    """수집잡 헤더의 "지금 실행" CTA — collect_batch 동기 호출 + 캐시 무효화."""
-    from urllib.parse import quote
+def _render_collect_button() -> None:
+    """'지금 뉴스 수집' — 구 앵커(`?refresh=now`) 대체 위젯.
 
-    href = (
-        "?app_area=" + quote("🧱 데이터 관리")
-        + "&refresh=now"
-    )
-    # 아이콘은 URL 인코딩 data-URI <img> (st.html 이 인라인 <svg> 를 제거 + 비인코딩
-    # data-URI 는 stroke='#fff' 의 '#' 가 잘려 깨짐) + 문구 중앙정렬.
-    from urllib.parse import quote as _q
-    icon_svg = (
-        "<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' "
-        "fill='none' stroke='#fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>"
-        "<polyline points='23 4 23 10 17 10'/>"
-        "<path d='M3.51 9a9 9 0 0114.85-3.36L23 10'/></svg>"
-    )
-    return (
-        f'<a class="dm-btn-primary" href="{href}" target="_self" '
-        f'style="justify-content:center;" '
-        f'title="페르소나 관심사 키워드(없으면 자동화·AI)로 지금 뉴스를 수집하고 화면을 새로 그립니다.">'
-        f'<img src="data:image/svg+xml,{_q(icon_svg)}" width="12" height="12" alt="" />'
-        '지금 뉴스 수집'
-        '</a>'
-    )
+    앵커는 클릭 시 문서 전체 reload(흰 깜빡임)였다. st.button 은 소켓 rerun → 클릭 시
+    `_do_dm_collect` pending 세팅 후 `st.rerun()`(on_click 미사용), 다음 run 의
+    `_consume_refresh_if_any` 가 collect_batch 를 실행한다. 룩은 `.st-key-dm_collect_cta`
+    스코프(우측 정렬 + accent 채움)로 구 `.dm-btn-primary` 에 맞춘다.
+    """
+    with st.container(key="dm_collect_cta"):
+        if st.button(
+            "🔄 지금 뉴스 수집", key="_dm_collect_btn", type="primary",
+            help="페르소나 관심사 키워드(없으면 자동화·AI)로 지금 뉴스를 수집하고 화면을 새로 그립니다.",
+        ):
+            st.session_state["_do_dm_collect"] = True
+            st.rerun()
 
 
 def _consume_refresh_if_any() -> bool:
-    """`?refresh=now` 1회 소비 — collect_batch 동기 호출 + 캐시 무효화 + 토스트.
+    """수집 트리거 1회 소비 — collect_batch 동기 호출 + 캐시 무효화 + 토스트.
 
-    수집 키워드는 페르소나 관심사(interest_tasks + interest_lv3). 비어 있으면
-    기본 키워드(자동화·AI)로 폴백하고, tech 사이트·커스텀 RSS 는 키워드 무관하게
-    항상 함께 수집한다 — 빈 페르소나에서도 버튼이 실제로 수집을 실행한다.
-    수집 실패 시 error 토스트(캐시는 안전하게 무효화 — 다음 렌더가 최신).
+    트리거는 둘 중 하나: '지금 뉴스 수집' 버튼이 세팅한 `_do_dm_collect` pending(신규,
+    문서 reload 없음) 또는 레거시 `?refresh=now` 쿼리(북마크/딥링크 호환). 수집 키워드는
+    페르소나 관심사(interest_tasks + interest_lv3). 비어 있으면 기본 키워드(자동화·AI)로
+    폴백하고, tech 사이트·커스텀 RSS 는 키워드 무관하게 항상 함께 수집한다 — 빈
+    페르소나에서도 실제로 수집을 실행한다. 수집 실패 시 error 토스트(캐시는 안전하게
+    무효화 — 다음 렌더가 최신).
     """
-    if st.query_params.get("refresh") != "now":
+    triggered = bool(st.session_state.pop("_do_dm_collect", False))
+    if not triggered and st.query_params.get("refresh") != "now":
         return False
 
     # 모든 dm 관련 캐시 무효화 — `_archive_stats_dm` 는 이제 `board_v2._archive_stats()`
@@ -1179,8 +1178,7 @@ def _dm_tab_body_html(tab: str, *, persona: Persona | None,
         # PR-6: 본문은 Streamlit 위젯(검색·리스트·폼)으로 render 단계에서 채워짐.
         # 여기서는 헤더 영역만 비워둠 (placeholder div).
         return '<div class="td-manage-placeholder" style="margin: 0 24px;"></div>'
-    if tab == "src":
-        return _dm_src_body_html(dm_stats)
+    # src 탭은 위젯 렌더(_render_src_table)라 HTML 경로를 타지 않는다.
     return ""
 
 
@@ -1302,16 +1300,13 @@ def _dm_task_body_html() -> str:
     </section>"""
 
 
-def _dm_src_body_html(dm_stats: dict[str, str | int]) -> str:
-    """출처 설정 탭 본문 — 기본 4 출처 + 커스텀 출처 × 7일 수집 + 활성 토글."""
-    from store import sources as src_store
-
-    # 최근 7일 수집 출처별 카운트
+def _src_count_map() -> dict[str, tuple[int, str]]:
+    """최근 7일 출처별 (수집 건수, 최신 ISO) — 출처 행/상태 공통 데이터."""
     try:
         week = _news_db.load_news_for_days(days=7)
     except Exception:
         week = None
-    cnt_map: dict[str, tuple[int, str]] = {}  # source -> (count, last_iso)
+    cnt_map: dict[str, tuple[int, str]] = {}
     if week is not None and not week.empty and "source" in week.columns:
         grouped = week.groupby("source")
         for src in grouped.groups.keys():
@@ -1324,77 +1319,48 @@ def _dm_src_body_html(dm_stats: dict[str, str | int]) -> str:
                     if last_iso:
                         break
             cnt_map[str(src)] = (cnt, last_iso)
+    return cnt_map
 
-    disabled = src_store.disabled_set()
-    customs = src_store.custom_sources()
 
-    def _gradient(src: str) -> str:
-        return _SOURCE_GRADIENTS.get(src, _DEFAULT_GRADIENT)
+def _src_status_html(cnt: int, is_enabled: bool) -> str:
+    if not is_enabled:
+        return '<span class="dm-src-st dm-src-st-off">비활성</span>'
+    if cnt > 0:
+        return '<span class="dm-src-st dm-src-st-ok">OK</span>'
+    return '<span class="dm-src-st dm-src-st-warn">7일 무수집</span>'
 
-    def _status_html(cnt: int, is_enabled: bool) -> str:
-        if not is_enabled:
-            return '<span class="dm-src-st dm-src-st-off">비활성</span>'
-        if cnt > 0:
-            return '<span class="dm-src-st dm-src-st-ok">OK</span>'
-        return '<span class="dm-src-st dm-src-st-warn">7일 무수집</span>'
 
-    def _toggle_link(src: str, is_enabled: bool) -> str:
-        href = _src_action_href("toggle", src)
-        label = "비활성화" if is_enabled else "활성화"
-        return f'<a class="dm-src-act" href="{href}" target="_self">{label}</a>'
+def _src_row_pill_html(name: str, cnt: int, last_iso: str, *,
+                       is_enabled: bool, kind: str, url: str = "") -> str:
+    """출처 1행의 시각 부분(마크/이름/건수/최신/상태) — 액션 제외.
 
-    rows_html: list[str] = []
-    # 기본 출처 — toggle 가능, 제거 불가
-    for src in src_store.DEFAULT_SOURCES:
-        is_enabled = src not in disabled
-        cnt, last_iso = cnt_map.get(src, (0, ""))
-        rows_html.append(
-            f'<li class="dm-src-row{" dm-src-row-off" if not is_enabled else ""}">'
-            f'<span class="dm-src-mark" style="background:{_gradient(src)};"></span>'
-            f'<span class="dm-src-name">{_html.escape(src)}</span>'
-            f'<span class="dm-src-cnt">{cnt}건/7일</span>'
-            f'<span class="dm-src-last">{_html.escape(last_iso[:16] if last_iso else "—")}</span>'
-            f'{_status_html(cnt, is_enabled)}'
-            f'{_toggle_link(src, is_enabled)}'
-            f'</li>'
-        )
+    토글/제거 액션은 `_render_src_row` 가 옆 칸 st.button 으로 그린다(앵커 제거).
+    행 테두리/배경은 컨테이너(.st-key-_src_row_*)가, 내부 셀 격자는 .dm-src-rowp 가 담당.
+    """
+    grad = _SOURCE_GRADIENTS.get(name, _DEFAULT_GRADIENT)
+    name_html = _html.escape(name)
+    if url:
+        name_html += f'<span class="dm-src-url-mini">{_html.escape(url[:60])}</span>'
+    elif kind == "other":
+        name_html += '<span class="dm-src-url-mini">기타 — 토글 불가</span>'
+    cls = "dm-src-rowp"
+    if not is_enabled:
+        cls += " dm-src-rowp-off"
+    elif kind == "custom":
+        cls += " dm-src-rowp-custom"
+    return (
+        f'<div class="{cls}">'
+        f'<span class="dm-src-mark" style="background:{grad};"></span>'
+        f'<span class="dm-src-name">{name_html}</span>'
+        f'<span class="dm-src-cnt">{cnt}건/7일</span>'
+        f'<span class="dm-src-last">{_html.escape(last_iso[:16] if last_iso else "—")}</span>'
+        f'{_src_status_html(cnt, is_enabled)}'
+        '</div>'
+    )
 
-    # 커스텀 출처 — toggle 없음(등록=활성), 제거 가능
-    for cs in customs:
-        cnt, last_iso = cnt_map.get(cs.name, (0, ""))
-        remove_href = _src_action_href("remove", cs.name)
-        rows_html.append(
-            f'<li class="dm-src-row dm-src-row-custom">'
-            f'<span class="dm-src-mark" style="background:{_gradient(cs.name)};"></span>'
-            f'<span class="dm-src-name">{_html.escape(cs.name)}'
-            f'<span class="dm-src-url-mini">{_html.escape(cs.url[:60])}</span></span>'
-            f'<span class="dm-src-cnt">{cnt}건/7일</span>'
-            f'<span class="dm-src-last">{_html.escape(last_iso[:16] if last_iso else "—")}</span>'
-            f'{_status_html(cnt, True)}'
-            f'<a class="dm-src-act dm-src-act-rm" href="{remove_href}" target="_self">제거</a>'
-            f'</li>'
-        )
 
-    # 기타 출처 — 뉴스에 source 로 등장했지만 default/custom 어디에도 없는 ID
-    # (scraping 모듈이 'naver'/'google'/'tech' 내부 ID 로 저장한 경우 등).
-    custom_names = {c.name for c in customs}
-    known = set(src_store.DEFAULT_SOURCES) | custom_names
-    others = sorted(s for s in cnt_map.keys() if s not in known)
-    for src in others:
-        cnt, last_iso = cnt_map.get(src, (0, ""))
-        rows_html.append(
-            f'<li class="dm-src-row dm-src-row-other">'
-            f'<span class="dm-src-mark" style="background:{_gradient(src)};"></span>'
-            f'<span class="dm-src-name">{_html.escape(src)}'
-            f'<span class="dm-src-url-mini">기타 — 토글 불가</span></span>'
-            f'<span class="dm-src-cnt">{cnt}건/7일</span>'
-            f'<span class="dm-src-last">{_html.escape(last_iso[:16] if last_iso else "—")}</span>'
-            f'{_status_html(cnt, True)}'
-            f'<span class="dm-src-act dm-src-act-noop">—</span>'
-            f'</li>'
-        )
-
-    n_active = len([s for s in src_store.DEFAULT_SOURCES if s not in disabled]) + len(customs)
+def _src_header_html(n_active: int) -> str:
+    """출처 설정 탭 헤더(상호작용 없음)."""
     return f"""<section class="dm-tab-body dm-src-body">
       <div class="dm-tb-head">
         <div>
@@ -1406,23 +1372,84 @@ def _dm_src_body_html(dm_stats: dict[str, str | int]) -> str:
           </p>
         </div>
       </div>
-      <ul class="dm-src-table">{"".join(rows_html)}</ul>
     </section>"""
+
+
+def _render_src_row(idx: int, name: str, cnt: int, last_iso: str, *,
+                    is_enabled: bool, kind: str, url: str = "") -> None:
+    """출처 1행 — [시각 pill | 토글/제거 버튼] (st.columns). 클릭은 소켓 rerun.
+
+    토글/제거는 `_do_src_action`=(action, name) pending → `_consume_src_action_if_any`
+    가 처리(on_click 미사용). 'other'(내부 ID) 행은 토글 불가라 '—' 표시.
+    """
+    with st.container(key=f"_src_row_{idx}"):
+        c1, c2 = st.columns([6, 1.3], vertical_alignment="center")
+        with c1:
+            st.html(_src_row_pill_html(
+                name, cnt, last_iso, is_enabled=is_enabled, kind=kind, url=url))
+        with c2:
+            if kind == "default":
+                label = "비활성화" if is_enabled else "활성화"
+                if st.button(label, key=f"_src_act_{idx}", use_container_width=True):
+                    st.session_state["_do_src_action"] = ("toggle", name)
+                    st.rerun()
+            elif kind == "custom":
+                if st.button("제거", key=f"_src_act_{idx}", use_container_width=True):
+                    st.session_state["_do_src_action"] = ("remove", name)
+                    st.rerun()
+            else:
+                st.html('<div class="dm-src-act-noop">—</div>')
+
+
+def _render_src_table(dm_stats: dict[str, str | int]) -> None:
+    """출처 설정 탭 본문 — 헤더 HTML + 출처 행별 위젯(토글/제거).
+
+    구 `_dm_src_body_html` 의 토글/제거 `<a href="?src_action=…">`(문서 reload=흰
+    깜빡임)를 위젯화. 기본 4 출처(토글) + 커스텀(제거) + 기타(내부 ID, 토글 불가).
+    """
+    from store import sources as src_store
+
+    cnt_map = _src_count_map()
+    disabled = src_store.disabled_set()
+    customs = src_store.custom_sources()
+    n_active = len([s for s in src_store.DEFAULT_SOURCES if s not in disabled]) + len(customs)
+    st.html(_components.prepare_screen_html(_src_header_html(n_active)))
+
+    idx = 0
+    for src in src_store.DEFAULT_SOURCES:  # 기본 — 토글
+        cnt, last_iso = cnt_map.get(src, (0, ""))
+        _render_src_row(idx, src, cnt, last_iso,
+                        is_enabled=src not in disabled, kind="default")
+        idx += 1
+    for cs in customs:  # 커스텀 — 제거
+        cnt, last_iso = cnt_map.get(cs.name, (0, ""))
+        _render_src_row(idx, cs.name, cnt, last_iso,
+                        is_enabled=True, kind="custom", url=cs.url)
+        idx += 1
+    known = set(src_store.DEFAULT_SOURCES) | {c.name for c in customs}
+    for src in sorted(s for s in cnt_map if s not in known):  # 기타 — 토글 불가
+        cnt, last_iso = cnt_map.get(src, (0, ""))
+        _render_src_row(idx, src, cnt, last_iso, is_enabled=True, kind="other")
+        idx += 1
 
 
 _SRC_ACTIONS = {"toggle", "remove", "add"}
 
 
 def _consume_src_action_if_any() -> tuple[str, str] | None:
-    """`?src_action=toggle|remove&src_name=` 1회 소비.
+    """출처 토글/제거 1회 소비.
 
-    - toggle: 기본 출처 활성/비활성 전환
-    - remove: 커스텀 출처 제거
-    - add: (Streamlit form 에서 set 한) pending 처리는 별도 path 로
-    반환: 성공 시 (action, src_name), 아니면 None.
+    트리거는 둘 중 하나: 출처 행 버튼이 세팅한 `_do_src_action`=(action, name) pending
+    (신규, 문서 reload 없음) 또는 레거시 `?src_action=toggle|remove&src_name=` 쿼리
+    (북마크/딥링크 호환). toggle=기본 출처 활성/비활성, remove=커스텀 출처 제거.
+    (add 는 `_do_src_add` 별 path.) 반환: 성공 시 (action, src_name), 아니면 None.
     """
-    action = st.query_params.get("src_action")
-    name = (st.query_params.get("src_name", "") or "").strip()
+    pend = st.session_state.pop("_do_src_action", None)
+    if pend:
+        action, name = pend[0], (pend[1] or "").strip()
+    else:
+        action = st.query_params.get("src_action")
+        name = (st.query_params.get("src_name", "") or "").strip()
     if action not in _SRC_ACTIONS or not name:
         return None
 

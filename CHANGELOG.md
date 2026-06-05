@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Changed (데이터 관리 '지금 뉴스 수집' + 출처 토글/제거 위젯화 — 흰 깜빡임 제거)
+- **'지금 뉴스 수집' CTA 를 앵커→버튼**(`ui/data_management_v2.py`, `assets/v2/screens/data_management.css`): 수집잡 헤더의 `<a href="?refresh=now">`(클릭 시 문서 전체 reload=흰 깜빡임)를 `_refresh_cta_html` 제거 + `_render_collect_button`(`st.button`)으로 교체. 클릭 시 `_do_dm_collect` pending 세팅 → `st.rerun()`(on_click 미사용) → `_consume_refresh_if_any` 가 `collect_batch` 실행. `_consume_refresh_if_any` 는 **버튼 pending / 레거시 `?refresh=now` 둘 다** 처리(북마크 호환). 버튼은 본문 위 우측 정렬(컨테이너 column flex 라 `align-items:flex-end`)·accent 채움 — 빈 수집잡 안내의 "우측 상단 [지금 뉴스 수집]" 문구와 위치 일치.
+- **출처 토글/제거를 앵커→행 버튼**(`ui/data_management_v2.py`, `assets/v2/screens/data_management.css`): `_dm_src_body_html`(토글/제거 `<a href="?src_action=…">` 가 박힌 HTML `<ul>`)를 제거하고 `_render_src_table`(헤더 HTML + 출처 행별 위젯)로 교체. 각 행 = `st.columns([시각 pill | 토글/제거 버튼])`, 컨테이너(`.st-key-_src_row_*`)가 테두리/배경(구 `.dm-src-row` 룩), pill(`_src_row_pill_html`)이 마크/이름/건수/최신/상태 격자. 버튼 클릭 → `_do_src_action`=(action, name) pending → `_consume_src_action_if_any`(버튼 pending / 레거시 `?src_action=` 둘 다 처리). 기본=토글, 커스텀=제거, 기타(내부 ID)=토글 불가(—).
+- **검증(playwright 실측)**: 출처 토글 클릭 → `window` 플래그 **생존(문서 reload 0=흰 깜빡임 없음)** · URL 깨끗 · 6행/4토글버튼 렌더 · 수집 버튼 우측 정렬(right edge=컨테이너 우단) · 라이트/다크 스크린샷 기존 룩 유지. 수집 버튼은 표준 `st.button`(소켓 rerun)이라 reload-free, 수집 실행은 `_do_dm_collect`→`collect_batch` 단위 테스트. pytest **777 passed**(수집 pending·출처 pending·pill·헤더 테스트로 교체) · 금지패턴(on_click) 0.
+
 ### Changed (사이드바 메뉴 이동 위젯화 — 화면 전환 흰 깜빡임 제거)
 - **사이드바 5-nav 를 앵커→위젯으로**(`ui/sidebar.py`, `assets/v2/sidebar.css`, `ui/styles.py`): 좌측 업무 흐름 메뉴(오늘의 보드/데이터 관리/인사이트 분석/SOLA 작업실/산출물 보관함)가 `<a href="?app_area=…">` 앵커라, 메뉴를 누를 때마다 **브라우저 문서 전체 reload**(빈 화면→프론트 재부팅→CSS 재주입)로 화면 전환 시 흰 깜빡임이 났다. `_sidebar_nav_html`(앵커 빌더)를 제거하고 `_render_sidebar_nav` 가 `st.button` 5개로 렌더 → 클릭이 **소켓 rerun**(부분 갱신·문서 reload 없음)이라 깜빡임이 사라진다. `on_click` 미사용 — `if st.button(): app_area 세팅 → st.rerun()`(CLAUDE.md #3). 활성 항목은 `type="primary"`.
 - **룩 100% 보존**(`assets/v2/sidebar.css`): 컨테이너 `.st-key-sidebar_nav` 스코프로 버튼을 기존 카드형 nav 항목으로 복제 — 인덱스(01·02…)는 CSS `counter` `::before`, 제목은 라벨 `**…**`(`<strong>`), 설명은 `*…*`(`<em>`, `display:block`+ellipsis 둘째 줄), 활성은 `button[kind="primary"]`(accent 배경·테두리·인덱스/제목색). 다크는 일반 secondary 버튼 dark 규칙(#1E293B 채움)이 nav 까지 먹지 않게 투명 유지 + 활성 틴트/글자색 다크화(`ui/styles.py` `_DARK_CSS`).

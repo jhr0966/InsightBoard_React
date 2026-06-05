@@ -59,10 +59,12 @@ def test_hist_chart_is_encoded_img_not_inline_svg():
     assert "%23" in src
 
 
-def test_refresh_cta_centered_and_icon_encoded():
-    html = dm._refresh_cta_html()
-    assert "justify-content:center" in html
-    assert "data:image/svg+xml," in html
-    assert "지금 뉴스 수집" in html
-    src = html.split('src="', 1)[1].split('"', 1)[0]
-    assert "#" not in src  # stroke='#fff' 인코딩됨
+def test_collect_cta_migrated_to_widget_button():
+    """'지금 뉴스 수집' 은 앵커(_refresh_cta_html, 문서 reload)에서 위젯
+    (_render_collect_button, 소켓 rerun)으로 전환. 템플릿 placeholder 는 코드에서
+    빈 문자열로 치환(앵커 미주입), 실 동작은 _do_dm_collect pending →
+    _consume_refresh_if_any (test_collect_trigger 에서 검증)."""
+    assert not hasattr(dm, "_refresh_cta_html")    # 앵커 빌더 제거됨
+    assert hasattr(dm, "_render_collect_button")   # 위젯 렌더 존재
+    raw = dm._DM_TEMPLATE.read_text(encoding="utf-8")
+    assert "{{INGEST_REFRESH_CTA}}" in raw         # placeholder 자체는 보존
