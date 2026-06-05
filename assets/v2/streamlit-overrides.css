@@ -93,32 +93,38 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
   flex-direction: column;
   height: 100%;
 }
-/* 입력 form 래퍼(추천 칩 + 입력 폼) — 예전엔 margin-top:auto 로 컬럼 맨 아래에 못박혀
-   인트로 카드와 추천 사이에 큰 빈 공간이 생겼다. 4px 로 바꿔 인트로/메시지 바로 아래로
-   흐르게 한다(추천 + 입력이 위에 붙음). */
+/* 입력 form 래퍼 — 추천 칩이 이제 별도 상단 요소라 입력 form 만 남는다. margin-top:auto
+   로 컬럼 맨 아래에 핀(안내·추천·메시지가 위를 채우고 입력+보내기는 항상 하단). */
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
     [data-testid="stLayoutWrapper"]:has([data-testid="stForm"]) {
-  margin-top: 4px;
+  margin-top: auto;
   width: 100%;
 }
 
-/* 데이터 관리 탭 — st.tabs(네이티브). 전환은 클라이언트사이드라 흰 깜빡임 없음.
-   Streamlit 가 탭 배경/글자를 정적 라이트로 하드코딩 → 다크 가독성 위해 토큰 강제. */
-[data-testid="stTabs"] [data-baseweb="tab-list"] {
-  gap: 2px;
-  border-bottom: 1px solid var(--surface-divider, #E5E7EB);
-  flex-wrap: wrap;
-}
-[data-testid="stTabs"] [data-baseweb="tab"] {
+/* 데이터 관리 탭 — st.segmented_control 을 탭 바처럼. 전환은 fragment rerun(부분 갱신). */
+.st-key-dm_tabbar { margin: 4px 0 14px; }
+.st-key-dm_tabbar [data-testid="stElementContainer"] { margin-bottom: 0; }
+.st-key-dm_tabbar [role="group"] { gap: 4px; flex-wrap: wrap; }
+.st-key-dm_tabbar [data-testid="stBaseButton-segmented_control"],
+.st-key-dm_tabbar [data-testid="stBaseButton-segmented_controlActive"] {
+  border-radius: 10px !important;
+  padding: 7px 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border: 1px solid var(--surface-divider, #E5E7EB) !important;
+  background: var(--surface-card, #fff) !important;
   color: var(--text-secondary, #475569) !important;
-  background: transparent !important;
+  transition: background 120ms, color 120ms, border-color 120ms;
 }
-[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
-  color: var(--accent-primary, #2563EB) !important;
+.st-key-dm_tabbar [data-testid="stBaseButton-segmented_control"]:hover {
+  color: var(--text-primary, #0F172A) !important;
+  border-color: var(--accent-primary, #2563EB) !important;
 }
-[data-testid="stTabs"] [data-baseweb="tab-highlight"],
-[data-testid="stTabs"] [data-baseweb="tab-border"] { background: var(--accent-primary, #2563EB) !important; }
-[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding-top: 10px; }
+.st-key-dm_tabbar [data-testid="stBaseButton-segmented_controlActive"] {
+  background: var(--accent-primary, #2563EB) !important;
+  color: #fff !important;
+  border-color: var(--accent-primary, #2563EB) !important;
+}
 
 /* 채팅 스크롤 영역 — 안내+추천+대화가 한 컨테이너에서 스크롤(위로 올리면 안내가
    최상단에 남음). 입력 form 위 공간을 채우고 넘치면 자체 스크롤. */
@@ -139,8 +145,8 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
 }
 .side-chat-intro-h { font-weight: 700; font-size: 14px; color: var(--text-primary, #0F172A); margin-bottom: 4px; }
 .side-chat-intro-sub { font-size: 12.5px; color: var(--text-muted, #64748B); margin-bottom: 8px; }
-/* 추천 질문 — st.pills (_chat_composer fragment, .st-key-side_chat_suggest 컨테이너).
-   칩 클릭이 전체 리로드 없이 fragment 만 rerun → 입력창에 텍스트만 채운다.
+/* 추천 질문 — st.pills (_render_chat_suggestions, .st-key-side_chat_suggest 컨테이너).
+   칩(상단)과 입력창(하단)이 분리돼 칩 클릭은 전체 rerun → 입력창에 텍스트만 채운다.
    좁은 채팅 컬럼에 맞춰 compact + 긴 한글 질문은 pill 안에서 줄바꿈. 앱 내 유일한
    pills 라 컨테이너 key 클래스로 스코프하면 다른 화면에 영향 없다. */
 .st-key-side_chat_suggest { margin-bottom: 6px; }

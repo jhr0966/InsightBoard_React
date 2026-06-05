@@ -32,6 +32,26 @@
 
 ---
 
+## 2026-06-05 · UX: 탭 룩 복원(segmented_control) + 채팅 입력창 하단 고정 + 조건부 렌더
+
+**브랜치:** `claude/kind-volta-IWxix`.
+
+**맥락:** st.tabs 머지(#120) 후 사용자 — "새로고침 없는 건 확인. 근데 UI 볼품없어짐: ① 채팅 입력창·보내기는 영역 하단에 있어야, ② 탭이 기본 컴포넌트로 바뀜. + 긴 방법론 문서(session_state/callback/fragment/cache/form, st.tabs eager 렌더 지적, segmented_control+조건부 권장)."
+
+**충돌 처리(중요):** 사용자가 `on_click` 콜백을 명시 요청했으나 **CLAUDE.md #3 + CI 가 on_click 금지**. → 동일 UX 를 `pending(__prefill)+st.rerun()`+`_apply_pending_prefill` 로 구현(체감 동일, `key`+session_state 원칙 유지). 사용자에게 "꼭 on_click 이면 CI 규칙 자체를 푸는 별도 결정"이라고 안내함.
+
+**수정:**
+- `data_management_v2`: `st.tabs`→`@st.fragment _render_dm_tabs`(segmented_control, `key=_dm_active_tab`, 단축 아이콘 라벨 `_DM_TAB_SHORT`) + `_render_dm_tab_panel`(활성 탭만 **조건부 렌더**). 탭 전환=fragment rerun(부분 갱신) · 활성 탭 session_state 보존 → 앵커 리로드 후에도 같은 탭(#120 출처토글 첫탭복귀 해소).
+- `chat_panel`: `_chat_composer`(칩+입력 묶음) → 상단 `_render_chat_suggestions` + 하단 `_render_chat_input` 분리. CSS `margin-top:auto` 로 입력 form 하단 고정. 칩 클릭=full rerun(칩↔입력 별도 영역) → 하단 입력창 채움.
+- `streamlit-overrides.css`: 입력폼 `margin-top:auto`(하단핀) + `.st-key-dm_tabbar` 카드형 pill 스타일(활성=accent) + stTabs 룰 제거.
+- 테스트: `test_dm_tabs.py` st.tabs eager 테스트 2건 → segmented 조건부 렌더(기본=jobs만/활성=kw만) 2건 교체. `test_task_def_upload.py` 탭선택 `?dm_tab=task`→`session_state["_dm_active_tab"]="task"`.
+
+**검증(playwright 실측):** 탭클릭 → `XRUN:DMTABS`만(앱 `XRUN:APP` 0)=fragment 스코프 · 기본 jobs본문만(`키워드 관리` 부재)·kw탭 전환시 kw본문만=조건부 렌더 · textarea bottom 858/950px=하단고정 · 칩클릭→입력창 자동채움(스크린샷 확인). pytest **774 passed** · on_click 0.
+
+**남은 앵커(다음 단계):** 사이드바 메뉴(`?app_area=`)·출처 토글(`?src_action=`)·"지금 뉴스 수집"(`?refresh=now`)·SOLA quick-action 은 아직 앵커=문서 reload. 위젯화하면 마지막 흰 깜빡임 제거. (segmented_control+session_state 라 이제 in-tab 앵커 액션도 탭은 유지됨.)
+
+---
+
 ## 2026-06-04 · UX: 탭 진짜 무깜빡임 (st.tabs) + 채팅칩 위치 복구 — Phase 1+2 후속
 
 **브랜치:** `claude/kind-volta-IWxix`.
