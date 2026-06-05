@@ -5,6 +5,55 @@
 
 ---
 
+## 2026-06-05 — 데이터 관리 '지금 뉴스 수집' + 출처 토글/제거 위젯화 (흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
+
+**무엇을**: 데이터 관리의 남은 앵커 액션(① '지금 뉴스 수집' ② 출처 토글/제거)을 위젯화해 클릭 시 문서 reload(흰 깜빡임) 제거. (UX 안정화 — 사용자 승인: "둘 다 위젯화 + 스샷 확인".)
+
+**어떻게**:
+- '지금 뉴스 수집': `_refresh_cta_html`(`<a ?refresh=now>`) 제거 → `_render_collect_button`(st.button). 클릭=`_do_dm_collect` pending→`st.rerun()`→`_consume_refresh_if_any`(버튼 pending/레거시 쿼리 둘 다). 우측 정렬은 **column flex 라 `align-items:flex-end`**(justify 는 세로축이라 무효 — 함정).
+- 출처 토글/제거: `_dm_src_body_html`(앵커 박힌 `<ul>`) → `_render_src_table`(헤더 HTML + 행별 `st.columns([pill | 버튼])`). 컨테이너 `.st-key-_src_row_*` 가 테두리(구 `.dm-src-row` 룩), `_src_row_pill_html` 이 시각 격자. 클릭=`_do_src_action`=(action,name) pending→`_consume_src_action_if_any`(pending/레거시 쿼리 둘 다).
+
+**검증**: playwright — 출처 토글 클릭 시 `window` 플래그 생존(reload 0)·URL 깨끗·6행/4버튼·수집버튼 우측정렬·라이트/다크 룩 유지. pytest **777 passed**(`_dm_src_body_html`/`_refresh_cta_html` 테스트 → pill/header/pending 테스트로 교체) · 금지패턴 0.
+
+**핵심 함정**: ① Streamlit 컨테이너는 기본 **column flex** → 자식 우측 정렬은 `align-items:flex-end`(`justify-content` 아님). ② HTML 블록에 박힌 액션은 위젯으로 못 넣으므로 `st.columns([시각 HTML | 버튼])` 로 분리하고 **컨테이너에 테두리**를 줘 한 행처럼 보이게. ③ 레거시 쿼리 소비 경로(`?refresh=now`/`?src_action=`)는 유지해 북마크/딥링크 + 기존 테스트 호환.
+
+**파일**: `ui/data_management_v2.py`, `assets/v2/screens/data_management.css`, `tests/{test_collect_trigger,test_src_crud,test_dm_tabs,test_dm_cleanup}.py`.
+
+---
+
+## 2026-06-05 — 사이드바 메뉴 이동 위젯화 (화면 전환 흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
+
+**무엇을**: 좌측 업무 흐름 5-nav 를 누를 때 나던 **화면 전환 흰 깜빡임** 제거. (UX 안정화 다음 단계 — 마지막 큰 흰 깜빡임 출처였던 사이드바 메뉴.)
+
+**어떻게**:
+- `_sidebar_nav_html`(앵커 `<a href=?app_area=>` 빌더) 제거 → `_render_sidebar_nav` 가 `st.button` 5개. 앵커=문서 reload(흰 깜빡임), 버튼=소켓 rerun(부분 갱신). `on_click` X — `if st.button(): app_area 세팅+st.rerun()`. 활성=`type="primary"`.
+- 룩 보존: `.st-key-sidebar_nav` CSS 가 카드형 nav 항목 복제 — 인덱스=CSS `counter` `::before`, 제목=`**…**`(strong), 설명=`*…*`(em, block+ellipsis), 활성=`button[kind="primary"]`. 다크는 secondary 버튼 dark 규칙이 nav 까지 안 먹게 투명 유지 + 활성 틴트(`_DARK_CSS`).
+- 컨텍스트 딥링크(`?app_area=` from 보드/히트맵/알림)는 `_consume_area_query` 로 유지 — 이번엔 사이드바 메뉴만.
+
+**검증**: playwright — nav 클릭 시 `window` 플래그 생존(문서 reload 0=흰 깜빡임 없음)·URL 에 app_area 없음·활성 01→03 이동·헤더 타이틀 전환·라이트/다크 사이드바 스크린샷 기존과 동일. pytest **775 passed**(nav 위젯 AppTest 추가) · 금지패턴 0.
+
+**핵심 함정**: ① st.button 라벨은 `**strong**`/`*em*` 등 **핵심 markdown 만**(색·코드 directive 의존 X) 써야 안전. ② 다크에서 일반 `button[kind="secondary"]` dark 규칙(0-2-2)이 `.st-key-sidebar_nav button`(0-1-1)보다 specificity 높아 nav 까지 #1E293B 로 채워짐 → `_DARK_CSS` 에 `body:has(.db-topbar) .st-key-sidebar_nav button[kind="secondary"]{ background:transparent }`(0-3-2)로 이김. ③ 인덱스 01·02 는 라벨이 아니라 CSS `counter(navidx, decimal-leading-zero)` 로 생성(라벨엔 제목·설명만).
+
+**파일**: `ui/sidebar.py`(위젯 nav), `assets/v2/sidebar.css`(나브 버튼 룩), `ui/styles.py`(다크 nav), `tests/test_sidebar_profile.py`(앵커 테스트→위젯 AppTest).
+
+---
+
+## 2026-06-05 — 메인 헤더 스크롤 고정 + 채팅 패널 모든 화면 고정 (`claude/kind-volta-IWxix`)
+
+**무엇을**: ① 모든 화면에서 메인 헤더(`.db-topbar`)가 스크롤해도 상단에 고정. ② SOLA 작업실·산출물 보관함·데이터 관리에서 스크롤 시 우측 채팅 패널이 같이 밀리던 것 → 모든 화면 고정.
+
+**어떻게**:
+- **헤더 sticky**: `.db-topbar` 직접 sticky 는 `st.html` 래퍼가 헤더 높이로 shrink-wrap 돼 이동 여유 0 → 안 붙음. 대신 **헤더를 감싼 element-container**(`[data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar)`)에 `position:sticky; top:0; z-index:20`. 컨테이닝 블록이 메인 컬럼 전체 높이라 콘텐츠만큼 길게 고정됨(채팅 컬럼 sticky 와 동일 원리). 배경 라이트 `--v2-bg`/다크 `#0F172A` 불투명 + box-shadow.
+- **채팅 패널 고정**: 패널 높이 `calc(100vh-24px)` → `calc(100vh-72px)`. sticky '이동 여유'(`row−panel−top`)가 `block-container`(36px)·`stMain`(8px) **row 밖 padding** 이 만든 추가 스크롤보다 작아, 짧은 화면 바닥에서 패널이 ~32px 밀렸던 것 해소(72px 로 여유 확보).
+
+**검증**: playwright 실측(1440×900) 5개 화면 전부 헤더 ΔY=0·채팅 ΔY=0(이전 헤더 −600~−40, 채팅 sola/archive −32) · 헤더 래퍼 computed `sticky/top:0/z:20` · pytest **774 passed** · 금지패턴 0.
+
+**핵심 함정(재학습 방지)**: Streamlit `st.html` 요소는 **그 자체가 아니라 감싼 element-container 에 sticky** 를 걸어야 한다(자체 sticky 는 shrink-wrap 으로 무력화). sticky 패널은 높이가 컨테이닝 블록과 비슷하면 row 밖 padding 만큼 바닥에서 떨어지므로, 패널을 충분히(여기선 72px) 낮춰야 '이동 여유 > 페이지 스크롤'.
+
+**파일**: `assets/v2/shell.css`(.db-topbar 배경·그림자), `assets/v2/streamlit-overrides.css`(헤더 래퍼 sticky + 채팅 패널 높이), `ui/styles.py`(다크 헤더 배경).
+
+---
+
 ## 🚩 다음 세션 시작점 (2026-06-02 기준) — 여기부터 읽으세요
 
 **현재 상태**

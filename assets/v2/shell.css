@@ -18,16 +18,21 @@
    ════════════════════════════════════════════════════════════ */
 .db-topbar {
   /* Phase A: fixed 풀폭 헤더 → in-flow 페이지 헤더 (네이티브 사이드바와 겹침 제거).
-     검색은 헤더 아래 실제 입력(_render_topbar_search)으로 분리 → 헤더는 제목 | 액션 2-열. */
+     검색은 헤더 아래 실제 입력(_render_topbar_search)으로 분리 → 헤더는 제목 | 액션 2-열.
+     스크롤 고정은 헤더를 감싼 Streamlit element-container 에 sticky 를 거는 방식으로
+     한다(streamlit-overrides.css). .db-topbar 자체를 sticky 로 하면 컨테이너가 헤더
+     높이에 딱 맞게 줄어들어(shrink-wrap) 이동 여유가 없어 안 붙는다. 여기서는 배경만
+     앱 배경(--v2-bg)과 같은 불투명색으로 깔아 아래로 스크롤되는 카드가 비치지 않게 한다. */
   position: static;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: center;
-  padding: 4px 2px 12px;
+  padding: 10px 2px 12px;
   margin-bottom: 10px;
-  background: transparent;
+  background: var(--v2-bg);
   border-bottom: 1px solid var(--surface-divider);
+  box-shadow: 0 6px 14px -10px rgba(15, 23, 42, 0.22);
 }
 .db-topbar-l {
   display: flex;

@@ -179,43 +179,54 @@ def test_consume_src_add_error_emits_error_toast(isolated_sources):
     assert toast and toast[0] == "error"
 
 
-# ── _dm_src_body_html — 토글 링크 + 커스텀 노출 ────────────
+# ── 출처 행 위젯 — pill HTML(시각) + 토글/제거 버튼(위젯) ──────
+# 구 _dm_src_body_html(앵커 토글 링크)는 _render_src_table(위젯)로 교체.
+# pill HTML 은 순수 함수라 직접 검증, 토글/제거는 _do_src_action pending 경로로 검증.
 
-def test_src_body_renders_toggle_links_for_defaults(isolated_sources):
+def test_src_row_pill_shows_name_status_without_anchor():
     from ui import data_management_v2 as dm
-    with patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()):
-        html = dm._dm_src_body_html({"active_sources": 4})
-    # 4개 기본 출처 모두 노출 + 비활성화 링크
-    assert html.count("dm-src-act") >= 4
-    assert "비활성화" in html
-    # disabled 자취 없음 (이전 PR 의 잔여)
-    assert 'class="dm-src-row"' not in html or "disabled>" not in html
+    html = dm._src_row_pill_html("AI Times", 5, "2026-06-05T01:00",
+                                 is_enabled=True, kind="default")
+    assert "AI Times" in html
+    assert "dm-src-st-ok" in html        # 7일 수집 있음 = OK
+    assert "dm-src-rowp" in html
+    assert "<a " not in html             # 앵커 없음 — 토글은 위젯 버튼이 담당
 
 
-def test_src_body_disabled_row_shows_off_label(isolated_sources):
+def test_src_row_pill_off_and_custom_variants():
     from ui import data_management_v2 as dm
-    isolated_sources.toggle_disabled("AI Times")  # 비활성
-    with patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()):
-        html = dm._dm_src_body_html({"active_sources": 3})
-    # 비활성 상태 표시
-    assert "dm-src-st-off" in html
-    assert "비활성" in html
-    # 토글 라벨이 "활성화" 로
-    assert "활성화" in html
-    # 활성 출처 카운트는 3
-    assert "활성 출처 3개" in html
+    off = dm._src_row_pill_html("네이버", 0, "", is_enabled=False, kind="default")
+    assert "dm-src-st-off" in off and "비활성" in off and "dm-src-rowp-off" in off
+    cust = dm._src_row_pill_html("MyFeed", 2, "", is_enabled=True,
+                                 kind="custom", url="https://my.feed/rss")
+    assert "dm-src-rowp-custom" in cust
+    assert "https://my.feed/rss" in cust and "MyFeed" in cust
 
 
-def test_src_body_includes_custom_rows_with_remove(isolated_sources):
+def test_src_header_html_shows_active_count():
     from ui import data_management_v2 as dm
+    assert "활성 출처 3개" in dm._src_header_html(3)
+
+
+def test_src_action_via_pending_toggles_default(isolated_sources):
+    """행 토글 버튼이 세팅하는 _do_src_action pending → 활성/비활성 전환."""
+    from ui import data_management_v2 as dm
+    import streamlit as st
+    st.session_state.pop("_do_src_action", None)
+    st.session_state["_do_src_action"] = ("toggle", "AI Times")
+    result = dm._consume_src_action_if_any()
+    assert result == ("toggle", "AI Times")
+    toast = st.session_state.get("_src_action_toast")
+    assert toast and toast[0] == "ok"
+    assert "AI Times" in isolated_sources.disabled_set()  # 실제 비활성됨
+    assert "_do_src_action" not in st.session_state        # 1회 소비
+
+
+def test_src_action_via_pending_removes_custom(isolated_sources):
+    from ui import data_management_v2 as dm
+    import streamlit as st
     isolated_sources.add_custom("MyFeed", "https://my.feed/rss")
-    with patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()):
-        html = dm._dm_src_body_html({"active_sources": 5})
-    assert "MyFeed" in html
-    assert "dm-src-row-custom" in html
-    assert "https://my.feed/rss" in html
-    # 제거 링크
-    assert "dm-src-act-rm" in html
-    assert "제거" in html
-    # 5 = 4 기본 + 1 커스텀
-    assert "활성 출처 5개" in html
+    st.session_state["_do_src_action"] = ("remove", "MyFeed")
+    result = dm._consume_src_action_if_any()
+    assert result == ("remove", "MyFeed")
+    assert all(c.name != "MyFeed" for c in isolated_sources.custom_sources())

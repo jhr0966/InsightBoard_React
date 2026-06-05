@@ -16,18 +16,26 @@ def reset_state():
     st.query_params.clear()
 
 
-# ── CTA HTML — 툴팁/타이틀이 실 수집을 안내 ──────────────────
+# ── 수집 버튼 pending(_do_dm_collect) → 실 수집 실행 ──────────
+# '지금 뉴스 수집' 은 앵커(?refresh=now)에서 st.button 으로 위젯화. 버튼은 pending
+# 을 세팅하고 _consume_refresh_if_any 가 둘(버튼 pending / 레거시 쿼리) 다 처리.
 
-def test_refresh_cta_tooltip_mentions_collect():
+def test_collect_button_pending_triggers_collect():
     from ui import data_management_v2 as dm
-    html = dm._refresh_cta_html()
-    # 새 CTA 는 "캐시 무효화" 가 아니라 수집 실행을 안내
-    assert "수집" in html
-    assert "refresh=now" in html
-    # disabled 자취 없음
-    assert "disabled" not in html
-    # 06:00 스케줄러 안내 문구 제거 — 이제 실제로 실행함
-    assert "06:00" not in html
+    from scraping.run_daily import CollectionReport
+    import streamlit as st
+
+    st.session_state["_do_dm_collect"] = True
+    fake = CollectionReport(
+        saved=[{"source": "naver", "keywords": ["비전 검사"], "count": 5, "path": "x.parquet"}],
+        errors=[],
+    )
+    with patch("ui.board_v2._collect_keywords_for_persona", return_value=["비전 검사"]), \
+         patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
+        assert dm._consume_refresh_if_any() is True
+    mock_cb.assert_called_once()
+    # pending 은 1회 소비 (다음 run 에서 재실행 안 됨)
+    assert "_do_dm_collect" not in st.session_state
 
 
 # ── _consume_refresh_if_any — 키워드 있음 ────────────────────

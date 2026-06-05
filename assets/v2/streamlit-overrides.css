@@ -77,7 +77,12 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker) {
   border-radius: 14px;
   padding: 12px 14px 14px;
   box-shadow: var(--shadow-2, 0 4px 12px rgba(15,23,42,0.06));
-  height: calc(100vh - 24px);    /* 뷰포트에 맞춰 한 화면에 들어오게(상단 12 + 하단 12) */
+  /* 패널 높이를 뷰포트보다 충분히(72px) 낮춰 sticky '이동 여유'(row − panel − top)가
+     페이지 최대 스크롤을 항상 초과하게 한다. block-container 하단 padding(36) +
+     stMain 상단 padding(8) 은 패널의 컨테이닝 블록(컬럼 row) '밖'에서 추가 스크롤을
+     만들어, 패널이 row 보다 ~24px 만 낮으면(기존 -24px) 짧은 화면(SOLA·산출물 보관함)
+     바닥에서 패널이 떨어져 같이 밀렸다 → -72px 로 여유 확보해 모든 화면에서 고정. */
+  height: calc(100vh - 72px);
   overflow: hidden;              /* 내부 .side-chat-scroll 만 스크롤 */
 }
 /* 패널 안쪽을 flex column 으로 — 입력 form 을 하단에 붙이고 그 위는 메시지/안내가 채움.
@@ -108,6 +113,19 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
 body:has(.db-topbar) [data-testid="stHorizontalBlock"]:has(.side-chat-marker)
     > [data-testid="stColumn"]:not(:has(.side-chat-marker)) {
   min-height: calc(100vh - 4px);
+}
+
+/* ── 메인 헤더(.db-topbar) 스크롤 고정 — 모든 화면 ──────────────────
+   헤더는 본문(메인 컬럼) 수직 스택의 첫 element-container 다. 그 컨테이너에 sticky 를
+   걸면 컨테이닝 블록이 '메인 컬럼 전체 높이'(콘텐츠만큼 큼)라 헤더가 상단(top:0)에
+   계속 붙는다. .db-topbar 직접 sticky 는 stHtml 래퍼가 헤더 높이로 shrink-wrap 돼
+   이동 여유가 0 이라 안 붙었다(그래서 래퍼 컨테이너를 sticky 대상으로 삼는다).
+   z-index 20: 아래로 스크롤되는 카드 위. (사이드바 펼치기 버튼 1001 / 토스트보다 아래) */
+body:has(.db-topbar) [data-testid="stMain"]
+    [data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar) {
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 /* 데이터 관리 탭 — st.segmented_control 을 탭 바처럼. 전환은 fragment rerun(부분 갱신). */

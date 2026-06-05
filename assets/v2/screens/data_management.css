@@ -1158,3 +1158,67 @@ a.dm-tab:hover { text-decoration: none; }
   color: var(--text-muted);
   margin-top: 2px;
 }
+
+/* ════════════════════════════════════════════════════════════
+   위젯화된 액션 — '지금 뉴스 수집' 버튼 + 출처 토글/제거 행
+   (앵커 → st.button 전환, 문서 reload·흰 깜빡임 제거)
+   ════════════════════════════════════════════════════════════ */
+/* '지금 뉴스 수집' CTA(_render_collect_button) — 본문 위 우측 정렬, accent 채움.
+   컨테이너는 Streamlit 기본 column flex 라 우측 정렬은 교차축 align-items:flex-end
+   로 한다(justify-content 는 세로축이라 무효). 빈 수집잡 안내가 '우측 상단
+   [지금 뉴스 수집]' 을 가리키므로 위치 일치. */
+.st-key-dm_collect_cta { align-items: flex-end; margin: 0 24px 12px; }
+.st-key-dm_collect_cta button {
+  background: var(--accent-primary) !important;
+  color: #fff !important;
+  border: 1px solid var(--accent-primary) !important;
+  border-radius: 9px !important;
+  font-weight: 700 !important;
+  padding: 8px 18px !important;
+  min-height: 0 !important;
+}
+.st-key-dm_collect_cta button:hover { background: var(--accent-hover) !important; }
+
+/* 출처 행(_render_src_row) — 컨테이너가 테두리/배경(구 .dm-src-row 룩),
+   내부는 [pill 격자 | 토글/제거 버튼]. */
+[class*="st-key-_src_row_"] {
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-divider);
+  border-radius: 8px;
+  padding: 3px 12px;
+  margin: 0 24px 6px;
+}
+[class*="st-key-_src_row_"]:has(.dm-src-rowp-off) { background: rgba(100,116,139,0.05); }
+[class*="st-key-_src_row_"]:has(.dm-src-rowp-custom) { background: rgba(37,99,235,0.05); }
+.dm-src-rowp {
+  display: grid;
+  grid-template-columns: 18px 1fr 90px 130px 70px;
+  align-items: center;
+  gap: 12px;
+}
+.dm-src-rowp .dm-src-mark { width: 14px; height: 14px; border-radius: 4px; }
+.dm-src-rowp .dm-src-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.dm-src-rowp .dm-src-cnt,
+.dm-src-rowp .dm-src-last {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.dm-src-rowp .dm-src-st {
+  justify-self: end;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.dm-src-rowp-off .dm-src-name { color: var(--text-muted); }
+/* 토글/제거 버튼 — 컴팩트(구 .dm-src-act 톤) */
+[class*="st-key-_src_row_"] button {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 5px 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+.dm-src-act-noop { text-align: center; color: var(--text-muted); font-weight: 700; }

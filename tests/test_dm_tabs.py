@@ -100,9 +100,9 @@ def test_dm_kw_body_filters_muted_from_auto():
     assert "dm-kw-chip-muted" in html
 
 
-# ── _dm_src_body_html ──────────────────────────────────────
+# ── 출처 카운트 맵 + 행 pill (구 _dm_src_body_html → 위젯 렌더) ──
 
-def test_dm_src_body_shows_per_source_counts():
+def test_src_count_map_and_pill_show_per_source_counts():
     from ui import data_management_v2 as dm
     news = pd.DataFrame([
         {"source": "naver", "collected_at": "2026-05-31T06:00:00+00:00"},
@@ -110,27 +110,27 @@ def test_dm_src_body_shows_per_source_counts():
         {"source": "google", "collected_at": "2026-05-31T06:00:00+00:00"},
     ])
     with patch.object(dm._news_db, "load_news_for_days", return_value=news):
-        html = dm._dm_src_body_html({"active_sources": 2})
-    # 출처별 카운트
-    assert "naver" in html
-    assert "google" in html
-    assert "2건/7일" in html  # naver
-    assert "1건/7일" in html  # google
-    # 기대 출처(0건) 도 회색으로 노출
-    assert "AI Times" in html
-    assert "7일 무수집" in html
+        cnt_map = dm._src_count_map()
+    assert cnt_map["naver"][0] == 2
+    assert cnt_map["google"][0] == 1
+    # pill 이 이름·카운트를 표시
+    pill = dm._src_row_pill_html("naver", cnt_map["naver"][0], cnt_map["naver"][1],
+                                 is_enabled=True, kind="default")
+    assert "naver" in pill and "2건/7일" in pill
+    # 0건 기본 출처 → '7일 무수집'
+    zero = dm._src_row_pill_html("AI Times", 0, "", is_enabled=True, kind="default")
+    assert "AI Times" in zero and "7일 무수집" in zero
 
 
-def test_dm_src_body_empty_news():
+def test_default_sources_all_render_as_pills_when_empty():
     from ui import data_management_v2 as dm
-    with patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()):
-        html = dm._dm_src_body_html({"active_sources": 0})
-    # 기대 출처 4개 모두 노출 (cnt 0)
-    assert "AI Times" in html
-    assert "Google RSS" in html
-    assert "네이버 기술" in html
-    assert "오토메이션월드" in html
-    assert html.count("7일 무수집") >= 4
+    from store import sources as src_store
+    names = set(src_store.DEFAULT_SOURCES)
+    assert {"AI Times", "Google RSS", "네이버 기술", "오토메이션월드"} <= names
+    # 빈 수집 → 4개 기본 출처 모두 pill 로 '7일 무수집'
+    for name in names:
+        pill = dm._src_row_pill_html(name, 0, "", is_enabled=True, kind="default")
+        assert name in pill and "7일 무수집" in pill
 
 
 # ── _dm_task_body_html ─────────────────────────────────────
@@ -167,7 +167,8 @@ def test_dm_tab_body_html_dispatches_by_tab():
 
     assert "키워드 관리" in kw_html
     assert "작업 정의 데이터" in task_html
-    assert "출처 설정" in src_html
+    # src 는 위젯 렌더(_render_src_table)라 HTML 디스패치 경로는 빈 문자열
+    assert src_html == ""
     # jobs 는 본문 없음 (split 자체가 본문)
     assert jobs_html == ""
 
