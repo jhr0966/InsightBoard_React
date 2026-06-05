@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-05 — 사이드바 메뉴 이동 위젯화 (화면 전환 흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
+
+**무엇을**: 좌측 업무 흐름 5-nav 를 누를 때 나던 **화면 전환 흰 깜빡임** 제거. (UX 안정화 다음 단계 — 마지막 큰 흰 깜빡임 출처였던 사이드바 메뉴.)
+
+**어떻게**:
+- `_sidebar_nav_html`(앵커 `<a href=?app_area=>` 빌더) 제거 → `_render_sidebar_nav` 가 `st.button` 5개. 앵커=문서 reload(흰 깜빡임), 버튼=소켓 rerun(부분 갱신). `on_click` X — `if st.button(): app_area 세팅+st.rerun()`. 활성=`type="primary"`.
+- 룩 보존: `.st-key-sidebar_nav` CSS 가 카드형 nav 항목 복제 — 인덱스=CSS `counter` `::before`, 제목=`**…**`(strong), 설명=`*…*`(em, block+ellipsis), 활성=`button[kind="primary"]`. 다크는 secondary 버튼 dark 규칙이 nav 까지 안 먹게 투명 유지 + 활성 틴트(`_DARK_CSS`).
+- 컨텍스트 딥링크(`?app_area=` from 보드/히트맵/알림)는 `_consume_area_query` 로 유지 — 이번엔 사이드바 메뉴만.
+
+**검증**: playwright — nav 클릭 시 `window` 플래그 생존(문서 reload 0=흰 깜빡임 없음)·URL 에 app_area 없음·활성 01→03 이동·헤더 타이틀 전환·라이트/다크 사이드바 스크린샷 기존과 동일. pytest **775 passed**(nav 위젯 AppTest 추가) · 금지패턴 0.
+
+**핵심 함정**: ① st.button 라벨은 `**strong**`/`*em*` 등 **핵심 markdown 만**(색·코드 directive 의존 X) 써야 안전. ② 다크에서 일반 `button[kind="secondary"]` dark 규칙(0-2-2)이 `.st-key-sidebar_nav button`(0-1-1)보다 specificity 높아 nav 까지 #1E293B 로 채워짐 → `_DARK_CSS` 에 `body:has(.db-topbar) .st-key-sidebar_nav button[kind="secondary"]{ background:transparent }`(0-3-2)로 이김. ③ 인덱스 01·02 는 라벨이 아니라 CSS `counter(navidx, decimal-leading-zero)` 로 생성(라벨엔 제목·설명만).
+
+**파일**: `ui/sidebar.py`(위젯 nav), `assets/v2/sidebar.css`(나브 버튼 룩), `ui/styles.py`(다크 nav), `tests/test_sidebar_profile.py`(앵커 테스트→위젯 AppTest).
+
+---
+
 ## 2026-06-05 — 메인 헤더 스크롤 고정 + 채팅 패널 모든 화면 고정 (`claude/kind-volta-IWxix`)
 
 **무엇을**: ① 모든 화면에서 메인 헤더(`.db-topbar`)가 스크롤해도 상단에 고정. ② SOLA 작업실·산출물 보관함·데이터 관리에서 스크롤 시 우측 채팅 패널이 같이 밀리던 것 → 모든 화면 고정.

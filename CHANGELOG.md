@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (사이드바 메뉴 이동 위젯화 — 화면 전환 흰 깜빡임 제거)
+- **사이드바 5-nav 를 앵커→위젯으로**(`ui/sidebar.py`, `assets/v2/sidebar.css`, `ui/styles.py`): 좌측 업무 흐름 메뉴(오늘의 보드/데이터 관리/인사이트 분석/SOLA 작업실/산출물 보관함)가 `<a href="?app_area=…">` 앵커라, 메뉴를 누를 때마다 **브라우저 문서 전체 reload**(빈 화면→프론트 재부팅→CSS 재주입)로 화면 전환 시 흰 깜빡임이 났다. `_sidebar_nav_html`(앵커 빌더)를 제거하고 `_render_sidebar_nav` 가 `st.button` 5개로 렌더 → 클릭이 **소켓 rerun**(부분 갱신·문서 reload 없음)이라 깜빡임이 사라진다. `on_click` 미사용 — `if st.button(): app_area 세팅 → st.rerun()`(CLAUDE.md #3). 활성 항목은 `type="primary"`.
+- **룩 100% 보존**(`assets/v2/sidebar.css`): 컨테이너 `.st-key-sidebar_nav` 스코프로 버튼을 기존 카드형 nav 항목으로 복제 — 인덱스(01·02…)는 CSS `counter` `::before`, 제목은 라벨 `**…**`(`<strong>`), 설명은 `*…*`(`<em>`, `display:block`+ellipsis 둘째 줄), 활성은 `button[kind="primary"]`(accent 배경·테두리·인덱스/제목색). 다크는 일반 secondary 버튼 dark 규칙(#1E293B 채움)이 nav 까지 먹지 않게 투명 유지 + 활성 틴트/글자색 다크화(`ui/styles.py` `_DARK_CSS`).
+- **컨텍스트 딥링크는 유지**: 보드→SOLA·히트맵·알림 벨 등 `?app_area=` 교차 링크는 그대로(`_consume_area_query`) — 이번 작업은 **사이드바 메뉴 이동**만 위젯화(딥링크 위젯화는 후속).
+- **검증(playwright 실측)**: 보드에서 '인사이트 분석' nav 클릭 → `window` 플래그 **생존(=문서 reload 0, 흰 깜빡임 없음)** · URL 에 `?app_area=` 없음 · 활성 하이라이트 01→03 이동 · 헤더 타이틀 '인사이트 분석' 전환 확인 · 라이트/다크 사이드바 스크린샷이 기존 디자인과 동일. pytest **775 passed**(신규 nav 위젯 AppTest 포함) · 금지패턴(on_click) 0.
+
 ### Fixed (메인 헤더 스크롤 고정 + 채팅 패널 모든 화면 고정)
 - **메인 헤더(`.db-topbar`)가 스크롤하면 사라짐 → 모든 화면 상단 고정**(`assets/v2/streamlit-overrides.css`, `assets/v2/shell.css`): 헤더는 본문(메인 컬럼) 안의 첫 요소라 `position:static` 으로 콘텐츠와 함께 스크롤돼 올라가 버렸다. `.db-topbar` 자체에 `sticky` 를 걸면 `st.html` 래퍼(`stHtml`)가 헤더 높이에 딱 맞게 shrink-wrap 돼 이동 여유가 0 → 안 붙는다. 그래서 **헤더를 감싼 Streamlit element-container**(`[data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar)`)에 `position:sticky; top:0; z-index:20` 을 걸었다 — 이 컨테이너의 컨테이닝 블록은 '메인 컬럼 전체 높이'(콘텐츠만큼 큼)라 헤더가 상단에 계속 붙는다(채팅 컬럼을 sticky 로 만드는 것과 같은 원리). 헤더 배경은 라이트 `--v2-bg(#F3F5F8)`·다크 `#0F172A`(`ui/styles.py` `_DARK_CSS`) 로 앱 배경과 맞춰 **아래로 스크롤되는 카드가 헤더 밑으로 비치지 않게** 불투명 처리 + 하단 그림자(`box-shadow`)로 본문과 분리.
 - **SOLA 작업실·산출물 보관함·데이터 관리에서 스크롤하면 채팅창이 같이 밀림 → 모든 화면 고정**(`assets/v2/streamlit-overrides.css`): 채팅 패널 높이가 `calc(100vh - 24px)` 로 컨테이닝 블록(컬럼 row)과 거의 같아, sticky '이동 여유'(`row − panel − top`)가 페이지 최대 스크롤보다 작았다. `block-container` 하단 padding(36px)·`stMain` 상단 padding(8px)이 **row 밖에서** 추가 스크롤을 만들어, 본문이 짧은 화면(SOLA·보관함)의 바닥에서 패널이 row 끝에 닿아 ~32px 같이 밀렸다(긴 화면 board/insights 는 스크롤이 바닥까지 안 가 안 보였을 뿐). 패널 높이를 `calc(100vh - 72px)` 로 낮춰 **이동 여유가 항상 페이지 스크롤을 초과**하게 만들어 모든 화면에서 고정.

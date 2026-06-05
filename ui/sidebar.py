@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import html as _html
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 
 import streamlit as st
 
@@ -159,26 +159,44 @@ def _consume_area_query() -> None:
     del st.query_params["app_area"]
 
 
-def _sidebar_nav_html(current_area: str) -> str:
-    """Return Apple-style sidebar navigation links without radio/button chrome."""
-    items = []
-    for idx, area in enumerate(AREAS, start=1):
-        active = area == current_area
-        cls = "sidebar-nav-item active" if active else "sidebar-nav-item"
-        title = _html.escape(area)
-        desc = _html.escape(_AREA_DESCRIPTIONS.get(area, ""))
-        href = f"?app_area={quote(area)}"
-        aria_current = ' aria-current="page"' if active else ""
-        items.append(
-            f"""<a class="{cls}" href="{href}" target="_self"{aria_current}>
-                <span class="sidebar-nav-index">{idx:02d}</span>
-                <span class="sidebar-nav-copy">
-                  <span class="sidebar-nav-title">{title}</span>
-                  <span class="sidebar-nav-desc">{desc}</span>
-                </span>
-              </a>"""
-        )
-    return '<nav class="sidebar-nav" aria-label="업무 흐름">' + "".join(items) + "</nav>"
+def _nav_label(idx: int, area: str, desc: str) -> str:
+    """5-nav `st.button` 라벨(markdown) — `**제목** *설명*`.
+
+    `**…**`→`<strong>`(제목), `*…*`→`<em>`(설명) 두 요소로 분해돼 `sidebar.css`
+    가 각각 제목/설명으로 스타일한다(설명은 `display:block` 으로 둘째 줄·ellipsis,
+    인덱스 01·02… 는 CSS counter `::before` 로 생성). 핵심 markdown 만 써서(색·코드
+    directive 의존 X) 버튼 라벨 렌더에 안전하다.
+    """
+    base = f"**{area}**"
+    return f"{base} *{desc}*" if desc else base
+
+
+def _render_sidebar_nav(current_area: str) -> None:
+    """업무 흐름 5-nav — `st.button` 위젯(구 `<a href=?app_area=>` 앵커 대체).
+
+    앵커는 클릭 시 **브라우저 문서 전체 reload**(흰 깜빡임)였다. 버튼은 클릭 시
+    **소켓 rerun**(부분 갱신·문서 reload 없음)이라 화면 전환에서 흰 깜빡임이 사라진다.
+    look 은 `sidebar.css` 의 `.st-key-sidebar_nav` 스코프가 기존 `.sidebar-nav-item`
+    룩(인덱스+제목+설명, 활성=accent)으로 복제한다. 활성 항목은 `type="primary"` →
+    CSS 가 accent 배경/테두리. `on_click` 미사용 — `if st.button(): 세팅 → st.rerun()`
+    (CLAUDE.md #3). 컨텍스트 딥링크(`?app_area=` from 보드/히트맵/알림)는 그대로
+    `_consume_area_query` 가 처리하므로 여기선 사이드바 메뉴 이동만 위젯화한다.
+    """
+    editing = bool(st.session_state.get("show_persona_editor"))
+    with st.container(key="sidebar_nav"):
+        for idx, area in enumerate(AREAS, start=1):
+            active = (area == current_area) and not editing
+            clicked = st.button(
+                _nav_label(idx, area, _AREA_DESCRIPTIONS.get(area, "")),
+                key=f"_nav_btn_{idx}",
+                use_container_width=True,
+                type="primary" if active else "secondary",
+            )
+            # 이미 활성(같은 area·편집 아님)이면 무반응 → 불필요한 rerun 방지.
+            if clicked and not active:
+                st.session_state["app_area"] = area
+                st.session_state["show_persona_editor"] = False
+                st.rerun()
 
 
 def _side_stats_html(stats: dict) -> str:
@@ -264,7 +282,7 @@ def render() -> str:
         st.session_state["app_area"] = AREAS[0]
     area = st.session_state["app_area"]
     render_html('<div class="sidebar-section sidebar-section-nav">Workflow</div>', unsafe_allow_html=True)
-    render_html(_sidebar_nav_html(area), unsafe_allow_html=True)
+    _render_sidebar_nav(area)
     render_html(
         '<div class="sidebar-flow-hint apple">'
         '데이터 준비 → 분석 → SOLA 산출물 → 보관'

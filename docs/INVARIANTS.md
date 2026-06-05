@@ -192,3 +192,13 @@ body:has(.db-topbar) [data-testid="stMain"]
 ## I-21 — sticky 채팅 패널 높이는 row 밖 padding 을 고려해 충분히 낮춰야 한다
 
 우측 채팅 패널(`[data-testid="stColumn"]:has(.side-chat-marker)`)은 `position:sticky; top:12px` 에 높이 `calc(100vh - 72px)`. sticky 가 끝까지 고정되려면 **이동 여유**(`row_height − panel_height − top`)가 **페이지 최대 스크롤**보다 커야 한다. 그런데 `block-container` 하단 padding(36px)·`stMain` 상단 padding(8px)은 패널의 컨테이닝 블록(컬럼 row) **밖**에서 스크롤을 추가하므로, 패널이 row 와 비슷한 높이(`100vh-24px`)면 본문이 짧은 화면(SOLA·산출물 보관함) 바닥에서 패널이 row 끝에 닿아 ~32px 같이 밀린다. 패널을 `100vh-72px` 로 낮춰 여유를 확보(72 − 12 − 44 ≈ 16px 슬랙)했다. 본문 컬럼 `min-height: calc(100vh-4px)`(짧은 탭에서 sticky baseline 안정화, #122)와 함께 유지. **이 두 값(72/min-height)·row 밖 padding 을 바꾸면 playwright 로 5개 화면 채팅 ΔY=0 재검증.**
+
+## I-22 — 사이드바 5-nav 는 앵커가 아니라 `st.button` 위젯 (흰 깜빡임 방지)
+
+좌측 업무 흐름 메뉴(`sidebar._render_sidebar_nav`)는 `<a href="?app_area=…">` 앵커가 **아니라** `st.button` 5개다. 앵커는 클릭 시 문서 전체 reload(흰 깜빡임) → 버튼은 소켓 rerun. **앵커로 되돌리지 말 것.** 클릭 핸들러는 `on_click` 금지 — `if st.button(): app_area 세팅 → st.rerun()`(CLAUDE.md #3). 룩은 `.st-key-sidebar_nav` 스코프 CSS 로 복제하며 세 가지 함정:
+
+1. **라벨은 핵심 markdown 만** — 제목 `**…**`(→`<strong>`), 설명 `*…*`(→`<em>`). 색(`:gray[]`)·코드(`` ` ` ``) directive 는 버튼 라벨 렌더에서 불안정하니 의존하지 않는다. 인덱스 01·02… 는 라벨이 아니라 CSS `counter(navidx, decimal-leading-zero)` `::before` 로 생성.
+2. **활성 항목 = `type="primary"`** → CSS `button[kind="primary"]` 로 accent 배경/테두리/인덱스·제목색. (별도 active 클래스 주입 불필요.)
+3. **다크 specificity** — 일반 `body:has(.db-topbar) button[kind="secondary"]`(다크 카드 채움, 0-2-2)가 `.st-key-sidebar_nav button`(0-1-1)보다 높아 nav 까지 #1E293B 로 채운다. `_DARK_CSS` 에서 `body:has(.db-topbar) .st-key-sidebar_nav button[kind="secondary"]`(0-3-2)로 투명 복구 + 활성 틴트 다크화.
+
+단, **컨텍스트 딥링크**(보드→SOLA·히트맵·알림 벨 등 `?app_area=`)는 여전히 앵커이며 `sidebar._consume_area_query` 가 소비한다 — 이건 사이드바 메뉴가 아니라 화면 내 교차 링크라 별개(후속 위젯화 대상).
