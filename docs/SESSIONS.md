@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-05 — 산출물 보관함 칸반 카드 액션 위젯화 (흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
+
+**무엇을**: 산출물 보관함 칸반의 카드 액션(채택/수정/기각·되돌리기)·더보기/접기가 앵커라 클릭마다 문서 reload(흰 깜빡임)였던 것을 위젯화. (UX 안정화 — 컨텍스트 딥링크 슬라이스 中 사용자 선택 "산출물 보관함 카드 액션".)
+
+**어떻게**:
+- 칸반 보드를 템플릿 HTML(`{{OA_CARDS_*}}`) → `st.columns(3)` 위젯 렌더(`_render_kanban_column`). 컬럼 컨테이너 `.st-key-oa_col_*` 가 구 `.oa-col` 룩. 카드(`_card_html`)는 표시 전용(액션 앵커 제거), 1순위 액션은 컬럼 상단 `st.button`(`_render_card_actions`).
+- 채택/기각/되돌리기 = `_do_archive_action` pending → `_consume_action_if_any`(pending/레거시 쿼리 둘 다). expand = `?expand=` 앵커 → 세션 `_oa_expanded` 토글. 수정 = `_handoff_edit_to_sola`(세션 app_area=SOLA + `st.query_params` from/bm_id/title — **reload 없이 URL 갱신이라 SOLA 소비 경로 무변경**).
+- `_oa_stats_and_cards`→`_oa_data`(stats+items), `_build_cards_html`→`_cards_block_html`(앵커 없음). 템플릿 `archive_main.html` = 헤더 전용(보드 section 제거).
+
+**검증**: playwright — 3컬럼·액션 5버튼·'채택' 클릭 시 window 플래그 생존(reload 0)+카운트 즉시 갱신·다크 룩(녹 채택/주황 기각) 유지. pytest **773 passed**(expand 세션·카드블록·`_oa_data`·액션 pending·수정 핸드오프로 테스트 교체) · 금지패턴 0.
+
+**핵심 함정/패턴**: ① **`st.query_params[k]=v` 할당은 문서 reload 없이 URL 만 갱신** → 컨텍스트 딥링크(수정→SOLA)는 버튼이 같은 쿼리를 세팅+`st.rerun()` 하면 소비자(SOLA) 코드 변경 0. ② HTML 블록에 박힌 액션은 카드를 표시 전용으로 두고 **컬럼 컨테이너에 .oa-col 룩**을 줘 위젯 버튼을 위/아래에 배치. ③ 템플릿 일부만 쓰면 `test_template_placeholders`/`test_archive_cleanup` 가 미소비 토큰을 잡으니 **죽은 section 은 템플릿에서 삭제**.
+
+**파일**: `ui/archive_v2.py`, `assets/v2/screens/{archive_main.html,archive.css}`, `tests/{test_archive_more,test_archive_cleanup}.py`.
+
+---
+
 ## 2026-06-05 — 데이터 관리 '지금 뉴스 수집' + 출처 토글/제거 위젯화 (흰 깜빡임 제거) (`claude/kind-volta-IWxix`)
 
 **무엇을**: 데이터 관리의 남은 앵커 액션(① '지금 뉴스 수집' ② 출처 토글/제거)을 위젯화해 클릭 시 문서 reload(흰 깜빡임) 제거. (UX 안정화 — 사용자 승인: "둘 다 위젯화 + 스샷 확인".)

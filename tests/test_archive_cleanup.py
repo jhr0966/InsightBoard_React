@@ -14,11 +14,13 @@ def test_template_has_no_static_mockup():
     raw = archive_v2._ARCHIVE_TEMPLATE.read_text(encoding="utf-8")
     for gone in ("oa-controls", "oa-bottom", "PRO-2026", "전체 산출물", "묶음 내보내기"):
         assert gone not in raw, f"목업 잔존: {gone}"
-    # 실데이터 골격(칸반·헤더 통계·셸)은 보존
-    assert 'class="oa-board"' in raw
-    assert "{{OA_CARDS_PENDING}}" in raw
+    # 헤더 통계·셸은 템플릿에 보존
     assert "{{OA_TOTAL}}" in raw
     assert 'class="oa-shell"' in raw
+    assert 'class="oa-head"' in raw
+    # 칸반 보드는 위젯(st.columns + _render_kanban_column)으로 이동 → 템플릿엔 없음
+    assert 'class="oa-board"' not in raw
+    assert "{{OA_CARDS_PENDING}}" not in raw
 
 
 def test_runtime_stripper_removed():
