@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (메인 헤더 스크롤 고정 + 채팅 패널 모든 화면 고정)
+- **메인 헤더(`.db-topbar`)가 스크롤하면 사라짐 → 모든 화면 상단 고정**(`assets/v2/streamlit-overrides.css`, `assets/v2/shell.css`): 헤더는 본문(메인 컬럼) 안의 첫 요소라 `position:static` 으로 콘텐츠와 함께 스크롤돼 올라가 버렸다. `.db-topbar` 자체에 `sticky` 를 걸면 `st.html` 래퍼(`stHtml`)가 헤더 높이에 딱 맞게 shrink-wrap 돼 이동 여유가 0 → 안 붙는다. 그래서 **헤더를 감싼 Streamlit element-container**(`[data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar)`)에 `position:sticky; top:0; z-index:20` 을 걸었다 — 이 컨테이너의 컨테이닝 블록은 '메인 컬럼 전체 높이'(콘텐츠만큼 큼)라 헤더가 상단에 계속 붙는다(채팅 컬럼을 sticky 로 만드는 것과 같은 원리). 헤더 배경은 라이트 `--v2-bg(#F3F5F8)`·다크 `#0F172A`(`ui/styles.py` `_DARK_CSS`) 로 앱 배경과 맞춰 **아래로 스크롤되는 카드가 헤더 밑으로 비치지 않게** 불투명 처리 + 하단 그림자(`box-shadow`)로 본문과 분리.
+- **SOLA 작업실·산출물 보관함·데이터 관리에서 스크롤하면 채팅창이 같이 밀림 → 모든 화면 고정**(`assets/v2/streamlit-overrides.css`): 채팅 패널 높이가 `calc(100vh - 24px)` 로 컨테이닝 블록(컬럼 row)과 거의 같아, sticky '이동 여유'(`row − panel − top`)가 페이지 최대 스크롤보다 작았다. `block-container` 하단 padding(36px)·`stMain` 상단 padding(8px)이 **row 밖에서** 추가 스크롤을 만들어, 본문이 짧은 화면(SOLA·보관함)의 바닥에서 패널이 row 끝에 닿아 ~32px 같이 밀렸다(긴 화면 board/insights 는 스크롤이 바닥까지 안 가 안 보였을 뿐). 패널 높이를 `calc(100vh - 72px)` 로 낮춰 **이동 여유가 항상 페이지 스크롤을 초과**하게 만들어 모든 화면에서 고정.
+- **검증(playwright 실측, 1440×900)**: board·data·insights·sola·archive **5개 화면 전부** — 스크롤 후 헤더 ΔY=0(이전 −600/−195/−40)·채팅 ΔY=0(이전 sola/archive −32, data −5) · 헤더 래퍼 `computed position=sticky, top=0, z=20` 확인 · 라이트/다크 배경 일치 스크린샷 확인. pytest **774 passed** · 금지패턴(on_click/requests) 0.
+
 ### Fixed (데이터 관리 탭 간격 + 탭 전환 시 채팅 패널 흔들림)
 - **탭 칩이 붙어 답답함**(`assets/v2/streamlit-overrides.css`): segmented_control 의 실제 flex 컨테이너는 `[role="radiogroup"]`(이전 CSS 는 `[role="group"]` 을 잡아 미적용) + 각 버튼에 `margin-right:-1px`(테두리 공유)이 걸려 칩이 맞붙어 있었다. 셀렉터를 `[role="radiogroup"]` 으로 고치고 `gap:6px`+버튼 `margin:0` 으로 **칩 사이 6px 간격** 확보(개별 pill 로 분리).
 - **탭 이동 시 우측 LLM 채팅창이 위아래로 12px 튐**: 채팅 컬럼이 `position:sticky` 라, 본문(좌측) 높이가 탭마다 달라 페이지가 안 스크롤되는 짧은 탭(예: 작업 정의)에서 sticky flow 위치가 어긋났다. 본문 컬럼에 `min-height: calc(100vh - 4px)` 를 줘 **항상 채팅 패널보다 살짝 크게** 만들어 sticky 가 늘 같은 위치에 고정되게 했다. **검증(playwright): 6개 탭 전부 채팅 top=20px 동일**(이전 작업 정의 탭만 8px) · 칩 간격 6px 균일 · pytest 774 passed.

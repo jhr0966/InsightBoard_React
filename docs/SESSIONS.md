@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-05 — 메인 헤더 스크롤 고정 + 채팅 패널 모든 화면 고정 (`claude/kind-volta-IWxix`)
+
+**무엇을**: ① 모든 화면에서 메인 헤더(`.db-topbar`)가 스크롤해도 상단에 고정. ② SOLA 작업실·산출물 보관함·데이터 관리에서 스크롤 시 우측 채팅 패널이 같이 밀리던 것 → 모든 화면 고정.
+
+**어떻게**:
+- **헤더 sticky**: `.db-topbar` 직접 sticky 는 `st.html` 래퍼가 헤더 높이로 shrink-wrap 돼 이동 여유 0 → 안 붙음. 대신 **헤더를 감싼 element-container**(`[data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar)`)에 `position:sticky; top:0; z-index:20`. 컨테이닝 블록이 메인 컬럼 전체 높이라 콘텐츠만큼 길게 고정됨(채팅 컬럼 sticky 와 동일 원리). 배경 라이트 `--v2-bg`/다크 `#0F172A` 불투명 + box-shadow.
+- **채팅 패널 고정**: 패널 높이 `calc(100vh-24px)` → `calc(100vh-72px)`. sticky '이동 여유'(`row−panel−top`)가 `block-container`(36px)·`stMain`(8px) **row 밖 padding** 이 만든 추가 스크롤보다 작아, 짧은 화면 바닥에서 패널이 ~32px 밀렸던 것 해소(72px 로 여유 확보).
+
+**검증**: playwright 실측(1440×900) 5개 화면 전부 헤더 ΔY=0·채팅 ΔY=0(이전 헤더 −600~−40, 채팅 sola/archive −32) · 헤더 래퍼 computed `sticky/top:0/z:20` · pytest **774 passed** · 금지패턴 0.
+
+**핵심 함정(재학습 방지)**: Streamlit `st.html` 요소는 **그 자체가 아니라 감싼 element-container 에 sticky** 를 걸어야 한다(자체 sticky 는 shrink-wrap 으로 무력화). sticky 패널은 높이가 컨테이닝 블록과 비슷하면 row 밖 padding 만큼 바닥에서 떨어지므로, 패널을 충분히(여기선 72px) 낮춰야 '이동 여유 > 페이지 스크롤'.
+
+**파일**: `assets/v2/shell.css`(.db-topbar 배경·그림자), `assets/v2/streamlit-overrides.css`(헤더 래퍼 sticky + 채팅 패널 높이), `ui/styles.py`(다크 헤더 배경).
+
+---
+
 ## 🚩 다음 세션 시작점 (2026-06-02 기준) — 여기부터 읽으세요
 
 **현재 상태**

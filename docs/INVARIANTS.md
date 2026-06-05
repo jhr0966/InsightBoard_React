@@ -175,3 +175,20 @@ a.foo, a.foo:visited { color: <원래색>; }
 ```
 
 세 가지 모두 빠지면 미세한 시각 회귀 (밑줄/자주색 visited) 발생.
+
+## I-20 — 메인 헤더 sticky 는 `.db-topbar` 가 아니라 **감싼 element-container** 에 건다
+
+헤더(`.db-topbar`)는 `render_topbar` 가 `st.html` 로 본문(메인 컬럼) 맨 위에 그린다. 스크롤 고정을 위해 `.db-topbar` 에 직접 `position:sticky` 를 걸면 **안 붙는다** — `st.html` 의 `stHtml` 래퍼가 헤더 높이로 shrink-wrap 돼 sticky 이동 여유가 0 이기 때문. 그래서 sticky 는 **헤더를 감싼 Streamlit element-container** 에 건다:
+
+```css
+body:has(.db-topbar) [data-testid="stMain"]
+    [data-testid="stElementContainer"]:has(> [data-testid="stHtml"] > .db-topbar) {
+  position: sticky; top: 0; z-index: 20;
+}
+```
+
+이 컨테이너의 컨테이닝 블록은 '메인 컬럼 전체 수직 스택'(콘텐츠 높이만큼 큼)이라 헤더가 끝까지 상단에 붙는다. (우측 채팅 컬럼을 `[data-testid="stColumn"]:has(.side-chat-marker)` 로 sticky 화하는 것과 **같은 원리** — sticky 대상은 '이동 여유가 있는 큰 박스'여야 한다.) 배경은 라이트 `--v2-bg`·다크 `#0F172A`(`styles._DARK_CSS`) 로 앱 배경과 맞춰 불투명 — 아래로 스크롤되는 카드가 비치지 않게.
+
+## I-21 — sticky 채팅 패널 높이는 row 밖 padding 을 고려해 충분히 낮춰야 한다
+
+우측 채팅 패널(`[data-testid="stColumn"]:has(.side-chat-marker)`)은 `position:sticky; top:12px` 에 높이 `calc(100vh - 72px)`. sticky 가 끝까지 고정되려면 **이동 여유**(`row_height − panel_height − top`)가 **페이지 최대 스크롤**보다 커야 한다. 그런데 `block-container` 하단 padding(36px)·`stMain` 상단 padding(8px)은 패널의 컨테이닝 블록(컬럼 row) **밖**에서 스크롤을 추가하므로, 패널이 row 와 비슷한 높이(`100vh-24px`)면 본문이 짧은 화면(SOLA·산출물 보관함) 바닥에서 패널이 row 끝에 닿아 ~32px 같이 밀린다. 패널을 `100vh-72px` 로 낮춰 여유를 확보(72 − 12 − 44 ≈ 16px 슬랙)했다. 본문 컬럼 `min-height: calc(100vh-4px)`(짧은 탭에서 sticky baseline 안정화, #122)와 함께 유지. **이 두 값(72/min-height)·row 밖 padding 을 바꾸면 playwright 로 5개 화면 채팅 ΔY=0 재검증.**

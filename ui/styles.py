@@ -59,6 +59,9 @@ _DARK_CSS = """
   --text-primary:#F1F5F9; --text-secondary:rgba(241,245,249,.74); --text-muted:rgba(241,245,249,.52);
 }
 body:has(.db-topbar) .stApp{ background:#0F172A !important; }
+/* sticky 헤더 배경 — 라이트는 --v2-bg(#F3F5F8), 다크는 앱 배경(#0F172A)과 맞춰
+   아래로 스크롤되는 카드가 헤더 밑으로 비치지 않게 한다. */
+body:has(.db-topbar) .db-topbar{ background:#0F172A !important; }
 body:has(.db-topbar) [data-testid="stSidebar"]{ background:#1E293B !important; border-right:1px solid #334155 !important; }
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker){ background:#1E293B !important; border-color:#334155 !important; }
 body:has(.db-topbar) [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"]{ background:#1E293B !important; border-color:#334155 !important; }
