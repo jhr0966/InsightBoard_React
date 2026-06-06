@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (E2E 전체 사용 시나리오 시뮬레이션 — `tests/test_e2e_scenarios.py`)
+- **부품 단위가 아닌 '연결된 한 흐름'을 검증하는 E2E 7 시나리오 추가**: 조선소 사용자(도장1팀 홍길동) 워크플로를 수집→저장→매칭→자동화 기회→5화면 네비게이션→필터→SOLA LLM→보관함까지 한 줄기로 시뮬레이션. 외부 의존(네트워크=scraping search, LLM=`sola.*.chat`)만 mock, 데이터 파이프라인·매칭·UI 조립은 실제 코드 실행. conftest tmp 격리 + 시드 헬퍼(페르소나·작업정의 `sqlite_sync`·수집 fake search) + `_clear_ui_caches`(테스트 간 `st.cache_data` stale 제거).
+- 시나리오: **S1** 수집 영속화 · **S2** 로드맵 SQLite 라운드트립(`sync_dataframe`→`load_latest`) · **S3** 매칭(`score_matches`)+자동화 기회 셀(`score_cells`) · **S4** `app.py` 5화면 무예외 렌더(`AppTest`, LLM graceful fallback) · **S5** 데이터관리 출처 필터 적용→배너 · **S6** SOLA 요약·보드 브리핑(LLM mock) · **S7** 보관함 제안 채택→카운트.
+- **검증**: 7/7 시나리오 통과 · 전체 pytest **789 passed**(+7) · 금지패턴 0.
+
 ### Added (데이터 관리 — 뉴스 라이브러리 필터: 출처·기간·정렬)
 - **죽은 필터 시안(`dm-filters` 출처/기간/정렬 셀렉트)을 실동작 `st.form` 으로 구현**(`ui/data_management_v2.py`, `assets/v2/screens/data_management.css`): jobs 탭 뉴스 라이브러리 위에 `st.form`(출처 멀티셀렉트 · 기간 3/7/30일 · 정렬 최신/오래된 + [적용]) 추가. 폼 위젯은 제출 전까지 rerun 을 일으키지 않아 **'적용' 눌렀을 때만** 라이브러리가 갱신된다(요청 방법론). `with st.form(...)` 단일 블록이라 topbar 와 달리 bare 'active form' 누수 없음(chat_panel 입력 폼과 동일 패턴).
 - **`_news_cards_html(q, sources, days, sort)` 로 확장**: 상단 검색어(`q`) + 출처·기간·정렬을 조합해 필터. 모두 기본값이면 기존 동작(최근 3일 6장·첫 장 강조) 그대로, 하나라도 활성이면 선택 기간(검색만 있고 기간 미선택이면 30일 자동 확대) 안에서 출처·검색어로 좁혀 정렬 후 최대 24장 + 활성 필터 배너. 검색어·필터는 **인자**로 받아 `st.cache_data` 가 조합별 캐시 키를 잡는다(세션 직접참조 X).
