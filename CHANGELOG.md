@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (데이터 관리 — 뉴스 라이브러리 필터: 출처·기간·정렬)
+- **죽은 필터 시안(`dm-filters` 출처/기간/정렬 셀렉트)을 실동작 `st.form` 으로 구현**(`ui/data_management_v2.py`, `assets/v2/screens/data_management.css`): jobs 탭 뉴스 라이브러리 위에 `st.form`(출처 멀티셀렉트 · 기간 3/7/30일 · 정렬 최신/오래된 + [적용]) 추가. 폼 위젯은 제출 전까지 rerun 을 일으키지 않아 **'적용' 눌렀을 때만** 라이브러리가 갱신된다(요청 방법론). `with st.form(...)` 단일 블록이라 topbar 와 달리 bare 'active form' 누수 없음(chat_panel 입력 폼과 동일 패턴).
+- **`_news_cards_html(q, sources, days, sort)` 로 확장**: 상단 검색어(`q`) + 출처·기간·정렬을 조합해 필터. 모두 기본값이면 기존 동작(최근 3일 6장·첫 장 강조) 그대로, 하나라도 활성이면 선택 기간(검색만 있고 기간 미선택이면 30일 자동 확대) 안에서 출처·검색어로 좁혀 정렬 후 최대 24장 + 활성 필터 배너. 검색어·필터는 **인자**로 받아 `st.cache_data` 가 조합별 캐시 키를 잡는다(세션 직접참조 X).
+- **활성 필터 배너 + 전체 해제**: 검색어·출처·기간·정렬 칩 + 결과 건수 + `✕ 필터 해제`(`?dm_clear_filters=1` → `_consume_news_filter_clear_if_any` 가 검색어·폼 위젯을 기본값으로 리셋). 배너는 `.dm-art-grid`(grid) 안에 들어가므로 `grid-column:1/-1` 로 전체 폭 차지. 출처 옵션은 `_news_source_options`(최근 30일 distinct 출처, 수집·업로드 시 캐시 무효화 목록에 추가).
+- **검증(playwright 실측)**: 필터 바 렌더(출처 멀티셀렉트 + 기간·정렬 셀렉트 + accent '적용') · 'AI Times' 선택+적용 시 **결과 1건**으로 좁혀짐 + 배너 전체 폭(598/630px=95%). pytest **782 passed**(`_news_cards_html` 필터 로직 6 + 출처 옵션 + 폼 렌더 AppTest + 필터 해제 AppTest) · 금지패턴 0.
+
 ### Reverted (사이드바 메뉴 위젯화 + 메인 헤더 스크롤 고정 — 사용자 요청)
 - **사이드바 5-nav 를 위젯(st.button) → 순수 HTML `<a>` 링크로 되돌림**(`ui/sidebar.py`, `assets/v2/sidebar.css`, `ui/styles.py`, `tests/test_sidebar_profile.py`): 위젯 nav 가 **사용자 환경에서 메뉴가 깨져** 보고됨. 원인 추정 — Streamlit 버전별 `st-key-*` 컨테이너 클래스/버튼 라벨 마크다운 렌더 차이(로컬 검증 환경에선 정상이라 재현 불가). 어디서나 동일하게 렌더되는 원래 `_sidebar_nav_html`(앵커 리스트)로 복원 — 메뉴 클릭 시 흰 깜빡임은 감수. `.st-key-sidebar_nav` 스코프 CSS·다크 오버라이드도 원복.
 - **메인 헤더(`.db-topbar`) 스크롤 고정 제거**(`assets/v2/shell.css`, `assets/v2/streamlit-overrides.css`, `ui/styles.py`): sticky 처리(감싼 element-container 에 `position:sticky`)·불투명 배경·그림자·다크 헤더 배경을 모두 제거하고 `position:static`(in-flow)로 복원 — 헤더는 본문과 함께 스크롤. **우측 채팅 패널 고정(I-21)은 사용자 요청 대상이 아니라 그대로 유지.**

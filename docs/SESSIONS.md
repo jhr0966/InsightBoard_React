@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-06-05 — 추가: 데이터 관리 뉴스 라이브러리 필터(출처·기간·정렬) (`claude/kind-volta-IWxix`)
+
+**무엇을**: 데이터 관리 jobs 탭의 죽은 필터 시안(출처/기간/정렬 셀렉트 — 핸들러 없어 `_strip_dm_mockups` 가 제거하던 잔재)을 실동작 `st.form` 필터로 구현. **'적용' 눌렀을 때만** 뉴스 라이브러리 갱신(요청 방법론).
+
+**어떻게**: `_render_news_filter_form`(st.form: 출처 멀티셀렉트·기간 3/7/30일·정렬 최신/오래된 + 적용) → 반환값을 `_news_cards_html(q, sources, days, sort)` 인자로. 필터 모두 기본이면 기존 6장 동작 유지, 활성이면 기간 내 출처·검색 좁혀 정렬 후 24장 + 배너(`_news_filter_banner_html`, grid-column:1/-1 로 전체 폭). 전체 해제 `?dm_clear_filters=1`→`_consume_news_filter_clear_if_any`. 출처 옵션 `_news_source_options`(30일 distinct, 캐시 무효화 목록 추가).
+
+**왜 st.form OK**: CHANGELOG 의 'st.form 금지'는 topbar 한정(self-close 불가). `with st.form()` 단일 블록은 chat_panel 입력 폼처럼 누수 없음. bare 단위 테스트(`_render_jobs_split`)는 폼 helper 를 patch.
+
+**검증**: playwright — 'AI Times' 적용 시 결과 1건 + 배너 전체 폭(598/630px=95%). pytest **782 passed**(+10 신규) · 금지패턴 0.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-05 — 되돌림: 사이드바 메뉴 위젯화 + 메인 헤더 스크롤 고정 (사용자 요청) (`claude/kind-volta-IWxix`)
 
 **무엇을**: ① 사이드바 5-nav 위젯화가 **사용자 환경에서 메뉴가 깨져** 순수 HTML 앵커로 되돌림. ② 메인 헤더 스크롤 고정(sticky) 제거. (채팅 패널 고정은 요청 대상 아님 → 유지.)
