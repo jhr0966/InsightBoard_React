@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-06-06 — 검증: E2E 전체 사용 시나리오 시뮬레이션 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 시스템 전체 사용 시나리오 7개를 세우고 시뮬레이션으로 유효 동작 검증. `tests/test_e2e_scenarios.py` 신규.
+
+**어떻게**: 외부 의존(네트워크=`scraping.*.search` mock, LLM=`sola.*.chat` mock)만 격리, 나머지(`collect_batch`→`news_db`→`score_matches`→`score_cells`, `sqlite_sync`→`load_latest`, `app.py` 5화면, 데이터관리 필터, `bookmarks`)는 실제 코드 실행. `AppTest.from_file("app.py")` 로 5화면 네비게이션. 시드 헬퍼로 페르소나(+온보딩 dismiss)·작업정의·수집. UI `st.cache_data` 는 `_clear_ui_caches` 로 테스트 간 stale 제거.
+
+**결과**: 7/7 시나리오 통과 · 전체 **789 passed** · 금지패턴 0. 수집부터 보관함까지 한 줄기로 유효 동작 확인. (발견·수정: fake 기사에 `source` 키 누락 → 출처 컬럼 빈값 / S7 stale 캐시 → `_clear_ui_caches` 에 archive 캐시 추가.)
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-05 — 추가: 데이터 관리 뉴스 라이브러리 필터(출처·기간·정렬) (`claude/kind-volta-IWxix`)
 
 **무엇을**: 데이터 관리 jobs 탭의 죽은 필터 시안(출처/기간/정렬 셀렉트 — 핸들러 없어 `_strip_dm_mockups` 가 제거하던 잔재)을 실동작 `st.form` 필터로 구현. **'적용' 눌렀을 때만** 뉴스 라이브러리 갱신(요청 방법론).
