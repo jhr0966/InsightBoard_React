@@ -20,14 +20,23 @@ _UA_POOL = (
 )
 
 
-def default_headers() -> dict[str, str]:
-    return {
+def default_headers(referer: str | None = None) -> dict[str, str]:
+    """브라우저 위장 헤더. `referer` 는 호출처가 도메인에 맞게 지정한다.
+
+    과거엔 모든 요청에 `Referer: https://search.naver.com/` 를 고정으로 실어, 구글
+    뉴스·AI Times·오토메이션월드·커스텀 RSS 같은 **타 도메인 요청에 네이버 referer**
+    가 붙어 anti-bot 403 을 유발할 수 있었다. 이제 기본은 referer 없음, 네이버 검색만
+    명시적으로 네이버 referer 를 전달한다.
+    """
+    headers = {
         "User-Agent": random.choice(_UA_POOL),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
-        "Referer": "https://search.naver.com/",
         "Upgrade-Insecure-Requests": "1",
     }
+    if referer:
+        headers["Referer"] = referer
+    return headers
 
 
 def build_session() -> requests.Session:

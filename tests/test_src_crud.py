@@ -28,6 +28,49 @@ def test_disabled_set_default_empty(isolated_sources):
     assert isolated_sources.disabled_set() == frozenset()
 
 
+# ── 출처 탭 수집 카운트 환산 (무수집 버그 회귀 방지) ─────────────
+
+def test_src_count_map_rolls_scraper_sources_into_display_names():
+    """수집기 저장값(naver/google/tech+press)을 출처 탭 표시명으로 환산.
+
+    표시명으로 곧장 group 하면 기본 출처 4개가 전부 '무수집'으로 보이던 버그 회귀 방지.
+    """
+    from ui import data_management_v2 as dm
+    df = pd.DataFrame({
+        "source": ["naver", "google", "tech", "tech", "조선해양 e뉴스"],
+        "press":  ["",       "",       "AI Times", "오토메이션월드", ""],
+        "title":  ["a", "b", "c", "d", "e"],
+        "link":   ["1", "2", "3", "4", "5"],
+        "collected_at": ["2026-06-08T01:00:00Z"] * 5,
+    })
+    with patch.object(dm._news_db, "load_news_for_days", return_value=df):
+        m = dm._src_count_map()
+    assert m["네이버 기술"][0] == 1
+    assert m["Google RSS"][0] == 1
+    assert m["AI Times"][0] == 1
+    assert m["오토메이션월드"][0] == 1
+    assert m["조선해양 e뉴스"][0] == 1          # 커스텀/기타는 원시 source 값 그대로
+    # 원시 수집 ID(naver/google/tech)가 '기타'로 누출되지 않음
+    assert "naver" not in m and "google" not in m and "tech" not in m
+
+
+def test_src_count_map_recognizes_legacy_direct_source_names():
+    """legacy: source 에 표시명이 직접 저장된 데이터(예: source='AI Times')도 인식."""
+    from ui import data_management_v2 as dm
+    df = pd.DataFrame({
+        "source": ["AI Times", "google", "naver"],
+        "press":  ["", "", ""],
+        "title":  ["a", "b", "c"], "link": ["1", "2", "3"],
+        "collected_at": ["2026-06-08T01:00:00Z"] * 3,
+    })
+    with patch.object(dm._news_db, "load_news_for_days", return_value=df):
+        m = dm._src_count_map()
+    assert m["AI Times"][0] == 1
+    assert m["Google RSS"][0] == 1
+    assert m["네이버 기술"][0] == 1
+    assert set(m) == set(dm._DEFAULT_SOURCE_MATCH)   # 기타 누출 없음(rest 비어 있음)
+
+
 def test_toggle_disabled_default_source(isolated_sources):
     s = isolated_sources
     # 첫 토글 → 비활성

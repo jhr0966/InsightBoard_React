@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (데이터 관리 — 출처 탭 '무수집' 오표시 + 수집 버튼·필터 박스 폭 삐져나감 + 수집 referer)
+- **출처 탭의 기본 출처 4개(AI Times·오토메이션월드·Google RSS·네이버 기술)가 실제로는 수집됐는데도 전부 '무수집'으로 표시되던 버그 수정**(`ui/data_management_v2.py`): 수집기는 `source` 를 `naver`/`google`/`tech` 로 저장하고 tech 는 AI Times·오토메이션월드를 **모두 `source="tech"`** 로 묶어 site 명을 `press` 에 둔다. 그런데 출처 탭(`_src_count_map`)은 **표시명으로 곧장 group** 해 매칭이 0건 → 전부 '7일 무수집', 동시에 `naver`/`google`/`tech` 원시값은 '기타' 행으로 누출됐다. `_DEFAULT_SOURCE_MATCH`(표시명 ↔ source 값 + tech 는 `press` 로 AI Times/오토메이션월드 구분, legacy 직접저장 호환)로 환산하도록 고쳐 표시명별 실 건수를 보이고 기타 누출을 제거. (사용자의 '수집 안 됨'은 실제론 이 **표시 버그** — 수집 자체는 정상.)
+- **'지금 뉴스 수집' 버튼·뉴스 라이브러리 필터 박스가 본문보다 넓게 우측으로 삐져나가던 것 수정**(`assets/v2/screens/data_management.css`): Streamlit 이 `.st-key-*` 컨테이너를 `width:100%`(부모 724px)로 잡아 `margin:0 24px` 만으로는 폭이 줄지 않고 우측으로 밀려 본문(`.dm-shell` 콘텐츠 356–1024)을 넘어 1076 까지 갔다. `.st-key-dm_collect_cta`·`.st-key-dm_news_filter` 에 `width:calc(100% - 56px)` + `margin:0 28px` → 헤더·카드와 정확히 정렬(356–1024, playwright 실측).
+- **수집 HTTP referer 교차도메인 버그 수정**(`scraping/http.py`, `scraping/naver.py`): `default_headers()` 가 모든 요청에 `Referer: https://search.naver.com/` 를 고정으로 실어, 구글 뉴스·AI Times·오토메이션월드·커스텀 RSS 같은 **타 도메인 요청에 네이버 referer** 가 붙어 anti-bot 403 을 유발할 수 있었다(별개 correctness 개선). referer 를 opt-in 으로 전환(기본 없음, 네이버 검색만 명시).
+- 검증: 출처 탭 매칭 단위테스트(신규/legacy 포맷) + playwright 실측(AI Times 1·Google RSS 2·네이버 기술 1·오토메이션월드 0, 기타 누출 0) · pytest **792 passed** · 금지패턴 0.
+
 ### Added (E2E 전체 사용 시나리오 시뮬레이션 — `tests/test_e2e_scenarios.py`)
 - **부품 단위가 아닌 '연결된 한 흐름'을 검증하는 E2E 7 시나리오 추가**: 조선소 사용자(도장1팀 홍길동) 워크플로를 수집→저장→매칭→자동화 기회→5화면 네비게이션→필터→SOLA LLM→보관함까지 한 줄기로 시뮬레이션. 외부 의존(네트워크=scraping search, LLM=`sola.*.chat`)만 mock, 데이터 파이프라인·매칭·UI 조립은 실제 코드 실행. conftest tmp 격리 + 시드 헬퍼(페르소나·작업정의 `sqlite_sync`·수집 fake search) + `_clear_ui_caches`(테스트 간 `st.cache_data` stale 제거).
 - 시나리오: **S1** 수집 영속화 · **S2** 로드맵 SQLite 라운드트립(`sync_dataframe`→`load_latest`) · **S3** 매칭(`score_matches`)+자동화 기회 셀(`score_cells`) · **S4** `app.py` 5화면 무예외 렌더(`AppTest`, LLM graceful fallback) · **S5** 데이터관리 출처 필터 적용→배너 · **S6** SOLA 요약·보드 브리핑(LLM mock) · **S7** 보관함 제안 채택→카운트.

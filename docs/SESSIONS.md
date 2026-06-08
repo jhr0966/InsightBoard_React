@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-06~08 — fix: 데이터 관리 출처 탭 '무수집' 오표시 + 수집버튼·필터박스 폭 + referer (`claude/kind-volta-IWxix`)
+
+**무엇을**: ① **출처 탭 기본 4출처가 수집됐는데도 전부 '무수집' 표시** 버그(사용자가 보고한 '수집 안 됨'의 실제 원인) 수정. ② 수집 버튼·필터 박스 폭 삐져나감 수정. ③ 수집 referer 교차도메인 correctness 개선.
+
+**①왜/어떻게(핵심)**: 수집기는 `source`=naver/google/tech 로 저장, tech 는 AI Times·오토메이션월드를 **모두 source="tech"** 로 묶고 site 명은 `press` 에 둔다. 출처 탭 `_src_count_map` 은 **표시명으로 곧장 group** → 매칭 0건(전부 무수집) + naver/google/tech 원시값이 '기타'로 누출. `_DEFAULT_SOURCE_MATCH`(표시명↔source값 + tech 는 press 로 구분, legacy 직접저장 호환)로 환산. playwright 실측: AI Times 1·Google RSS 2·네이버 기술 1·오토메이션월드 0, 기타 누출 0. **수집 자체는 정상이었음**(이전 세션의 403 진단은 이 세션 sandbox 의 outbound 전면차단 아티팩트).
+
+**②왜/어떻게**: Streamlit 이 `.st-key-*` 를 width:100%(부모 724px)로 잡아 margin 이 폭을 못 줄이고 우측 밀림(본문 356–1024 → 위젯 352–1076). `width:calc(100% - 56px) !important` + `margin:0 28px` → 정확 정렬.
+
+**③왜/어떻게**: `default_headers()` 가 전 요청에 네이버 referer 고정 → 타 도메인 403 유발 가능. referer opt-in 전환(네이버 검색만 명시). 별개 correctness 개선.
+
+**검증**: 출처 탭 매칭 단위테스트(신규/legacy) + UI 정렬·출처 탭 playwright 실측 · pytest **792 passed** · 금지패턴 0.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR(#128) 갱신 예정.
+
+---
+
 ## 2026-06-06 — 검증: E2E 전체 사용 시나리오 시뮬레이션 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 시스템 전체 사용 시나리오 7개를 세우고 시뮬레이션으로 유효 동작 검증. `tests/test_e2e_scenarios.py` 신규.

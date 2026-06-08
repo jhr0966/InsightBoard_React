@@ -60,7 +60,9 @@ def search(keyword: str, max_results: int = 10) -> list[dict]:
     try:
         session.get("https://www.naver.com", headers=default_headers(), timeout=8)
         time.sleep(random.uniform(0.3, 0.6))
-        resp = session.get(url, headers=default_headers(), timeout=REQUEST_TIMEOUT)
+        # 네이버 검색은 네이버 홈에서 넘어온 것처럼 보이도록 네이버 referer 명시.
+        resp = session.get(url, headers=default_headers(referer="https://www.naver.com/"),
+                           timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
     except requests.RequestException as e:
         raise RuntimeError(f"네이버 검색 요청 실패: {e}") from e

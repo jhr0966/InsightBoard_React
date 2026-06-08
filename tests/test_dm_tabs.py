@@ -111,12 +111,15 @@ def test_src_count_map_and_pill_show_per_source_counts():
     ])
     with patch.object(dm._news_db, "load_news_for_days", return_value=news):
         cnt_map = dm._src_count_map()
-    assert cnt_map["naver"][0] == 2
-    assert cnt_map["google"][0] == 1
+    # 수집기 저장 source(naver/google)가 출처 탭 표시명으로 환산된다(구: 표시명 직접 group →
+    # 전부 무수집 버그). 원시 source 키는 남지 않는다.
+    assert cnt_map["네이버 기술"][0] == 2
+    assert cnt_map["Google RSS"][0] == 1
+    assert "naver" not in cnt_map and "google" not in cnt_map
     # pill 이 이름·카운트를 표시
-    pill = dm._src_row_pill_html("naver", cnt_map["naver"][0], cnt_map["naver"][1],
+    pill = dm._src_row_pill_html("네이버 기술", cnt_map["네이버 기술"][0], cnt_map["네이버 기술"][1],
                                  is_enabled=True, kind="default")
-    assert "naver" in pill and "2건/7일" in pill
+    assert "네이버 기술" in pill and "2건/7일" in pill
     # 0건 기본 출처 → '7일 무수집'
     zero = dm._src_row_pill_html("AI Times", 0, "", is_enabled=True, kind="default")
     assert "AI Times" in zero and "7일 무수집" in zero
