@@ -8,6 +8,7 @@
 ### Changed (사이드바 메뉴 이동 흰 깜빡임 제거 — 앵커 → `st.button` 재위젯화)
 - **좌측 업무 흐름 5-nav 를 순수 HTML `<a href="?app_area=">` 앵커에서 `st.button` 위젯으로 복원**(`ui/sidebar.py`, `assets/v2/sidebar.css`, `ui/styles.py`): 앵커는 클릭 시 **문서 전체 reload(흰 깜빡임)**였다. 버튼은 **소켓 rerun**(세션 `app_area` 세팅 + `st.rerun()`, `on_click` 금지)이라 메뉴 이동에 깜빡임이 없다. look 은 `.st-key-sidebar_nav` 스코프가 기존 `.sidebar-nav-item`(인덱스=CSS counter·제목=`**strong**`·설명=`*em*`·활성=`button[kind="primary"]`)을 복제 — **디자인 동일**.
 - **2026-06-05 되돌림 사유 재검토**: `.st-key-*` 스코프 CSS 는 데이터관리 필터·수집 버튼에서 사용자 환경 포함 정상 동작 중이라, 직전 '메뉴 깨짐'은 일시적 CSS FOUC 로 추정 → 사용자 요청으로 재위젯화. 컨텍스트 딥링크(`?app_area=`)는 `_consume_area_query` 가 그대로 처리(둘 다 지원). `docs/INVARIANTS.md` I-22 갱신. **실배포 렌더 최종 확인 권장.**
+- **메뉴 항목 왼쪽맞춤 (들쭉날쭉 수정)**(`assets/v2/sidebar.css`): 위젯 nav 의 제목/설명 시작 위치가 항목 글자 수마다 달라 들쭉날쭉했다 — Streamlit 버튼 라벨이 `button > div`(+그 안 span) **두 겹의 flex 래퍼 `justify-content:center`** 로 가운데 몰렸기 때문. 래퍼를 `flex-start` 로 돌려 왼쪽 고정(emotion-cache 클래스 대신 구조 셀렉터 `button > div`). playwright 실측: 제목 시작 x 편차 **24.9px → 0px**(전 항목 38px 정렬).
 - 검증(playwright 실측): nav 클릭 시 `window` 플래그 생존(**문서 reload 0 = 흰 깜빡임 없음**)·URL `?app_area=` 없음·활성 01→03 전환·라이트/다크 룩 동일(인덱스 01–05·제목·설명). pytest **793 passed**(앵커 HTML 테스트 → `_nav_label`+위젯 nav AppTest 로 교체) · 금지패턴 0.
 
 ### Fixed (데이터 관리 — 출처 탭 '무수집' 오표시 + 수집 버튼·필터 박스 폭 삐져나감 + 수집 referer)
