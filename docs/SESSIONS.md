@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-06 — fix: 데이터 관리 수집버튼·필터박스 폭 삐져나감 + 수집 referer 교차도메인 (`claude/kind-volta-IWxix`)
+
+**무엇을**: ① '지금 뉴스 수집' 버튼·뉴스 필터 박스가 본문보다 넓어 우측 삐져나감 수정. ② 수집 HTTP referer 교차도메인 버그 수정. ③ 수집 미동작 진단.
+
+**①왜/어떻게**: Streamlit 이 `.st-key-*` 컨테이너를 `width:100%`(부모 724px)로 잡아 `margin:0 24px` 가 폭을 못 줄이고 우측으로 밀림(본문 356–1024 → 위젯 352–1076). `.st-key-dm_collect_cta`·`.st-key-dm_news_filter` 에 `width:calc(100% - 56px) !important` + `margin:0 28px` → 헤더·카드와 정확 정렬(356–1024, playwright 실측).
+
+**②왜/어떻게**: `default_headers()` 가 전 요청에 네이버 referer 고정 → 타 도메인(구글/AI Times/오토메이션월드/RSS)에 붙어 403 유발 가능. referer opt-in 전환, 네이버 검색만 명시(`naver.py`).
+
+**③수집 미동작 진단**: 버튼→pending→`_consume_refresh_if_any`→`collect_batch`→`save_articles` 경로 정상(로직 버그 없음). 실패는 출처 403. **이 세션 환경은 모든 outbound(example.com 조차)가 403** 으로 차단(네트워크 정책)돼 실 수집 재현·검증 불가. 배포 환경에선 네이버/구글 데이터센터 IP anti-bot 차단이 흔함 — referer 수정은 비-네이버 출처 완화 best-effort.
+
+**검증**: UI 정렬 playwright 실측 · pytest **790 passed** · 금지패턴 0.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-06 — 검증: E2E 전체 사용 시나리오 시뮬레이션 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 시스템 전체 사용 시나리오 7개를 세우고 시뮬레이션으로 유효 동작 검증. `tests/test_e2e_scenarios.py` 신규.

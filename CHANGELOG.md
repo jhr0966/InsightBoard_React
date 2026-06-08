@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (데이터 관리 — 수집 버튼·필터 박스 폭 삐져나감 + 수집 referer 교차도메인)
+- **'지금 뉴스 수집' 버튼·뉴스 라이브러리 필터 박스가 본문보다 넓게 우측으로 삐져나가던 것 수정**(`assets/v2/screens/data_management.css`): Streamlit 이 `.st-key-*` 컨테이너를 `width:100%`(부모 724px)로 잡아 `margin:0 24px` 만으로는 폭이 줄지 않고 우측으로 밀려 본문(`.dm-shell` 콘텐츠 356–1024)을 넘어 1076 까지 갔다. `.st-key-dm_collect_cta`·`.st-key-dm_news_filter` 에 `width:calc(100% - 56px)` + `margin:0 28px` → 헤더·카드와 정확히 정렬(356–1024, playwright 실측).
+- **수집 HTTP referer 교차도메인 버그 수정**(`scraping/http.py`, `scraping/naver.py`): `default_headers()` 가 모든 요청에 `Referer: https://search.naver.com/` 를 고정으로 실어, 구글 뉴스·AI Times·오토메이션월드·커스텀 RSS 같은 **타 도메인 요청에 네이버 referer** 가 붙어 anti-bot 403 을 유발할 수 있었다. referer 를 opt-in 으로 전환(기본 없음, 네이버 검색만 명시).
+- **수집 미동작 진단**: 버튼→pending→`_consume_refresh_if_any`→`collect_batch`→`save_articles` 경로는 정상(로직 버그 없음). 실패는 출처 **HTTP 403**. 단 이 세션 환경은 모든 outbound(예: `example.com` 조차)가 403 으로 차단돼(네트워크 정책) 실 수집을 재현·검증할 수 없었다 — referer 수정은 비-네이버 출처 403 완화 best-effort. 배포 환경의 네이버/구글 데이터센터 IP anti-bot 차단은 코드만으로 해결 불가할 수 있음.
+- 검증: pytest **790 passed** · 금지패턴 0.
+
 ### Added (E2E 전체 사용 시나리오 시뮬레이션 — `tests/test_e2e_scenarios.py`)
 - **부품 단위가 아닌 '연결된 한 흐름'을 검증하는 E2E 7 시나리오 추가**: 조선소 사용자(도장1팀 홍길동) 워크플로를 수집→저장→매칭→자동화 기회→5화면 네비게이션→필터→SOLA LLM→보관함까지 한 줄기로 시뮬레이션. 외부 의존(네트워크=scraping search, LLM=`sola.*.chat`)만 mock, 데이터 파이프라인·매칭·UI 조립은 실제 코드 실행. conftest tmp 격리 + 시드 헬퍼(페르소나·작업정의 `sqlite_sync`·수집 fake search) + `_clear_ui_caches`(테스트 간 `st.cache_data` stale 제거).
 - 시나리오: **S1** 수집 영속화 · **S2** 로드맵 SQLite 라운드트립(`sync_dataframe`→`load_latest`) · **S3** 매칭(`score_matches`)+자동화 기회 셀(`score_cells`) · **S4** `app.py` 5화면 무예외 렌더(`AppTest`, LLM graceful fallback) · **S5** 데이터관리 출처 필터 적용→배너 · **S6** SOLA 요약·보드 브리핑(LLM mock) · **S7** 보관함 제안 채택→카운트.

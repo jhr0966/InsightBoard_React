@@ -20,6 +20,14 @@ def test_default_headers_contain_ua():
     assert h["Accept-Language"].startswith("ko")
 
 
+def test_default_headers_referer_opt_in():
+    # 기본은 referer 없음 (타 도메인에 네이버 referer 가 붙어 403 유발하던 버그 방지).
+    assert "Referer" not in default_headers()
+    # 호출처가 명시하면 그대로 실린다 (네이버 검색 전용).
+    h = default_headers(referer="https://www.naver.com/")
+    assert h["Referer"] == "https://www.naver.com/"
+
+
 def test_normalize_published_at_relative():
     now = datetime(2026, 5, 12, 12, 0, 0, tzinfo=timezone.utc)
     out = normalize_published_at("2시간 전", now_utc=now)
