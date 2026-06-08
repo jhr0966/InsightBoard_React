@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-06-08 — feat: 사이드바 메뉴 이동 흰 깜빡임 제거 (앵커 → st.button 재위젯화) (`claude/kind-volta-IWxix`)
+
+**무엇을**: 좌측 5-nav 를 앵커(`<a href=?app_area=>`)에서 `st.button` 위젯으로 복원 → 메뉴 이동 시 문서 전체 reload(흰 깜빡임) 제거. (사용자 방법론: 위젯+세션+소켓 rerun — 데이터관리 탭에 이미 적용된 패턴을 사이드바에도.)
+
+**왜 다시 위젯화**: 2026-06-05 위젯→앵커 되돌림은 "사용자 환경에서 메뉴 깨짐" 보고 때문이었으나 **원인 미재현**. `.st-key-*` 스코프 CSS 는 이후 데이터관리 필터·수집 버튼에서 사용자 환경 포함 정상 동작 확인 → 직전 깨짐은 일시적 CSS FOUC 로 추정. 사용자 요청으로 재위젯화.
+
+**어떻게**: `_sidebar_nav_html`(앵커) → `_nav_label`+`_render_sidebar_nav`(st.button 5개, `on_click` 금지). `.st-key-sidebar_nav` 스코프 CSS 가 인덱스(CSS counter)·제목(`**strong**`)·설명(`*em*`)·활성(`button[kind="primary"]`)으로 `.sidebar-nav-item` 룩 복제. `styles.py` 다크 active 규칙에 button 추가. `quote` import 제거. I-22 invariant 갱신.
+
+**검증**: playwright 실측 — 클릭 시 `window` 플래그 생존(reload 0)·URL `?app_area=` 없음·활성 01→03 전환·라이트/다크 룩 동일(인덱스 01–05·제목·설명 표시). pytest **793 passed**(앵커 HTML 테스트 → `_nav_label`+위젯 nav AppTest 교체) · 금지패턴 0.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정. **실배포 렌더 최종 확인 권장**(I-22 — CSS 안 먹는 환경에선 회색 버튼).
+
+---
+
 ## 2026-06-06~08 — fix: 데이터 관리 출처 탭 '무수집' 오표시 + 수집버튼·필터박스 폭 + referer (`claude/kind-volta-IWxix`)
 
 **무엇을**: ① **출처 탭 기본 4출처가 수집됐는데도 전부 '무수집' 표시** 버그(사용자가 보고한 '수집 안 됨'의 실제 원인) 수정. ② 수집 버튼·필터 박스 폭 삐져나감 수정. ③ 수집 referer 교차도메인 correctness 개선.

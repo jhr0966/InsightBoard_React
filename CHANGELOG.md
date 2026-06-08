@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Changed (사이드바 메뉴 이동 흰 깜빡임 제거 — 앵커 → `st.button` 재위젯화)
+- **좌측 업무 흐름 5-nav 를 순수 HTML `<a href="?app_area=">` 앵커에서 `st.button` 위젯으로 복원**(`ui/sidebar.py`, `assets/v2/sidebar.css`, `ui/styles.py`): 앵커는 클릭 시 **문서 전체 reload(흰 깜빡임)**였다. 버튼은 **소켓 rerun**(세션 `app_area` 세팅 + `st.rerun()`, `on_click` 금지)이라 메뉴 이동에 깜빡임이 없다. look 은 `.st-key-sidebar_nav` 스코프가 기존 `.sidebar-nav-item`(인덱스=CSS counter·제목=`**strong**`·설명=`*em*`·활성=`button[kind="primary"]`)을 복제 — **디자인 동일**.
+- **2026-06-05 되돌림 사유 재검토**: `.st-key-*` 스코프 CSS 는 데이터관리 필터·수집 버튼에서 사용자 환경 포함 정상 동작 중이라, 직전 '메뉴 깨짐'은 일시적 CSS FOUC 로 추정 → 사용자 요청으로 재위젯화. 컨텍스트 딥링크(`?app_area=`)는 `_consume_area_query` 가 그대로 처리(둘 다 지원). `docs/INVARIANTS.md` I-22 갱신. **실배포 렌더 최종 확인 권장.**
+- 검증(playwright 실측): nav 클릭 시 `window` 플래그 생존(**문서 reload 0 = 흰 깜빡임 없음**)·URL `?app_area=` 없음·활성 01→03 전환·라이트/다크 룩 동일(인덱스 01–05·제목·설명). pytest **793 passed**(앵커 HTML 테스트 → `_nav_label`+위젯 nav AppTest 로 교체) · 금지패턴 0.
+
 ### Fixed (데이터 관리 — 출처 탭 '무수집' 오표시 + 수집 버튼·필터 박스 폭 삐져나감 + 수집 referer)
 - **출처 탭의 기본 출처 4개(AI Times·오토메이션월드·Google RSS·네이버 기술)가 실제로는 수집됐는데도 전부 '무수집'으로 표시되던 버그 수정**(`ui/data_management_v2.py`): 수집기는 `source` 를 `naver`/`google`/`tech` 로 저장하고 tech 는 AI Times·오토메이션월드를 **모두 `source="tech"`** 로 묶어 site 명을 `press` 에 둔다. 그런데 출처 탭(`_src_count_map`)은 **표시명으로 곧장 group** 해 매칭이 0건 → 전부 '7일 무수집', 동시에 `naver`/`google`/`tech` 원시값은 '기타' 행으로 누출됐다. `_DEFAULT_SOURCE_MATCH`(표시명 ↔ source 값 + tech 는 `press` 로 AI Times/오토메이션월드 구분, legacy 직접저장 호환)로 환산하도록 고쳐 표시명별 실 건수를 보이고 기타 누출을 제거. (사용자의 '수집 안 됨'은 실제론 이 **표시 버그** — 수집 자체는 정상.)
 - **'지금 뉴스 수집' 버튼·뉴스 라이브러리 필터 박스가 본문보다 넓게 우측으로 삐져나가던 것 수정**(`assets/v2/screens/data_management.css`): Streamlit 이 `.st-key-*` 컨테이너를 `width:100%`(부모 724px)로 잡아 `margin:0 24px` 만으로는 폭이 줄지 않고 우측으로 밀려 본문(`.dm-shell` 콘텐츠 356–1024)을 넘어 1076 까지 갔다. `.st-key-dm_collect_cta`·`.st-key-dm_news_filter` 에 `width:calc(100% - 56px)` + `margin:0 28px` → 헤더·카드와 정확히 정렬(356–1024, playwright 실측).
