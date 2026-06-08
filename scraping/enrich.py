@@ -50,6 +50,11 @@ _NOISE_SELECTORS = (
 
 _MIN_CONTENT_LEN = 80
 
+# 셀렉터·문단 폴백으로도 본문이 빈약할 때 쓰는 '최대 텍스트 블록' 폴백 한계치.
+# (참고 스크래퍼 패턴 — 동적/비표준 마크업 사이트 대응.)
+_FALLBACK_MIN_LEN = 200
+_FALLBACK_MAX_LINKS = 8
+
 _CODE_LINE_PATTERNS = (
     re.compile(r"^\s*(var|let|const|function|return|if|else|for|while|import|export)\b"),
     re.compile(r"^\s*[.#]?[A-Za-z0-9_-]+\s*\{[^}]*\}\s*$"),
@@ -250,6 +255,23 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
             candidates.append("\n".join(paragraphs))
 
         content = max(candidates, key=len) if candidates else ""
+
+        # 셀렉터·문단으로도 본문이 빈약하면(동적/비표준 마크업 사이트) 링크가 적은
+        # 최대 텍스트 블록을 마지막 폴백으로 채택한다. 본문 정제·코드/보일러플레이트
+        # 제거(_text_from_tag)는 동일 적용 → 네비/광고 블록이 아닌 실제 기사 본문을 노린다.
+        if len(content) < _FALLBACK_MIN_LEN:
+            best = content
+            for block in soup.find_all(["div", "article", "section"]):
+                try:
+                    if len(block.find_all("a")) > _FALLBACK_MAX_LINKS:
+                        continue
+                    text = _text_from_tag(block)
+                except Exception:  # noqa: BLE001 — 개별 블록 파싱 실패는 건너뛴다.
+                    continue
+                if len(text) > len(best):
+                    best = text
+            content = best
+
         return {"content": content, "image_url": image_url}
     except Exception:  # noqa: BLE001 — 단일 페이지 파싱 실패가 전체 수집을 막지 않도록.
         logger.debug("기사 파싱 실패: %s", url, exc_info=True)

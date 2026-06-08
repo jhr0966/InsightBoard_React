@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (뉴스 수집 — 카드 클릭 reload 제거 · 모달 세로 중앙/확대 · 데이터 표 탭 · 본문/사진 추출 개선)
+- **카드 클릭 시 문서 전체 reload(흰 깜빡임) 제거 → 즉시 모달**(`ui/data_management_v2.py`): 카드를 `?news=` 앵커(문서 네비게이션)에서 **카드 전체를 덮는 투명 `st.button` 오버레이**로 전환. 클릭은 소켓 rerun 으로 `_sc_open_news` 를 세팅해 reload 없이 기사 모달이 뜬다. 카드 시각은 `_sc_card_visual_html`(앵커 없음), 그리드는 `st.columns(3)` 행 + 카드별 컨테이너(`_render_card_grid`). `_sc_filtered_records` 로 필터 로직 분리. (구 `_sc_news_card_html`/`_sc_cards_html` 제거, `?news=` 딥링크 소비는 호환 유지.)
+- **모달(기사·페르소나/온보딩)을 화면 세로 중앙 + 더 긴 형태로**(`assets/v2/streamlit-overrides.css`): `st.dialog` 오버레이를 flex 중앙 정렬 + 박스 `min-height:58vh`·`max-height:92vh`·`width:min(880px,94vw)` + 본문 flex 신장 → 상단에 붙고 짧던 문제 해소(전 테마). 기사 본문 `.sc-modal-body` 최대 높이 46vh→60vh.
+- **📋 데이터 표 보기 추가**(`_render_news_table` + `sc_browse_mode` 토글 `🃏 카드`/`📋 데이터 표`): 수집한 **모든 뉴스**를 `st.dataframe`(사진 썸네일=`ImageColumn`, 링크=`LinkColumn`, 제목·대분류·출처·수집시각·키워드)로 표시. 상단 검색어로 좁힘.
+- **기사 본문/사진 추출 개선**(`scraping/enrich.py`): 표준 셀렉터·`<p>` 폴백으로도 본문이 빈약하면(동적/비표준 마크업) **링크가 적은 '최대 텍스트 블록'을 마지막 폴백**으로 채택(`_FALLBACK_MIN_LEN`/`_FALLBACK_MAX_LINKS`, 사용자 제공 참고 스크래퍼 패턴). 노이즈·코드/보일러플레이트 제거 동일 적용. (사진은 og:image→본문 img 우선순위 + 리스트 이미지 폴백 유지.)
+- 검증: pytest **827 passed**(카드 클릭→모달·데이터 표·필터 신구조 + enrich 최대블록 폴백 신규 테스트) · 금지패턴 0.
+
 ### Changed (뉴스 수집 화면 개편 — 카테고리 카드 브라우저 + 기사 모달 + ⚙ 수집 설정 서브뷰)
 - **뉴스 수집을 '키워드 뉴스'(naver·google 검색 기반) / '포탈 뉴스'(tech 사이트 + 커스텀 RSS) 두 대분류로 정리**(`ui/data_management_v2.py`): source 값으로 대분류를 판정(`_news_category_of`)하고, 포탈은 매체(press)·키워드는 네이버/구글로 출처칩 라벨을 만든다(`_news_channel_of`).
 - **메인 = 카드뷰**: 수집 현황 요약(KPI 4) → 액션바(`[🔄 지금 뉴스 수집]` + `[⚙ 수집 설정]`) → **대분류 탭(segmented) + 출처칩(segmented)** → **사진 카드 그리드**. 카드는 `image_url` 실사진(없으면 출처색 그라데이션) + 제목 + 본문 일부(summary_llm→summary→content)를 보여준다. `_sc_browse_records`(30일·_cat/_chan 주석·최신순 캐시) / `_sc_channels` / `_sc_cards_html`(카테고리·채널·검색 필터) / `_sc_news_card_html` 신규.

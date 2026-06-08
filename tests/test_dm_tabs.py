@@ -237,7 +237,7 @@ def test_collect_default_renders_card_browser():
     """개편: 기본(카드뷰)은 수집 현황 요약 + 카테고리 카드 브라우저를 렌더한다.
     구 jobs split(dm-split)·키워드 관리(설정 전용)·앵커 탭(<a class=dm-tab>)은 없다."""
     from ui import data_management_v2 as dm
-    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
+    dm._sc_browse_records.clear()
     at = _dm_app()
     at.run()
     assert not at.exception
@@ -252,7 +252,7 @@ def test_collect_settings_view_renders_kw_and_sources():
     """⚙ 수집 설정 서브뷰(sc_collect_view=settings)는 키워드 관리 + 출처 설정을
     렌더하고, 카드 브라우저(sc-grid/sc-empty)는 그리지 않는다."""
     from ui import data_management_v2 as dm
-    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
+    dm._sc_browse_records.clear()
     at = _dm_app()
     at.session_state["sc_collect_view"] = "settings"
     at.run()

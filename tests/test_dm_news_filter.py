@@ -110,7 +110,7 @@ def _dm_app():
 def test_collect_renders_category_browser_not_filter_form():
     """개편: 뉴스 라이브러리 필터 폼(출처 멀티셀렉트·기간·정렬·'적용')은 제거됨.
     대신 카드 브라우저(빈 데이터=빈 상태) + 액션바가 예외 없이 렌더된다."""
-    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
+    dm._sc_browse_records.clear()
     at = _dm_app()
     at.run()
     assert not at.exception

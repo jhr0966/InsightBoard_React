@@ -866,7 +866,7 @@ _SC_SOURCE_LABEL: dict[str, str] = {"naver": "네이버", "google": "구글"}
 _SC_CATS: tuple[str, ...] = ("keyword", "portal")
 _SC_CAT_LABEL: dict[str, str] = {"keyword": "🔑 키워드 뉴스", "portal": "🏛 포탈 뉴스"}
 _SC_BROWSE_DAYS = 30      # 카드 브라우저가 훑는 기간
-_SC_MAX_CARDS = 30        # 카테고리/채널당 최대 카드 수
+_SC_MAX_CARDS = 24        # 카테고리/채널당 최대 카드 수(카드별 위젯이라 과도 방지)
 _SC_ALL_CHANNEL = "전체"
 
 
@@ -918,14 +918,27 @@ def _sc_channels(cat: str) -> list[str]:
     return out
 
 
-def _sc_news_card_html(row: dict) -> str:
-    """단일 뉴스 record → 사진 카드(앵커). 클릭 시 ?news=<link> 로 기사 모달."""
-    from urllib.parse import quote as _q
-    link = str(row.get("link", "") or "").strip()
+def _sc_filtered_records(cat: str, channel: str, q: str) -> list[dict]:
+    """대분류·출처칩·상단 검색어로 좁힌 record 리스트(순수). 카드 그리드·표 공용."""
+    recs = [r for r in _sc_browse_records() if r.get("_cat") == cat]
+    if channel and channel != _SC_ALL_CHANNEL:
+        recs = [r for r in recs if r.get("_chan") == channel]
+    q = (q or "").strip().lower()
+    if q:
+        recs = [
+            r for r in recs
+            if any(q in str(r.get(c, "") or "").lower() for c in _NEWS_SEARCH_COLS)
+        ]
+    return recs
+
+
+def _sc_card_visual_html(row: dict) -> str:
+    """카드 시각(사진+메타+제목+본문 일부). 클릭은 위에 겹친 투명 버튼이 처리 → 앵커 없음."""
     title = _html.escape(str(row.get("title") or "(제목 없음)"))
     img = str(row.get("image_url", "") or "").strip()
-    body_src = str(row.get("summary_llm") or row.get("summary") or row.get("content") or "")
-    body_src = " ".join(body_src.split())
+    body_src = " ".join(
+        str(row.get("summary_llm") or row.get("summary") or row.get("content") or "").split()
+    )
     excerpt = (_html.escape(body_src[:110] + ("…" if len(body_src) > 110 else ""))
                if body_src else "")
     source = str(row.get("source", "") or "")
@@ -936,24 +949,21 @@ def _sc_news_card_html(row: dict) -> str:
     # 이미지: http(s) 스킴만 허용(XSS/data: 방어), 없으면 그라데이션 플레이스홀더.
     if img[:4].lower() == "http":
         img_block = (
-            f'<span class="sc-card-img" style="background:{grad};">'
+            f'<div class="sc-card-img" style="background:{grad};">'
             f'<img src="{_html.escape(img, quote=True)}" loading="lazy" '
-            f'referrerpolicy="no-referrer" alt=""></span>'
+            f'referrerpolicy="no-referrer" alt=""></div>'
         )
     else:
-        img_block = f'<span class="sc-card-img sc-card-img-ph" style="background:{grad};"></span>'
-    href = "?app_area=" + _q("🗞 뉴스 수집") + "&news=" + _q(link)
+        img_block = f'<div class="sc-card-img sc-card-img-ph" style="background:{grad};"></div>'
     return (
-        f'<li class="sc-card-li"><a class="sc-card" href="{_html.escape(href)}" target="_self">'
-        f'{img_block}'
-        f'<span class="sc-card-body">'
-        f'<span class="sc-card-meta">'
+        f'<div class="sc-card">{img_block}'
+        f'<div class="sc-card-body">'
+        f'<div class="sc-card-meta">'
         f'<span class="sc-card-src"><span class="sc-card-dot" style="background:{grad};"></span>{chan}</span>'
-        f'<span class="sc-card-age">{age}</span>'
-        f'</span>'
-        f'<span class="sc-card-h">{title}</span>'
-        + (f'<span class="sc-card-p">{excerpt}</span>' if excerpt else "")
-        + '</span></a></li>'
+        f'<span class="sc-card-age">{age}</span></div>'
+        f'<div class="sc-card-h">{title}</div>'
+        + (f'<div class="sc-card-p">{excerpt}</div>' if excerpt else "")
+        + '</div></div>'
     )
 
 
@@ -967,36 +977,94 @@ def _sc_empty_html(q: str = "") -> str:
     )
 
 
-@st.cache_data(ttl=60)
-def _sc_cards_html(cat: str, channel: str, q: str) -> str:
-    """대분류·출처칩·상단 검색어로 좁힌 뉴스 카드 그리드 HTML(캐시).
+def _render_card_grid(cat: str, channel: str, q: str) -> None:
+    """사진 카드 그리드 — 카드마다 컨테이너(시각 HTML) + 투명 오버레이 버튼.
 
-    검색어 `q` 는 상단 토픽 검색(_news_search_q)에서 전달 — 제목·본문·요약·키워드 매칭.
+    카드 클릭은 오버레이 st.button(소켓 rerun)이 받아 `_sc_open_news` 를 세팅 → 기사
+    모달이 뜬다. **문서 전체 reload(흰 깜빡임) 없이** 모달이 열린다(앵커 제거).
     """
-    recs = [r for r in _sc_browse_records() if r.get("_cat") == cat]
-    if channel and channel != _SC_ALL_CHANNEL:
-        recs = [r for r in recs if r.get("_chan") == channel]
-    q = (q or "").strip()
-    if q:
-        ql = q.lower()
+    recs = _sc_filtered_records(cat, channel, q)[:_SC_MAX_CARDS]
+    if not recs:
+        st.html(_components.prepare_screen_html(_sc_empty_html(q)))
+        return
+    for base in range(0, len(recs), 3):
+        cols = st.columns(3, gap="small")
+        for j, rec in enumerate(recs[base:base + 3]):
+            i = base + j
+            with cols[j]:
+                with st.container(key=f"sc_card_{i}"):
+                    st.html(_components.prepare_screen_html(_sc_card_visual_html(rec)))
+                    if st.button(
+                        "기사 보기", key=f"sc_open_{i}", use_container_width=True,
+                    ):
+                        st.session_state["_sc_open_news"] = str(rec.get("link") or "")
+                        st.rerun()
+
+
+def _render_news_table(q: str) -> None:
+    """📋 데이터 표 — 수집한 모든 뉴스를 표로(사진 썸네일·링크 포함). 상단 검색 적용."""
+    import pandas as _pd
+    recs = _sc_browse_records()
+    ql = (q or "").strip().lower()
+    if ql:
         recs = [
             r for r in recs
             if any(ql in str(r.get(c, "") or "").lower() for c in _NEWS_SEARCH_COLS)
         ]
     if not recs:
-        return _sc_empty_html(q)
-    cards = "\n".join(_sc_news_card_html(r) for r in recs[:_SC_MAX_CARDS])
-    return f'<ul class="sc-grid">{cards}</ul>'
+        st.html(_components.prepare_screen_html(_sc_empty_html(q)))
+        return
+    rows = []
+    for r in recs:
+        when = str(r.get("collected_at") or r.get("published_at") or "")
+        rows.append({
+            "사진": str(r.get("image_url", "") or ""),
+            "제목": str(r.get("title", "") or ""),
+            "대분류": _SC_CAT_LABEL.get(str(r.get("_cat", "")), ""),
+            "출처": str(r.get("_chan", "") or ""),
+            "수집": _news_age_label(when) or when[:16],
+            "키워드": str(r.get("keywords_llm") or r.get("keywords") or ""),
+            "링크": str(r.get("link", "") or ""),
+        })
+    df = _pd.DataFrame(rows)
+    with st.container(key="sc_table"):
+        st.caption(f"수집한 뉴스 전체 {len(df)}건 — 상단 검색으로 좁힐 수 있어요.")
+        st.dataframe(
+            df, use_container_width=True, hide_index=True, height=560,
+            column_config={
+                "사진": st.column_config.ImageColumn("사진", width="small"),
+                "제목": st.column_config.TextColumn("제목", width="large"),
+                "키워드": st.column_config.TextColumn("키워드", width="medium"),
+                "링크": st.column_config.LinkColumn("링크", display_text="원문 ↗", width="small"),
+            },
+        )
+
+
+_SC_MODES: tuple[str, ...] = ("cards", "table")
+_SC_MODE_LABEL: dict[str, str] = {"cards": "🃏 카드", "table": "📋 데이터 표"}
 
 
 def _render_news_browser(persona) -> None:
-    """대분류 탭(키워드/포탈) + 출처칩 + 사진 카드 그리드.
+    """보기 전환(카드/표) + 카드뷰(대분류 탭 + 출처칩 + 사진 카드 그리드).
 
-    원클릭 카테고리 전환: 대분류 segmented_control + 그 안의 출처 segmented_control.
-    상단 검색어가 있으면 카드도 함께 좁힌다(필터 폼 없이 검색만으로).
+    카드 클릭은 오버레이 버튼(소켓 rerun)이라 reload 없이 기사 모달이 뜬다. 데이터
+    표는 수집한 모든 뉴스를 표로 본다. 상단 검색어가 있으면 둘 다 함께 좁힌다.
     """
     q = str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()
 
+    # 보기 모드 — 카드 / 데이터 표
+    if st.session_state.get("sc_browse_mode") not in _SC_MODES:
+        st.session_state["sc_browse_mode"] = _SC_MODES[0]
+    with st.container(key="sc_mode_tabs"):
+        mode = st.segmented_control(
+            "보기", list(_SC_MODES), format_func=lambda m: _SC_MODE_LABEL[m],
+            key="sc_browse_mode", label_visibility="collapsed",
+        ) or st.session_state["sc_browse_mode"]
+    if mode == "table":
+        _render_news_table(q)
+        return
+
+    # 카드뷰 — 대분류 탭
     if st.session_state.get("sc_news_cat") not in _SC_CATS:
         st.session_state["sc_news_cat"] = _SC_CATS[0]
     with st.container(key="sc_cat_tabs"):
@@ -1008,7 +1076,7 @@ def _render_news_browser(persona) -> None:
     if cat not in _SC_CATS:
         cat = _SC_CATS[0]
 
-    # 출처칩 — 대분류별로 따로 기억(키에 cat 포함). 채널이 1개 이하면 칩 생략.
+    # 출처칩 — 대분류별로 따로 기억(키에 cat 포함). 채널이 없으면 칩 생략.
     channels = _sc_channels(cat)
     chan = _SC_ALL_CHANNEL
     if channels:
@@ -1023,7 +1091,7 @@ def _render_news_browser(persona) -> None:
         if chan not in chan_opts:
             chan = _SC_ALL_CHANNEL
 
-    st.html(_components.prepare_screen_html(_sc_cards_html(cat, chan, q)))
+    _render_card_grid(cat, chan, q)
 
 
 def _render_collect_actionbar() -> None:
@@ -1459,7 +1527,7 @@ def _consume_refresh_if_any() -> bool:
     from ui import board_v2 as _bv2  # lazy
 
     for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html,
-               _news_source_options, _sc_browse_records, _sc_cards_html,
+               _news_source_options, _sc_browse_records,
                _archive_stats_dm, _bv2._board_kpis):
         if hasattr(fn, "clear"):
             fn.clear()

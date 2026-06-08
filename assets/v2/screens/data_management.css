@@ -1338,7 +1338,7 @@ a.dm-tab:hover { text-decoration: none; }
   border-left: 3px solid var(--accent-primary);
 }
 .sc-modal-body { font-size: 14.5px; line-height: 1.75; color: var(--text-secondary);
-  max-height: 46vh; overflow: auto; }
+  flex: 1 1 auto; min-height: 0; max-height: 60vh; overflow: auto; }
 .sc-modal-body p { margin: 0 0 10px; }
 .sc-modal-link, a.sc-modal-link, a.sc-modal-link:visited {
   align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
@@ -1346,3 +1346,30 @@ a.dm-tab:hover { text-decoration: none; }
   color: #fff; background: var(--accent-primary); text-decoration: none;
 }
 .sc-modal-link:hover { background: var(--accent-hover); text-decoration: none; }
+
+/* ── 뉴스 수집 개편 v2 — 보기 모드 + 클릭형 카드(오버레이 버튼) + 표 ───────── */
+/* 컨테이너 인셋(헤더·카드와 폭 정렬) */
+.st-key-sc_mode_tabs, .st-key-sc_table { margin: 0 28px 10px; }
+.st-key-sc_mode_tabs { margin-bottom: 12px; }
+.st-key-sc_table { margin-bottom: 24px; }
+
+/* 카드 그리드 컬럼 안의 카드가 컬럼 폭/높이를 꽉 채우게 */
+[class*="st-key-sc_card_"] .sc-card { height: 100%; }
+[class*="st-key-sc_card_"] [data-testid="stElementContainer"] { margin: 0 !important; }
+
+/* 카드 클릭 = 카드 전체를 덮는 투명 st.button(소켓 rerun → reload 없이 모달).
+   컨테이너를 기준(relative)으로, 버튼을 절대배치로 카드 위에 겹친다. */
+[class*="st-key-sc_card_"] { position: relative; }
+[class*="st-key-sc_card_"] [data-testid="stButton"] {
+  position: absolute; inset: 0; margin: 0; z-index: 3;
+}
+[class*="st-key-sc_card_"] [data-testid="stButton"] button {
+  width: 100%; height: 100%; min-height: 0; padding: 0; border: 0;
+  opacity: 0; cursor: pointer; background: transparent;
+}
+/* 카드 위 어디든 호버하면(=버튼 호버) 카드가 떠오르는 피드백 */
+[class*="st-key-sc_card_"]:hover .sc-card {
+  border-color: rgba(37,99,235,0.32);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.08);
+  transform: translateY(-2px);
+}
