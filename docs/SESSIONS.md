@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-08 — feat: 뉴스 수집 화면 개편 — 카테고리 카드 브라우저 + 기사 모달 + ⚙ 수집 설정 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 뉴스 수집을 '키워드 뉴스'/'포탈 뉴스' 두 대분류로 정리. 메인은 수집 현황 요약 + 대분류 탭(키워드/포탈) + 출처칩 + **사진 카드**(제목·본문 일부), 카드 클릭 시 **기사 모달**(본문 전체 + 원본 링크). 키워드·포탈 설정은 **⚙ 수집 설정 서브뷰**로. 뉴스 라이브러리 필터 폼 제거(상단 검색이 대체). (사용자 4개 결정: #132 먼저 머지 / 설정=서브뷰 / 대분류 탭+출처칩 / 요약은 메인·상세는 설정.)
+
+**어떻게**:
+- `data_management_v2`: `_news_category_of`(naver·google=키워드, 그 외=포탈)·`_news_channel_of`(네이버/구글·press·커스텀) + `_sc_browse_records`(30일·_cat/_chan·최신순 캐시)·`_sc_channels`·`_sc_cards_html`·`_sc_news_card_html`(사진 카드 앵커, http 스킴만·escape). `_render_news_browser`(대분류 segmented + 출처칩 segmented + 카드) / `_render_collect_actionbar` / `_render_collect_settings`(키워드+출처표+이력) / 기사 모달(`_consume_news_modal_open_if_any`→`_sc_open_news`→`st.dialog(dismissible=False)`·`_news_modal_body`). `render_collect` 재배선(카드뷰↔설정뷰 `sc_collect_view`).
+- 레거시(`_render_news_filter_form`/`_render_jobs_split`/`_render_dm_tabs`/`_news_cards_html`)는 유지하되 미호출(호환·테스트). 캐시 무효화 목록에 `_sc_browse_records`/`_sc_cards_html` 추가.
+- CSS: `sc-grid`/`sc-card`/`sc-card-img`/`sc-modal*` + 컨테이너 인셋.
+- 테스트: 신규 `tests/test_collect_browser.py`(+12), test_dm_tabs·test_dm_news_filter 2건씩 신구조로 교체, E2E S5(필터→카테고리 브라우저)·`_clear_ui_caches` 갱신.
+
+**검증**: pytest **825 passed** · 금지패턴 0 · py_compile OK · 정적 미리보기 HTML 생성(playwright 브라우저는 네트워크 정책상 미설치 → 스크린샷 대신 HTML 전달).
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-08 — feat: 작업 정의 flat-column 엑셀 → 구조화 JSON 자동 조립 (`claude/kind-volta-IWxix`)
 
 **무엇을**: JSON 열이 없는 신 엑셀(분과·팀·부서·공정·작업·세부작업·Process_ID·공정설명·작업흐름·주요확인사항·안전주의사항·주요사용장비·품질리스크·자동화가능영역·이전공정·다음공정 16열)을 업로드하면 개별 컬럼을 구조화 task_def JSON 으로 자동 조립. (사용자 제공 컬럼 스펙.)
@@ -17,7 +33,7 @@
 
 **검증**: pytest **813 passed**(+18 신규 `tests/test_roadmap_flat_columns.py`) · 금지패턴 0 · py_compile OK.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#132).
 
 ---
 

@@ -233,26 +233,31 @@ def _dm_app():
     return at
 
 
-def test_dm_tabs_default_renders_only_jobs_panel():
-    """기본(활성 탭=jobs)은 jobs 본문(dm-split)만 조건부 렌더한다. 비활성 kw 본문
-    (키워드 관리)은 계산조차 안 됨(st.tabs 의 eager 렌더 비용 제거). 탭 바는
-    segmented_control 이라 예전 앵커 탭(<a class=dm-tab>)은 더 이상 굽지 않는다."""
+def test_collect_default_renders_card_browser():
+    """개편: 기본(카드뷰)은 수집 현황 요약 + 카테고리 카드 브라우저를 렌더한다.
+    구 jobs split(dm-split)·키워드 관리(설정 전용)·앵커 탭(<a class=dm-tab>)은 없다."""
+    from ui import data_management_v2 as dm
+    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
     at = _dm_app()
     at.run()
     assert not at.exception
     combined = "\n".join(h.proto.body for h in at.get("html"))
-    assert "dm-split" in combined            # jobs 패널 (뉴스 라이브러리 split)
-    assert "키워드 관리" not in combined      # kw 본문은 비활성 → 조건부 미렌더
-    assert 'class="dm-tab"' not in combined  # 앵커 탭 바 제거됨(segmented_control 이 대체)
+    assert "sc-empty" in combined or "sc-grid" in combined  # 카드 브라우저(빈 데이터=빈 상태)
+    assert "dm-split" not in combined                        # 구 jobs split 제거
+    assert "키워드 관리" not in combined                     # 키워드는 설정 서브뷰 전용
+    assert 'class="dm-tab"' not in combined                  # 앵커 탭 바 없음
 
 
-def test_dm_tabs_active_kw_renders_only_kw_panel():
-    """활성 탭을 kw 로 세션에 세팅하면 kw 본문(키워드 관리)만 렌더되고 jobs 본문
-    (dm-split)은 그려지지 않는다 — 활성 탭만 조건부 렌더 + 활성 탭 세션 보존."""
+def test_collect_settings_view_renders_kw_and_sources():
+    """⚙ 수집 설정 서브뷰(sc_collect_view=settings)는 키워드 관리 + 출처 설정을
+    렌더하고, 카드 브라우저(sc-grid/sc-empty)는 그리지 않는다."""
+    from ui import data_management_v2 as dm
+    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
     at = _dm_app()
-    at.session_state["_dm_active_tab"] = "kw"
+    at.session_state["sc_collect_view"] = "settings"
     at.run()
     assert not at.exception
     combined = "\n".join(h.proto.body for h in at.get("html"))
-    assert "키워드 관리" in combined          # kw 패널 본문
-    assert "dm-split" not in combined         # jobs 본문은 비활성 → 미렌더
+    assert "키워드 관리" in combined        # kw 설정 본문
+    assert "출처 설정" in combined          # 출처(포탈) 설정 헤더
+    assert "sc-grid" not in combined        # 카드 브라우저는 설정뷰에 없음

@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Changed (뉴스 수집 화면 개편 — 카테고리 카드 브라우저 + 기사 모달 + ⚙ 수집 설정 서브뷰)
+- **뉴스 수집을 '키워드 뉴스'(naver·google 검색 기반) / '포탈 뉴스'(tech 사이트 + 커스텀 RSS) 두 대분류로 정리**(`ui/data_management_v2.py`): source 값으로 대분류를 판정(`_news_category_of`)하고, 포탈은 매체(press)·키워드는 네이버/구글로 출처칩 라벨을 만든다(`_news_channel_of`).
+- **메인 = 카드뷰**: 수집 현황 요약(KPI 4) → 액션바(`[🔄 지금 뉴스 수집]` + `[⚙ 수집 설정]`) → **대분류 탭(segmented) + 출처칩(segmented)** → **사진 카드 그리드**. 카드는 `image_url` 실사진(없으면 출처색 그라데이션) + 제목 + 본문 일부(summary_llm→summary→content)를 보여준다. `_sc_browse_records`(30일·_cat/_chan 주석·최신순 캐시) / `_sc_channels` / `_sc_cards_html`(카테고리·채널·검색 필터) / `_sc_news_card_html` 신규.
+- **카드 클릭 → 기사 모달**: 카드 앵커가 `?news=<link>` 를 실으면 `_consume_news_modal_open_if_any` 가 세션 플래그로 옮기고(파라미터 1회 소비), `st.dialog(dismissible=False)` 로 **본문 전체 + 요약 + 대표 사진 + `원본 기사 열기 ↗`(새 탭) + ✕ 닫기**(소켓 rerun) 모달을 띄운다(`_news_modal_body`/`_render_news_modal_if_open`). 이미지·링크는 **http(s) 스킴만 허용**(XSS/data: 방어), 모든 외부 문자열 `html.escape`.
+- **뉴스 라이브러리 필터 폼(출처·기간·정렬) 제거** — 상단 토픽 검색이 대체하고, 카테고리 탭/출처칩으로 원클릭 분류. (레거시 빌더 `_render_news_filter_form`/`_render_jobs_split`/`_render_dm_tabs`/`_news_cards_html` 은 호환·테스트용으로 유지하되 화면 흐름에서 호출하지 않음.)
+- **⚙ 수집 설정 서브뷰**(`sc_collect_view`): 키워드 관리(`_dm_kw_body_html`) + 포탈/출처 관리(`_render_src_table`·`_render_src_add_form` — 토글·커스텀 RSS) + 수집 실행 + **수집 이력 상세(오늘의 수집잡·14일 추이·런 타임라인)**. `← 뉴스 목록` 으로 카드뷰 복귀.
+- **CSS**(`assets/v2/screens/data_management.css`): `sc-grid`/`sc-card`/`sc-card-img`/`sc-modal*` 등 카드·모달 스타일 + 액션바/탭/칩 컨테이너 인셋(헤더·카드와 폭 정렬) 추가.
+- 검증: pytest **825 passed**(+12 신규 `tests/test_collect_browser.py`, test_dm_tabs/test_dm_news_filter/E2E S5 신구조로 갱신) · 금지패턴(on_click/requests) 0.
+
 ### Added (작업 정의 flat-column 엑셀 — JSON 열 없이 개별 컬럼을 구조화 JSON 으로 자동 조립)
 - **JSON 열이 없는 신 엑셀(flat 형식)을 그대로 업로드하면 16개 개별 컬럼이 자동으로 구조화 task_def JSON 으로 조립**된다: 분과·팀·부서·공정·작업·세부작업·Process_ID·공정설명·작업흐름·주요확인사항·안전주의사항·주요사용장비·품질리스크·자동화가능영역·이전공정·다음공정. (사용자 제공 컬럼 스펙대로.)
 - **`roadmap/schema.py`**: `COLUMN_MAP` 에 flat 헤더 매핑 추가(`Process_ID→process_id`, `공정설명→process_description`, `작업흐름→work_flow`, `주요확인사항→key_check_points`, `안전주의사항→safety_notes`, `주요사용장비→main_equipment`, `품질리스크→quality_risks`, `자동화가능영역→automation_areas`, `이전공정→previous_process`, `다음공정→next_process`). `OPTIONAL_COLUMNS`/`RoadmapRow` 에 신 컬럼 9종 추가 → normalize 가 컬럼을 드롭하지 않고 보존.
