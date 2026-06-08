@@ -223,10 +223,20 @@
   border-color: rgba(37,99,235,0.20) !important;
 }
 .st-key-sidebar_nav button[kind="primary"]::before { color: var(--accent-primary, #2563EB) !important; }
-/* 라벨 마크다운: 제목(strong)·설명(em) 을 세로로 — 인덱스 옆 1fr 칸에서 두 줄. */
-.st-key-sidebar_nav button [data-testid="stMarkdownContainer"] { width: 100%; min-width: 0; }
+/* ⚠ Streamlit 버튼 라벨은 `button > div`(+그 안 span) 두 겹의 flex 래퍼가 모두
+   `justify-content:center` 라 라벨 블록이 가운데로 몰려, 글자 수마다 제목 시작 x 가
+   달라져 '들쭉날쭉' 해진다. 래퍼를 flex-start 로 돌려 왼쪽 고정(emotion-cache 클래스는
+   불안정하므로 구조 셀렉터 `button > div` 로 타겟). */
+.st-key-sidebar_nav button > div { justify-content: flex-start !important; width: 100%; min-width: 0; }
+.st-key-sidebar_nav button > div > span { justify-content: flex-start !important; min-width: 0; }
+/* 라벨 마크다운: 제목(strong)·설명(em) 을 세로로 — 인덱스 옆 칸에서 두 줄. */
+.st-key-sidebar_nav button [data-testid="stMarkdownContainer"] {
+  flex: 1 1 auto !important; width: 100% !important; min-width: 0;
+  margin: 0 !important; text-align: left !important;
+}
 .st-key-sidebar_nav button [data-testid="stMarkdownContainer"] p {
-  display: flex; flex-direction: column; gap: 1px; margin: 0; line-height: 1.25; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start !important;
+  width: 100%; gap: 1px; margin: 0 !important; line-height: 1.25; min-width: 0;
 }
 .st-key-sidebar_nav button strong {
   font-size: 14px; font-weight: 700; color: var(--text-primary, #0F172A);

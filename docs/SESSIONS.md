@@ -15,7 +15,9 @@
 
 **검증**: playwright 실측 — 클릭 시 `window` 플래그 생존(reload 0)·URL `?app_area=` 없음·활성 01→03 전환·라이트/다크 룩 동일(인덱스 01–05·제목·설명 표시). pytest **793 passed**(앵커 HTML 테스트 → `_nav_label`+위젯 nav AppTest 교체) · 금지패턴 0.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정. **실배포 렌더 최종 확인 권장**(I-22 — CSS 안 먹는 환경에선 회색 버튼).
+**후속(왼쪽맞춤 — 사용자 '들쭉날쭉' 보고)**: 위젯 nav 제목 시작 x 가 글자 수마다 달라짐(들쭉날쭉) — 원인은 Streamlit 버튼 라벨의 `button > div`(+span) **두 겹 flex 래퍼가 `justify-content:center`** 라 라벨 블록이 가운데로 몰린 것(`stMarkdownContainer` 보다 위 래퍼라 기존 셀렉터가 못 잡음). `button > div`/`> span` 을 `flex-start` 로 돌려 왼쪽 고정. playwright 실측 제목 시작 x **24.9px 편차 → 0px**(전 항목 38px). #129 머지 후 후속 커밋.
+
+**상태**: ✅ #129 머지(232c991). 왼쪽맞춤은 후속 커밋·PR.
 
 ---
 
