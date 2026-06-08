@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-08 — feat: 데이터 관리 → '뉴스 수집' · '작업 정의' 두 화면 분리 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 사이드바 '🧱 데이터 관리'(5탭) 를 '🗞 뉴스 수집'(수집잡·키워드·출처 3탭) + '📋 작업 정의'(엑셀 업로드+관리, **탭 없이 세로**) 두 화면으로 분리. (사용자 결정: 작업 정의는 탭 없이 단일 화면 + 작업정의용 KPI.)
+
+**어떻게**:
+- `sidebar.AREAS` 5→6, `app.py` 디스패치 2분기 + 화면별 chat context.
+- `data_management_v2`: `render()` → `render_collect()`/`render_taskdef()`. `_render_dm_tabs(tabs=_DM_COLLECT_TABS)` 파라미터화. `_taskdef_stats()`(task_defs_db.list_all → 등록·부서·updated_at)·`_render_taskdef_header()`·`_fmt_taskdef_ts()` 신규. `chat_context_block`→`_collect`/`_taskdef`.
+- 딥링크 재배선: app_shell 검색·board(2)·task_def_manage `_manage_href`(구 dm_grp/dm_tab 제거)·dm 내부 clear href. chat_panel 안내 2종. 템플릿 브레드크럼/설명·insights/board 카피.
+- 테스트 9개 갱신(area·함수명·screen smoke 4-tuple). 레거시 `_dm_tab_href`/`_dm_tabs_html`/그룹 nav(data_management_render)는 segmented_control 도입 후 이미 dead → 유지(그 테스트도 그대로 통과).
+
+**검증**: pytest **795 passed** · 금지패턴 0 · playwright 실측 — nav 6항목, 뉴스 수집(브레드크럼·수집 KPI 4·탭 3), 작업 정의(KPI 3종·업로드 섹션·관리·탭 없음), 화면별 우측 채팅 안내.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-08 — feat: 사이드바 메뉴 이동 흰 깜빡임 제거 (앵커 → st.button 재위젯화) (`claude/kind-volta-IWxix`)
 
 **무엇을**: 좌측 5-nav 를 앵커(`<a href=?app_area=>`)에서 `st.button` 위젯으로 복원 → 메뉴 이동 시 문서 전체 reload(흰 깜빡임) 제거. (사용자 방법론: 위젯+세션+소켓 rerun — 데이터관리 탭에 이미 적용된 패턴을 사이드바에도.)

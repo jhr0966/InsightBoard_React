@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (데이터 관리 → '뉴스 수집' · '작업 정의' 두 화면으로 분리)
+- **사이드바 '🧱 데이터 관리' 1개 → '🗞 뉴스 수집' + '📋 작업 정의' 2개로 분리**(`ui/sidebar.py` AREAS 5→6, `app.py` 디스패치): 정보구조를 수집 작업과 작업 정의 관리로 명확히 나눔.
+- **`ui/data_management_v2.py`**: `render()` → `render_collect()`(헤더 수집 KPI + segmented 탭 jobs·kw·src) + `render_taskdef()`(작업정의 KPI 헤더 + 엑셀 업로드 + 작업 정의 관리를 **탭 없이 세로 배치**). `_render_dm_tabs(tabs=…)` 파라미터화, `_DM_COLLECT_TABS` 추가. `_taskdef_stats()`(등록 정의·부서·마지막 갱신)·`_render_taskdef_header()` 신규. `chat_context_block` → `chat_context_block_collect`/`_taskdef` 분리(우측 채팅이 화면별 데이터를 인식).
+- **딥링크/카피 재배선**: 상단 검색·보드 "뉴스 라이브러리/첫 수집" → 🗞 뉴스 수집, `task_def_manage._manage_href` → 📋 작업 정의(구 `?dm_grp/dm_tab` 핸드오프 제거). `chat_panel` 안내 카드 2종 분리. 화면 템플릿 브레드크럼/설명을 '뉴스 수집'으로 갱신. insights/board 안내 문구 '데이터 관리에서 수집' → '뉴스 수집에서'.
+- 검증: pytest **795 passed**(관련 9개 테스트 area·함수명·smoke 갱신) · 금지패턴 0 · playwright 실측(nav 6항목·뉴스 수집 3탭/수집 KPI·작업 정의 KPI 3종+업로드+관리, 탭 없음).
+
 ### Changed (사이드바 메뉴 이동 흰 깜빡임 제거 — 앵커 → `st.button` 재위젯화)
 - **좌측 업무 흐름 5-nav 를 순수 HTML `<a href="?app_area=">` 앵커에서 `st.button` 위젯으로 복원**(`ui/sidebar.py`, `assets/v2/sidebar.css`, `ui/styles.py`): 앵커는 클릭 시 **문서 전체 reload(흰 깜빡임)**였다. 버튼은 **소켓 rerun**(세션 `app_area` 세팅 + `st.rerun()`, `on_click` 금지)이라 메뉴 이동에 깜빡임이 없다. look 은 `.st-key-sidebar_nav` 스코프가 기존 `.sidebar-nav-item`(인덱스=CSS counter·제목=`**strong**`·설명=`*em*`·활성=`button[kind="primary"]`)을 복제 — **디자인 동일**.
 - **2026-06-05 되돌림 사유 재검토**: `.st-key-*` 스코프 CSS 는 데이터관리 필터·수집 버튼에서 사용자 환경 포함 정상 동작 중이라, 직전 '메뉴 깨짐'은 일시적 CSS FOUC 로 추정 → 사용자 요청으로 재위젯화. 컨텍스트 딥링크(`?app_area=`)는 `_consume_area_query` 가 그대로 처리(둘 다 지원). `docs/INVARIANTS.md` I-22 갱신. **실배포 렌더 최종 확인 권장.**

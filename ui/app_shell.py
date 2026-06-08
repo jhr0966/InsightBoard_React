@@ -202,7 +202,7 @@ def render_topbar(
 def _render_topbar_search() -> None:
     """상단 실제 키워드 검색 — 타이핑 가능한 `st.text_input`(구 CSS-only ⌘K 대체).
 
-    Enter(텍스트 확정) 또는 🔎 버튼으로 제출하면 '🧱 데이터 관리' 뉴스 라이브러리로
+    Enter(텍스트 확정) 또는 🔎 버튼으로 제출하면 '🗞 뉴스 수집' 뉴스 라이브러리로
     이동해 제목·본문·키워드에 그 단어가 든 뉴스만 필터한다(`_news_search_q`). 빈 값으로
     제출하면 필터 해제. 모든 화면 상단에 노출되는 글로벌 검색.
 
@@ -214,7 +214,7 @@ def _render_topbar_search() -> None:
     with c1:
         q = st.text_input(
             "키워드 검색", key="_topbar_q",
-            placeholder="🔎 뉴스 키워드 검색 — 입력 후 Enter (데이터 관리에서 결과)",
+            placeholder="🔎 뉴스 키워드 검색 — 입력 후 Enter (뉴스 수집에서 결과)",
             label_visibility="collapsed",
         )
     with c2:
@@ -228,10 +228,8 @@ def _render_topbar_search() -> None:
     st.session_state["_topbar_q_seen"] = q_norm
     if go or q_norm != seen:
         st.session_state["_news_search_q"] = q_norm
-        st.session_state["app_area"] = "🧱 데이터 관리"
-        st.query_params["dm_grp"] = "news"
-        if "dm_tab" in st.query_params:
-            del st.query_params["dm_tab"]
+        st.session_state["app_area"] = "🗞 뉴스 수집"
+        st.session_state["_dm_active_tab"] = "jobs"  # 뉴스 라이브러리는 jobs 탭
         st.rerun()
 
 

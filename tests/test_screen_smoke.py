@@ -15,15 +15,18 @@ from unittest.mock import patch
 
 import pytest
 
-# (모듈명, area_key) — area_key 는 컨텍스트 블록 스모크에 사용.
+# (모듈명, area_key, render_fn, context_fn) — area_key 는 컨텍스트 블록 스모크용.
+# 데이터 관리는 뉴스 수집/작업 정의 두 화면으로 분리 → render·context 함수가 각각 다르다.
 _SCREENS = [
-    ("ui.board_v2", "📊 오늘의 보드"),
-    ("ui.data_management_v2", "🧱 데이터 관리"),
-    ("ui.insights_v2", "🔎 인사이트 분석"),
-    ("ui.sola_workshop_v2", "🤖 SOLA 작업실"),
-    ("ui.archive_v2", "📦 산출물 보관함"),
-    ("ui.persona_page", "프로필 설정"),
+    ("ui.board_v2", "📊 오늘의 보드", "render", "chat_context_block"),
+    ("ui.data_management_v2", "🗞 뉴스 수집", "render_collect", "chat_context_block_collect"),
+    ("ui.data_management_v2", "📋 작업 정의", "render_taskdef", "chat_context_block_taskdef"),
+    ("ui.insights_v2", "🔎 인사이트 분석", "render", "chat_context_block"),
+    ("ui.sola_workshop_v2", "🤖 SOLA 작업실", "render", "chat_context_block"),
+    ("ui.archive_v2", "📦 산출물 보관함", "render", "chat_context_block"),
+    ("ui.persona_page", "프로필 설정", "render", "chat_context_block"),
 ]
+_SCREEN_IDS = [f"{m.split('.')[-1]}:{a}" for m, a, *_ in _SCREENS]
 
 
 @pytest.fixture
@@ -33,28 +36,28 @@ def _no_rerun():
         yield
 
 
-@pytest.mark.parametrize("module_name,area_key", _SCREENS, ids=[m for m, _ in _SCREENS])
-def test_screen_render_smoke_no_exception(module_name, area_key, _no_rerun):
-    """빈 데이터(tmp 격리)에서도 render() 가 예외 없이 끝까지 통과."""
+@pytest.mark.parametrize("module_name,area_key,render_fn,context_fn", _SCREENS, ids=_SCREEN_IDS)
+def test_screen_render_smoke_no_exception(module_name, area_key, render_fn, context_fn, _no_rerun):
+    """빈 데이터(tmp 격리)에서도 화면 render 함수가 예외 없이 끝까지 통과."""
     import streamlit as st
     st.query_params.clear()
     st.session_state.clear()
     try:
         mod = importlib.import_module(module_name)
-        mod.render()  # 예외 발생 시 테스트 실패 = 조립 깨짐
+        getattr(mod, render_fn)()  # 예외 발생 시 테스트 실패 = 조립 깨짐
     finally:
         st.query_params.clear()
         st.session_state.clear()
 
 
-@pytest.mark.parametrize("module_name,area_key", _SCREENS, ids=[m for m, _ in _SCREENS])
-def test_screen_chat_context_block_smoke(module_name, area_key):
+@pytest.mark.parametrize("module_name,area_key,render_fn,context_fn", _SCREENS, ids=_SCREEN_IDS)
+def test_screen_chat_context_block_smoke(module_name, area_key, render_fn, context_fn):
     """각 화면의 chat_context_block(persona) 도 예외 없이 문자열을 반환(우측 채팅 컨텍스트)."""
     from persona.schema import Persona
     mod = importlib.import_module(module_name)
-    ctx_fn = getattr(mod, "chat_context_block", None)
+    ctx_fn = getattr(mod, context_fn, None)
     if ctx_fn is None:
-        pytest.skip(f"{module_name}: chat_context_block 없음")
+        pytest.skip(f"{module_name}: {context_fn} 없음")
     out = ctx_fn(Persona(name="홍길동", dept="도장1팀"))
     assert isinstance(out, str)
 

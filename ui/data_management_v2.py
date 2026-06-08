@@ -525,7 +525,7 @@ def _news_search_banner_html(q: str, n: int) -> str:
     """검색 활성 시 결과 칩 + 해제(×) 링크. 해제는 `?dm_clear_q=1`."""
     from urllib.parse import quote as _q
     q_safe = _html.escape(q)
-    clear_href = "?app_area=" + _q("🧱 데이터 관리") + "&dm_clear_q=1"
+    clear_href = "?app_area=" + _q("🗞 뉴스 수집") + "&dm_clear_q=1"
     return (
         '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; '
         'margin:0 0 12px; padding:10px 14px; background:var(--accent-ring,rgba(37,99,235,.10)); '
@@ -568,7 +568,7 @@ def _news_filter_banner_html(q: str, sources: tuple[str, ...], days: int,
         f'font-size:12px; font-weight:700; color:var(--text-primary);">{c}</span>'
         for c in chips
     )
-    clear_href = "?app_area=" + _q("🧱 데이터 관리") + "&dm_clear_filters=1"
+    clear_href = "?app_area=" + _q("🗞 뉴스 수집") + "&dm_clear_filters=1"
     # 배너는 <ul class=dm-art-grid> 안에 들어가므로 grid-column:1/-1 로 전체 폭을 차지해야
     # 한 칸에 끼이지 않는다(그리드 아이템).
     return (
@@ -751,13 +751,13 @@ def _archive_stats_dm() -> dict[str, int]:
         return {"match_today": 0, "opportunities": 0, "pending_adopt": pending}
 
 
-def chat_context_block(persona: Persona) -> str:
-    """데이터 관리 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
+def chat_context_block_collect(persona: Persona) -> str:
+    """뉴스 수집 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
 
     헤더 4 stats + 14일 sparkline 일별 수집량 + 뉴스 라이브러리 6 + 수집잡 요약.
     캐시된 helper 들이 같은 데이터를 계산해두므로 재호출은 캐시 hit.
     """
-    parts: list[str] = ["--- 현재 화면: 데이터 관리 (🧱) ---"]
+    parts: list[str] = ["--- 현재 화면: 뉴스 수집 (🗞) ---"]
 
     # 헤더 4 stats
     try:
@@ -816,10 +816,44 @@ def chat_context_block(persona: Persona) -> str:
     return "\n".join(parts)
 
 
-def render() -> None:
-    """데이터 관리 v2 — topbar + app-side + main + app-sola 풀 셸 렌더.
+def chat_context_block_taskdef(persona: Persona) -> str:
+    """작업 정의 화면 컨텍스트 — 등록 정의 수·부서 분포·최근 정의 목록."""
+    parts: list[str] = ["--- 현재 화면: 작업 정의 (📋) ---"]
+    try:
+        from collections import Counter
+        from store import task_defs_db
+        rows = task_defs_db.list_all()
+        s = _taskdef_stats()
+        parts.append(
+            f"작업 정의 현황: 등록 {s['defs']}건 · 부서 {s['depts']}개 · "
+            f"마지막 갱신 {s['last_update']}"
+        )
+        dept_counts = Counter(
+            ((r.get("dept") or "").strip() or "미지정") for r in rows
+        )
+        if dept_counts:
+            parts.append("부서별 작업 정의 수:")
+            for d, c in dept_counts.most_common(8):
+                parts.append(f"  - {d}: {int(c)}건")
+        if rows:
+            parts.append("최근 작업 정의 (최대 6건):")
+            for r in rows[:6]:
+                chain = " · ".join(
+                    p for p in (r.get("dept"), r.get("process"), r.get("task")) if p
+                )
+                if chain:
+                    parts.append(f"  - {chain}")
+    except Exception:
+        pass
+    return "\n".join(parts)
 
-    `?refresh=now` 가 들어오면 첫 단계에서 1회 소비 → 캐시 invalidate + 토스트.
+
+def render_collect() -> None:
+    """뉴스 수집 화면 — 수집잡·키워드·출처 (구 '데이터 관리'의 수집 그룹).
+
+    `?refresh=now`(또는 '지금 뉴스 수집' 버튼)가 들어오면 첫 단계에서 1회 소비 →
+    캐시 invalidate + 토스트. 헤더(수집 KPI 4종)는 1회, 본문은 segmented_control
+    탭 바(jobs·kw·src) + 활성 탭만 조건부 렌더(fragment).
     """
     inject_screen_css("data_management")
 
@@ -828,14 +862,12 @@ def render() -> None:
     _consume_news_filter_clear_if_any()  # ?dm_clear_filters=1 → 필터+검색 전체 해제 (위젯 인스턴스화 전)
 
     persona = app_shell.get_persona()
-    stats = _archive_stats_dm()
     dm_stats = _dm_stats()
     refresh = app_shell.refresh_label_now()
 
-    # ── 1) 풀폭 topbar ──
     app_shell.render_topbar(
-        page_title="데이터 관리",
-        eyebrow_current="데이터 관리",
+        page_title="뉴스 수집",
+        eyebrow_current="뉴스 수집",
         refresh_label=refresh,
         fresh_kind="fresh",
     )
@@ -845,18 +877,12 @@ def render() -> None:
     if alert:
         st.html(alert)
 
-    # 업로드/액션 송신 처리 (위젯 인스턴스화 이전, 최상단)
-    _consume_task_def_upload_if_any()
+    # 출처 액션 송신 처리 (위젯 인스턴스화 이전, 최상단)
     _consume_src_action_if_any()
     _consume_src_add_if_any()
-    # PR-6: 작업 정의 관리 액션/저장 — toast 는 manage 본문에서 직접 노출
-    from ui import task_def_manage as _tdm
-    _tdm.consume_td_action_if_any()
-    _tdm.consume_td_save_if_any()
 
     app_shell.render_setup_banner_if_needed()
     _render_refresh_toast_if_needed()
-    _render_task_def_toast_if_needed()
     _render_src_action_toast_if_needed()
 
     # 레거시 핸드오프 query(?dm_grp/?dm_tab)는 segmented_control(세션 상태 기반)에선
@@ -864,15 +890,112 @@ def render() -> None:
     for _k in ("dm_grp", "dm_tab"):
         if _k in st.query_params:
             del st.query_params[_k]
-    # 헤더(KPI)는 1회만, 본문은 segmented_control 탭 바 + 활성 탭만 조건부 렌더
-    # (_render_dm_tabs 가 fragment). 탭 전환은 fragment rerun 이라 헤더·우측 채팅·
-    # 사이드바는 재렌더되지 않고 활성 탭 본문만 부분 갱신된다.
     _render_dm_header(dm_stats)
-    _render_dm_tabs(dm_stats, persona)
+    _render_dm_tabs(dm_stats, persona, tabs=_DM_COLLECT_TABS)
+
+
+def render_taskdef() -> None:
+    """작업 정의 화면 — 엑셀 업로드 + 작업 정의 관리 (구 '데이터 관리'의 작업 그룹).
+
+    탭 없이 세로 배치(사용자 결정): 헤더(작업정의 KPI) → 엑셀 업로드 섹션 →
+    작업 정의 관리(검색·리스트·편집). 업로드/관리 액션은 위젯 인스턴스화 전에 1회 소비.
+    """
+    inject_screen_css("data_management")
+
+    # 업로드/관리 액션 송신 처리 (위젯 인스턴스화 이전, 최상단)
+    _consume_task_def_upload_if_any()
+    from ui import task_def_manage as _tdm
+    _tdm.consume_td_action_if_any()
+    _tdm.consume_td_save_if_any()
+
+    persona = app_shell.get_persona()
+    refresh = app_shell.refresh_label_now()
+
+    app_shell.render_topbar(
+        page_title="작업 정의",
+        eyebrow_current="작업 정의",
+        refresh_label=refresh,
+        fresh_kind="fresh",
+    )
+
+    app_shell.render_setup_banner_if_needed()
+    _render_task_def_toast_if_needed()
+
+    # 헤더(작업정의 KPI 3종) — 1회
+    _render_taskdef_header(_taskdef_stats())
+    # 엑셀 업로드 (구 task 탭 본문 + 업로더 위젯)
+    st.html(_components.prepare_screen_html(
+        _dm_tab_body_html("task", persona=persona, dm_stats={})))
+    _render_task_def_upload()
+    # 작업 정의 관리 (구 manage 탭 — 검색·리스트·편집·이력)
+    _tdm.render(st.query_params)
+
+
+def _fmt_taskdef_ts(ts: str) -> str:
+    """작업 정의 updated_at(UTC ISO) → 'MM/DD'(오늘이면 'HH:MM') 한국시간. 실패 시 ''."""
+    if not ts:
+        return ""
+    try:
+        import pandas as _pd
+        dt = _pd.to_datetime(ts, errors="coerce", utc=True)
+        if _pd.isna(dt):
+            return ""
+        dt = dt.tz_convert("Asia/Seoul")
+        now = _pd.Timestamp.now(tz="Asia/Seoul")
+        return dt.strftime("%H:%M") if dt.date() == now.date() else dt.strftime("%m/%d")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _taskdef_stats() -> dict[str, str | int]:
+    """작업 정의 화면 KPI — 등록 정의 수 · 부서 수 · 마지막 갱신.
+
+    `task_defs_db.list_all()` 은 updated_at 내림차순이라 [0] 이 최신.
+    """
+    rows: list[dict] = []
+    with guard("작업 정의 통계 로드"):
+        from store import task_defs_db
+        rows = task_defs_db.list_all()
+    defs = len(rows)
+    depts = len({(r.get("dept") or "").strip() for r in rows if (r.get("dept") or "").strip()})
+    last = _fmt_taskdef_ts(str(rows[0].get("updated_at") or "")) if rows else ""
+    return {"defs": defs, "depts": depts, "last_update": last or "—"}
+
+
+def _render_taskdef_header(td_stats: dict[str, str | int]) -> None:
+    """작업 정의 화면 상단 헤더 — 브레드크럼·설명 + KPI 3종(.dm-head 룩 재사용)."""
+    def _v(k: str) -> str:
+        return _html.escape(str(td_stats.get(k, "—")))
+    html_out = (
+        '<div class="dm-shell">'
+        '<header class="dm-head">'
+        '<div>'
+        '<div class="dm-bc"><span>워크플로</span><span class="dm-bc-sep">›</span>'
+        '<span class="dm-bc-cur">작업 정의</span></div>'
+        '<p class="dm-desc">조선소 작업 정의를 엑셀로 올리고 SOLA 가 이해하는 구조로 '
+        '관리합니다. 뉴스↔작업 매칭과 자동화 기회 판단의 기준이 됩니다.</p>'
+        '</div>'
+        '<div class="dm-head-stats">'
+        f'<div class="dm-stat"><div class="dm-stat-v">{_v("defs")}</div>'
+        '<div class="dm-stat-k">등록 정의</div></div>'
+        '<div class="dm-stat-sep"></div>'
+        f'<div class="dm-stat"><div class="dm-stat-v">{_v("depts")}</div>'
+        '<div class="dm-stat-k">부서</div></div>'
+        '<div class="dm-stat-sep"></div>'
+        f'<div class="dm-stat"><div class="dm-stat-v">{_v("last_update")}</div>'
+        '<div class="dm-stat-k">마지막 갱신</div></div>'
+        '</div>'
+        '</header>'
+        '</div>'
+    )
+    st.html(_components.prepare_screen_html(html_out))
 
 
 # 탭 표시 순서 — 뉴스 그룹(jobs·kw·src) 다음 작업 그룹(task·manage).
 _DM_DISPLAY_TABS: tuple[str, ...] = ("jobs", "kw", "src", "task", "manage")
+# 뉴스 수집 화면의 탭(구 데이터 관리 '뉴스' 그룹). '작업 정의' 화면(task·manage)은
+# 탭 없이 세로 배치(render_taskdef)라 여기 포함하지 않는다.
+_DM_COLLECT_TABS: tuple[str, ...] = ("jobs", "kw", "src")
 
 
 def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
@@ -930,23 +1053,28 @@ _DM_TAB_SHORT: dict[str, str] = {
 
 
 @st.fragment
-def _render_dm_tabs(dm_stats: dict[str, str | int], persona) -> None:
+def _render_dm_tabs(dm_stats: dict[str, str | int], persona,
+                    tabs: tuple[str, ...] = _DM_COLLECT_TABS) -> None:
     """탭 바(segmented_control) + 활성 탭 본문만 조건부 렌더 — fragment 스코프.
 
     탭 전환은 이 fragment 만 rerun → 헤더·사이드바·우측 채팅은 그대로, 활성 탭
     본문만 부분 갱신. 비활성 탭 본문은 계산하지 않는다(조건부 렌더 — st.tabs 의
     eager 렌더 비용 제거). 활성 탭은 session_state(`_dm_active_tab`)에 보존 →
-    출처 토글·수집 등 앵커 리로드 후에도 같은 탭 유지."""
-    if st.session_state.get("_dm_active_tab") not in _DM_TABS:
-        st.session_state["_dm_active_tab"] = "jobs"
+    출처 토글·수집 등 앵커 리로드 후에도 같은 탭 유지.
+
+    `tabs` 는 화면별 탭 부분집합(뉴스 수집=jobs·kw·src). 작업 정의는 탭이 없어
+    이 함수를 쓰지 않는다."""
+    default = tabs[0]
+    if st.session_state.get("_dm_active_tab") not in tabs:
+        st.session_state["_dm_active_tab"] = default
     with st.container(key="dm_tabbar"):
         active = st.segmented_control(
-            "데이터 관리 탭", list(_DM_DISPLAY_TABS),
+            "뉴스 수집 탭", list(tabs),
             format_func=lambda t: _DM_TAB_SHORT[t],
             key="_dm_active_tab", label_visibility="collapsed",
         ) or st.session_state["_dm_active_tab"]
-    if active not in _DM_TABS:
-        active = "jobs"
+    if active not in tabs:
+        active = default
     _render_dm_tab_panel(active, dm_stats, persona)
 
 

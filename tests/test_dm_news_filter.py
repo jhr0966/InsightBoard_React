@@ -103,7 +103,7 @@ def _dm_app():
     ps.reset(); ps.clear_onboarding_dismiss()
     ps.save(Persona(name="홍길동", dept="도장1팀", team="자동화1팀"))
     at = AppTest.from_file("app.py", default_timeout=60)
-    at.session_state["app_area"] = "🧱 데이터 관리"
+    at.session_state["app_area"] = "🗞 뉴스 수집"
     return at
 
 

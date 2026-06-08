@@ -38,8 +38,8 @@ def test_intro_card_escapes_html_in_area_key():
 
 
 def test_all_areas_have_intros():
-    """5 area + 페르소나 페이지 = 6 종 intro 정의."""
-    expected = {"📊 오늘의 보드", "🧱 데이터 관리", "🔎 인사이트 분석",
+    """6 area + 페르소나 페이지 = 7 종 intro 정의."""
+    expected = {"📊 오늘의 보드", "🗞 뉴스 수집", "📋 작업 정의", "🔎 인사이트 분석",
                 "🤖 SOLA 작업실", "📦 산출물 보관함", "프로필 설정"}
     assert set(chat_panel._AREA_INTROS.keys()) == expected
 
