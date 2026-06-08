@@ -48,16 +48,35 @@ def test_persona_page_options_helpers_handle_empty_and_columns():
     assert persona_page._lv3_options(df) == ["검사", "용접"]
 
 
-def test_sidebar_nav_html_uses_link_list_not_radio_buttons():
-    """업무 흐름 nav 는 환경 의존 없는 순수 HTML `<a>` 링크 리스트(위젯 X)."""
-    html = sidebar._sidebar_nav_html("🔎 인사이트 분석")
+def test_nav_label_uses_markdown_title_and_desc():
+    """nav 버튼 라벨 = `**제목** *설명*` (CSS 가 strong=제목·em=설명으로 스타일)."""
+    assert sidebar._nav_label("🔎 인사이트 분석", "트렌드 · 기회 · 매칭") == \
+        "**🔎 인사이트 분석** *트렌드 · 기회 · 매칭*"
+    assert sidebar._nav_label("📊 오늘의 보드", "") == "**📊 오늘의 보드**"
 
-    assert 'class="sidebar-nav"' in html
-    assert html.count('class="sidebar-nav-item') == len(sidebar.AREAS)
-    assert 'aria-current="page"' in html
-    assert "%F0%9F%94%8E%20%EC%9D%B8%EC%82%AC%EC%9D%B4%ED%8A%B8%20%EB%B6%84%EC%84%9D" in html
-    assert "radio" not in html.lower()
-    assert "button" not in html.lower()
+
+def test_sidebar_nav_is_widget_buttons_socket_rerun():
+    """업무 흐름 nav 는 st.button 위젯(앵커 X) — 클릭 시 소켓 rerun(?app_area= 안 씀).
+
+    I-22 재위젯화: 흰 깜빡임 제거를 위해 앵커를 st.button 으로 복원. 클릭이 세션
+    app_area 만 바꾸고 URL 쿼리는 건드리지 않음(=문서 reload 없음).
+    """
+    from streamlit.testing.v1 import AppTest
+    from persona import store as ps
+    from persona.schema import Persona
+    ps.reset(); ps.clear_onboarding_dismiss()
+    ps.save(Persona(name="홍길동", dept="도장1팀", team="자동화1팀"))
+    at = AppTest.from_file("app.py", default_timeout=60)
+    at.session_state["app_area"] = "📊 오늘의 보드"
+    at.run()
+    assert not at.exception
+    nav = [b for b in at.sidebar.button if b.key and b.key.startswith("_nav_btn_")]
+    assert len(nav) == len(sidebar.AREAS)
+    target = next(b for b in nav if b.key == "_nav_btn_3")   # 인사이트 분석
+    target.click().run()
+    assert not at.exception
+    assert at.session_state["app_area"] == "🔎 인사이트 분석"
+    assert "app_area" not in at.query_params      # 소켓 rerun — URL 쿼리 미사용
 
 
 def test_llm_footer_ready_shows_model_only():

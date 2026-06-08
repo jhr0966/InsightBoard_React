@@ -184,9 +184,11 @@ a.foo, a.foo:visited { color: <원래색>; }
 
 우측 채팅 패널(`[data-testid="stColumn"]:has(.side-chat-marker)`)은 `position:sticky; top:12px` 에 높이 `calc(100vh - 72px)`. sticky 가 끝까지 고정되려면 **이동 여유**(`row_height − panel_height − top`)가 **페이지 최대 스크롤**보다 커야 한다. 그런데 `block-container` 하단 padding(36px)·`stMain` 상단 padding(8px)은 패널의 컨테이닝 블록(컬럼 row) **밖**에서 스크롤을 추가하므로, 패널이 row 와 비슷한 높이(`100vh-24px`)면 본문이 짧은 화면(SOLA·산출물 보관함) 바닥에서 패널이 row 끝에 닿아 ~32px 같이 밀린다. 패널을 `100vh-72px` 로 낮춰 여유를 확보(72 − 12 − 44 ≈ 16px 슬랙)했다. 본문 컬럼 `min-height: calc(100vh-4px)`(짧은 탭에서 sticky baseline 안정화, #122)와 함께 유지. **이 두 값(72/min-height)·row 밖 padding 을 바꾸면 playwright 로 5개 화면 채팅 ΔY=0 재검증.**
 
-## I-22 — 사이드바 5-nav 는 순수 HTML `<a>` 링크 (환경 호환성 우선)
+## I-22 — 사이드바 5-nav 는 `st.button` 위젯 (흰 깜빡임 없는 소켓 rerun)
 
-좌측 업무 흐름 메뉴(`sidebar._sidebar_nav_html`)는 순수 HTML `<a href="?app_area=…">` 링크 리스트다(`.sidebar-nav-item`). 한때 `st.button` 위젯으로 바꿔 흰 깜빡임을 없앴으나, **Streamlit 버전별 `st-key-*` 컨테이너 클래스/버튼 라벨 마크다운 렌더 차이로 환경에 따라 메뉴가 깨져** 사용자 요청으로 **되돌렸다**(2026-06-05). 순수 HTML 은 어디서나 동일하게 렌더되는 게 핵심 이점. 클릭 시 `?app_area=` 로 이동 → `_consume_area_query` 가 소비(문서 reload=흰 깜빡임은 감수). **다시 위젯화하려면 `st-key-*` 의존 없이 동작하는 방식이어야 하고 실배포 환경에서 검증 필수.**
+좌측 업무 흐름 메뉴(`sidebar._render_sidebar_nav`)는 `st.button` 5개다. `.st-key-sidebar_nav` 스코프 CSS 가 인덱스(CSS counter)+제목(라벨 `**strong**`)+설명(`*em*`)으로 기존 `.sidebar-nav-item` 룩을 복제하고, 활성은 `button[kind="primary"]`. 클릭 = **소켓 rerun**(`st.session_state["app_area"]=…` + `st.rerun()`, `on_click` 금지 — CLAUDE.md #3) → 화면 전환에 문서 reload(흰 깜빡임)가 없다. 컨텍스트 딥링크(`?app_area=` from 보드/히트맵/알림)는 `_consume_area_query` 가 그대로 소비(둘 다 지원).
+
+**이력**: 2026-06-05 위젯→앵커 되돌림(사용자 환경에서 메뉴 깨짐 보고, 원인 미재현) → **2026-06-08 재위젯화**(사용자 요청). 재위젯화 근거: `.st-key-*` 스코프 CSS 는 데이터관리 필터·수집 버튼 등에서 동일 방식으로 정상 동작 중(사용자 환경 포함 확인)이라 직전 깨짐은 일시적 CSS FOUC 로 추정. playwright 실측: 클릭 시 `window` 플래그 생존(문서 reload 0)·URL `?app_area=` 없음·활성 전환·라이트/다크 룩 동일. **단, `.st-key-sidebar_nav` CSS 가 안 먹는 환경에선 회색 기본 버튼으로 보일 수 있으니 실배포 렌더는 한 번 확인할 것.**
 
 ## I-23 — 흰 깜빡임 없는 화면/액션 전환: 앵커 대신 `st.button` + 세션/`st.query_params`
 

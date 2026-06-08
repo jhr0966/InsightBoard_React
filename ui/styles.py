@@ -84,7 +84,10 @@ body:has(.db-topbar) [data-testid="stMain"] [data-testid="stMarkdownContainer"]{
 body:has(.db-topbar) .persona-profile-card,
 body:has(.db-topbar) .persona-profile-card-empty{ background:#172033 !important; }
 body:has(.db-topbar) .persona-profile-head-empty{ background:#0F172A !important; border-color:#334155 !important; color:#94A3B8 !important; }
-body:has(.db-topbar) .sidebar-nav-item.active{ background:rgba(96,165,250,.16) !important; border-color:rgba(96,165,250,.30) !important; }
+body:has(.db-topbar) .sidebar-nav-item.active,
+body:has(.db-topbar) .st-key-sidebar_nav button[kind="primary"]{ background:rgba(96,165,250,.16) !important; border-color:rgba(96,165,250,.30) !important; }
+body:has(.db-topbar) .st-key-sidebar_nav button[kind="primary"] strong{ color:#BFDBFE !important; }
+body:has(.db-topbar) .st-key-sidebar_nav button[kind="primary"]::before{ color:#93C5FD !important; }
 /* 콜아웃 배너 — 라이트 고정색(amber/blue)이라 다크에서 밝은 섬으로 떠 보임 → 다크 틴트 변형 */
 body:has(.db-topbar) .app-llm-banner{ background:rgba(180,83,9,.18) !important; border-color:rgba(180,83,9,.42) !important; color:#FCD34D !important; }
 body:has(.db-topbar) .app-llm-banner b{ color:#FCD34D !important; }

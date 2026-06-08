@@ -189,39 +189,53 @@
 /* 메뉴(Workflow) 영역을 위 페르소나/통계 영역과 더 분명히 분리 + 라벨은 메뉴에 밀착 */
 .sidebar-section-nav { margin: 16px 2px 6px; }
 
-/* ── 5-nav (업무 흐름) — 순수 HTML `<a>` 링크 리스트 ────────────────────
-   위젯(st.button) nav 는 Streamlit 버전별 `st-key-*` 클래스/버튼 라벨 마크다운 렌더
-   차이로 환경 따라 깨질 수 있어, 어디서나 동일한 순수 HTML 앵커로 유지(sidebar._sidebar_nav_html). */
-.sidebar-nav { display: flex; flex-direction: column; gap: 3px; }
-.sidebar-nav-item {
-  display: grid; grid-template-columns: 26px 1fr; align-items: center; gap: 10px;
-  padding: 9px 11px;
-  border-radius: 10px;
-  text-decoration: none;
-  border: 1px solid transparent;
+/* ── 5-nav (업무 흐름) — st.button 위젯(소켓 rerun, 화면 전환 흰 깜빡임 없음) ──────
+   앵커(<a>)는 클릭 시 문서 전체 reload(흰 깜빡임). st.button 으로 바꿔 소켓 rerun 으로
+   전환한다(sidebar._render_sidebar_nav). look 은 기존 `.sidebar-nav-item`(인덱스+제목+
+   설명, 활성=accent)을 `.st-key-sidebar_nav` 스코프로 복제: 인덱스=CSS counter,
+   제목=라벨 `**strong**`, 설명=`*em*`. 활성=`button[kind="primary"]`. (I-22 재위젯화 —
+   `.st-key-*` 는 데이터관리 필터/수집버튼과 동일 방식으로 동작.) */
+.st-key-sidebar_nav { display: flex; flex-direction: column; gap: 3px; counter-reset: navidx; }
+.st-key-sidebar_nav [data-testid="stButton"],
+.st-key-sidebar_nav .stButton { width: 100%; }
+.st-key-sidebar_nav button {
+  counter-increment: navidx;
+  display: flex !important; align-items: center; gap: 10px;
+  justify-content: flex-start !important; text-align: left !important;
+  width: 100%;
+  padding: 9px 11px !important;
+  border-radius: 10px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
   transition: background 120ms, border-color 120ms;
 }
-.sidebar-nav-item:hover { background: var(--surface-soft, #F5F7FB); }
-.sidebar-nav-item.active {
-  background: #EEF4FF;
-  border-color: rgba(37,99,235,0.20);
-}
-.sidebar-nav-index {
-  font-size: 11px; font-weight: 700;
-  font-family: var(--font-mono, monospace);
+.st-key-sidebar_nav button::before {
+  content: counter(navidx, decimal-leading-zero);
+  flex: 0 0 auto; min-width: 16px;
+  font-size: 11px; font-weight: 700; font-family: var(--font-mono, monospace);
   color: var(--text-muted, #94A3B8);
 }
-.sidebar-nav-item.active .sidebar-nav-index { color: var(--accent-primary, #2563EB); }
-.sidebar-nav-copy { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-.sidebar-nav-title {
-  font-size: 14px; font-weight: 700;
-  color: var(--text-primary, #0F172A);
+.st-key-sidebar_nav button:hover { background: var(--surface-soft, #F5F7FB) !important; }
+.st-key-sidebar_nav button[kind="primary"] {
+  background: #EEF4FF !important;
+  border-color: rgba(37,99,235,0.20) !important;
 }
-.sidebar-nav-item.active .sidebar-nav-title { color: var(--accent-active, #1E40AF); }
-.sidebar-nav-desc {
-  font-size: 12px; font-weight: 500;
+.st-key-sidebar_nav button[kind="primary"]::before { color: var(--accent-primary, #2563EB) !important; }
+/* 라벨 마크다운: 제목(strong)·설명(em) 을 세로로 — 인덱스 옆 1fr 칸에서 두 줄. */
+.st-key-sidebar_nav button [data-testid="stMarkdownContainer"] { width: 100%; min-width: 0; }
+.st-key-sidebar_nav button [data-testid="stMarkdownContainer"] p {
+  display: flex; flex-direction: column; gap: 1px; margin: 0; line-height: 1.25; min-width: 0;
+}
+.st-key-sidebar_nav button strong {
+  font-size: 14px; font-weight: 700; color: var(--text-primary, #0F172A);
+}
+.st-key-sidebar_nav button[kind="primary"] strong { color: var(--accent-active, #1E40AF) !important; }
+.st-key-sidebar_nav button em {
+  font-size: 12px; font-weight: 500; font-style: normal;
   color: var(--text-muted, #94A3B8);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
 }
 
 /* ── 플로우 힌트 ──────────────────────────────────────────── */

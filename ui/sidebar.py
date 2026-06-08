@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import html as _html
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 
 import streamlit as st
 
@@ -159,31 +159,44 @@ def _consume_area_query() -> None:
     del st.query_params["app_area"]
 
 
-def _sidebar_nav_html(current_area: str) -> str:
-    """업무 흐름 5-nav 를 순수 HTML `<a>` 링크 리스트로 반환(Apple 스타일).
+def _nav_label(area: str, desc: str) -> str:
+    """5-nav `st.button` 라벨(markdown) — `**제목** *설명*`.
 
-    위젯(st.button) 기반 nav 는 Streamlit 버전별 `st-key-*` 클래스/버튼 라벨 마크다운
-    렌더 차이로 환경에 따라 깨질 수 있어, 어디서나 동일하게 렌더되는 순수 HTML 앵커로
-    유지한다. 클릭 시 `?app_area=` 로 이동 → `_consume_area_query` 가 소비.
+    `**…**`→`<strong>`(제목), `*…*`→`<em>`(설명)으로 분해돼 `sidebar.css` 의
+    `.st-key-sidebar_nav` 스코프가 각각 제목/설명으로 스타일하고, 인덱스(01·02…)는
+    CSS counter 로 생성한다. 핵심 markdown(`**`/`*`)만 사용 — 색·코드 directive 의존 X.
     """
-    items = []
-    for idx, area in enumerate(AREAS, start=1):
-        active = area == current_area
-        cls = "sidebar-nav-item active" if active else "sidebar-nav-item"
-        title = _html.escape(area)
-        desc = _html.escape(_AREA_DESCRIPTIONS.get(area, ""))
-        href = f"?app_area={quote(area)}"
-        aria_current = ' aria-current="page"' if active else ""
-        items.append(
-            f"""<a class="{cls}" href="{href}" target="_self"{aria_current}>
-                <span class="sidebar-nav-index">{idx:02d}</span>
-                <span class="sidebar-nav-copy">
-                  <span class="sidebar-nav-title">{title}</span>
-                  <span class="sidebar-nav-desc">{desc}</span>
-                </span>
-              </a>"""
-        )
-    return '<nav class="sidebar-nav" aria-label="업무 흐름">' + "".join(items) + "</nav>"
+    return f"**{area}** *{desc}*" if desc else f"**{area}**"
+
+
+def _render_sidebar_nav(current_area: str) -> None:
+    """업무 흐름 5-nav — `st.button` 위젯(소켓 rerun, 화면 전환 흰 깜빡임 없음).
+
+    앵커(`<a href=?app_area=>`)는 클릭 시 **문서 전체 reload**(흰 깜빡임)였다. 버튼은
+    **소켓 rerun**(부분 갱신·문서 reload 없음)이라 메뉴 이동에서 깜빡임이 사라진다.
+    look 은 `sidebar.css` 의 `.st-key-sidebar_nav` 스코프가 기존 `.sidebar-nav-item`
+    (인덱스+제목+설명, 활성=accent)을 복제한다. 활성=`type="primary"`. `on_click`
+    미사용 — `if st.button(): 세팅 → st.rerun()` (CLAUDE.md #3).
+
+    컨텍스트 딥링크(`?app_area=` from 보드/히트맵/알림)는 `_consume_area_query` 가
+    그대로 처리하므로 여기선 사이드바 메뉴 클릭만 위젯화한다. (I-22 재위젯화 —
+    `.st-key-*` 스코프는 데이터관리 필터·수집 버튼과 동일 방식으로 동작.)
+    """
+    editing = bool(st.session_state.get("show_persona_editor"))
+    with st.container(key="sidebar_nav"):
+        for idx, area in enumerate(AREAS, start=1):
+            active = (area == current_area) and not editing
+            clicked = st.button(
+                _nav_label(area, _AREA_DESCRIPTIONS.get(area, "")),
+                key=f"_nav_btn_{idx}",
+                use_container_width=True,
+                type="primary" if active else "secondary",
+            )
+            # 이미 활성(같은 area·편집 아님)이면 무반응 → 불필요한 rerun 방지.
+            if clicked and not active:
+                st.session_state["app_area"] = area
+                st.session_state["show_persona_editor"] = False
+                st.rerun()
 
 
 def _side_stats_html(stats: dict) -> str:
@@ -269,7 +282,7 @@ def render() -> str:
         st.session_state["app_area"] = AREAS[0]
     area = st.session_state["app_area"]
     render_html('<div class="sidebar-section sidebar-section-nav">Workflow</div>', unsafe_allow_html=True)
-    render_html(_sidebar_nav_html(area), unsafe_allow_html=True)
+    _render_sidebar_nav(area)
     render_html(
         '<div class="sidebar-flow-hint apple">'
         '데이터 준비 → 분석 → SOLA 산출물 → 보관'
