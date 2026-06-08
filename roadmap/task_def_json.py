@@ -22,7 +22,9 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
+from typing import Any, Mapping
 
 
 TOP_LEVEL_KEYS: tuple[str, ...] = (
@@ -60,6 +62,13 @@ class TaskDef:
     objectives: tuple[str, ...] = ()
     overall_quality_risks: tuple[str, ...] = ()
     automation_potential_areas: tuple[str, ...] = ()
+    # flat-column 엑셀(2026-06+) 에서 들어오는 추가 신호
+    work_flow: str = ""
+    key_check_points: tuple[str, ...] = ()
+    safety_notes: tuple[str, ...] = ()
+    main_equipment: tuple[str, ...] = ()
+    previous_process: str = ""
+    next_process: str = ""
     raw: dict | None = None
 
     def is_empty(self) -> bool:
@@ -67,6 +76,8 @@ class TaskDef:
             self.process_id or self.process_name or self.process_description
             or self.objectives or self.overall_quality_risks
             or self.automation_potential_areas
+            or self.work_flow or self.key_check_points
+            or self.safety_notes or self.main_equipment
         )
 
 
@@ -119,13 +130,19 @@ def parse(s: str | None) -> TaskDef:
         process_name=str(obj.get("process_name", "") or "").strip(),
         process_description=str(obj.get("process_description", "") or "").strip(),
         objectives=_list_of("objectives"),
-        # 신엑셀 구조: dict 리스트 → "risk · consequence"
+        # 신엑셀 구조: dict 리스트 → "risk · consequence" (flat-column 은 문자열 그대로)
         overall_quality_risks=_list_of("overall_quality_risks", head_keys=("risk", "consequence")),
-        # 신엑셀 구조: dict 리스트 → "area · technology · expected_effect"
+        # 신엑셀 구조: dict 리스트 → "area · technology · expected_effect" (flat-column 은 문자열)
         automation_potential_areas=_list_of(
             "automation_potential_areas",
             head_keys=("area", "technology", "expected_effect"),
         ),
+        work_flow=str(obj.get("work_flow", "") or "").strip(),
+        key_check_points=_list_of("key_check_points"),
+        safety_notes=_list_of("safety_notes"),
+        main_equipment=_list_of("main_equipment"),
+        previous_process=str(obj.get("previous_process", "") or "").strip(),
+        next_process=str(obj.get("next_process", "") or "").strip(),
         raw=obj,
     )
 
@@ -162,12 +179,25 @@ def to_chat_context_lines(task: TaskDef, *, indent: str = "  ") -> list[str]:
         lines.append(f"{indent}작업 정의: {head}")
     if task.process_description:
         lines.append(f"{indent}  설명: {task.process_description[:200]}")
+    if task.work_flow:
+        lines.append(f"{indent}  작업 흐름: {task.work_flow[:200]}")
     if task.objectives:
         lines.append(f"{indent}  목표: " + " / ".join(o[:80] for o in task.objectives[:3]))
+    if task.key_check_points:
+        lines.append(f"{indent}  주요 확인사항: " + " / ".join(k[:80] for k in task.key_check_points[:3]))
     if task.overall_quality_risks:
         lines.append(f"{indent}  품질 리스크: " + " / ".join(r[:80] for r in task.overall_quality_risks[:3]))
+    if task.safety_notes:
+        lines.append(f"{indent}  안전 주의사항: " + " / ".join(s[:80] for s in task.safety_notes[:3]))
     if task.automation_potential_areas:
         lines.append(f"{indent}  자동화 영역: " + " / ".join(a[:80] for a in task.automation_potential_areas[:3]))
+    if task.main_equipment:
+        lines.append(f"{indent}  주요 사용장비: " + " / ".join(e[:60] for e in task.main_equipment[:5]))
+    if task.previous_process or task.next_process:
+        flow = " → ".join(
+            p for p in (task.previous_process, "(현 공정)", task.next_process) if p
+        )
+        lines.append(f"{indent}  공정 연결: {flow}")
     return lines
 
 
@@ -189,9 +219,14 @@ def flatten_for_match(json_text: str | None) -> str:
         parts.append(t.process_name)
     if t.process_description:
         parts.append(t.process_description)
+    if t.work_flow:
+        parts.append(t.work_flow)
     parts.extend(t.objectives)
+    parts.extend(t.key_check_points)
     parts.extend(t.overall_quality_risks)
+    parts.extend(t.safety_notes)
     parts.extend(t.automation_potential_areas)
+    parts.extend(t.main_equipment)
     return " ".join(p for p in parts if p)
 
 
@@ -201,6 +236,90 @@ def first_objective(json_text: str | None) -> str:
     if t.objectives:
         return t.objectives[0]
     return ""
+
+
+# ── flat-column 엑셀(2026-06+) 조립 ─────────────────────────
+#
+# JSON 열이 없는 엑셀: 개별 컬럼(공정설명·작업흐름·주요확인사항·안전주의사항·
+# 주요사용장비·품질리스크·자동화가능영역·이전공정·다음공정)을 구조화 JSON 으로
+# 조립한다. `ingest.normalize_columns` 가 task_def_json 이 빈 행에 한해 호출 →
+# 이후 매칭/보드/SOLA/SQLite 가 기존과 동일하게 task_def_json 을 읽는다.
+
+# (엑셀 컬럼 코드, JSON 키) — scalar(문자열) 필드
+_COL_SCALAR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("process_description", "process_description"),
+    ("work_flow", "work_flow"),
+    ("previous_process", "previous_process"),
+    ("next_process", "next_process"),
+)
+
+# (엑셀 컬럼 코드, JSON 키) — list 필드. 셀을 줄바꿈/`;`/불릿으로 분리.
+# 품질리스크·자동화가능영역은 매칭/SOLA 가 읽는 표준 키로 매핑해 즉시 반영되게 한다.
+_COL_LIST_FIELDS: tuple[tuple[str, str], ...] = (
+    ("key_check_points", "key_check_points"),
+    ("safety_notes", "safety_notes"),
+    ("main_equipment", "main_equipment"),
+    ("quality_risks", "overall_quality_risks"),
+    ("automation_areas", "automation_potential_areas"),
+)
+
+_LIST_SPLIT_RE = re.compile(r"[\n;•·]+")
+_BULLET_PREFIX_RE = re.compile(r"^\s*[-*•·]\s+")
+
+
+def split_list_cell(cell: Any) -> list[str]:
+    """엑셀 셀 1개 → 항목 리스트. 줄바꿈 / `;` / `•` / `·` 로 분리.
+
+    각 항목의 선행 불릿(`- `, `* `, `• `, `· `)은 제거하고 strip. 빈 항목·중복 제외.
+    한 줄이면 1개짜리 리스트, None/빈 셀이면 빈 리스트.
+    """
+    if cell is None:
+        return []
+    s = str(cell).strip()
+    if not s:
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for part in _LIST_SPLIT_RE.split(s):
+        item = _BULLET_PREFIX_RE.sub("", part).strip()
+        if item and item not in seen:
+            out.append(item)
+            seen.add(item)
+    return out
+
+
+def _col_cell(row: Mapping[str, Any], key: str) -> str:
+    v = row.get(key, "")
+    if v is None:
+        return ""
+    return str(v).strip()
+
+
+def assemble_from_columns(row: Mapping[str, Any]) -> dict:
+    """flat-column 엑셀 행 → task_def JSON payload(dict).
+
+    org_meta / process_id 는 넣지 않는다(`ingest_org_meta` 가 주입). 신 컬럼에
+    내용이 하나도 없으면 빈 dict 를 돌려준다 — 구 포맷(lv1/lv2/lv3) 행은 그대로
+    task_def_json 이 비어 기존 동작이 보존된다.
+
+    process_name 컬럼은 없으므로, 신 컬럼에 내용이 있을 때에 한해 세부작업→작업
+    중 가장 구체적인 값을 process_name 으로 보강한다(보드 카드·검색·diff 표시명용).
+    """
+    payload: dict = {}
+    for col, field in _COL_SCALAR_FIELDS:
+        v = _col_cell(row, col)
+        if v:
+            payload[field] = v
+    for col, field in _COL_LIST_FIELDS:
+        items = split_list_cell(row.get(col))
+        if items:
+            payload[field] = items
+    if not payload:
+        return {}
+    name = _col_cell(row, "sub_task") or _col_cell(row, "task")
+    if name:
+        payload["process_name"] = name
+    return payload
 
 
 # ── v1.0 org_meta 확장 (PR-2) ──────────────────────────────

@@ -25,10 +25,17 @@ class TaskDefForm:
     process_domain: str = ""
     process_category: str = ""
     task_def_text: str = ""
+    # flat-column 엑셀(2026-06+) 추가 필드
+    work_flow: str = ""
+    previous_process: str = ""
+    next_process: str = ""
     # 리스트 필드
     objectives: list[str] = field(default_factory=list)
     overall_quality_risks: list[dict] = field(default_factory=list)
     automation_potential_areas: list[dict] = field(default_factory=list)
+    key_check_points: list[str] = field(default_factory=list)
+    safety_notes: list[str] = field(default_factory=list)
+    main_equipment: list[str] = field(default_factory=list)
     # 조직 메타
     org_meta: dict = field(default_factory=dict)
 
@@ -50,6 +57,9 @@ class TaskDefForm:
             process_domain=str(obj.get("process_domain") or ""),
             process_category=str(obj.get("process_category") or ""),
             task_def_text=str(row.get("task_def_text") or obj.get("task_def_text") or ""),
+            work_flow=str(obj.get("work_flow") or ""),
+            previous_process=str(obj.get("previous_process") or ""),
+            next_process=str(obj.get("next_process") or ""),
             objectives=[str(o) for o in (obj.get("objectives") or []) if str(o).strip()],
             overall_quality_risks=_clean_dict_list(
                 obj.get("overall_quality_risks") or [],
@@ -59,6 +69,9 @@ class TaskDefForm:
                 obj.get("automation_potential_areas") or [],
                 keys=("area", "technology", "expected_effect"),
             ),
+            key_check_points=_clean_str_list(obj.get("key_check_points") or []),
+            safety_notes=_clean_str_list(obj.get("safety_notes") or []),
+            main_equipment=_clean_str_list(obj.get("main_equipment") or []),
             org_meta=_clean_org_meta(obj.get("org_meta") or {}),
         )
 
@@ -75,7 +88,13 @@ class TaskDefForm:
             "process_description": (self.process_description or "").strip(),
             "process_domain": (self.process_domain or "").strip(),
             "process_category": (self.process_category or "").strip(),
+            "work_flow": (self.work_flow or "").strip(),
+            "previous_process": (self.previous_process or "").strip(),
+            "next_process": (self.next_process or "").strip(),
             "objectives": [o.strip() for o in self.objectives if o and o.strip()],
+            "key_check_points": [x.strip() for x in self.key_check_points if x and x.strip()],
+            "safety_notes": [x.strip() for x in self.safety_notes if x and x.strip()],
+            "main_equipment": [x.strip() for x in self.main_equipment if x and x.strip()],
             "overall_quality_risks": [
                 {k: str(v).strip() for k, v in d.items() if str(v).strip()}
                 for d in self.overall_quality_risks
@@ -131,6 +150,16 @@ def _clean_dict_list(items: list, *, keys: tuple[str, ...]) -> list[dict]:
             out.append({k: str(it.get(k) or "") for k in keys})
         elif isinstance(it, str) and it.strip():
             out.append({keys[0]: it.strip(), **{k: "" for k in keys[1:]}})
+    return out
+
+
+def _clean_str_list(items: list) -> list[str]:
+    """리스트 안 문자열 항목만 strip 으로 유지 (flat-column 신 필드용)."""
+    out: list[str] = []
+    for it in items:
+        s = str(it).strip()
+        if s:
+            out.append(s)
     return out
 
 

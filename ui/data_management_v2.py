@@ -1285,7 +1285,10 @@ def _render_task_def_upload() -> None:
         'letter-spacing: -0.01em; margin-bottom: 4px;">📂 작업 정의 데이터 업로드</div>'
         '<div style="font-size: 13px; color: #64748B; line-height: 1.5;">'
         '엑셀(.xlsx) 파일을 올리면 자동으로 정규화 + 검증 후 Parquet 으로 저장됩니다. '
-        '컬럼: <b>팀 · 부서 · 분과 · 공정 · 작업 · 세부작업 · 공정정의서(줄글) · 공정정의서(JSON)</b>'
+        '<b>flat 형식</b>(JSON 열 없음): 분과 · 팀 · 부서 · 공정 · 작업 · 세부작업 · '
+        'Process_ID · 공정설명 · 작업흐름 · 주요확인사항 · 안전주의사항 · 주요사용장비 · '
+        '품질리스크 · 자동화가능영역 · 이전공정 · 다음공정 — 개별 컬럼이 자동으로 구조화 '
+        'JSON 으로 조립됩니다. <b>구 형식</b>(…·공정정의서(JSON))도 그대로 인식.'
         '</div></div>'
     )
 
@@ -1304,7 +1307,7 @@ def _render_task_def_upload() -> None:
         "엑셀 파일 선택 (.xlsx)",
         type=["xlsx"],
         key="_task_def_uploader",
-        help="신엑셀 형식(분과/공정/JSON) 또는 구엑셀(lv1/lv2/lv3) 모두 자동 인식.",
+        help="flat 형식(분과/공정/Process_ID/개별 컬럼) · JSON 열 형식 · 구엑셀(lv1/lv2/lv3) 모두 자동 인식.",
     )
 
     if uploaded is None:

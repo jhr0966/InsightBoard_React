@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-08 — feat: 작업 정의 flat-column 엑셀 → 구조화 JSON 자동 조립 (`claude/kind-volta-IWxix`)
+
+**무엇을**: JSON 열이 없는 신 엑셀(분과·팀·부서·공정·작업·세부작업·Process_ID·공정설명·작업흐름·주요확인사항·안전주의사항·주요사용장비·품질리스크·자동화가능영역·이전공정·다음공정 16열)을 업로드하면 개별 컬럼을 구조화 task_def JSON 으로 자동 조립. (사용자 제공 컬럼 스펙.)
+
+**어떻게**:
+- `schema.COLUMN_MAP` flat 헤더 매핑 + `OPTIONAL_COLUMNS`/`RoadmapRow` 신 컬럼 9종(normalize 가 드롭 안 하게).
+- `task_def_json`: `split_list_cell()`(줄바꿈/`;`/불릿 분리·dedup) + `assemble_from_columns()`(컬럼→payload). 품질리스크·자동화가능영역 → 표준 키(`overall_quality_risks`/`automation_potential_areas`)로 매핑(매칭/SOLA 즉시 반영). 신 컬럼에 내용 있을 때만 조립(빈 dict 게이팅 → 구 포맷 보존), process_name 은 세부작업→작업으로 보강. `TaskDef`/`parse`/`flatten_for_match`/`to_chat_context_lines` 에 신 필드(work_flow·key_check_points·safety_notes·main_equipment·prev/next) 반영.
+- `ingest.normalize_columns`: task_def_json 빈 행에 한해 조립(단일 진입점) → match/board/SQLite/query 무변경. 구 JSON 행은 그대로(하위호환).
+- `task_def_form`/`task_def_manage`: 폼 위젯 + 상세 보기 섹션 추가, 문자열 항목(flat) 렌더 병행. `data_management_v2` 업로드 안내 갱신.
+
+**검증**: pytest **813 passed**(+18 신규 `tests/test_roadmap_flat_columns.py`) · 금지패턴 0 · py_compile OK.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-08 — feat: 데이터 관리 → '뉴스 수집' · '작업 정의' 두 화면 분리 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 사이드바 '🧱 데이터 관리'(5탭) 를 '🗞 뉴스 수집'(수집잡·키워드·출처 3탭) + '📋 작업 정의'(엑셀 업로드+관리, **탭 없이 세로**) 두 화면으로 분리. (사용자 결정: 작업 정의는 탭 없이 단일 화면 + 작업정의용 KPI.)
@@ -17,7 +33,7 @@
 
 **검증**: pytest **795 passed** · 금지패턴 0 · playwright 실측 — nav 6항목, 뉴스 수집(브레드크럼·수집 KPI 4·탭 3), 작업 정의(KPI 3종·업로드 섹션·관리·탭 없음), 화면별 우측 채팅 안내.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#131).
 
 ---
 

@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 flat-column 엑셀 — JSON 열 없이 개별 컬럼을 구조화 JSON 으로 자동 조립)
+- **JSON 열이 없는 신 엑셀(flat 형식)을 그대로 업로드하면 16개 개별 컬럼이 자동으로 구조화 task_def JSON 으로 조립**된다: 분과·팀·부서·공정·작업·세부작업·Process_ID·공정설명·작업흐름·주요확인사항·안전주의사항·주요사용장비·품질리스크·자동화가능영역·이전공정·다음공정. (사용자 제공 컬럼 스펙대로.)
+- **`roadmap/schema.py`**: `COLUMN_MAP` 에 flat 헤더 매핑 추가(`Process_ID→process_id`, `공정설명→process_description`, `작업흐름→work_flow`, `주요확인사항→key_check_points`, `안전주의사항→safety_notes`, `주요사용장비→main_equipment`, `품질리스크→quality_risks`, `자동화가능영역→automation_areas`, `이전공정→previous_process`, `다음공정→next_process`). `OPTIONAL_COLUMNS`/`RoadmapRow` 에 신 컬럼 9종 추가 → normalize 가 컬럼을 드롭하지 않고 보존.
+- **`roadmap/task_def_json.py`**: `split_list_cell()`(셀을 줄바꿈/`;`/불릿으로 분리·중복 제거) + `assemble_from_columns()`(개별 컬럼 → JSON payload) 신규. 품질리스크·자동화가능영역은 **매칭/SOLA 가 읽는 표준 키**(`overall_quality_risks`/`automation_potential_areas`)로 매핑해 즉시 반영. `process_name` 컬럼이 없어 세부작업→작업으로 보강(보드 카드·검색·diff 표시명). `TaskDef`/`parse()`/`flatten_for_match()`/`to_chat_context_lines()` 에 신 필드(work_flow·key_check_points·safety_notes·main_equipment·previous/next_process) 반영 → 뉴스 매칭과 SOLA 컨텍스트가 새 신호를 실제로 활용.
+- **`roadmap/ingest.py`**: `normalize_columns` 가 **task_def_json 이 빈 행에 한해** 조립을 수행(단일 진입점). 이미 JSON 열이 채워진 구 포맷 행은 그대로 두어 하위호환 유지. 이후 match/board/SQLite/query 는 포맷과 무관하게 `task_def_json` 만 읽으면 됨.
+- **`roadmap/task_def_form.py` · `ui/task_def_manage.py`**: 수동 추가/수정 폼과 1건 상세 보기에 신 필드 위젯·섹션 추가(작업 흐름·주요 확인사항·안전 주의사항·주요 사용장비·이전/다음 공정). 상세 보기는 품질리스크/자동화영역이 **문자열 항목**(flat)일 때도 렌더(기존 dict 항목과 병행).
+- **`ui/data_management_v2.py`**: 업로드 안내 문구에 flat 형식 컬럼 목록 명시(구 JSON 열 형식도 그대로 인식).
+- **검증**: pytest **813 passed**(+18 `tests/test_roadmap_flat_columns.py` — split·assemble 게이팅·normalize 통합·ingest→SQLite org_meta 주입·parse/flatten/context·score_matches) · 금지패턴 0.
+
 ### Changed (데이터 관리 → '뉴스 수집' · '작업 정의' 두 화면으로 분리)
 - **사이드바 '🧱 데이터 관리' 1개 → '🗞 뉴스 수집' + '📋 작업 정의' 2개로 분리**(`ui/sidebar.py` AREAS 5→6, `app.py` 디스패치): 정보구조를 수집 작업과 작업 정의 관리로 명확히 나눔.
 - **`ui/data_management_v2.py`**: `render()` → `render_collect()`(헤더 수집 KPI + segmented 탭 jobs·kw·src) + `render_taskdef()`(작업정의 KPI 헤더 + 엑셀 업로드 + 작업 정의 관리를 **탭 없이 세로 배치**). `_render_dm_tabs(tabs=…)` 파라미터화, `_DM_COLLECT_TABS` 추가. `_taskdef_stats()`(등록 정의·부서·마지막 갱신)·`_render_taskdef_header()` 신규. `chat_context_block` → `chat_context_block_collect`/`_taskdef` 분리(우측 채팅이 화면별 데이터를 인식).
