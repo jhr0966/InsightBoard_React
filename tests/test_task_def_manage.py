@@ -158,11 +158,12 @@ def test_form_add_remove_risk_and_automation():
 # ui.task_def_manage — URL 빌더 + 렌더 헬퍼
 # ═══════════════════════════════════════════════════════
 
-def test_manage_href_includes_grp_and_tab():
+def test_manage_href_points_to_taskdef_area():
+    from urllib.parse import quote
     from ui.task_def_manage import _manage_href
     href = _manage_href()
-    assert "dm_grp=tasks" in href
-    assert "dm_tab=manage" in href
+    assert "app_area=" + quote("📋 작업 정의") in href
+    assert "dm_grp" not in href and "dm_tab" not in href
 
 
 def test_manage_href_appends_params():

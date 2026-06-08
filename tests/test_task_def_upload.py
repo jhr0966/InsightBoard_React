@@ -100,7 +100,7 @@ def _fresh_app():
     ps.reset(); ps.clear_onboarding_dismiss()
     ps.save(Persona(name="홍길동", dept="도장1팀", team="자동화1팀"))
     at = AppTest.from_file("app.py", default_timeout=30)
-    at.session_state["app_area"] = "🧱 데이터 관리"
+    at.session_state["app_area"] = "📋 작업 정의"
     return at
 
 
@@ -110,7 +110,6 @@ def test_data_mgmt_renders_upload_section_with_helpful_text(isolated_dirs):
     탭 선택은 레거시 `?dm_tab=` 앵커가 아니라 segmented_control 의 세션 상태
     (`_dm_active_tab`)로 한다 — render() 가 dm_tab query 를 1회 정리하므로."""
     at = _fresh_app()
-    at.session_state["_dm_active_tab"] = "task"
     at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
     assert "작업 정의 데이터 업로드" in htmls

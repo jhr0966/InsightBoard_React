@@ -144,7 +144,7 @@ def _tkw_empty_html() -> str:
     return ('<div style="padding: 18px; text-align: center; color: var(--text-muted); '
             'font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 10px;">'
             '아직 분석할 키워드가 없어요.<br>'
-            '<span style="font-size:12.5px;">데이터 관리에서 30일분 수집 후 다시 확인하세요.</span>'
+            '<span style="font-size:12.5px;">뉴스 수집에서 30일분 수집 후 다시 확인하세요.</span>'
             '</div>')
 
 

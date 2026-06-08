@@ -1,12 +1,12 @@
 """제조기술 로드맵 인사이트보드 — 업무 흐름형 Streamlit 진입점.
 
-5개 업무 메뉴 (UX Phase 3 에서 산출물 보관함에 섞여 있던 '뉴스 콘텐츠' 를
-데이터 관리 아래로 이동해 IA 단일화):
+6개 업무 메뉴 (구 '데이터 관리'를 수집/작업정의 두 화면으로 분리):
   1. 오늘의 보드      — 매일 확인하는 맞춤 인사이트
-  2. 데이터 관리      — 뉴스 수집 + 뉴스 둘러보기 + 로드맵 업로드
-  3. 인사이트 분석    — 트렌드·매칭·자동화 기회 (탭 분할)
-  4. SOLA 작업실      — 요약·과제·제안서 초안
-  5. 산출물 보관함    — 북마크·채택 의사결정 (단일 페이지)
+  2. 뉴스 수집        — 수집잡 + 키워드 + 출처 (탭 3)
+  3. 작업 정의        — 엑셀 업로드 + 작업 정의 관리 (탭 없이 단일 화면)
+  4. 인사이트 분석    — 트렌드·매칭·자동화 기회 (탭 분할)
+  5. SOLA 작업실      — 요약·과제·제안서 초안
+  6. 산출물 보관함    — 북마크·채택 의사결정 (단일 페이지)
 
 레이아웃 (Phase A — 네이티브 셸):
   좌측 = 네이티브 st.sidebar (nav 단일 소스) · 본문 = st.columns(main, chat)
@@ -77,9 +77,12 @@ with _main_col:
     elif area == "📊 오늘의 보드":
         board_v2.render()
         st.session_state["_chat_context_for_sola"] = board_v2.chat_context_block(_persona)
-    elif area == "🧱 데이터 관리":
-        data_management_v2.render()
-        st.session_state["_chat_context_for_sola"] = data_management_v2.chat_context_block(_persona)
+    elif area == "🗞 뉴스 수집":
+        data_management_v2.render_collect()
+        st.session_state["_chat_context_for_sola"] = data_management_v2.chat_context_block_collect(_persona)
+    elif area == "📋 작업 정의":
+        data_management_v2.render_taskdef()
+        st.session_state["_chat_context_for_sola"] = data_management_v2.chat_context_block_taskdef(_persona)
     elif area == "🔎 인사이트 분석":
         insights_v2.render()
         st.session_state["_chat_context_for_sola"] = insights_v2.chat_context_block(_persona)

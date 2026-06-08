@@ -20,7 +20,8 @@ def test_clean_board_html_rewires_dead_html_links_to_area_nav():
     assert ".html" not in out
     # 실제 area 네비로 (URL 인코딩된 app_area)
     assert out.count("?app_area=") == 4
-    assert "%F0%9F%A7%B1" in out   # 🧱 데이터 관리
+    from urllib.parse import quote as _q
+    assert _q("🗞 뉴스 수집") in out   # 🗞 뉴스 수집
     assert "%F0%9F%94%8E" in out   # 🔎 인사이트 분석
     assert "target=\"_self\"" in out
 

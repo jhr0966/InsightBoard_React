@@ -543,7 +543,7 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
         return {
             "summary": '<div class="db-brief-greet">'
                        '<span class="db-brief-greet-tag">요약</span>'
-                       '아직 수집된 뉴스가 없어요. 데이터 관리에서 수집을 시작하세요.'
+                       '아직 수집된 뉴스가 없어요. 뉴스 수집에서 수집을 시작하세요.'
                        '</div>',
             "list": "",
             "cites": "",
@@ -1158,7 +1158,7 @@ def _kw_mgr_empty_html() -> str:
     return ('<div style="padding: 32px 18px; text-align: center; color: var(--text-muted);'
             ' font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 12px;">'
             '아직 키워드를 분석할 데이터가 없어요.<br>'
-            '<span style="font-size:12.5px;">데이터 관리에서 수집을 시작하세요.</span>'
+            '<span style="font-size:12.5px;">뉴스 수집에서 수집을 시작하세요.</span>'
             '</div>')
 
 
@@ -1279,7 +1279,7 @@ def _board_stories_html() -> str:
             border: 1px dashed var(--surface-divider); border-radius: 12px;
             background: rgba(0,0,0,0.01);">
           아직 수집된 뉴스가 없어요.<br>
-          <span style="font-size:12.5px;">데이터 관리 화면에서 수집을 시작하세요.</span>
+          <span style="font-size:12.5px;">뉴스 수집 화면에서 수집을 시작하세요.</span>
         </div>"""
 
     if "collected_at" in news.columns:
@@ -1307,11 +1307,11 @@ _BOARD_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "board_main.html"
 def _clean_board_html(html: str) -> str:
     """보드 템플릿의 죽은 `*.html` 섹션 링크를 실제 area 네비(`?app_area=`)로 재배선.
 
-    "뉴스 라이브러리 →"=데이터 관리, "전체 보러가기/트렌드/매트릭스 작업장 →"=인사이트.
+    "뉴스 라이브러리 →"=뉴스 수집, "전체 보러가기/트렌드/매트릭스 작업장 →"=인사이트.
     기능을 없애지 않고 살린다(사용자 지시). keyword-manager 링크는 템플릿에서 제거됨.
     """
     from urllib.parse import quote as _q
-    data_href = "?app_area=" + _q("🧱 데이터 관리")
+    data_href = "?app_area=" + _q("🗞 뉴스 수집")
     ins_href = "?app_area=" + _q("🔎 인사이트 분석")
     return (
         html
@@ -1357,11 +1357,13 @@ def _greet_summary_html(persona: Persona, kpis: dict[str, int]) -> str:
     match = kpis.get("match", 0)
     opp = kpis.get("opp", 0)
     if collect == 0:
+        from urllib.parse import quote as _q
+        href = "?app_area=" + _q("🗞 뉴스 수집")
         return (
             '아직 오늘 수집된 뉴스가 없어요. '
-            '<a href="?app_area=%F0%9F%A7%B1+%EB%8D%B0%EC%9D%B4%ED%84%B0+%EA%B4%80%EB%A6%AC" '
+            f'<a href="{href}" '
             'target="_self" style="color:var(--accent-primary); font-weight:700; '
-            'text-decoration:none;">데이터 관리</a>에서 첫 수집을 시작하세요.'
+            'text-decoration:none;">뉴스 수집</a>에서 첫 수집을 시작하세요.'
         )
 
     parts = [f'지난 24시간 동안 <b>{collect}건</b>이 들어왔어요.']

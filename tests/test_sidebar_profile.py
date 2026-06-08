@@ -72,7 +72,7 @@ def test_sidebar_nav_is_widget_buttons_socket_rerun():
     assert not at.exception
     nav = [b for b in at.sidebar.button if b.key and b.key.startswith("_nav_btn_")]
     assert len(nav) == len(sidebar.AREAS)
-    target = next(b for b in nav if b.key == "_nav_btn_3")   # 인사이트 분석
+    target = next(b for b in nav if b.key == "_nav_btn_4")   # 인사이트(1보드·2뉴스수집·3작업정의·4인사이트)
     target.click().run()
     assert not at.exception
     assert at.session_state["app_area"] == "🔎 인사이트 분석"

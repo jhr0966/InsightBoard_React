@@ -67,12 +67,12 @@ _S_HISTORY = (
 # ── URL 빌더 ────────────────────────────────────────────
 
 def _manage_href(**params: Any) -> str:
-    """`?dm_grp=tasks&dm_tab=manage&...` URL 빌더. 빈 값은 자동 생략."""
-    parts = [
-        f"app_area={quote('🧱 데이터 관리')}",
-        "dm_grp=tasks",
-        "dm_tab=manage",
-    ]
+    """`?app_area=📋 작업 정의&...` URL 빌더(작업 정의 화면 액션). 빈 값은 자동 생략.
+
+    구 `?dm_grp=tasks&dm_tab=manage` 탭 핸드오프는 화면 분리(뉴스 수집/작업 정의)로
+    불필요 — manage 는 작업 정의 화면에 탭 없이 단독 렌더된다.
+    """
+    parts = [f"app_area={quote('📋 작업 정의')}"]
     for k, v in params.items():
         if v in (None, "", False):
             continue

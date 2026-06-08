@@ -199,7 +199,7 @@ def test_e2e_s3_match_and_opportunity(monkeypatch):
 # ── S4: app.py 통해 5개 화면 네비게이션 ────────────────────
 
 _AREAS = [
-    "📊 오늘의 보드", "🧱 데이터 관리", "🔎 인사이트 분석",
+    "📊 오늘의 보드", "🗞 뉴스 수집", "📋 작업 정의", "🔎 인사이트 분석",
     "🤖 SOLA 작업실", "📦 산출물 보관함",
 ]
 
@@ -233,7 +233,7 @@ def test_e2e_s5_data_mgmt_source_filter(monkeypatch):
 
     from streamlit.testing.v1 import AppTest
     at = AppTest.from_file("app.py", default_timeout=120)
-    at.session_state["app_area"] = "🧱 데이터 관리"
+    at.session_state["app_area"] = "🗞 뉴스 수집"
     at.session_state["_dm_active_tab"] = "jobs"
     # '적용된' 출처 필터 시뮬레이션 — 폼은 제출 시에만 커밋하므로 위젯 키 세팅 = 적용 상태.
     at.session_state["_news_f_src_widget"] = [target]

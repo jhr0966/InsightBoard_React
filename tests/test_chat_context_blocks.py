@@ -114,8 +114,8 @@ def test_data_mgmt_chat_context_includes_screen_marker_and_stats():
         "active_sources": "4", "today_count": "125", "total_chunks": "8.4k", "last_update": "08:24"}), \
          patch.object(data_management_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
          patch.object(data_management_v2._news_db, "load_all_today", return_value=pd.DataFrame()):
-        ctx = data_management_v2.chat_context_block(Persona())
-    assert "현재 화면: 데이터 관리" in ctx
+        ctx = data_management_v2.chat_context_block_collect(Persona())
+    assert "현재 화면: 뉴스 수집" in ctx
     assert "활성 출처 4개" in ctx
     assert "125" in ctx
     assert "8.4k" in ctx
@@ -134,7 +134,7 @@ def test_data_mgmt_chat_context_includes_news_library_and_sources():
         "active_sources": "—", "today_count": "—", "total_chunks": "—", "last_update": "—"}), \
          patch.object(data_management_v2._news_db, "load_news_for_days", return_value=news), \
          patch.object(data_management_v2._news_db, "load_all_today", return_value=news):
-        ctx = data_management_v2.chat_context_block(Persona())
+        ctx = data_management_v2.chat_context_block_collect(Persona())
     assert "뉴스 라이브러리" in ctx
     assert "현대重 AI 비전 PoC" in ctx
     assert "38% 불량률 절감" in ctx
