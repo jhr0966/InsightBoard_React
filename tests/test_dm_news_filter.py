@@ -107,29 +107,27 @@ def _dm_app():
     return at
 
 
-def test_jobs_tab_renders_news_filter_form():
-    """jobs 탭에 필터 폼(출처 멀티셀렉트 + 기간·정렬 셀렉트 + '적용')이 예외 없이 렌더."""
+def test_collect_renders_category_browser_not_filter_form():
+    """개편: 뉴스 라이브러리 필터 폼(출처 멀티셀렉트·기간·정렬·'적용')은 제거됨.
+    대신 카드 브라우저(빈 데이터=빈 상태) + 액션바가 예외 없이 렌더된다."""
+    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
     at = _dm_app()
     at.run()
     assert not at.exception
-    assert len(at.multiselect) >= 1                      # 출처
-    labels = {s.label for s in at.selectbox}
-    assert {"기간", "정렬"} <= labels                     # 기간·정렬
     combined = "\n".join(h.proto.body for h in at.get("html"))
-    assert "뉴스 라이브러리 필터" in combined              # 폼 헤더 라벨
+    assert "뉴스 라이브러리 필터" not in combined          # 구 필터 폼 헤더 제거
+    labels = {s.label for s in at.selectbox}
+    assert "기간" not in labels and "정렬" not in labels   # 필터 셀렉트 제거
+    assert "sc-empty" in combined or "sc-grid" in combined  # 카드 브라우저 렌더
 
 
-def test_clear_filters_query_resets_widgets():
-    """`?dm_clear_filters=1` → 출처·기간·정렬 위젯 + 검색어가 기본값으로 리셋."""
+def test_clear_search_query_resets_search():
+    """`?dm_clear_q=1` → 상단 검색어(_news_search_q)·입력 위젯이 비워진다.
+    (뉴스 라이브러리 필터는 제거됐고 상단 검색만 유지된다.)"""
     at = _dm_app()
-    at.session_state[dm._NEWS_F_SRC_KEY] = ["AI Times"]
-    at.session_state[dm._NEWS_F_PERIOD_KEY] = "최근 30일"
-    at.session_state[dm._NEWS_F_SORT_KEY] = "오래된순"
     at.session_state["_news_search_q"] = "robot"
-    at.query_params["dm_clear_filters"] = "1"
+    at.session_state["_topbar_q"] = "robot"
+    at.query_params["dm_clear_q"] = "1"
     at.run()
     assert not at.exception
-    assert at.session_state[dm._NEWS_F_SRC_KEY] == []
-    assert at.session_state[dm._NEWS_F_PERIOD_KEY] == "최근 3일"
-    assert at.session_state[dm._NEWS_F_SORT_KEY] == "최신순"
     assert at.session_state["_news_search_q"] == ""

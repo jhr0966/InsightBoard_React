@@ -9,7 +9,7 @@
   S2 로드맵   — 작업정의 → SQLite 동기화 → load_latest 재구성
   S3 매칭/기회 — 수집 뉴스 ↔ 작업 토큰 매칭 → 자동화 기회 셀 집계
   S4 네비게이션 — app.py 통해 5개 화면 전부 예외 없이 렌더(LLM graceful fallback)
-  S5 필터     — 데이터 관리 출처 필터 '적용' 상태 → 라이브러리 좁힘(신규 기능)
+  S5 카테고리  — 뉴스 수집 대분류 탭(키워드/포탈) + 출처칩으로 카드 좁힘(개편)
   S6 SOLA LLM — 요약·보드 브리핑(LLM mock) 프롬프트 조립·응답 처리
   S7 보관함   — 제안 북마크 → 보관함 렌더 → 채택 → 카운트 반영
 
@@ -116,7 +116,8 @@ def _clear_ui_caches() -> None:
     """st.cache_data 는 테스트 간 전역 유지 → UI 화면 캐시를 비워 stale 방지."""
     mods_fns = [
         ("ui.data_management_v2", ["_news_cards_html", "_news_source_options", "_dm_stats",
-                                   "_ingest_jobs_html", "_hist_html", "_archive_stats_dm"]),
+                                   "_ingest_jobs_html", "_hist_html", "_archive_stats_dm",
+                                   "_sc_browse_records", "_sc_cards_html"]),
         ("ui.board_v2", ["_board_kpis", "_archive_stats"]),
         ("ui.archive_v2", ["_oa_data", "_archive_stats_oa"]),
         ("ui.insights_v2", ["_ia_stats", "_archive_stats_ia"]),
@@ -221,27 +222,35 @@ def test_e2e_s4_navigate_all_screens(monkeypatch):
 
 # ── S5: 데이터 관리 출처 필터(신규 기능) 전체 앱에서 동작 ──
 
-def test_e2e_s5_data_mgmt_source_filter(monkeypatch):
+def test_e2e_s5_data_mgmt_category_browser(monkeypatch):
     _seed_persona()
     _clear_ui_caches()
     _seed_news_via_collect(monkeypatch)
 
     from store import news_db
     srcs = sorted(s for s in news_db.load_news_for_days(days=3)["source"].dropna().unique() if s)
-    assert len(srcs) >= 2
-    target = srcs[0]
+    assert len(srcs) >= 2  # naver/google(키워드) + tech(포탈)
 
     from streamlit.testing.v1 import AppTest
+    # 기본 카드뷰(키워드 카테고리) — 수집된 뉴스가 사진 카드로 노출
     at = AppTest.from_file("app.py", default_timeout=120)
     at.session_state["app_area"] = "🗞 뉴스 수집"
-    at.session_state["_dm_active_tab"] = "jobs"
-    # '적용된' 출처 필터 시뮬레이션 — 폼은 제출 시에만 커밋하므로 위젯 키 세팅 = 적용 상태.
-    at.session_state["_news_f_src_widget"] = [target]
     at.run()
     assert not at.exception
     combined = "\n".join(h.proto.body for h in at.get("html"))
-    assert "필터 해제" in combined          # 활성 필터 배너
-    assert target in combined               # 선택 출처 칩/카드 노출
+    assert "sc-card" in combined                       # 카드 브라우저 렌더
+    assert "용접 비드 품질 모니터링" in combined        # naver(키워드) 카드 제목
+
+    # 출처칩으로 '구글'만 좁히면 네이버 전용 카드는 사라진다(원클릭 카테고리 narrowing)
+    at2 = AppTest.from_file("app.py", default_timeout=120)
+    at2.session_state["app_area"] = "🗞 뉴스 수집"
+    at2.session_state["sc_news_cat"] = "keyword"
+    at2.session_state["sc_chan_keyword"] = "구글"
+    at2.run()
+    assert not at2.exception
+    combined2 = "\n".join(h.proto.body for h in at2.get("html"))
+    assert "구글 뉴스" in combined2                     # google 카드
+    assert "용접 비드 품질 모니터링" not in combined2    # 네이버 전용 카드 제외
 
 
 # ── S6: SOLA LLM 흐름 (mock) ───────────────────────────────

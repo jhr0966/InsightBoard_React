@@ -848,18 +848,338 @@ def chat_context_block_taskdef(persona: Persona) -> str:
     return "\n".join(parts)
 
 
-def render_collect() -> None:
-    """뉴스 수집 화면 — 수집잡·키워드·출처 (구 '데이터 관리'의 수집 그룹).
+# ════════════════════════════════════════════════════════════
+#  뉴스 수집 개편 — 카테고리 카드 브라우저 + 기사 모달 + 설정 서브뷰
+# ════════════════════════════════════════════════════════════
+#
+# 메인(카드뷰): 수집 현황 요약(헤더) → 액션바([🔄 지금 수집][⚙ 수집 설정]) →
+#   대분류 탭(키워드/포탈) + 출처칩 + 사진 카드(제목·본문 일부). 카드 클릭 →
+#   ?news=<link> → 기사 모달(본문 전체 + 원본 링크).
+# 설정(서브뷰): 키워드 관리 + 포탈(출처) 관리 + 수집 실행·이력 상세.
+# 뉴스 라이브러리 필터 폼은 더 이상 렌더하지 않는다(상단 검색이 대체). 레거시
+# 빌더(_render_news_filter_form/_render_jobs_split/_render_dm_tabs/_news_cards_html)
+# 는 호환·테스트용으로 유지하되 화면 흐름에서는 호출하지 않는다.
 
-    `?refresh=now`(또는 '지금 뉴스 수집' 버튼)가 들어오면 첫 단계에서 1회 소비 →
-    캐시 invalidate + 토스트. 헤더(수집 KPI 4종)는 1회, 본문은 segmented_control
-    탭 바(jobs·kw·src) + 활성 탭만 조건부 렌더(fragment).
+# 대분류 — 키워드(검색 기반: naver/google) vs 포탈(사이트 피드: tech + 커스텀 RSS)
+_SC_KEYWORD_SOURCES: frozenset[str] = frozenset({"naver", "google"})
+_SC_SOURCE_LABEL: dict[str, str] = {"naver": "네이버", "google": "구글"}
+_SC_CATS: tuple[str, ...] = ("keyword", "portal")
+_SC_CAT_LABEL: dict[str, str] = {"keyword": "🔑 키워드 뉴스", "portal": "🏛 포탈 뉴스"}
+_SC_BROWSE_DAYS = 30      # 카드 브라우저가 훑는 기간
+_SC_MAX_CARDS = 30        # 카테고리/채널당 최대 카드 수
+_SC_ALL_CHANNEL = "전체"
+
+
+def _news_category_of(source: str) -> str:
+    """source 값 → 대분류('keyword'|'portal'). naver/google=키워드, 그 외=포탈."""
+    return "keyword" if str(source or "").strip() in _SC_KEYWORD_SOURCES else "portal"
+
+
+def _news_channel_of(source: str, press: str = "") -> str:
+    """출처칩 라벨 — 키워드는 네이버/구글, 포탈은 매체명(press) 또는 source(커스텀)."""
+    s = str(source or "").strip()
+    if s in _SC_SOURCE_LABEL:
+        return _SC_SOURCE_LABEL[s]
+    p = str(press or "").strip()
+    return p or s or "기타"
+
+
+@st.cache_data(ttl=60)
+def _sc_browse_records() -> list[dict]:
+    """최근 N일 뉴스 → 대분류(_cat)·출처칩(_chan) 주석 + 최신순 record 리스트(캐시).
+
+    카드 그리드·출처칩·모달이 공유한다. 수집/업로드 시 `.clear()` 로 무효화.
+    """
+    try:
+        df = _news_db.load_news_for_days(days=_SC_BROWSE_DAYS)
+    except Exception:
+        df = None
+    if df is None or df.empty:
+        return []
+    sort_col = ("collected_at" if "collected_at" in df.columns
+                else "published_at" if "published_at" in df.columns else None)
+    if sort_col:
+        df = df.sort_values(sort_col, ascending=False)
+    recs = df.to_dict("records")
+    for r in recs:
+        r["_cat"] = _news_category_of(r.get("source", ""))
+        r["_chan"] = _news_channel_of(r.get("source", ""), r.get("press", ""))
+    return recs
+
+
+def _sc_channels(cat: str) -> list[str]:
+    """해당 대분류에 실제로 수집된 출처칩 목록(등장순, 중복 제외)."""
+    out: list[str] = []
+    for r in _sc_browse_records():
+        if r.get("_cat") == cat:
+            ch = r.get("_chan")
+            if ch and ch not in out:
+                out.append(ch)
+    return out
+
+
+def _sc_news_card_html(row: dict) -> str:
+    """단일 뉴스 record → 사진 카드(앵커). 클릭 시 ?news=<link> 로 기사 모달."""
+    from urllib.parse import quote as _q
+    link = str(row.get("link", "") or "").strip()
+    title = _html.escape(str(row.get("title") or "(제목 없음)"))
+    img = str(row.get("image_url", "") or "").strip()
+    body_src = str(row.get("summary_llm") or row.get("summary") or row.get("content") or "")
+    body_src = " ".join(body_src.split())
+    excerpt = (_html.escape(body_src[:110] + ("…" if len(body_src) > 110 else ""))
+               if body_src else "")
+    source = str(row.get("source", "") or "")
+    chan = _html.escape(_news_channel_of(source, row.get("press", "")))
+    grad = _SOURCE_GRADIENTS.get(source, _DEFAULT_GRADIENT)
+    when = str(row.get("collected_at") or row.get("published_at") or "")
+    age = _html.escape(_news_age_label(when))
+    # 이미지: http(s) 스킴만 허용(XSS/data: 방어), 없으면 그라데이션 플레이스홀더.
+    if img[:4].lower() == "http":
+        img_block = (
+            f'<span class="sc-card-img" style="background:{grad};">'
+            f'<img src="{_html.escape(img, quote=True)}" loading="lazy" '
+            f'referrerpolicy="no-referrer" alt=""></span>'
+        )
+    else:
+        img_block = f'<span class="sc-card-img sc-card-img-ph" style="background:{grad};"></span>'
+    href = "?app_area=" + _q("🗞 뉴스 수집") + "&news=" + _q(link)
+    return (
+        f'<li class="sc-card-li"><a class="sc-card" href="{_html.escape(href)}" target="_self">'
+        f'{img_block}'
+        f'<span class="sc-card-body">'
+        f'<span class="sc-card-meta">'
+        f'<span class="sc-card-src"><span class="sc-card-dot" style="background:{grad};"></span>{chan}</span>'
+        f'<span class="sc-card-age">{age}</span>'
+        f'</span>'
+        f'<span class="sc-card-h">{title}</span>'
+        + (f'<span class="sc-card-p">{excerpt}</span>' if excerpt else "")
+        + '</span></a></li>'
+    )
+
+
+def _sc_empty_html(q: str = "") -> str:
+    msg = (f'“{_html.escape(q)}” 검색 결과가 없어요.' if q
+           else "이 카테고리에 수집된 뉴스가 아직 없어요.")
+    return (
+        f'<div class="sc-empty">{msg}<br>'
+        '<span class="sc-empty-sub">상단 [🔄 지금 뉴스 수집]으로 수집을 시작하거나 '
+        '다른 탭/출처를 선택하세요.</span></div>'
+    )
+
+
+@st.cache_data(ttl=60)
+def _sc_cards_html(cat: str, channel: str, q: str) -> str:
+    """대분류·출처칩·상단 검색어로 좁힌 뉴스 카드 그리드 HTML(캐시).
+
+    검색어 `q` 는 상단 토픽 검색(_news_search_q)에서 전달 — 제목·본문·요약·키워드 매칭.
+    """
+    recs = [r for r in _sc_browse_records() if r.get("_cat") == cat]
+    if channel and channel != _SC_ALL_CHANNEL:
+        recs = [r for r in recs if r.get("_chan") == channel]
+    q = (q or "").strip()
+    if q:
+        ql = q.lower()
+        recs = [
+            r for r in recs
+            if any(ql in str(r.get(c, "") or "").lower() for c in _NEWS_SEARCH_COLS)
+        ]
+    if not recs:
+        return _sc_empty_html(q)
+    cards = "\n".join(_sc_news_card_html(r) for r in recs[:_SC_MAX_CARDS])
+    return f'<ul class="sc-grid">{cards}</ul>'
+
+
+def _render_news_browser(persona) -> None:
+    """대분류 탭(키워드/포탈) + 출처칩 + 사진 카드 그리드.
+
+    원클릭 카테고리 전환: 대분류 segmented_control + 그 안의 출처 segmented_control.
+    상단 검색어가 있으면 카드도 함께 좁힌다(필터 폼 없이 검색만으로).
+    """
+    q = str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()
+
+    if st.session_state.get("sc_news_cat") not in _SC_CATS:
+        st.session_state["sc_news_cat"] = _SC_CATS[0]
+    with st.container(key="sc_cat_tabs"):
+        cat = st.segmented_control(
+            "뉴스 카테고리", list(_SC_CATS),
+            format_func=lambda c: _SC_CAT_LABEL[c],
+            key="sc_news_cat", label_visibility="collapsed",
+        ) or st.session_state["sc_news_cat"]
+    if cat not in _SC_CATS:
+        cat = _SC_CATS[0]
+
+    # 출처칩 — 대분류별로 따로 기억(키에 cat 포함). 채널이 1개 이하면 칩 생략.
+    channels = _sc_channels(cat)
+    chan = _SC_ALL_CHANNEL
+    if channels:
+        chan_opts = [_SC_ALL_CHANNEL] + channels
+        chan_key = f"sc_chan_{cat}"
+        if st.session_state.get(chan_key) not in chan_opts:
+            st.session_state[chan_key] = _SC_ALL_CHANNEL
+        with st.container(key="sc_chan_chips"):
+            chan = st.segmented_control(
+                "출처", chan_opts, key=chan_key, label_visibility="collapsed",
+            ) or st.session_state[chan_key]
+        if chan not in chan_opts:
+            chan = _SC_ALL_CHANNEL
+
+    st.html(_components.prepare_screen_html(_sc_cards_html(cat, chan, q)))
+
+
+def _render_collect_actionbar() -> None:
+    """메인 카드뷰 액션바 — [🔄 지금 뉴스 수집] + [⚙ 수집 설정] (소켓 rerun)."""
+    with st.container(key="sc_actionbar"):
+        c1, c2, _sp = st.columns([1.3, 1, 3])
+        with c1:
+            if st.button(
+                "🔄 지금 뉴스 수집", key="_dm_collect_btn", type="primary",
+                use_container_width=True,
+                help="페르소나 관심사 키워드(없으면 자동화·AI)로 지금 뉴스를 수집하고 화면을 새로 그립니다.",
+            ):
+                st.session_state["_do_dm_collect"] = True
+                st.rerun()
+        with c2:
+            if st.button(
+                "⚙ 수집 설정", key="_sc_settings_btn", use_container_width=True,
+                help="키워드·포탈(출처) 설정과 수집 이력 상세를 봅니다.",
+            ):
+                st.session_state["sc_collect_view"] = "settings"
+                st.rerun()
+
+
+def _sc_history_html() -> str:
+    """설정 서브뷰 하단 — 오늘의 수집잡 + 14일 추이 + 런 타임라인(기존 빌더 재사용)."""
+    from store import ui_prefs as _uiprefs
+    hist = _hist_html(_uiprefs.load().get("theme") == "dark")
+    jobs = _ingest_jobs_html()
+    return (
+        '<div class="dm-shell"><section class="dm-jobs">'
+        '<div class="dm-jobs-head"><div>'
+        '<div class="dm-sec-eye">수집 이력</div>'
+        '<h2 class="dm-sec-t">오늘의 수집잡 · 14일 추이</h2>'
+        '</div></div>'
+        f'<ul class="dm-job-list">{jobs}</ul>'
+        '<div class="dm-history">'
+        f'{hist["head"]}{hist["svg"]}{hist["foot"]}{hist["runs"]}'
+        '</div></section></div>'
+    )
+
+
+def _render_collect_settings(dm_stats: dict[str, str | int], persona) -> None:
+    """⚙ 수집 설정 서브뷰 — 키워드 + 포탈(출처) + 수집 실행·이력."""
+    _render_dm_header(dm_stats)
+    with st.container(key="sc_settings_back"):
+        if st.button("← 뉴스 목록", key="_sc_back_btn"):
+            st.session_state["sc_collect_view"] = "cards"
+            st.rerun()
+    # 키워드 설정(현황 요약 + 페르소나 진입)
+    st.html(_components.prepare_screen_html(_dm_kw_body_html(persona)))
+    # 포탈/출처 설정 — 기본 토글 + 커스텀 RSS 추가
+    _render_src_table(dm_stats)
+    _render_src_add_form()
+    # 수집 실행(설정에서도 가능) + 이력 상세
+    _render_collect_button()
+    st.html(_components.prepare_screen_html(_sc_history_html()))
+
+
+# ── 기사 모달 (카드 클릭 → ?news=<link> → st.dialog) ──────────
+
+def _consume_news_modal_open_if_any() -> None:
+    """`?news=<link>` 1회 소비 → 세션 플래그(`_sc_open_news`)로 옮기고 URL 정리.
+
+    카드 앵커가 ?news 를 실어 문서를 다시 그리면 이 핸들러가 플래그로 옮긴다(쿼리는
+    제거). 모달 닫기는 ✕ 버튼이 플래그를 비우는 소켓 rerun(문서 reload 없음).
+    """
+    nk = (st.query_params.get("news") or "").strip()
+    if not nk:
+        return
+    st.session_state["_sc_open_news"] = nk
+    if "news" in st.query_params:
+        del st.query_params["news"]
+
+
+def _find_news_record_by_link(link: str) -> dict | None:
+    link = (link or "").strip()
+    if not link:
+        return None
+    for r in _sc_browse_records():
+        if str(r.get("link", "") or "").strip() == link:
+            return r
+    return None
+
+
+def _news_modal_body(row: dict) -> None:
+    """기사 모달 본문 — 사진·메타·제목·요약·본문 전체 + 원본 링크 + 닫기."""
+    link = str(row.get("link", "") or "").strip()
+    title = str(row.get("title") or "(제목 없음)")
+    img = str(row.get("image_url", "") or "").strip()
+    chan = _news_channel_of(row.get("source", ""), row.get("press", ""))
+    when = str(row.get("collected_at") or row.get("published_at") or "")
+    age = _news_age_label(when)
+    summary = str(row.get("summary_llm") or row.get("summary") or "").strip()
+    content = str(row.get("content") or "").strip()
+
+    parts: list[str] = ['<div class="sc-modal">']
+    if img[:4].lower() == "http":
+        parts.append(
+            f'<img class="sc-modal-img" src="{_html.escape(img, quote=True)}" '
+            f'referrerpolicy="no-referrer" alt="">'
+        )
+    meta = " · ".join(p for p in (_html.escape(chan), _html.escape(age)) if p)
+    if meta:
+        parts.append(f'<div class="sc-modal-meta">{meta}</div>')
+    parts.append(f'<h2 class="sc-modal-h">{_html.escape(title)}</h2>')
+    if summary:
+        parts.append(f'<div class="sc-modal-summary">{_html.escape(summary)}</div>')
+    if content:
+        paras = "".join(
+            f"<p>{_html.escape(p.strip())}</p>" for p in content.splitlines() if p.strip()
+        )
+        parts.append(f'<div class="sc-modal-body">{paras}</div>')
+    elif not summary:
+        parts.append('<div class="sc-modal-body"><p>본문이 아직 수집되지 않았어요. '
+                     '원본 기사에서 확인하세요.</p></div>')
+    if link[:4].lower() == "http":
+        parts.append(
+            f'<a class="sc-modal-link" href="{_html.escape(link, quote=True)}" '
+            f'target="_blank" rel="noopener noreferrer">원본 기사 열기 ↗</a>'
+        )
+    parts.append('</div>')
+    st.html(_components.prepare_screen_html("".join(parts)))
+
+    if st.button("✕ 닫기", key="_sc_news_close", use_container_width=True):
+        st.session_state.pop("_sc_open_news", None)
+        st.rerun()
+
+
+def _render_news_modal_if_open() -> None:
+    """`_sc_open_news` 플래그가 있으면 기사 모달을 띄운다(dismissible=False — ✕ 로만 닫음)."""
+    link = st.session_state.get("_sc_open_news")
+    if not link:
+        return
+    row = _find_news_record_by_link(link)
+    if row is None:
+        st.session_state.pop("_sc_open_news", None)
+        return
+    # 동적 인자 전달 위해 런타임 데코레이트(온보딩과 동일 패턴). dismissible=False 라
+    # backdrop/ESC/X 로는 안 닫혀 '플래그 잔존 → 재오픈' 버그가 없다.
+    dlg = st.dialog("📰 기사 보기", width="large", dismissible=False)
+    dlg(_news_modal_body)(row)
+
+
+def render_collect() -> None:
+    """뉴스 수집 화면 — 수집 현황 요약 + 카테고리 카드 브라우저(+기사 모달).
+
+    `?refresh=now`(또는 '지금 뉴스 수집' 버튼)는 첫 단계에서 1회 소비 → 캐시
+    invalidate + 토스트. 메인은 카드뷰(수집 요약 → 액션바 → 대분류 탭/출처칩/카드),
+    `⚙ 수집 설정` 토글 시 설정 서브뷰(키워드·포탈·이력). 카드 클릭(?news=link)은
+    기사 모달로 본문 전체 + 원본 링크를 보여준다.
     """
     inject_screen_css("data_management")
 
     _consume_refresh_if_any()
     _consume_news_search_clear_if_any()  # ?dm_clear_q=1 → 검색 해제 (render_topbar 전: 입력 위젯 리셋)
-    _consume_news_filter_clear_if_any()  # ?dm_clear_filters=1 → 필터+검색 전체 해제 (위젯 인스턴스화 전)
+    _consume_news_modal_open_if_any()    # ?news=<link> → 기사 모달 플래그
 
     persona = app_shell.get_persona()
     dm_stats = _dm_stats()
@@ -885,13 +1205,19 @@ def render_collect() -> None:
     _render_refresh_toast_if_needed()
     _render_src_action_toast_if_needed()
 
-    # 레거시 핸드오프 query(?dm_grp/?dm_tab)는 segmented_control(세션 상태 기반)에선
-    # 탭을 못 고른다. 남으면 URL 만 지저분 → 1회 정리.
+    # 레거시 핸드오프 query(?dm_grp/?dm_tab)는 더 이상 쓰지 않음 → 남으면 1회 정리.
     for _k in ("dm_grp", "dm_tab"):
         if _k in st.query_params:
             del st.query_params[_k]
-    _render_dm_header(dm_stats)
-    _render_dm_tabs(dm_stats, persona, tabs=_DM_COLLECT_TABS)
+
+    if st.session_state.get("sc_collect_view") == "settings":
+        _render_collect_settings(dm_stats, persona)
+    else:
+        _render_dm_header(dm_stats)        # 수집 현황 요약(KPI 4)
+        _render_collect_actionbar()         # [지금 수집][⚙ 수집 설정]
+        _render_news_browser(persona)       # 대분류 탭 + 출처칩 + 사진 카드
+
+    _render_news_modal_if_open()             # 카드 클릭 시 기사 모달
 
 
 def render_taskdef() -> None:
@@ -1133,7 +1459,8 @@ def _consume_refresh_if_any() -> bool:
     from ui import board_v2 as _bv2  # lazy
 
     for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html,
-               _news_source_options, _archive_stats_dm, _bv2._board_kpis):
+               _news_source_options, _sc_browse_records, _sc_cards_html,
+               _archive_stats_dm, _bv2._board_kpis):
         if hasattr(fn, "clear"):
             fn.clear()
 
