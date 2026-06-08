@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-08 — fix/feat: 뉴스 수집 — 카드 클릭 reload 제거 · 모달 중앙/확대 · 데이터 표 · 본문/사진 추출 개선 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 사용자 4개 요청 — ① 카드 클릭 시 전체 새로고침 없이 즉시 모달, ② 기사·페르소나 모달을 화면 세로 중앙 + 더 길게, ③ 수집한 모든 뉴스를 보는 데이터 표 탭, ④ 본문·사진을 더 잘 가져오게(참고 스크래퍼 코드 반영).
+
+**어떻게**:
+- ①: 카드를 `?news=` 앵커(문서 reload)에서 **카드 전체를 덮는 투명 `st.button` 오버레이**(소켓 rerun)로 전환 → `_sc_open_news` 세팅·reload 없이 모달. `_sc_card_visual_html`(앵커 없음)·`_render_card_grid`(`st.columns(3)` + 카드별 컨테이너)·`_sc_filtered_records`. 구 `_sc_news_card_html`/`_sc_cards_html` 제거(딥링크 소비는 호환 유지).
+- ②: `assets/v2/streamlit-overrides.css` — `st.dialog` 오버레이 flex 중앙 + 박스 `min-height:58vh`/`max-height:92vh`/`width:min(880px,94vw)` + 본문 신장. `.sc-modal-body` 46vh→60vh.
+- ③: `_render_news_table` + `sc_browse_mode` 토글(`🃏 카드`/`📋 데이터 표`) — `st.dataframe`(ImageColumn 사진·LinkColumn 링크·제목·대분류·출처·수집·키워드), 상단 검색 적용.
+- ④: `scraping/enrich.py` — 셀렉터·`<p>` 폴백도 빈약하면 **링크 적은 최대 텍스트 블록**을 마지막 폴백으로(`_FALLBACK_MIN_LEN`/`_FALLBACK_MAX_LINKS`). http.py UA풀·retry 는 이미 참고 코드와 동등.
+
+**검증**: pytest **827 passed**(카드 클릭→모달·데이터 표·필터 신구조 + enrich 최대블록 폴백 신규) · 금지패턴 0 · py_compile OK. (모달 세로중앙은 CSS — 실배포 시각 확인 권장.)
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-08 — feat: 뉴스 수집 화면 개편 — 카테고리 카드 브라우저 + 기사 모달 + ⚙ 수집 설정 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 뉴스 수집을 '키워드 뉴스'/'포탈 뉴스' 두 대분류로 정리. 메인은 수집 현황 요약 + 대분류 탭(키워드/포탈) + 출처칩 + **사진 카드**(제목·본문 일부), 카드 클릭 시 **기사 모달**(본문 전체 + 원본 링크). 키워드·포탈 설정은 **⚙ 수집 설정 서브뷰**로. 뉴스 라이브러리 필터 폼 제거(상단 검색이 대체). (사용자 4개 결정: #132 먼저 머지 / 설정=서브뷰 / 대분류 탭+출처칩 / 요약은 메인·상세는 설정.)
@@ -17,7 +33,7 @@
 
 **검증**: pytest **825 passed** · 금지패턴 0 · py_compile OK · 정적 미리보기 HTML 생성(playwright 브라우저는 네트워크 정책상 미설치 → 스크린샷 대신 HTML 전달).
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#133).
 
 ---
 

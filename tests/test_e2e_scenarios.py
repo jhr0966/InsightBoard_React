@@ -117,7 +117,7 @@ def _clear_ui_caches() -> None:
     mods_fns = [
         ("ui.data_management_v2", ["_news_cards_html", "_news_source_options", "_dm_stats",
                                    "_ingest_jobs_html", "_hist_html", "_archive_stats_dm",
-                                   "_sc_browse_records", "_sc_cards_html"]),
+                                   "_sc_browse_records"]),
         ("ui.board_v2", ["_board_kpis", "_archive_stats"]),
         ("ui.archive_v2", ["_oa_data", "_archive_stats_oa"]),
         ("ui.insights_v2", ["_ia_stats", "_archive_stats_ia"]),

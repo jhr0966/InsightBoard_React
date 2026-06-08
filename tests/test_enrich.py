@@ -58,6 +58,28 @@ def test_fetch_article_extracts_representative_image():
 
 def test_fetch_content_returns_empty_for_invalid_url():
     assert enrich.fetch_content("") == ""
+
+
+_HTML_NO_SELECTORS_NO_P = """
+<html><head></head><body>
+  <nav><a href="/a">메뉴1</a><a href="/b">메뉴2</a></nav>
+  <div class="weird-body">
+    이 회사는 신형 도장 로봇을 공개했다고 밝혔다. 신형 로봇은 막두께를 실시간으로 측정하며
+    핀홀과 같은 표면 결함을 머신비전으로 자동 검출한다. 현장 검증 결과 도장 불량률이 절반
+    이하로 줄었고, 작업자의 피로도와 무관하게 일관된 품질 판정이 가능했다는 설명이다. 회사는
+    내년부터 조립과 가공 공정으로 적용 범위를 확대하고, 추가 설비 투자도 검토하고 있다고 전했다.
+  </div>
+</body></html>
+"""
+
+
+def test_fetch_article_largest_block_fallback():
+    """표준 셀렉터·<p> 가 없어도 링크 적은 최대 텍스트 블록을 폴백으로 추출(참고 스크래퍼 패턴)."""
+    with patch.object(enrich, "build_session", lambda: _fake_session(_HTML_NO_SELECTORS_NO_P)):
+        article = enrich.fetch_article("https://example.com/x")
+    assert "도장 로봇" in article["content"]
+    assert "막두께" in article["content"]
+    assert "메뉴1" not in article["content"]  # nav(노이즈)는 제거
     assert enrich.fetch_content("not-a-url") == ""
 
 

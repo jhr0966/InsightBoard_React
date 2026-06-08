@@ -73,53 +73,57 @@ def test_channels_per_category():
     assert set(pt) == {"AI Times", "조선해양e뉴스"}
 
 
-# ── 카드 HTML (이미지·앵커·escape) ─────────────────────────
+# ── 카드 시각 HTML (이미지·escape, 앵커 없음) ─────────────────
 
-def test_card_html_image_and_anchor():
-    row = {"title": "<b>위험</b> 제목", "source": "naver", "press": "", "link": "https://x?a=1&b=2",
+def test_card_visual_html_image_and_escape():
+    row = {"title": "<b>위험</b> 제목", "source": "naver", "press": "", "link": "https://x",
            "summary": "요약 본문", "image_url": "https://img/x.jpg",
            "collected_at": "2026-06-05T10:00:00Z"}
-    html = dm._sc_news_card_html(row)
+    html = dm._sc_card_visual_html(row)
     assert "<img src=" in html and "https://img/x.jpg" in html  # 실제 사진
-    assert "news=" in html                                       # 기사 모달 앵커
     assert "&lt;b&gt;위험&lt;/b&gt;" in html                     # 제목 XSS escape
     assert "sc-card" in html and "네이버" in html
+    # 카드 자체엔 앵커가 없다 — 클릭은 오버레이 버튼이 처리(문서 reload 없음)
+    assert "<a " not in html and "news=" not in html
 
 
-def test_card_html_non_http_image_falls_back():
+def test_card_visual_non_http_image_falls_back():
     row = {"title": "t", "source": "naver", "link": "https://x",
            "image_url": "javascript:alert(1)"}
-    html = dm._sc_news_card_html(row)
+    html = dm._sc_card_visual_html(row)
     assert "<img" not in html             # 비 http 스킴 → 이미지 미삽입(XSS 방어)
     assert "sc-card-img-ph" in html       # 그라데이션 플레이스홀더
 
 
-# ── 카드 필터 (카테고리·채널·검색) ─────────────────────────
+# ── 레코드 필터 (카테고리·채널·검색) ───────────────────────
 
-def test_cards_html_filters_category_and_channel():
-    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
+def test_filtered_records_category_and_channel():
+    dm._sc_browse_records.clear()
     with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()):
-        kw_all = dm._sc_cards_html("keyword", dm._SC_ALL_CHANNEL, "")
-    assert "네이버 용접 기사" in kw_all and "구글 도장 기사" in kw_all
-    assert "AI Times 비전 기사" not in kw_all     # 포탈 카테고리 제외
-    dm._sc_cards_html.clear()
+        kw_all = dm._sc_filtered_records("keyword", dm._SC_ALL_CHANNEL, "")
+        kw_naver = dm._sc_filtered_records("keyword", "네이버", "")
+        portal = dm._sc_filtered_records("portal", dm._SC_ALL_CHANNEL, "")
+    titles_all = {r["title"] for r in kw_all}
+    assert {"네이버 용접 기사", "구글 도장 기사"} <= titles_all
+    assert "AI Times 비전 기사" not in titles_all          # 포탈 제외
+    assert {r["title"] for r in kw_naver} == {"네이버 용접 기사"}
+    assert "AI Times 비전 기사" in {r["title"] for r in portal}
+
+
+def test_filtered_records_search_query():
+    dm._sc_browse_records.clear()
     with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()):
-        kw_naver = dm._sc_cards_html("keyword", "네이버", "")
-    assert "네이버 용접 기사" in kw_naver and "구글 도장 기사" not in kw_naver
+        recs = dm._sc_filtered_records("keyword", dm._SC_ALL_CHANNEL, "도장")
+    titles = {r["title"] for r in recs}
+    assert "구글 도장 기사" in titles and "네이버 용접 기사" not in titles
 
 
-def test_cards_html_search_query():
-    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
-    with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()):
-        html = dm._sc_cards_html("keyword", dm._SC_ALL_CHANNEL, "도장")
-    assert "구글 도장 기사" in html and "네이버 용접 기사" not in html
-
-
-def test_cards_html_empty_state():
-    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
+def test_empty_state_html_and_no_records():
+    dm._sc_browse_records.clear()
     with patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()):
-        html = dm._sc_cards_html("portal", dm._SC_ALL_CHANNEL, "")
-    assert "sc-empty" in html
+        recs = dm._sc_filtered_records("portal", dm._SC_ALL_CHANNEL, "")
+    assert recs == []
+    assert "sc-empty" in dm._sc_empty_html("")
 
 
 # ── 기사 모달 ──────────────────────────────────────────────
@@ -157,7 +161,7 @@ def test_modal_opens_from_news_query():
     from persona.schema import Persona
     ps.reset(); ps.clear_onboarding_dismiss()
     ps.save(Persona(name="홍길동", dept="도장1팀", team="자동화1팀"))
-    dm._sc_browse_records.clear(); dm._sc_cards_html.clear()
+    dm._sc_browse_records.clear()
 
     at = AppTest.from_file("app.py", default_timeout=120)
     at.session_state["app_area"] = "🗞 뉴스 수집"
@@ -172,3 +176,45 @@ def test_modal_opens_from_news_query():
     combined = "\n".join(h.proto.body for h in at.get("html"))
     assert "sc-modal" in combined                                # 모달 본문 렌더
     assert "AI Times 비전 기사" in combined                       # 해당 link 의 기사
+
+
+def _seed_app():
+    from streamlit.testing.v1 import AppTest
+    from persona import store as ps
+    from persona.schema import Persona
+    ps.reset(); ps.clear_onboarding_dismiss()
+    ps.save(Persona(name="홍길동", dept="도장1팀", team="자동화1팀"))
+    dm._sc_browse_records.clear()
+    at = AppTest.from_file("app.py", default_timeout=120)
+    at.session_state["app_area"] = "🗞 뉴스 수집"
+    return at
+
+
+def test_card_click_opens_modal_without_reload():
+    """카드 오버레이 버튼(소켓 rerun) 클릭 → reload 없이 _sc_open_news 세팅 → 모달."""
+    at = _seed_app()
+    at.session_state["sc_news_cat"] = "keyword"
+    with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()), \
+         patch.object(dm._news_db, "load_all_today", return_value=_news_df()):
+        at.run()
+        assert not at.exception
+        btns = [b for b in at.button if b.key == "sc_open_0"]
+        assert btns, "카드 오버레이 버튼(sc_open_0)이 없음"
+        btns[0].click().run()
+    assert not at.exception
+    assert "_sc_open_news" in at.session_state and at.session_state["_sc_open_news"]
+    combined = "\n".join(h.proto.body for h in at.get("html"))
+    assert "sc-modal" in combined                                # 클릭 한 번에 모달
+
+
+def test_table_view_renders_dataframe():
+    """📋 데이터 표 모드 — 수집한 모든 뉴스가 st.dataframe 으로 렌더."""
+    at = _seed_app()
+    at.session_state["sc_browse_mode"] = "table"
+    with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()), \
+         patch.object(dm._news_db, "load_all_today", return_value=_news_df()):
+        at.run()
+    assert not at.exception
+    assert len(at.dataframe) >= 1                                 # 데이터 표 존재
+    combined = "\n".join(h.proto.body for h in at.get("html"))
+    assert "sc-empty" not in combined                            # 데이터 있으니 빈 상태 아님
