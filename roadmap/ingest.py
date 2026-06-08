@@ -1,6 +1,7 @@
 """로드맵 엑셀 업로드/정규화/검증/Parquet 저장."""
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from typing import BinaryIO
 import pandas as pd
 
 from roadmap.schema import ALL_COLUMNS, COLUMN_MAP, REQUIRED_COLUMNS
+from roadmap.task_def_json import assemble_from_columns
 from store.paths import roadmap_dir
 
 logger = logging.getLogger(__name__)
@@ -67,6 +69,19 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         renamed["lv2"] = renamed["process"]
     if _is_blank(renamed["lv3"]) and not _is_blank(renamed["task"]):
         renamed["lv3"] = renamed["task"]
+
+    # flat-column 엑셀(2026-06+) — JSON 열이 없는 행은 개별 컬럼을 task_def_json 으로
+    # 조립한다. 이미 task_def_json 이 채워진 행(구 JSON 포맷)은 그대로 둔다.
+    # 이 한 단계 덕분에 이후 매칭/보드/SOLA/SQLite 가 포맷에 상관없이 task_def_json
+    # 만 읽으면 된다(단일 진입점).
+    def _fill_task_def_json(r: pd.Series) -> str:
+        existing = str(r.get("task_def_json") or "").strip()
+        if existing:
+            return existing
+        payload = assemble_from_columns(r)
+        return json.dumps(payload, ensure_ascii=False) if payload else ""
+
+    renamed["task_def_json"] = renamed.apply(_fill_task_def_json, axis=1)
 
     return renamed
 

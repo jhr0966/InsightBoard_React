@@ -41,6 +41,8 @@ COLUMN_MAP: dict[str, str] = {
     "공정ID": "process_id",
     "공정 ID": "process_id",
     "공정아이디": "process_id",
+    "Process_ID": "process_id",   # flat-column 엑셀(2026-06+)
+    "process_id": "process_id",
     # 작업 정의 (줄글 / 구조화 JSON)
     "작업 정의": "task_def",
     "작업정의": "task_def",
@@ -48,6 +50,17 @@ COLUMN_MAP: dict[str, str] = {
     "공정 정의서(줄글)": "task_def",
     "공정정의서(JSON)": "task_def_json",
     "공정 정의서(JSON)": "task_def_json",
+    # flat-column 엑셀(2026-06+) — JSON 열 없이 개별 컬럼을 task_def_json 으로 조립.
+    # (조립 규칙은 task_def_json.assemble_from_columns)
+    "공정설명": "process_description",
+    "작업흐름": "work_flow",
+    "주요확인사항": "key_check_points",
+    "안전주의사항": "safety_notes",
+    "주요사용장비": "main_equipment",
+    "품질리스크": "quality_risks",
+    "자동화가능영역": "automation_areas",
+    "이전공정": "previous_process",
+    "다음공정": "next_process",
     # SWS
     "SWS 표준번호": "sws_no",
     "SWS표준번호": "sws_no",
@@ -65,6 +78,16 @@ OPTIONAL_COLUMNS: tuple[str, ...] = (
     "division",        # 신버전 "분과"
     "process",         # 신버전 "공정"
     "process_id",      # 신버전 "공정ID" — SQLite PK (없으면 JSON 내부에서 추출)
+    # flat-column 엑셀(2026-06+) — normalize_columns 가 이들을 task_def_json 으로 조립.
+    "process_description",
+    "work_flow",
+    "key_check_points",
+    "safety_notes",
+    "main_equipment",
+    "quality_risks",
+    "automation_areas",
+    "previous_process",
+    "next_process",
     "sws_no",
     "sws_name",
 )
@@ -86,5 +109,15 @@ class RoadmapRow:
     division: str = ""         # 신규 — 분과
     process: str = ""          # 신규 — 공정
     process_id: str = ""       # 신규 — 공정ID (SQLite PK)
+    # flat-column 엑셀(2026-06+) 원본 컬럼 (task_def_json 으로 조립됨)
+    process_description: str = ""
+    work_flow: str = ""
+    key_check_points: str = ""
+    safety_notes: str = ""
+    main_equipment: str = ""
+    quality_risks: str = ""
+    automation_areas: str = ""
+    previous_process: str = ""
+    next_process: str = ""
     sws_no: str = ""
     sws_name: str = ""

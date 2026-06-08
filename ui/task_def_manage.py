@@ -207,6 +207,22 @@ def _list_html(rows: list[dict], query: str = "") -> str:
 
 # ── 1건 상세 (read-only) ───────────────────────────────
 
+def _str_list_section(title: str, items: Any) -> str:
+    """문자열 리스트 → `<h4>제목</h4><ul>…</ul>` 섹션. 비거나 리스트 아님 → 빈 문자열."""
+    if not isinstance(items, list):
+        return ""
+    lis = "".join(
+        f"<li>{_html.escape(str(i).strip())}</li>"
+        for i in items if isinstance(i, str) and i.strip()
+    )
+    if not lis:
+        return ""
+    return (
+        f'<div class="td-section"><h4 style="{_S_SECTION_H}">{title}</h4>'
+        f'<ul style="{_S_UL}">{lis}</ul></div>'
+    )
+
+
 def _detail_html(row: dict, query: str = "") -> str:
     pid = row.get("process_id") or ""
     obj = row.get("json_obj") or {}
@@ -264,6 +280,17 @@ def _detail_html(row: dict, query: str = "") -> str:
             f'line-height:1.6;">{_html.escape(str(desc))}</div>'
         )
 
+    # 작업 흐름 (flat-column 신 필드)
+    work_flow = obj.get("work_flow") or ""
+    if isinstance(work_flow, str) and work_flow.strip():
+        parts.append(
+            f'<div class="td-section"><h4 style="{_S_SECTION_H}">🔄 작업 흐름</h4>'
+            f'<div style="color:var(--text-secondary);line-height:1.6;">'
+            f'{_html.escape(work_flow.strip())}</div></div>'
+        )
+    # 주요 확인사항
+    parts.append(_str_list_section("✅ 주요 확인사항", obj.get("key_check_points")))
+
     # objectives
     objs = obj.get("objectives") or []
     if isinstance(objs, list) and objs:
@@ -285,11 +312,15 @@ def _detail_html(row: dict, query: str = "") -> str:
                     + (f" — {_html.escape(str(rc))}" if rc else "")
                     + "</li>"
                 )
+            elif isinstance(r, str) and r.strip():  # flat-column: 문자열 항목
+                items.append(f"<li>{_html.escape(r.strip())}</li>")
         if items:
             parts.append(
                 f'<div class="td-section"><h4 style="{_S_SECTION_H}">⚠️ 품질 리스크</h4>'
                 f'<ul style="{_S_UL}">{"".join(items)}</ul></div>'
             )
+    # 안전 주의사항 (flat-column 신 필드)
+    parts.append(_str_list_section("🦺 안전 주의사항", obj.get("safety_notes")))
     # automation
     autos = obj.get("automation_potential_areas") or []
     if isinstance(autos, list) and autos:
@@ -305,11 +336,29 @@ def _detail_html(row: dict, query: str = "") -> str:
                 if eff:
                     line += f" → {_html.escape(str(eff))}"
                 items.append(f"<li>{line}</li>")
+            elif isinstance(a, str) and a.strip():  # flat-column: 문자열 항목
+                items.append(f"<li>{_html.escape(a.strip())}</li>")
         if items:
             parts.append(
                 f'<div class="td-section"><h4 style="{_S_SECTION_H}">🤖 자동화 가능 영역</h4>'
                 f'<ul style="{_S_UL}">{"".join(items)}</ul></div>'
             )
+    # 주요 사용장비 + 공정 연결 (flat-column 신 필드)
+    parts.append(_str_list_section("🛠 주요 사용장비", obj.get("main_equipment")))
+    prev_p = obj.get("previous_process") or ""
+    next_p = obj.get("next_process") or ""
+    if (isinstance(prev_p, str) and prev_p.strip()) or (isinstance(next_p, str) and next_p.strip()):
+        chain = " → ".join(
+            seg for seg in (
+                _html.escape(prev_p.strip()) if isinstance(prev_p, str) and prev_p.strip() else "",
+                "<b>(현 공정)</b>",
+                _html.escape(next_p.strip()) if isinstance(next_p, str) and next_p.strip() else "",
+            ) if seg
+        )
+        parts.append(
+            f'<div class="td-section"><h4 style="{_S_SECTION_H}">🔗 공정 연결</h4>'
+            f'<div style="color:var(--text-secondary);line-height:1.8;">{chain}</div></div>'
+        )
     # 액션 링크
     edit_href = _manage_href(td_edit=pid, td_q=query)
     hist_href = _manage_href(td_view=pid, td_hist=pid, td_q=query)
@@ -419,6 +468,10 @@ def _render_form(form: TaskDefForm, *, mode: str, query: str = "") -> None:
         "공정 설명", value=form.process_description,
         key=f"_td_desc_{mode}", height=100,
     )
+    form.work_flow = st.text_area(
+        "작업 흐름", value=form.work_flow,
+        key=f"_td_flow_{mode}", height=80,
+    )
 
     c7, c8 = st.columns(2)
     with c7:
@@ -483,6 +536,37 @@ def _render_form(form: TaskDefForm, *, mode: str, query: str = "") -> None:
              "technology": parts[1] if len(parts) > 1 else "",
              "expected_effect": parts[2] if len(parts) > 2 else ""}
         form.automation_potential_areas.append(d)
+
+    # flat-column 신 필드 — 1줄에 1항목 text_area + 이전/다음 공정
+    def _lines_area(label: str, caption: str, items: list[str], key: str) -> list[str]:
+        st.caption(caption)
+        txt = st.text_area(
+            label, value="\n".join(items), key=key, height=100,
+            label_visibility="collapsed",
+        )
+        return [ln.strip() for ln in txt.split("\n") if ln.strip()]
+
+    form.key_check_points = _lines_area(
+        "주요 확인사항", "✅ 주요 확인사항 (1줄에 1건)",
+        form.key_check_points, f"_td_kcp_{mode}",
+    )
+    form.safety_notes = _lines_area(
+        "안전 주의사항", "🦺 안전 주의사항 (1줄에 1건)",
+        form.safety_notes, f"_td_safe_{mode}",
+    )
+    form.main_equipment = _lines_area(
+        "주요 사용장비", "🛠 주요 사용장비 (1줄에 1건)",
+        form.main_equipment, f"_td_equip_{mode}",
+    )
+    c9, c10 = st.columns(2)
+    with c9:
+        form.previous_process = st.text_input(
+            "이전 공정", value=form.previous_process, key=f"_td_prev_{mode}",
+        )
+    with c10:
+        form.next_process = st.text_input(
+            "다음 공정", value=form.next_process, key=f"_td_next_{mode}",
+        )
 
     # 줄글 정의서
     st.caption("📄 공정 정의서 (줄글, 선택)")
