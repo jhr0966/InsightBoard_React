@@ -5,19 +5,19 @@
 
 ---
 
-## 2026-06-06 — fix: 데이터 관리 수집버튼·필터박스 폭 삐져나감 + 수집 referer 교차도메인 (`claude/kind-volta-IWxix`)
+## 2026-06-06~08 — fix: 데이터 관리 출처 탭 '무수집' 오표시 + 수집버튼·필터박스 폭 + referer (`claude/kind-volta-IWxix`)
 
-**무엇을**: ① '지금 뉴스 수집' 버튼·뉴스 필터 박스가 본문보다 넓어 우측 삐져나감 수정. ② 수집 HTTP referer 교차도메인 버그 수정. ③ 수집 미동작 진단.
+**무엇을**: ① **출처 탭 기본 4출처가 수집됐는데도 전부 '무수집' 표시** 버그(사용자가 보고한 '수집 안 됨'의 실제 원인) 수정. ② 수집 버튼·필터 박스 폭 삐져나감 수정. ③ 수집 referer 교차도메인 correctness 개선.
 
-**①왜/어떻게**: Streamlit 이 `.st-key-*` 컨테이너를 `width:100%`(부모 724px)로 잡아 `margin:0 24px` 가 폭을 못 줄이고 우측으로 밀림(본문 356–1024 → 위젯 352–1076). `.st-key-dm_collect_cta`·`.st-key-dm_news_filter` 에 `width:calc(100% - 56px) !important` + `margin:0 28px` → 헤더·카드와 정확 정렬(356–1024, playwright 실측).
+**①왜/어떻게(핵심)**: 수집기는 `source`=naver/google/tech 로 저장, tech 는 AI Times·오토메이션월드를 **모두 source="tech"** 로 묶고 site 명은 `press` 에 둔다. 출처 탭 `_src_count_map` 은 **표시명으로 곧장 group** → 매칭 0건(전부 무수집) + naver/google/tech 원시값이 '기타'로 누출. `_DEFAULT_SOURCE_MATCH`(표시명↔source값 + tech 는 press 로 구분, legacy 직접저장 호환)로 환산. playwright 실측: AI Times 1·Google RSS 2·네이버 기술 1·오토메이션월드 0, 기타 누출 0. **수집 자체는 정상이었음**(이전 세션의 403 진단은 이 세션 sandbox 의 outbound 전면차단 아티팩트).
 
-**②왜/어떻게**: `default_headers()` 가 전 요청에 네이버 referer 고정 → 타 도메인(구글/AI Times/오토메이션월드/RSS)에 붙어 403 유발 가능. referer opt-in 전환, 네이버 검색만 명시(`naver.py`).
+**②왜/어떻게**: Streamlit 이 `.st-key-*` 를 width:100%(부모 724px)로 잡아 margin 이 폭을 못 줄이고 우측 밀림(본문 356–1024 → 위젯 352–1076). `width:calc(100% - 56px) !important` + `margin:0 28px` → 정확 정렬.
 
-**③수집 미동작 진단**: 버튼→pending→`_consume_refresh_if_any`→`collect_batch`→`save_articles` 경로 정상(로직 버그 없음). 실패는 출처 403. **이 세션 환경은 모든 outbound(example.com 조차)가 403** 으로 차단(네트워크 정책)돼 실 수집 재현·검증 불가. 배포 환경에선 네이버/구글 데이터센터 IP anti-bot 차단이 흔함 — referer 수정은 비-네이버 출처 완화 best-effort.
+**③왜/어떻게**: `default_headers()` 가 전 요청에 네이버 referer 고정 → 타 도메인 403 유발 가능. referer opt-in 전환(네이버 검색만 명시). 별개 correctness 개선.
 
-**검증**: UI 정렬 playwright 실측 · pytest **790 passed** · 금지패턴 0.
+**검증**: 출처 탭 매칭 단위테스트(신규/legacy) + UI 정렬·출처 탭 playwright 실측 · pytest **792 passed** · 금지패턴 0.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: 🔄 진행 — 커밋·푸시·PR(#128) 갱신 예정.
 
 ---
 

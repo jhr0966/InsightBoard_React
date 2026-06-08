@@ -1450,25 +1450,60 @@ def _dm_task_body_html() -> str:
     </section>"""
 
 
+# 출처 탭 표시명(store.sources.DEFAULT_SOURCES) ↔ 저장 뉴스의 source/press 값 매칭.
+#   - source: 그 표시명으로 인정할 저장 source 값들(수집 ID + legacy 표시명 직접 저장 호환).
+#   - tech_press: source="tech"(AI Times·오토메이션월드 공용) 일 때 press 로 구분할 site 명.
+_DEFAULT_SOURCE_MATCH: dict[str, dict[str, tuple[str, ...]]] = {
+    "AI Times":     {"source": ("AI Times", "aitimes"),               "tech_press": ("AI Times",)},
+    "오토메이션월드":  {"source": ("오토메이션월드", "automationworld"),   "tech_press": ("오토메이션월드",)},
+    "Google RSS":   {"source": ("google", "Google RSS")},
+    "네이버 기술":    {"source": ("naver", "네이버 기술")},
+}
+
+
 def _src_count_map() -> dict[str, tuple[int, str]]:
-    """최근 7일 출처별 (수집 건수, 최신 ISO) — 출처 행/상태 공통 데이터."""
+    """최근 7일 출처별 (수집 건수, 최신 ISO) — 출처 행/상태 공통 데이터.
+
+    키는 **출처 탭 표시명**이다(`store.sources.DEFAULT_SOURCES`). 수집기는 source 를
+    naver/google/tech 로 저장하고 tech 는 AI Times·오토메이션월드를 모두 source="tech"
+    로 묶어 site 명을 `press` 에 둔다. 표시명으로 곧장 group 하면 전부 0건(무수집)으로
+    보이던 버그를, 아래 매칭으로 환산해 고친다(legacy 로 source 에 표시명이 직접 들어간
+    데이터도 함께 인식). 매칭에 안 잡힌 나머지 source 값(커스텀 RSS=source=name 등)은
+    그 값 그대로 키로 둔다(커스텀/기타 행용).
+    """
     try:
         week = _news_db.load_news_for_days(days=7)
     except Exception:
         week = None
     cnt_map: dict[str, tuple[int, str]] = {}
-    if week is not None and not week.empty and "source" in week.columns:
-        grouped = week.groupby("source")
-        for src in grouped.groups.keys():
-            sub = grouped.get_group(src)
-            cnt = int(len(sub))
-            last_iso = ""
-            for col in ("collected_at", "published_at"):
-                if col in sub.columns:
-                    last_iso = str(sub[col].dropna().max() or "")
-                    if last_iso:
-                        break
-            cnt_map[str(src)] = (cnt, last_iso)
+    if week is None or week.empty or "source" not in week.columns:
+        return cnt_map
+
+    src_col = week["source"].astype(str)
+    press_col = week["press"].astype(str) if "press" in week.columns else None
+
+    def _last_iso(sub) -> str:
+        for col in ("collected_at", "published_at"):
+            if col in sub.columns:
+                iso = str(sub[col].dropna().max() or "")
+                if iso:
+                    return iso
+        return ""
+
+    consumed: set[str] = {"tech"}  # tech 는 press 로 분기되므로 항상 소비됨
+    for disp, rule in _DEFAULT_SOURCE_MATCH.items():
+        consumed |= set(rule["source"])
+        mask = src_col.isin(rule["source"])  # legacy: source 에 표시명/ID 직접
+        tp = rule.get("tech_press")
+        if tp and press_col is not None:     # 신규: source=tech + press=site 명
+            mask = mask | (src_col.eq("tech") & press_col.isin(tp))
+        sub = week[mask]
+        cnt_map[disp] = (int(len(sub)), _last_iso(sub) if len(sub) else "")
+
+    rest = week[~src_col.isin(consumed)]
+    if not rest.empty:
+        for src, sub in rest.groupby("source"):
+            cnt_map[str(src)] = (int(len(sub)), _last_iso(sub))
     return cnt_map
 
 
