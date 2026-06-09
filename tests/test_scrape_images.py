@@ -6,6 +6,7 @@ og:image 가 로고면 본문 이미지로 폴백 — 결정적(네트워크 무
 from __future__ import annotations
 
 import base64
+import json
 from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
@@ -82,6 +83,28 @@ def test_google_extract_original_link_from_description():
     assert google._extract_original_link('<a href="https://news.google.com/rss/articles/x">t</a>') == ""
 
 
+def test_google_parse_batchexecute_extracts_url():
+    """batchexecute 응답에서 원문 URL 추출(구글 신 포맷 해석 핵심)."""
+    inner = json.dumps(["garturlres", "https://publisher.example/real-article"])
+    row = ["wrb.fr", "Fbv4je", inner, None, None, None, "generic"]
+    body = json.dumps([row])
+    resp_text = ")]}'\n\n" + body
+    assert google._parse_batchexecute(resp_text) == "https://publisher.example/real-article"
+
+
+def test_google_parse_batchexecute_bad_input_empty():
+    assert google._parse_batchexecute("") == ""
+    assert google._parse_batchexecute(")]}'\n\n[[\"x\"]]") == ""
+
+
+def test_google_resolve_uses_batchexecute_for_opaque(monkeypatch):
+    """구 base64 디코드 실패(불투명 토큰)면 batchexecute 결과를 쓴다."""
+    opaque = base64.urlsafe_b64encode(b"\x08\x13\x22opaque-no-url").decode().rstrip("=")
+    gurl = f"https://news.google.com/rss/articles/{opaque}?oc=5"
+    monkeypatch.setattr(google, "_batchexecute_decode", lambda s, t: "https://pub.example/a")
+    assert google._resolve_link(object(), gurl) == "https://pub.example/a"
+
+
 def test_google_resolve_prefers_decode_no_request():
     """디코드로 풀리면 네트워크 요청 없이 원문 URL 을 돌려준다."""
     original = "https://pub.example.com/a/b"
@@ -104,6 +127,32 @@ def test_extract_image_skips_logo_og_uses_content_img():
     )
     img = enrich._extract_image_url(soup_of(html), "https://x/")
     assert img == "https://x/2026/real_photo.jpg"
+
+
+def test_enrich_one_skips_unresolved_google_link():
+    """미해석 구글 뉴스 링크는 fetch 안 함 → 구글 로고 og:image 안 들어옴(카드 로고 일괄 방지)."""
+    art = {"link": "https://news.google.com/rss/articles/CBMiXYZ", "content": "", "image_url": ""}
+    called = {"n": 0}
+
+    def _fake(*a, **k):
+        called["n"] += 1
+        return {"content": "구글 인터스티셜", "image_url": "https://gstatic/logo.png"}
+
+    with patch.object(enrich, "fetch_article", side_effect=_fake):
+        enrich.enrich_one(art, with_llm=False)
+    assert called["n"] == 0            # 구글 미해석 링크는 fetch 자체를 건너뜀
+    assert art["image_url"] == ""      # 로고 안 들어옴
+    assert art["content"] == ""
+
+
+def test_enrich_one_fetches_resolved_publisher_link():
+    """원문(퍼블리셔) 링크는 fetch 해 본문·og:image 를 채운다."""
+    art = {"link": "https://publisher.example/article/9", "content": "", "image_url": ""}
+    with patch.object(enrich, "fetch_article",
+                      return_value={"content": "퍼블리셔 본문 " * 20, "image_url": "https://publisher.example/og.jpg"}):
+        enrich.enrich_one(art, with_llm=False)
+    assert art["image_url"] == "https://publisher.example/og.jpg"
+    assert "퍼블리셔 본문" in art["content"]
 
 
 def test_enrich_one_drops_logo_list_image_for_og():
