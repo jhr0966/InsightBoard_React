@@ -1,5 +1,9 @@
 <div class="dm-shell">
-<!-- ── Page header ────────────────────────────────────── -->
+<!-- ── Page header (수집 현황 요약) ───────────────────────
+     #133 재설계 이후 본문(카드 그리드·수집잡·서브카드)은 Streamlit 위젯/`sc-*`
+     마크업이 대체한다. 이 템플릿은 _render_dm_header 가 쓰는 헤더(KPI 4종)만 남기고,
+     끝의 split 마커(아래 placeholder)로 헤더 부분만 잘라 쓴다.
+     주의: 이 주석에 그 마커 토큰을 그대로 적으면 split 이 헤더를 통째로 잘라먹는다. -->
       <header class="dm-head">
         <div>
           <div class="dm-bc">
@@ -7,9 +11,8 @@
             <span class="dm-bc-sep">›</span>
             <span class="dm-bc-cur">뉴스 수집</span>
           </div>
-          <h1 class="dm-title" style="display:none">뉴스 수집 <span class="dm-title-sub">수집잡 · 키워드 · 출처</span></h1>
           <p class="dm-desc">
-            매일 수집되는 4개 출처와 검색 가능한 뉴스 데이터베이스, SOLA가 제안하는 수집 키워드를 한곳에서 관리합니다.
+            매일 수집되는 출처와 검색 가능한 뉴스 데이터베이스, SOLA가 제안하는 수집 키워드를 한곳에서 관리합니다.
           </p>
         </div>
         <div class="dm-head-stats">
@@ -34,206 +37,4 @@
           </div>
         </div>
       </header>
-
-      <!-- ── Tabs ──────────────────────────────────────────── -->
       {{DM_TABS}}
-
-      <!-- ── Main body (tab-driven) ────────────────────────── -->
-      {{DM_MAIN_BODY_OPEN}}
-      <div class="dm-split">
-
-        <!-- ════════════════════════════════════════════════
-              LEFT · 수집잡
-             ════════════════════════════════════════════════ -->
-        <section class="dm-jobs">
-          <div class="dm-jobs-head">
-            <div>
-              <div class="dm-sec-eye">오늘의 수집 잡</div>
-              <h2 class="dm-sec-t">정기 수집 · 매일 새벽 자동 실행</h2>
-            </div>
-            <div class="dm-jobs-actions">
-              {{INGEST_REFRESH_CTA}}
-            </div>
-          </div>
-
-          <!-- Job rows -->
-          <ul class="dm-job-list">
-            {{INGEST_JOBS}}
-          </ul>
-
-          <!-- Ingest history sparkline + 최근 수집 런 타임라인 -->
-          <div class="dm-history">
-            {{HIST_HEAD}}
-            {{HIST_SVG}}
-            {{HIST_X}}
-            {{HIST_RUNS}}
-          </div>
-        </section>
-
-        <!-- ════════════════════════════════════════════════
-              RIGHT · 뉴스 라이브러리
-             ════════════════════════════════════════════════ -->
-        <section class="dm-news">
-          <div class="dm-news-head">
-            <div>
-              <div class="dm-sec-eye">뉴스 라이브러리</div>
-              <h2 class="dm-sec-t">검색 가능한 전체 데이터베이스</h2>
-            </div>
-          </div>
-
-          <!-- Filter bar -->
-          <div class="dm-filters">
-            <div class="dm-search">
-              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/></svg>" width="13" height="13" alt="" />
-              <input placeholder="제목 · 본문 · 키워드로 검색">
-            </div>
-            <div class="dm-filter-chips">
-              <span class="dm-fc dm-fc-active">전체 1,247</span>
-              <span class="dm-fc">★ 강한 매칭 8</span>
-              <span class="dm-fc">매칭 32</span>
-              <span class="dm-fc">북마크 17</span>
-              <span class="dm-fc">미확인 124</span>
-            </div>
-            <div class="dm-filter-meta">
-              <button class="dm-sel">
-                출처 · 4개
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>" width="10" height="10" alt="" />
-              </button>
-              <button class="dm-sel">
-                기간 · 7일
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>" width="10" height="10" alt="" />
-              </button>
-              <button class="dm-sel">
-                정렬 · 최신
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>" width="10" height="10" alt="" />
-              </button>
-            </div>
-          </div>
-
-          <!-- Article grid -->
-          <ul class="dm-art-grid">
-            {{NEWS_CARDS}}
-          </ul>
-
-          <!-- Pagination -->
-          <div class="dm-pager">
-            <span class="dm-pager-info">1 – 6 / 1,247</span>
-            <div class="dm-pager-ctrls">
-              <button class="dm-pg dm-pg-off">‹</button>
-              <button class="dm-pg dm-pg-active">1</button>
-              <button class="dm-pg">2</button>
-              <button class="dm-pg">3</button>
-              <span class="dm-pg-dots">…</span>
-              <button class="dm-pg">208</button>
-              <button class="dm-pg">›</button>
-            </div>
-          </div>
-        </section>
-      </div>
-      {{DM_MAIN_BODY_CLOSE}}
-
-      <!-- ── Sub-areas (keyword + roadmap quick entry) ───── -->
-      <div class="dm-sub-grid">
-
-        <a class="dm-sub-card">
-          <div class="dm-sub-head">
-            <span class="dm-sub-mark">
-              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='M21 21l-4.35-4.35'/></svg>" width="14" height="14" alt="" />
-            </span>
-            <div>
-              <div class="dm-sub-t">키워드 매니저</div>
-              <div class="dm-sub-s">활성 8 · 비활성 2 · 예상 56건/일</div>
-            </div>
-            <span class="dm-sub-arr">→</span>
-          </div>
-          <div class="dm-sub-chips">
-            <span class="dm-mc-chip">도장 결함 검사</span>
-            <span class="dm-mc-chip">AI 비전</span>
-            <span class="dm-mc-chip">머신비전 핀홀</span>
-            <span class="dm-mc-chip">VOC 예측</span>
-            <span class="dm-mc-chip dm-mc-chip-user">막두께 자동 측정</span>
-            <span class="dm-mc-chip dm-mc-more">+3</span>
-          </div>
-        </a>
-
-        <a class="dm-sub-card">
-          <div class="dm-sub-head">
-            <span class="dm-sub-mark dm-sub-mark-roadmap">
-              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11'/></svg>" width="14" height="14" alt="" />
-            </span>
-            <div>
-              <div class="dm-sub-t">작업 정의</div>
-              <div class="dm-sub-s">3 파일 · 86 항목 · 매칭 점수 84</div>
-            </div>
-            <span class="dm-sub-arr">→</span>
-          </div>
-          <ul class="dm-sub-list">
-            <li>
-              <span class="dm-rd-i">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>" width="11" height="11" alt="" />
-              </span>
-              <span class="dm-rd-name">자동화기술팀 2026 작업 정의</span>
-              <span class="dm-rd-meta">42항목 · XLSX</span>
-            </li>
-            <li>
-              <span class="dm-rd-i">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>" width="11" height="11" alt="" />
-              </span>
-              <span class="dm-rd-name">도장공정 자동화 4개년 계획</span>
-              <span class="dm-rd-meta">28항목 · PPTX</span>
-            </li>
-            <li>
-              <span class="dm-rd-i">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>" width="11" height="11" alt="" />
-              </span>
-              <span class="dm-rd-name">전사 DX 마스터 플랜 (전체)</span>
-              <span class="dm-rd-meta">16항목 · DOCX</span>
-            </li>
-          </ul>
-          <button class="dm-rd-upload">
-            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12'/></svg>" width="11" height="11" alt="" />
-            작업 정의 파일 추가
-          </button>
-        </a>
-
-        <a class="dm-sub-card">
-          <div class="dm-sub-head">
-            <span class="dm-sub-mark dm-sub-mark-src">
-              <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='3'/><path d='M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15 1.65 1.65 0 003.09 14H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 4.6 1.65 1.65 0 009 3.09V3a2 2 0 014 0v.09A1.65 1.65 0 0014 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.16.5.66.91 1.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z'/></svg>" width="14" height="14" alt="" />
-            </span>
-            <div>
-              <div class="dm-sub-t">출처 설정</div>
-              <div class="dm-sub-s">4 활성 · 1 셀렉터 오류 · 12 후보</div>
-            </div>
-            <span class="dm-sub-arr">→</span>
-          </div>
-          <ul class="dm-src-list-mini">
-            <li>
-              <span class="dm-src-mark" style="background:linear-gradient(135deg,#DC2626,#F87171);"></span>
-              AI Times
-              <span class="dm-src-st dm-src-st-ok">OK</span>
-            </li>
-            <li>
-              <span class="dm-src-mark" style="background:linear-gradient(135deg,#D97706,#F59E0B);"></span>
-              오토메이션월드
-              <span class="dm-src-st dm-src-st-ok">OK</span>
-            </li>
-            <li>
-              <span class="dm-src-mark" style="background:linear-gradient(135deg,#047857,#14B8A6);"></span>
-              Google RSS
-              <span class="dm-src-st dm-src-st-ok">OK</span>
-            </li>
-            <li>
-              <span class="dm-src-mark" style="background:linear-gradient(135deg,#6D28D9,#A78BFA);"></span>
-              네이버 기술
-              <span class="dm-src-st dm-src-st-ok">OK</span>
-            </li>
-            <li class="dm-src-warn">
-              <span class="dm-src-mark" style="background:#94A3B8;"></span>
-              조선해양 e뉴스
-              <span class="dm-src-st dm-src-st-warn">셀렉터 오류</span>
-            </li>
-          </ul>
-        </a>
-      </div>
-</div>

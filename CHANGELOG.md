@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Removed (뉴스 수집 #133 재설계 잔재 — 미사용 레거시 일괄 정리, 코드 −1.2k줄)
+- **옛 뉴스 라이브러리 필터 폼·3탭/그룹 라우팅·옛 카드 빌더를 전부 제거**(`ui/data_management_v2.py` −387, `ui/data_management_render.py` −223): #133 재설계로 **카드 브라우저·기사 모달·⚙ 수집 설정 서브뷰**가 대체한 뒤 화면 흐름에서 더는 호출되지 않던 레거시를, 호환·테스트용으로 남겨뒀던 것을 적극 정리. 제거 함수 — `_filter_news_by_query`·`_news_cards_html`·`_news_source_options`·`_render_news_filter_form`·`_render_jobs_split`·`_render_dm_tabs`·`_render_dm_tab_panel`·`_strip_dm_mockups`·`_dm_tab_href`·`_dm_tabs_html`·`_dm_group_of`·`_dm_groups_html`·`_dm_group_href`·`_dm_resolve_group_and_tab`·`_src_action_href` + 관련 상수(`_DM_TABS`·`_DM_GROUP_*`·`_DM_COLLECT_TABS`·`_MAX_NEWS_CARDS`·`_NEWS_PERIOD/SORT_OPTS` 등). `data_management_render.py` 는 카드·표·모달이 공유하는 **출처색 그라데이션 + 기사 나이 라벨** 헬퍼만 남겼다.
+- **데이터 관리 화면 템플릿을 헤더(KPI 4종)만으로 축소**(`assets/v2/screens/data_management_main.html` −211): 가짜 필터바·페이저·서브카드 목업과 본문 placeholder(`{{NEWS_CARDS}}`·`{{INGEST_JOBS}}`·`{{INGEST_REFRESH_CTA}}` 등)를 모두 걷어내고, `{{DM_TABS}}` 는 `_render_dm_header` 가 헤더만 잘라 쓰는 split 마커로만 남겼다.
+- **함께 고친 버그**: 템플릿 트림 중 주석에 `{{DM_TABS}}` 토큰을 그대로 적어, `_render_dm_header` 의 `split("{{DM_TABS}}")` 가 **첫 occurrence(주석)** 에서 잘려 헤더 KPI 4종이 통째로 사라지던 회귀를 주석 문구 교체로 해소(헤더 정상 렌더 — `test_render_dm_header_has_kpis_and_no_tab_bar` 로 고정).
+- **죽은 테스트 정리**: `tests/test_dm_area_groups.py` 삭제(그룹/탭 라우팅 전량), `test_dm_cleanup.py`·`test_dm_news_filter.py` 재작성(템플릿 헤더화·카드 브라우저 회귀로 교체), `test_dm_tabs.py`·`test_task_def_manage.py`·`test_src_crud.py`·`test_task_def_upload.py`·`test_v2_screens.py`·`test_e2e_scenarios.py`·`test_collect_trigger.py` 에서 제거 심볼 참조 테스트를 삭제/대체. (상단 검색 필터 회귀는 `test_collect_browser.py::test_filtered_records_search_query`(`_sc_filtered_records`)가 이미 커버 — 커버리지 손실 없음.)
+- 검증: pytest **811 passed** · 금지패턴(on_click/requests) 0 · 순변경 13파일 **−1193줄**.
+
 ### Fixed (본문에 포털 UI 텍스트가 섞이던 것 + AI Times 연재/목록 페이지 수집)
 - **포털(다음·네이버) 기사 본문에 제목·TTS·글자크기·번역 위젯·관련기사·저작권 chrome 이 섞이던 문제**(`scraping/enrich.py`): 직전에 본문을 '가장 긴 텍스트 블록'으로 뽑게 바꿨더니, 포털 페이지에서 본문 컨테이너가 아니라 **본문+UI 전체 wrapper** 를 잡았다. → **본문 셀렉터를 신뢰(우선)** 하도록 복원(매칭 셀렉터 중 최장; 없을 때만 문단/최대블록 폴백). 포털 chrome 노이즈 셀렉터(`.tts_area`/`[class*='relate']`/`[class*='copyright']`/`.foot_view` 등) + 보일러플레이트 텍스트(음성재생·글자크기·번역 beta·무단전재·해당 언론사로 이동 등) 제거 추가. 다음 본문 컨테이너(`.article_view`/`[data-translation]`/`#harmonyContainer`) 셀렉터 보강.
 - **AI Times '연재/섹션 목록 페이지'가 기사로 수집돼 같은 기본 이미지(예: VENDOR LOCK IN)가 반복되던 문제**(`scraping/tech_sites.py`): `_NAV_BLOCKLIST` 에 `articleList`·`sc_serial_code`·`sc_section_code`·`view_type=`·`/serial` 등 추가 → 기사 모음 페이지를 개별 기사에서 제외.

@@ -20,67 +20,15 @@ from ui import app_shell
 from ui import components as _components
 from ui._safe import guard
 from ui.styles import inject_screen_css
-# 순수 프레젠테이션 빌더(부작용 없음)는 data_management_render 로 분리(오버사이즈 완화).
-# re-import 로 기존 참조(테스트 포함)를 그대로 유지한다.
+# 순수 프레젠테이션 헬퍼(부작용 없음)는 data_management_render 로 분리.
 from ui.data_management_render import (  # noqa: F401 — re-export
     _SOURCE_GRADIENTS,
     _DEFAULT_GRADIENT,
-    _DM_TABS,
-    _DM_TAB_LABEL,
-    _DM_GROUPS,
-    _DM_GROUP_LABEL,
-    _DM_GROUP_TABS,
-    _DM_GROUP_DEFAULT_TAB,
-    _DM_TAB_ICON_SVG,
     _news_age_label,
-    _news_card_html,
-    _news_empty_html,
-    _dm_group_of,
-    _dm_resolve_group_and_tab,
-    _dm_tab_href,
-    _dm_group_href,
-    _dm_groups_html,
-    _dm_tabs_html,
-    _src_action_href,
 )
 
 
-# 뉴스 라이브러리에 노출할 카드 수
-_MAX_NEWS_CARDS = 6
-
-
 _DM_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "data_management_main.html"
-
-
-def _strip_dm_mockups(html: str) -> str:
-    """정적 목업 블록 제거 (Phase C-3) — 실데이터/실위젯이 대체하는 시안 잔재.
-
-    - 죽은 필터바(검색 input·필터칩·출처/기간/정렬 셀렉트 — 핸들러 없음)
-    - 죽은 페이저(1–6 / 1,247 … 208 — 핸들러 없음)
-    - 가짜 서브카드 3종(키워드 매니저/작업 정의/출처 설정 — 실제 탭이 대체하는 가짜 통계)
-    뉴스 카드 그리드·수집 잡·헤더 통계 등 실데이터는 보존. 마커 슬라이스라 div 균형 비의존.
-    """
-    # dm-filters: 필터바 시작 ~ 기사 그리드 직전
-    i = html.find('<div class="dm-filters">')
-    if i != -1:
-        j = html.find("<!-- Article grid -->", i)
-        if j == -1:
-            j = html.find('<ul class="dm-art-grid">', i)
-        if j != -1:
-            html = html[:i] + html[j:]
-    # dm-pager: 페이저 시작 ~ 섹션 닫힘
-    i = html.find('<div class="dm-pager">')
-    if i != -1:
-        j = html.find("</section>", i)
-        if j != -1:
-            html = html[:i] + html[j:]
-    # dm-sub-grid: 가짜 서브카드 ~ 끝 (dm-shell 닫는 </div> 보존)
-    i = html.find('<div class="dm-sub-grid">')
-    if i != -1:
-        end = html.rfind("</div>")
-        if end != -1 and end > i:
-            html = html[:i] + html[end:]
-    return html
 
 
 @st.cache_data(ttl=60)
@@ -491,109 +439,9 @@ def _hist_html(dark: bool = False) -> dict[str, str]:
     return {"head": head_html, "svg": svg_img, "foot": foot_html, "runs": _run_timeline_html()}
 
 
-# 뉴스 라이브러리 검색 세션 키 — 검색어는 _news_cards_html 에 인자로 전달(캐시키 분리).
+# 상단 토픽 검색 세션 키 + 카드/표 검색 대상 컬럼(카드 브라우저가 사용).
 _NEWS_SEARCH_KEY = "_news_search_q"
 _NEWS_SEARCH_COLS = ("title", "content", "summary", "keywords")
-_MAX_SEARCH_CARDS = 24  # 검색 모드에선 더 많이 노출
-
-# 뉴스 라이브러리 필터(출처·기간·정렬) — st.form 위젯 키. 폼은 '적용' 제출 시에만
-# 값을 커밋하므로 이 키들의 세션 값 = '마지막으로 적용된' 필터다(타이핑/선택 중엔
-# rerun 없음 → '적용' 눌렀을 때만 라이브러리 갱신).
-_NEWS_F_SRC_KEY = "_news_f_src_widget"
-_NEWS_F_PERIOD_KEY = "_news_f_period_widget"
-_NEWS_F_SORT_KEY = "_news_f_sort_widget"
-# 기간 라벨 → 일수, 정렬 라벨 → 키 (dict 삽입순 = 셀렉트박스 표시순, 첫 항목이 기본값).
-_NEWS_PERIOD_OPTS: dict[str, int] = {"최근 3일": 3, "최근 7일": 7, "최근 30일": 30}
-_NEWS_SORT_OPTS: dict[str, str] = {"최신순": "newest", "오래된순": "oldest"}
-
-
-def _filter_news_by_query(news, q: str):
-    """제목·본문·요약·키워드에 `q`(대소문자 무시)가 포함된 뉴스만. 순수 함수(테스트용)."""
-    ql = (q or "").strip().lower()
-    if not ql or news is None or news.empty:
-        return news
-    cols = [c for c in _NEWS_SEARCH_COLS if c in news.columns]
-    if not cols:
-        return news.iloc[0:0]
-    hay = news[cols[0]].fillna("").astype(str)
-    for c in cols[1:]:
-        hay = hay.str.cat(news[c].fillna("").astype(str), sep=" ")
-    return news[hay.str.lower().str.contains(ql, regex=False, na=False)]
-
-
-def _news_search_banner_html(q: str, n: int) -> str:
-    """검색 활성 시 결과 칩 + 해제(×) 링크. 해제는 `?dm_clear_q=1`."""
-    from urllib.parse import quote as _q
-    q_safe = _html.escape(q)
-    clear_href = "?app_area=" + _q("🗞 뉴스 수집") + "&dm_clear_q=1"
-    return (
-        '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; '
-        'margin:0 0 12px; padding:10px 14px; background:var(--accent-ring,rgba(37,99,235,.10)); '
-        'border:1px solid var(--surface-divider); border-radius:10px;">'
-        f'<span style="font-size:13px; color:var(--text-primary);">🔎 '
-        f'<b>“{q_safe}”</b> 검색 결과 <b>{n}건</b></span>'
-        f'<a href="{clear_href}" target="_self" style="margin-left:auto; font-size:12.5px; '
-        'font-weight:600; color:var(--accent-primary); text-decoration:none;">✕ 검색 해제</a>'
-        '</div>'
-    )
-
-
-def _news_filter_banner_html(q: str, sources: tuple[str, ...], days: int,
-                             sort: str, n: int) -> str:
-    """활성 필터(검색어·출처·기간·정렬) 요약 칩 + 결과 건수 + 전체 해제(✕) 배너.
-
-    해제(✕)는 `?dm_clear_filters=1` → `_consume_news_filter_clear_if_any` 가 검색어와
-    폼 위젯을 기본값으로 되돌린다.
-    """
-    from urllib.parse import quote as _q
-    chips: list[str] = []
-    if q:
-        chips.append(f'🔎 “{_html.escape(q)}”')
-    if sources:
-        chips.append(
-            " · ".join(_html.escape(s) for s in sources)
-            if len(sources) <= 2 else f"출처 {len(sources)}개"
-        )
-    if days >= 7:
-        period_label = next((k for k, v in _NEWS_PERIOD_OPTS.items() if v == days), "")
-        if period_label:
-            chips.append(_html.escape(period_label))
-    if sort != "newest":
-        sort_label = next((k for k, v in _NEWS_SORT_OPTS.items() if v == sort), "")
-        if sort_label:
-            chips.append(_html.escape(sort_label))
-    chips_html = " ".join(
-        '<span style="display:inline-block; padding:2px 9px; border-radius:999px; '
-        'background:var(--surface-card); border:1px solid var(--surface-divider); '
-        f'font-size:12px; font-weight:700; color:var(--text-primary);">{c}</span>'
-        for c in chips
-    )
-    clear_href = "?app_area=" + _q("🗞 뉴스 수집") + "&dm_clear_filters=1"
-    # 배너는 <ul class=dm-art-grid> 안에 들어가므로 grid-column:1/-1 로 전체 폭을 차지해야
-    # 한 칸에 끼이지 않는다(그리드 아이템).
-    return (
-        '<div style="grid-column:1/-1; display:flex; align-items:center; gap:8px; flex-wrap:wrap; '
-        'margin:0 0 12px; padding:10px 14px; background:var(--accent-ring,rgba(37,99,235,.10)); '
-        'border:1px solid var(--surface-divider); border-radius:10px;">'
-        f'{chips_html}'
-        f'<span style="font-size:13px; color:var(--text-primary);">결과 <b>{n}건</b></span>'
-        f'<a href="{clear_href}" target="_self" style="margin-left:auto; font-size:12.5px; '
-        'font-weight:600; color:var(--accent-primary); text-decoration:none;">✕ 필터 해제</a>'
-        '</div>'
-    )
-
-
-def _news_no_match_html(q: str = "") -> str:
-    q = (q or "").strip()
-    head = f'“{_html.escape(q)}” 와 일치하는' if q else "선택한 필터에 해당하는"
-    return (
-        '<li class="dm-art" style="grid-column:1/-1; padding:28px 18px; text-align:center; '
-        'color:var(--text-muted); font-size:14px; border:1px dashed var(--surface-divider); '
-        'border-radius:12px;">'
-        f'{head} 뉴스가 없어요.<br>'
-        '<span style="font-size:12.5px;">조건을 바꾸거나 ✕ 로 필터를 해제하세요.</span>'
-        '</li>'
-    )
 
 
 def _consume_news_search_clear_if_any() -> None:
@@ -609,133 +457,6 @@ def _consume_news_search_clear_if_any() -> None:
     if "dm_clear_q" in st.query_params:
         del st.query_params["dm_clear_q"]
     st.rerun()
-
-
-def _consume_news_filter_clear_if_any() -> None:
-    """`?dm_clear_filters=1` → 뉴스 필터 전체 해제: 검색어(`_news_search_q`/`_topbar_q`)와
-    폼 위젯(출처·기간·정렬)을 기본값으로 되돌리고 rerun.
-
-    폼/입력 위젯 값은 위젯 인스턴스화 **전**(=탭 fragment·topbar 렌더 전)에만 세팅
-    가능하므로 render() 최상단에서 실행한다.
-    """
-    if not st.query_params.get("dm_clear_filters"):
-        return
-    st.session_state[_NEWS_SEARCH_KEY] = ""
-    st.session_state["_topbar_q"] = ""
-    st.session_state["_topbar_q_seen"] = ""
-    st.session_state[_NEWS_F_SRC_KEY] = []
-    st.session_state[_NEWS_F_PERIOD_KEY] = next(iter(_NEWS_PERIOD_OPTS))   # "최근 3일"
-    st.session_state[_NEWS_F_SORT_KEY] = next(iter(_NEWS_SORT_OPTS))       # "최신순"
-    if "dm_clear_filters" in st.query_params:
-        del st.query_params["dm_clear_filters"]
-    st.rerun()
-
-
-@st.cache_data(ttl=120)
-def _news_source_options() -> list[str]:
-    """필터 드롭다운 옵션 — 최근 30일 수집 뉴스의 distinct 출처(가나다순).
-
-    실제로 수집된 출처만 노출 → 빈 선택지·없는 출처 필터를 방지. 수집/업로드 시
-    `.clear()` 로 무효화된다.
-    """
-    try:
-        df = _news_db.load_news_for_days(days=30)
-    except Exception:
-        df = None
-    if df is None or df.empty or "source" not in df.columns:
-        return []
-    return sorted({str(s).strip() for s in df["source"].dropna() if str(s).strip()})
-
-
-@st.cache_data(ttl=60)
-def _news_cards_html(q: str = "", sources: tuple[str, ...] = (),
-                     days: int = 0, sort: str = "newest") -> str:
-    """뉴스 카드 — 상단 검색어 `q` + 필터(출처·기간·정렬)를 적용해 렌더.
-
-    필터·검색이 모두 기본값이면 기존 동작(최근 3일 6장, 첫 장 강조)을 그대로 유지하고,
-    하나라도 활성이면 선택 기간(검색만 있고 기간 미선택이면 30일) 안에서 출처·검색어로
-    좁힌 뒤 정렬해 최대 24장 + 활성 필터 배너를 보여준다.
-
-    검색어·필터는 **인자**로 받는다(세션 직접 참조 X) — `st.cache_data` 가 조합별 캐시
-    키를 잡아 결과가 올바르게 분리/갱신되고 `.clear()` 도 유지된다. `days` 는 0/3=기본
-    (검색 시 30일로 자동 확대), 7·30=명시.
-    """
-    q = (q or "").strip()
-    sources = tuple(sources or ())
-    filters_active = bool(q or sources or days >= 7 or sort != "newest")
-    load_days = days if days >= 7 else (30 if q else 3)
-    try:
-        news = _news_db.load_news_for_days(days=load_days)
-    except Exception:
-        news = None
-    if news is None or news.empty:
-        banner = _news_filter_banner_html(q, sources, days, sort, 0) if filters_active else ""
-        return banner + _news_empty_html()
-
-    # 정렬 — collected_at(없으면 published_at) 기준. oldest 면 오름차순.
-    sort_col = ("collected_at" if "collected_at" in news.columns
-                else "published_at" if "published_at" in news.columns else None)
-    if sort_col:
-        news = news.sort_values(sort_col, ascending=(sort == "oldest"))
-
-    # 출처 필터 → 검색어 필터 (좁히는 순서)
-    if sources and "source" in news.columns:
-        news = news[news["source"].astype(str).isin(list(sources))]
-    if q:
-        news = _filter_news_by_query(news, q)
-
-    if filters_active:
-        if news is None or news.empty:
-            return _news_filter_banner_html(q, sources, days, sort, 0) + _news_no_match_html(q)
-        cards = "\n".join(
-            _news_card_html(row, is_strong=False)
-            for _, row in news.head(_MAX_SEARCH_CARDS).iterrows()
-        )
-        return _news_filter_banner_html(q, sources, days, sort, int(len(news))) + cards
-
-    # 기본 — 최근 6장, 첫 장 강조 (기존 동작 유지)
-    top = news.head(_MAX_NEWS_CARDS)
-    return "\n".join(
-        _news_card_html(row, is_strong=(i == 0))
-        for i, (_, row) in enumerate(top.iterrows())
-    )
-
-
-def _render_news_filter_form() -> tuple[tuple[str, ...], int, str]:
-    """뉴스 라이브러리 필터 — st.form(출처·기간·정렬 + 적용).
-
-    폼 위젯은 '적용' 제출 전까지 rerun 을 일으키지 않으므로 **'적용' 눌렀을 때만**
-    라이브러리가 갱신된다(요청 방법론). 반환: (선택 출처 tuple, 기간 일수, 정렬 키) —
-    폼이 제출 시에만 값을 커밋하므로 여기서 읽는 값은 곧 '마지막으로 적용된' 필터다.
-
-    `with st.form(...)` 단일 블록(열고 submit 버튼까지 한 번에 닫음)이라 chat_panel 의
-    입력 폼과 동일하게 bare 모드 'active form' 누수가 없다. 단, `_render_jobs_split` 의
-    bare 단위 테스트는 이 함수를 patch 해 폼 위젯을 타지 않는다.
-    """
-    options = _news_source_options()
-    with st.container(key="dm_news_filter"):
-        st.html(
-            '<div class="dm-nf-head">🔎 뉴스 라이브러리 필터'
-            '<span class="dm-nf-hint">출처·기간·정렬 선택 후 [적용]</span></div>'
-        )
-        with st.form(key="_dm_news_filter_form", clear_on_submit=False, border=False):
-            c1, c2, c3, c4 = st.columns([3, 1.5, 1.5, 1.1], vertical_alignment="bottom")
-            with c1:
-                src = st.multiselect(
-                    "출처", options, key=_NEWS_F_SRC_KEY,
-                    placeholder="전체 출처", help="선택한 출처만 보기(미선택=전체 출처).",
-                )
-            with c2:
-                period = st.selectbox("기간", list(_NEWS_PERIOD_OPTS), key=_NEWS_F_PERIOD_KEY)
-            with c3:
-                sort = st.selectbox("정렬", list(_NEWS_SORT_OPTS), key=_NEWS_F_SORT_KEY)
-            with c4:
-                st.form_submit_button("적용", type="primary", use_container_width=True)
-    return (
-        tuple(src or ()),
-        _NEWS_PERIOD_OPTS.get(period, 3),
-        _NEWS_SORT_OPTS.get(sort, "newest"),
-    )
 
 
 @st.cache_data(ttl=60)
@@ -856,9 +577,7 @@ def chat_context_block_taskdef(persona: Persona) -> str:
 #   대분류 탭(키워드/포탈) + 출처칩 + 사진 카드(제목·본문 일부). 카드 클릭 →
 #   ?news=<link> → 기사 모달(본문 전체 + 원본 링크).
 # 설정(서브뷰): 키워드 관리 + 포탈(출처) 관리 + 수집 실행·이력 상세.
-# 뉴스 라이브러리 필터 폼은 더 이상 렌더하지 않는다(상단 검색이 대체). 레거시
-# 빌더(_render_news_filter_form/_render_jobs_split/_render_dm_tabs/_news_cards_html)
-# 는 호환·테스트용으로 유지하되 화면 흐름에서는 호출하지 않는다.
+# (구 뉴스 라이브러리 필터 폼·3탭 레이아웃은 #133 재설계로 제거됨 — 상단 검색이 대체.)
 
 # 대분류 — 키워드(검색 기반: naver/google) vs 포탈(사이트 피드: tech + 커스텀 RSS)
 _SC_KEYWORD_SOURCES: frozenset[str] = frozenset({"naver", "google"})
@@ -1411,18 +1130,10 @@ def _render_taskdef_header(td_stats: dict[str, str | int]) -> None:
     st.html(_components.prepare_screen_html(html_out))
 
 
-# 탭 표시 순서 — 뉴스 그룹(jobs·kw·src) 다음 작업 그룹(task·manage).
-_DM_DISPLAY_TABS: tuple[str, ...] = ("jobs", "kw", "src", "task", "manage")
-# 뉴스 수집 화면의 탭(구 데이터 관리 '뉴스' 그룹). '작업 정의' 화면(task·manage)은
-# 탭 없이 세로 배치(render_taskdef)라 여기 포함하지 않는다.
-_DM_COLLECT_TABS: tuple[str, ...] = ("jobs", "kw", "src")
-
-
 def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
-    """상단 고정 헤더(브레드크럼·설명·KPI 4종) — 탭 바 위에 1회만.
+    """수집 현황 요약 헤더(브레드크럼·설명·KPI 4종) — 카드뷰/설정뷰 상단에 1회.
 
-    탭 전환은 _render_dm_tabs fragment 안에서만 일어나므로 이 헤더는 다시 그려지지
-    않는다 (탭마다 KPI 가 깜빡이던 monolithic st.html 문제 제거)."""
+    `_DM_TEMPLATE` 의 헤더 부분({{DM_TABS}} 앞)만 잘라 KPI 를 끼워 렌더한다."""
     template = _DM_TEMPLATE.read_text(encoding="utf-8")
     head = template.split("{{DM_TABS}}", 1)[0]  # <div class=dm-shell>…<header>…</header>
     head_html = (
@@ -1433,87 +1144,6 @@ def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
         .replace("{{LAST_UPDATE}}", _html.escape(str(dm_stats["last_update"])))
     ) + "</div>"  # split 로 잘려나간 dm-shell 닫기 보강
     st.html(_components.prepare_screen_html(head_html))
-
-
-def _render_jobs_split(dm_stats: dict[str, str | int]) -> None:
-    """jobs 탭 본문 — 수집잡 + 뉴스 라이브러리(.dm-split). 헤더는 _render_dm_header 가
-    이미 그렸으므로 여기선 {{DM_TABS}} 이후 본문만."""
-    # '지금 뉴스 수집' — 앵커(?refresh=now)였던 CTA 를 st.button 위젯으로(소켓 rerun,
-    # 문서 reload·흰 깜빡임 없음). 본문(.dm-split) 위 우측에 핀. {{INGEST_REFRESH_CTA}}
-    # 자리는 비운다.
-    _render_collect_button()
-    # 뉴스 라이브러리 필터(출처·기간·정렬) — 폼 '적용' 시에만 커밋. 반환값을 카드 빌더 인자로.
-    f_sources, f_days, f_sort = _render_news_filter_form()
-    q = str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()
-    template = _DM_TEMPLATE.read_text(encoding="utf-8")
-    body = template.split("{{DM_TABS}}", 1)[1]
-    from store import ui_prefs as _uiprefs
-    hist = _hist_html(_uiprefs.load().get("theme") == "dark")
-    html_out = (
-        '<div class="dm-shell">' + body
-        .replace("{{NEWS_CARDS}}", _news_cards_html(q, f_sources, f_days, f_sort))
-        .replace("{{INGEST_JOBS}}", _ingest_jobs_html())
-        .replace("{{INGEST_REFRESH_CTA}}", "")
-        .replace("{{HIST_HEAD}}", hist["head"])
-        .replace("{{HIST_SVG}}", hist["svg"])
-        .replace("{{HIST_X}}", hist["foot"])
-        .replace("{{HIST_RUNS}}", hist["runs"])
-        .replace("{{DM_MAIN_BODY_OPEN}}", "")
-        .replace("{{DM_MAIN_BODY_CLOSE}}", "")
-    )
-    html_out = _strip_dm_mockups(html_out)
-    st.html(_components.prepare_screen_html(html_out))
-
-
-# 세그먼트 탭 바용 짧은 라벨(+아이콘) — 좁은 본문 컬럼에 5개가 안 넘치게.
-_DM_TAB_SHORT: dict[str, str] = {
-    "jobs": "🗞 수집잡", "kw": "🔑 키워드", "src": "⚙️ 출처",
-    "task": "📊 엑셀 업로드", "manage": "✏️ 작업 정의",
-}
-
-
-@st.fragment
-def _render_dm_tabs(dm_stats: dict[str, str | int], persona,
-                    tabs: tuple[str, ...] = _DM_COLLECT_TABS) -> None:
-    """탭 바(segmented_control) + 활성 탭 본문만 조건부 렌더 — fragment 스코프.
-
-    탭 전환은 이 fragment 만 rerun → 헤더·사이드바·우측 채팅은 그대로, 활성 탭
-    본문만 부분 갱신. 비활성 탭 본문은 계산하지 않는다(조건부 렌더 — st.tabs 의
-    eager 렌더 비용 제거). 활성 탭은 session_state(`_dm_active_tab`)에 보존 →
-    출처 토글·수집 등 앵커 리로드 후에도 같은 탭 유지.
-
-    `tabs` 는 화면별 탭 부분집합(뉴스 수집=jobs·kw·src). 작업 정의는 탭이 없어
-    이 함수를 쓰지 않는다."""
-    default = tabs[0]
-    if st.session_state.get("_dm_active_tab") not in tabs:
-        st.session_state["_dm_active_tab"] = default
-    with st.container(key="dm_tabbar"):
-        active = st.segmented_control(
-            "뉴스 수집 탭", list(tabs),
-            format_func=lambda t: _DM_TAB_SHORT[t],
-            key="_dm_active_tab", label_visibility="collapsed",
-        ) or st.session_state["_dm_active_tab"]
-    if active not in tabs:
-        active = default
-    _render_dm_tab_panel(active, dm_stats, persona)
-
-
-def _render_dm_tab_panel(tab_key: str, dm_stats: dict[str, str | int], persona) -> None:
-    """활성 탭 본문만 렌더(조건부). 무거운 jobs/manage 도 활성일 때만 계산."""
-    if tab_key == "jobs":
-        _render_jobs_split(dm_stats)
-    elif tab_key == "manage":
-        from ui import task_def_manage as tdm
-        tdm.render(st.query_params)
-    elif tab_key == "src":
-        # 출처 표(토글/제거)는 위젯이라 HTML 단일 블록이 아니다 → 전용 렌더.
-        _render_src_table(dm_stats)
-        _render_src_add_form()
-    else:
-        st.html(_components.prepare_screen_html(
-            _dm_tab_body_html(tab_key, persona=persona, dm_stats=dm_stats)))
-        if tab_key == "task":
-            _render_task_def_upload()
 
 
 def _render_collect_button() -> None:
@@ -1552,8 +1182,7 @@ def _consume_refresh_if_any() -> bool:
     # 즉시 새 수집 결과로 갱신된다 (Phase 2 dedup 회귀 방지).
     from ui import board_v2 as _bv2  # lazy
 
-    for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html,
-               _news_source_options, _sc_browse_records,
+    for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _sc_browse_records,
                _archive_stats_dm, _bv2._board_kpis):
         if hasattr(fn, "clear"):
             fn.clear()
@@ -1658,8 +1287,8 @@ def _consume_task_def_upload_if_any() -> None:
         # 데이터 관리 캐시 + 보드/인사이트의 _load_tasks 캐시도 invalidate.
         # `_archive_stats_dm` 는 `board_v2._archive_stats()` 위임이라 board 의 _board_kpis 도 비움.
         from ui import board_v2 as _bv2  # lazy
-        for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _news_cards_html,
-                   _news_source_options, _archive_stats_dm, _bv2._board_kpis):
+        for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _sc_browse_records,
+                   _archive_stats_dm, _bv2._board_kpis):
             if hasattr(fn, "clear"):
                 fn.clear()
         try:
