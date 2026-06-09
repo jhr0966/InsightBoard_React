@@ -328,7 +328,11 @@ def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
     # _extract_image_url 가 이미 junk 를 걸러 반환하므로 그대로 우선한다.
     if is_junk_image(image_url):
         image_url = ""
-    if link and (content_needs_refresh(content) or not image_url):
+    # 미해석 구글 뉴스 링크(news.google.com)는 인터스티셜 페이지라 fetch 하면 본문은
+    # 비고 og:image 는 'Google News 로고'만 들어온다(카드 전부 같은 로고) → fetch 자체를
+    # 건너뛴다. 원문이 풀린 링크(퍼블리셔 도메인)만 본문·og:image 를 가져온다.
+    fetchable = bool(link) and "news.google.com" not in link
+    if fetchable and (content_needs_refresh(content) or not image_url):
         fetched = fetch_article(link)
         content = fetched.get("content") or content
         image_url = fetched.get("image_url") or image_url

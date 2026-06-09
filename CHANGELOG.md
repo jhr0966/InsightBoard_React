@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (구글 뉴스 카드 이미지가 전부 'Google News 로고'로 나오던 것)
+- **원인**: 구글 RSS 링크(`news.google.com/rss/articles/<불투명토큰>`)가 원문으로 해석되지 않아, enrich 가 **구글 인터스티셜 페이지**를 열어 그 페이지의 og:image(= Google News 로고)를 가져옴 → 모든 구글 카드가 같은 로고.
+- **안전망(확실)** `scraping/enrich.py`: **미해석 구글 링크(`news.google.com`)는 fetch 자체를 건너뛴다** → 로고가 안 들어오고, 원문이 풀린 퍼블리셔 링크만 본문·og:image 를 가져온다. (테스트로 검증 — 구글 미해석 링크 fetch 0회.)
+- **신 포맷 링크 해석** `scraping/google.py`: 불투명 토큰을 구글 내부 **batchexecute API** 로 원문 URL 복원(`_batchexecute_decode`/`_parse_batchexecute`) — 구 base64 디코드 → batchexecute → 리디렉트 순. 링크 해석은 **병렬**(ThreadPool)로 처리해 수집 지연 최소화.
+- 검증: pytest **849 passed** — batchexecute 응답 파싱·해석 우선순위·enrich 안전망(구글 미해석 fetch 스킵)·퍼블리셔 링크 fetch 테스트. 금지패턴 0. ⚠️ **샌드박스 외부망 차단으로 구글 batchexecute 라이브 동작은 미검증** — 배포 앱 재수집으로 확인 필요. 안전망 덕분에 **최악의 경우에도 로고 대신 그라데이션 플레이스홀더**(로고 일괄 표시 해소는 보장).
+
 ### Fixed (기사 모달 — 박스가 화면보다 커서 스크롤·버튼/사진 잘림)
 - **모달을 뷰포트에 맞게 컴팩트화**(`assets/v2/screens/data_management.css`, `assets/v2/streamlit-overrides.css`): 본문이 길면 모달이 화면을 넘어 다이얼로그 전체가 스크롤되고 닫기/원문 버튼·사진이 잘리던 문제. 이미지 `max-height:280px·cover` → **`18vh·contain`**(잘리지 않게 전체 표시) + 배경, 본문 `max-height:60vh` → **`36vh`**(내부 스크롤로 가둠), 제목/여백 축소, 다이얼로그 `max-width:880px`(와이드 모니터 배너화 방지). 합계 ≈87vh 로 맞춰 **닫기·원문 버튼이 항상 보이게**.
 - **모달 본문 중복 제거**(`ui/data_management_v2.py _news_modal_body`): content 가 있으면 본문만, 없을 때만 요약을 본문 자리에 노출(요약+본문 이중 노출 → 길이 증가 방지).

@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-09 — fix: 구글 카드 이미지가 전부 'Google News 로고'이던 것 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 구글 카드 이미지가 전부 동일한 Google News 로고. 원인 — 구글 RSS 링크(불투명 토큰)가 원문으로 안 풀려 enrich 가 **구글 인터스티셜 페이지의 og:image(로고)** 를 가져옴. (이 환경은 외부망 차단이라 라이브 확인 불가 → 코드/테스트로 검증.)
+
+**어떻게**:
+- 안전망(확실): `enrich.enrich_one` — **미해석 `news.google.com` 링크는 fetch 스킵** → 로고 안 들어옴(그라데이션 폴백). 원문 풀린 퍼블리셔 링크만 fetch.
+- 신 포맷 해석: `google._batchexecute_decode`/`_parse_batchexecute` — 구글 내부 batchexecute API 로 불투명 토큰 → 원문 URL. `_resolve_link` 우선순위 base64→batchexecute→리디렉트. 링크 해석 **병렬**(ThreadPool) 처리.
+- 테스트: batchexecute 파싱·해석 우선순위·enrich 안전망(구글 fetch 0회)·퍼블리셔 fetch.
+
+**검증**: pytest **849 passed** · 금지패턴 0(`session.post` 사용). ⚠️ batchexecute 라이브는 미검증(외부망 차단) — 배포 재수집 필요. 안전망으로 **로고 일괄 표시는 확실히 해소**.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-09 — fix(UI): 기사 모달이 화면보다 커서 스크롤·버튼/사진 잘림 → 컴팩트화 (`claude/kind-volta-IWxix`)
 
 **무엇을**: enrich 수정으로 본문/사진은 잘 들어옴(✓). 남은 문제 — 본문이 길면 모달이 뷰포트를 넘어 다이얼로그 전체가 스크롤되고 닫기/원문 버튼·사진이 잘림.
@@ -13,7 +28,7 @@
 
 **검증**: pytest **844 passed**(모달 본문/요약 폴백 테스트 갱신·신규) · 금지패턴 0. CSS 비율은 실배포 화면 확인 권장.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#138).
 
 ---
 
