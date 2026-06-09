@@ -1320,6 +1320,10 @@ a.dm-tab:hover { text-decoration: none; }
   color: #fff; background: var(--accent-primary); text-decoration: none;
 }
 .sc-modal-link:hover { background: var(--accent-hover); text-decoration: none; }
+/* 모달 하단 액션 행 — 원본 링크가 ✕ 닫기 버튼과 같은 라인에서 컬럼 폭을 채우게 */
+a.sc-modal-link--row, a.sc-modal-link--row:visited {
+  display: flex; width: 100%; justify-content: center; box-sizing: border-box;
+}
 
 /* ── 뉴스 수집 개편 v2 — 보기 모드 + 클릭형 카드(오버레이 버튼) + 표 ───────── */
 /* 컨테이너 인셋(헤더·카드와 폭 정렬) */

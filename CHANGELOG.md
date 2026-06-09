@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+### Fixed (thebell 본문·사진 미수집 + 구글 뉴스 본문 노이즈 + 기사 모달 버튼 배치)
+- **thebell.co.kr 기사 본문·사진이 통째로 비던 문제**(`scraping/enrich.py`): thebell 류 구형 ASP/WAF 사이트가 세션 쿠키 없는 직접 진입·약식 헤더를 403 으로 차단 → `fetch_article` 이 빈 값 반환. **차단 응답(401/403/406/412/429) 시 1회 강화 재시도** 추가 — ① 사이트 홈 워밍업으로 세션 쿠키 획득 ② sec-fetch 브라우저 시그널 + 네이버 검색 referer(검색 클릭 유입 위장)로 재요청(`_get_article_response`/`_full_browser_headers`). ⚠ 샌드박스 외부망 차단으로 thebell 실사이트 라이브 동작은 미검증 — 배포 환경 재수집으로 확인 필요.
+- **구글 뉴스 본문에 제목 반복 + UI 버튼 텍스트(번역/beta/kaka i/닫기/작은·큰 폰트)·섹션명·날짜가 섞이던 문제**(`scraping/enrich.py`): 본문 셀렉터 미매칭 → 최대블록 폴백이 기사 wrapper 를 잡을 때 생기는 잔재. ① `_BOILERPLATE_PATTERNS` 에 퍼블리셔 UI 버튼(폰트/공유/번역/SNS)·섹션명 단독 라인·입력/수정 일시·날짜-only 라인 패턴 추가 ② `_strip_title_echo` 신설 — 본문에 제목과 동일한 라인이 반복되면 제거(8자 미만 제목은 오삭제 방지 위해 제외), `enrich_one` 경로에 적용.
+- **기사 모달 — 원본 기사 열기·✕ 닫기 버튼을 같은 라인에 병렬 배치**(`ui/data_management_v2.py _news_modal_body`, `assets/v2/screens/data_management.css`): 링크를 모달 HTML 내부에서 빼내 `st.columns(2)` 행으로 — 1열 원본 링크(`sc-modal-link--row`: 컬럼 전폭·중앙 정렬), 2열 ✕ 닫기. 링크 없으면 닫기만 전폭. 브라우저 스크린샷으로 병렬 배치 확인.
+- 검증: pytest **817 passed**(신규 6 — WAF 재시도 헤더/워밍업·정상시 미재시도·UI 버튼 라인 제거·제목 반복 제거 2종·모달 액션 행) · 금지패턴 0.
+
+### Added (개발 자체검증 세팅 — 브라우저 + 웹크롤링)
+- **크롤링 파이프라인 자체검증 스크립트 신설**(`scripts/verify_scrape.py`): 외부망이 allowlist 로 차단된 환경에서도 크롤링을 검증할 수 있게, **로컬 fixture HTTP 서버**(RSS 피드·사이트 목록·기사 페이지·네이버 검색결과 마크업)를 띄우고 실제 모듈 경로(`build_session()` HTTP 왕복 → 파싱)를 그대로 태운다. 검사 4종 — ① `rss.fetch`(필드·pubDate ISO 변환·이미지·태그 제거) ② `tech_sites.search_site`(제목 길이·도메인·`_NAV_BLOCKLIST` 필터) ③ `enrich.fetch_article`(본문 셀렉터 추출 + 헤더 chrome 미혼입 + og:image) ④ 네이버 검색결과 셀렉터(`_find_news_items`·제목/링크). `--live` 플래그로 실 외부 소스(네이버·구글·AI Times RSS)도 시도하며, 전 소스 실패 시 망 차단 가능성을 알리고 실패 처리.
+- **Makefile 검증 타깃 추가**: `make verify-scrape`(크롤링 자체검증), `make verify-browser`(Playwright 화면 검증). `make test` 는 `python -m pytest` 로 변경 — PATH 의 uv 격리 pytest 가 프로젝트 의존성을 못 보던 환경 문제 회피.
+
+### Fixed (브라우저 시각검증 스크립트 현행화)
+- **`scripts/verify_browser.py` 구버전 영역명 수정**: `🧱 데이터 관리`(존재하지 않음 → 보드로 폴백돼 같은 화면 2번 캡처)를 현행 `🗞 뉴스 수집`·`📋 작업 정의` 로 교체 — 6장 → **7장** 캡처.
+- **온보딩 모달 자동 해제**: `page.goto` 마다 새 Streamlit 세션이라 '반갑습니다' 모달이 모든 스크린샷을 가리던 문제 → 화면마다 '다음에 하기' 버튼을 클릭해 닫는 `_dismiss_onboarding` 추가.
+- **chromium 경로 하드코딩 제거**: `/opt/pw-browsers/chromium-1194/...` 고정 → `chromium-*` glob 탐색 + 없으면 Playwright 기본 탐색 폴백.
+- 검증: pytest **811 passed** · `verify_scrape` 4/4 · `verify_browser` 7/7 캡처(온보딩 미노출 확인) · 금지패턴 0.
+
 ### Removed (뉴스 수집 #133 재설계 잔재 — 미사용 레거시 일괄 정리, 코드 −1.2k줄)
 - **옛 뉴스 라이브러리 필터 폼·3탭/그룹 라우팅·옛 카드 빌더를 전부 제거**(`ui/data_management_v2.py` −387, `ui/data_management_render.py` −223): #133 재설계로 **카드 브라우저·기사 모달·⚙ 수집 설정 서브뷰**가 대체한 뒤 화면 흐름에서 더는 호출되지 않던 레거시를, 호환·테스트용으로 남겨뒀던 것을 적극 정리. 제거 함수 — `_filter_news_by_query`·`_news_cards_html`·`_news_source_options`·`_render_news_filter_form`·`_render_jobs_split`·`_render_dm_tabs`·`_render_dm_tab_panel`·`_strip_dm_mockups`·`_dm_tab_href`·`_dm_tabs_html`·`_dm_group_of`·`_dm_groups_html`·`_dm_group_href`·`_dm_resolve_group_and_tab`·`_src_action_href` + 관련 상수(`_DM_TABS`·`_DM_GROUP_*`·`_DM_COLLECT_TABS`·`_MAX_NEWS_CARDS`·`_NEWS_PERIOD/SORT_OPTS` 등). `data_management_render.py` 는 카드·표·모달이 공유하는 **출처색 그라데이션 + 기사 나이 라벨** 헬퍼만 남겼다.
 - **데이터 관리 화면 템플릿을 헤더(KPI 4종)만으로 축소**(`assets/v2/screens/data_management_main.html` −211): 가짜 필터바·페이저·서브카드 목업과 본문 placeholder(`{{NEWS_CARDS}}`·`{{INGEST_JOBS}}`·`{{INGEST_REFRESH_CTA}}` 등)를 모두 걷어내고, `{{DM_TABS}}` 는 `_render_dm_header` 가 헤더만 잘라 쓰는 split 마커로만 남겼다.

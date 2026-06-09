@@ -1,4 +1,4 @@
-.PHONY: install run check test format clean
+.PHONY: install run check test format clean verify-browser verify-scrape
 
 PY_FILES := $(shell git ls-files '*.py')
 
@@ -29,7 +29,15 @@ check:
 	fi
 
 test:
-	pytest -q
+	python -m pytest -q
+
+# Streamlit 이 떠 있는 상태에서 v2 화면 7개 스크린샷 검증 (Playwright)
+verify-browser:
+	python scripts/verify_browser.py http://127.0.0.1:8501
+
+# 크롤링 파이프라인 자체검증 — 로컬 fixture 서버, 외부망 불필요
+verify-scrape:
+	python scripts/verify_scrape.py
 
 format:
 	python -m pip install ruff

@@ -1,22 +1,23 @@
-"""브라우저로 v2 화면 6개 시각 회귀 검증 — Playwright + 사전설치된 chromium.
+"""브라우저로 v2 화면 7개 시각 회귀 검증 — Playwright + 사전설치된 chromium.
 
 Usage:
   # 1) Streamlit 띄운 상태에서
   python scripts/verify_browser.py http://127.0.0.1:8501
 
-  # 2) 결과: /tmp/v2-screens/<area>.png 6장
+  # 2) 결과: /tmp/v2-screens/<area>.png 7장
 """
 from __future__ import annotations
+import glob
 import sys
 from pathlib import Path
 from urllib.parse import quote
 
 from playwright.sync_api import sync_playwright
 
-CHROME = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
 AREAS = [
     ("board", "📊 오늘의 보드"),
-    ("data", "🧱 데이터 관리"),
+    ("collect", "🗞 뉴스 수집"),
+    ("taskdef", "📋 작업 정의"),
     ("insights", "🔎 인사이트 분석"),
     ("sola", "🤖 SOLA 작업실"),
     ("archive", "📦 산출물 보관함"),
@@ -24,12 +25,33 @@ AREAS = [
 ]
 
 
+def _find_chrome() -> str | None:
+    """사전설치 chromium 탐색 — 없으면 None(playwright 기본 탐색에 위임)."""
+    hits = sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome"))
+    return hits[-1] if hits else None
+
+
+def _dismiss_onboarding(page) -> None:
+    """온보딩 모달('반갑습니다')이 떠 있으면 '다음에 하기'로 닫는다.
+
+    Streamlit 세션은 page.goto 마다 새로 열리므로 화면마다 호출해야 한다.
+    """
+    try:
+        btn = page.get_by_role("button", name="다음에 하기").first
+        if btn.is_visible(timeout=2000):
+            btn.click()
+            page.wait_for_timeout(1500)  # rerun 후 모달 제거 대기
+    except Exception:
+        pass  # 모달 없음 — 정상
+
+
 def main(base_url: str = "http://127.0.0.1:8501") -> int:
     out = Path("/tmp/v2-screens")
     out.mkdir(parents=True, exist_ok=True)
     fails: list[str] = []
     with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=CHROME, headless=True, args=["--no-sandbox"])
+        chrome = _find_chrome()
+        b = p.chromium.launch(executable_path=chrome, headless=True, args=["--no-sandbox"])
         ctx = b.new_context(viewport={"width": 1440, "height": 900})
         page = ctx.new_page()
         errors: list[str] = []
@@ -46,6 +68,7 @@ def main(base_url: str = "http://127.0.0.1:8501") -> int:
                     page.wait_for_selector(".db-topbar", timeout=15000, state="attached")
                 except Exception:
                     pass
+                _dismiss_onboarding(page)
                 page.wait_for_timeout(2000)  # 캐시 미스 / 차트 SVG 렌더 안정화
                 shot = out / f"{slug}.png"
                 page.screenshot(path=str(shot), full_page=True)
