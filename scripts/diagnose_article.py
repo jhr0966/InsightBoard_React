@@ -120,6 +120,14 @@ def main(url: str) -> int:
     if not hit:
         print("   (셀렉터 미매칭 → 문단/최대블록 폴백 경로 사용)")
 
+    # ⑥-b 구조화 데이터 본문 (SPA — 조선닷컴 등 Arc 계열)
+    raw_soup = soup_of(text)
+    ld = enrich._ldjson_article_body(raw_soup)
+    fusion = enrich._arc_fusion_body(text)
+    print("\n⑥-b 구조화 데이터 본문")
+    print(f"   ld+json articleBody : {len(ld)}자")
+    print(f"   Fusion.globalContent: {len(fusion)}자")
+
     # ⑦ 최종 파이프라인 결과
     art = enrich.fetch_article(url)
     print(f"\n⑦ fetch_article 결과   본문 {len(art['content'])}자 · 이미지: "

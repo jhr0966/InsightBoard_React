@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import html as _html
+import json
 import logging
 import random
 import re
@@ -311,6 +312,55 @@ def _get_article_response(sess, url: str):
     return resp
 
 
+def _ldjson_article_body(soup) -> str:
+    """schema.org NewsArticle ld+json 의 articleBody — SPA 라도 메타엔 전문이 있다."""
+    for tag in soup.select("script[type='application/ld+json']"):
+        try:
+            data = json.loads(tag.string or tag.get_text() or "")
+        except (ValueError, TypeError):
+            continue
+        nodes = data if isinstance(data, list) else [data]
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            graph = node.get("@graph")
+            if isinstance(graph, list):
+                nodes.extend(n for n in graph if isinstance(n, dict))
+                continue
+            body = node.get("articleBody")
+            if isinstance(body, str) and body.strip():
+                return _clean_article_text(body)
+    return ""
+
+
+def _arc_fusion_body(html_text: str) -> str:
+    """Arc Publishing(Fusion) SPA 본문 — `Fusion.globalContent` JSON 의 문단 복원.
+
+    조선닷컴 등 Arc 계열은 본문 문단이 DOM 에 없고(JS 렌더) fusion-metadata 스크립트의
+    content_elements(type=text/raw_html) 에만 있다. 마커가 없으면 빈 문자열.
+    """
+    m = re.search(r"Fusion\.globalContent\s*=\s*", html_text)
+    if not m:
+        return ""
+    try:
+        data, _ = json.JSONDecoder().raw_decode(html_text, m.end())
+    except ValueError:
+        return ""
+    paras: list[str] = []
+    for el in data.get("content_elements") or []:
+        if isinstance(el, dict) and el.get("type") in ("text", "raw_html"):
+            txt = re.sub(r"<[^>]+>", " ", str(el.get("content") or ""))
+            if txt.strip():
+                paras.append(txt)
+    return _clean_article_text("\n".join(paras))
+
+
+def _structured_body(soup, html_text: str) -> str:
+    """구조화 데이터(ld+json → Arc Fusion)에서 본문 — 둘 중 더 긴 쪽."""
+    candidates = (_ldjson_article_body(soup), _arc_fusion_body(html_text))
+    return max(candidates, key=len)
+
+
 def fetch_article(url: str, *, session=None) -> dict[str, str]:
     """기사 URL → 정제된 본문과 대표 이미지 URL."""
     if not url or not url.startswith("http"):
@@ -330,6 +380,8 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
     try:
         soup = soup_of(resp.text)
         image_url = _extract_image_url(soup, url)
+        # _strip_noise 가 script 를 지우기 전에 구조화 데이터(ld+json/Fusion) 본문 확보.
+        structured = _structured_body(soup, resp.text)
         _strip_noise(soup)
 
         # 1) 본문 컨테이너 셀렉터를 **신뢰**한다. 매칭되는 셀렉터 중 가장 긴 텍스트를
@@ -343,8 +395,13 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
                 text = _text_from_tag(tag)
                 if len(text) >= _MIN_CONTENT_LEN:
                     selector_texts.append(text)
-        if selector_texts:
-            return {"content": max(selector_texts, key=len), "image_url": image_url}
+        best_dom = max(selector_texts, key=len) if selector_texts else ""
+        # SPA(조선닷컴 등 Arc 계열): 본문 문단이 DOM 에 없어(JS 렌더) 셀렉터/폴백이
+        # 빈손이 된다 → 구조화 데이터 본문이 DOM 보다 길면 그쪽을 신뢰.
+        if len(structured) >= _MIN_CONTENT_LEN and len(structured) > len(best_dom):
+            return {"content": structured, "image_url": image_url}
+        if best_dom:
+            return {"content": best_dom, "image_url": image_url}
 
         # 2) 본문 셀렉터가 하나도 없을 때만 폴백: 문단(<p>) 합치기 → 그래도 빈약하면
         #    링크 적은 '최대 텍스트 블록'. (비표준 마크업 사이트 대응.)

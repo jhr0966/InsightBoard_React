@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (조선닷컴 본문 미수집 — SPA 구조화 데이터 본문 추출)
+- **조선닷컴 기사가 사진·제목만 되고 본문이 비던 문제**(`scraping/enrich.py`): 조선닷컴은 Arc Publishing(Fusion) 기반 SPA 라 **본문 문단이 DOM 에 없고**(JS 렌더) 페이지 내 JSON 에만 있다 → 셀렉터/문단 폴백이 빈손. 구조화 데이터 추출 2종 신설 — ① `_ldjson_article_body`: schema.org NewsArticle ld+json 의 `articleBody`(범용, `@graph` 중첩 지원) ② `_arc_fusion_body`: `Fusion.globalContent` JSON 의 `content_elements`(type=text/raw_html) 문단 복원(`raw_decode` 로 안전 파싱). `fetch_article` 에서 `_strip_noise` 가 script 를 지우기 **전에** 확보하고, DOM 셀렉터 본문보다 길 때만 채택(서버렌더 사이트는 기존 경로 유지 — ld+json 이 티저 요약뿐인 사이트 보호).
+- `scripts/diagnose_article.py` 에 ⑥-b 구조화 데이터 본문(ld+json/Fusion 길이) 리포트 추가.
+- 검증: pytest **828 passed**(신규 3 — SPA 전문 복원·서버렌더 DOM 우선 유지·마커 없음/불량 JSON 안전) · 금지패턴 0. ⚠ 조선닷컴 라이브는 샌드박스 망 차단으로 미검증 — 배포 환경 재수집/진단 스크립트로 확인.
+
 ### Fixed (카드 본문 제목 반복 + thebell TLS 차단 + slist 이미지 — 뉴스 수집 화면 점검)
 - **카드/표/모달 본문 자리에 제목이 한 번 더 나오던 문제**: 두 경로가 겹친 원인 — ① 구글 뉴스 RSS 의 description(=`summary`)은 태그를 벗기면 '제목(+언론사)'만 남는데 카드가 `summary` 를 `content` 보다 우선 노출, ② 과거 수집분 `content` 가 '제목\n본문' 형태. → (소스 차단) `scraping/google.py` `_summary_echoes_title` — 제목 반복뿐인 description 은 summary 를 비워 저장(실제 스니펫 있는 건 보존). (렌더 방어) `ui/data_management_v2.py` `_news_body_src` — 카드·표·모달 공용 본문 선택 헬퍼: 라인 단위로 제목 라인을 제거하고, '제목(+언론사)' 한 줄뿐인 값은 건너뛰어 다음 폴백(content)으로. 모달 본문 단락에서도 제목 라인 스킵(레거시 데이터 대응). 브라우저 스크린샷으로 카드 발췌=본문만·제목 1회 확인.
 - **뉴스 수집 화면 전체 점검 결과**: 카테고리(키워드/포탈) 분류·출처칩·검색 필터·표 행 선택 가드·캐시 무효화 로직은 정상. 추가 발견 1건 — `http://` 이미지가 https 앱에서 **혼합콘텐츠로 차단**되어 사진이 안 보일 수 있음 → 카드·표·모달 렌더에서 `_https_img` 로 https 승격.
