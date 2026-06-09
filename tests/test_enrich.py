@@ -455,3 +455,69 @@ def test_enrich_one_strips_title_echo_from_content():
     out = enrich.enrich_one(art, with_llm=False)
     assert title not in out["content"].splitlines()
     assert "부정행위가 적발됐다" in out["content"]
+
+
+def test_fetch_article_falls_back_to_tls_impersonation_when_still_blocked():
+    """워밍업+강화 헤더로도 403 이면 curl_cffi TLS 위장 폴백을 써야 한다(thebell 류).
+
+    위장 응답이 200 이면 그 본문으로 파싱, 위장 불가(None)면 기존(차단) 응답 유지.
+    """
+    import requests as _rq
+
+    class Blocked(_FakeResp):
+        def raise_for_status(self):
+            raise _rq.HTTPError(f"HTTP {self.status_code}")
+
+    class AlwaysBlockedSession:
+        def get(self, url, headers=None, timeout=None):
+            return Blocked("Forbidden", status=403)
+
+    with patch.object(enrich, "fetch_impersonated",
+                      return_value=_FakeResp(_HTML_WITH_BODY)) as imp:
+        art = enrich.fetch_article("https://www.thebell.co.kr/front/newsview.asp?key=1",
+                                   session=AlwaysBlockedSession())
+    imp.assert_called_once()
+    assert "비전 AI" in art["content"]
+    assert art["image_url"].endswith("/photo.jpg")
+
+    # 위장 폴백 불가(None) → 차단 응답 유지 → 빈 결과(예외 없이)
+    with patch.object(enrich, "fetch_impersonated", return_value=None):
+        art2 = enrich.fetch_article("https://www.thebell.co.kr/front/newsview.asp?key=1",
+                                    session=AlwaysBlockedSession())
+    assert art2 == {"content": "", "image_url": ""}
+
+
+def test_fetch_article_handles_response_without_apparent_encoding():
+    """curl_cffi 응답엔 apparent_encoding 이 없어도 utf-8 폴백으로 파싱돼야 한다."""
+    class NoApparent:
+        def __init__(self):
+            self.text = _HTML_WITH_BODY
+            self.status_code = 200
+            self.encoding = None
+
+        def raise_for_status(self):
+            pass
+
+    class Sess:
+        def get(self, url, headers=None, timeout=None):
+            return NoApparent()
+
+    art = enrich.fetch_article("https://example.com/a", session=Sess())
+    assert "비전 AI" in art["content"]
+
+
+def test_img_src_from_attrs_supports_froala_lazy_attr():
+    """ND소프트/Froala(slist 등) 의 data-fr-src lazy 속성에서 이미지를 찾아야 한다."""
+    html = """<html><body><article id="article-view-content-div">
+      <p>싱글리스트 기사 본문이 충분히 길게 들어있다. 자동화 동향 기사 본문 문단으로
+      이미지 lazy 속성 회귀를 검증한다. 본문 길이를 채우기 위한 문장.</p>
+      <img data-fr-src="https://cdn.slist.kr/news/photo/202606/744335_1.jpg">
+    </article></body></html>"""
+
+    class Sess:
+        def get(self, url, headers=None, timeout=None):
+            return _FakeResp(html)
+
+    art = enrich.fetch_article("https://www.slist.kr/news/articleView.html?idxno=744335",
+                               session=Sess())
+    assert art["image_url"] == "https://cdn.slist.kr/news/photo/202606/744335_1.jpg"

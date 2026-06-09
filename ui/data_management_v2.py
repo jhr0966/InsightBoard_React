@@ -651,13 +651,37 @@ def _sc_filtered_records(cat: str, channel: str, q: str) -> list[dict]:
     return recs
 
 
+def _news_body_src(row: dict, keys: tuple[str, ...]) -> str:
+    """본문 노출용 텍스트 — `keys` 순서로 고르되 '제목 반복뿐'인 값은 건너뛴다.
+
+    구글 RSS description(=summary)은 태그를 벗기면 '제목(·언론사)'만 남아, 카드/표/
+    모달 본문 자리에 제목이 두 번 보이던 문제 방어. 신규 수집은 google.search 가
+    소스에서 비우지만, 이미 DB 에 저장된 과거 데이터를 위해 렌더에서도 거른다.
+    """
+    title = " ".join(str(row.get("title") or "").split())
+    for key in keys:
+        # 과거 수집분 content 는 '제목\n본문' 형태가 있어 라인 단위로 제목 라인을 제거.
+        lines = [" ".join(ln.split()) for ln in str(row.get(key) or "").splitlines()]
+        val = " ".join(ln for ln in lines if ln and ln != title)
+        if not val:
+            continue
+        if title and title in val and len(val) <= len(title) + 40:
+            continue  # '제목 (+언론사)' 한 줄 반복뿐 — 본문 가치 없음
+        return val
+    return ""
+
+
+def _https_img(url: str) -> str:
+    """렌더용 이미지 URL — http:// 는 https 로 승격(https 앱에서 혼합콘텐츠 차단 방지)."""
+    u = (url or "").strip()
+    return "https://" + u[7:] if u[:7].lower() == "http://" else u
+
+
 def _sc_card_visual_html(row: dict) -> str:
     """카드 시각(사진+메타+제목+본문 일부). 클릭은 위에 겹친 투명 버튼이 처리 → 앵커 없음."""
     title = _html.escape(str(row.get("title") or "(제목 없음)"))
-    img = str(row.get("image_url", "") or "").strip()
-    body_src = " ".join(
-        str(row.get("summary_llm") or row.get("summary") or row.get("content") or "").split()
-    )
+    img = _https_img(str(row.get("image_url", "") or ""))
+    body_src = _news_body_src(row, ("summary_llm", "summary", "content"))
     excerpt = (_html.escape(body_src[:110] + ("…" if len(body_src) > 110 else ""))
                if body_src else "")
     source = str(row.get("source", "") or "")
@@ -741,9 +765,9 @@ def _render_news_table(q: str) -> None:
     rows = []
     for r in recs:
         when = str(r.get("collected_at") or r.get("published_at") or "")
-        body = " ".join(str(r.get("content") or r.get("summary_llm") or r.get("summary") or "").split())
+        body = _news_body_src(r, ("content", "summary_llm", "summary"))
         rows.append({
-            "사진": str(r.get("image_url", "") or ""),
+            "사진": _https_img(str(r.get("image_url", "") or "")),
             "제목": str(r.get("title", "") or ""),
             "본문": (body[:280] + "…") if len(body) > 280 else body,
             "대분류": _SC_CAT_LABEL.get(str(r.get("_cat", "")), ""),
@@ -924,12 +948,14 @@ def _news_modal_body(row: dict) -> None:
     """기사 모달 본문 — 사진·메타·제목·요약·본문 전체 + 원본 링크 + 닫기."""
     link = str(row.get("link", "") or "").strip()
     title = str(row.get("title") or "(제목 없음)")
-    img = str(row.get("image_url", "") or "").strip()
+    img = _https_img(str(row.get("image_url", "") or ""))
     chan = _news_channel_of(row.get("source", ""), row.get("press", ""))
     when = str(row.get("collected_at") or row.get("published_at") or "")
     age = _news_age_label(when)
-    summary = str(row.get("summary_llm") or row.get("summary") or "").strip()
+    # 제목 반복뿐인 summary(구글 RSS description) 는 본문 폴백에서 제외.
+    summary = _news_body_src(row, ("summary_llm", "summary"))
     content = str(row.get("content") or "").strip()
+    title_norm = " ".join(title.split())
 
     parts: list[str] = ['<div class="sc-modal">']
     if img[:4].lower() == "http":
@@ -941,10 +967,12 @@ def _news_modal_body(row: dict) -> None:
     if meta:
         parts.append(f'<div class="sc-modal-meta">{meta}</div>')
     parts.append(f'<h2 class="sc-modal-h">{_html.escape(title)}</h2>')
-    if content:
-        paras = "".join(
-            f"<p>{_html.escape(p.strip())}</p>" for p in content.splitlines() if p.strip()
-        )
+    # 과거 수집분의 본문 첫 줄 제목 반복(이중 노출)은 렌더에서도 걸러낸다.
+    paras = "".join(
+        f"<p>{_html.escape(p.strip())}</p>" for p in content.splitlines()
+        if p.strip() and " ".join(p.split()) != title_norm
+    )
+    if paras:
         parts.append(f'<div class="sc-modal-body">{paras}</div>')
     elif summary:
         # 본문 미수집 시에만 요약(검색 설명)을 본문 자리에 노출 — 중복 방지.

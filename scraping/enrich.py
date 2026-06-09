@@ -20,7 +20,7 @@ import requests
 from bs4 import Comment
 
 from scraping.extract import is_junk_image, soup_of
-from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
+from scraping.http import REQUEST_TIMEOUT, build_session, default_headers, fetch_impersonated
 from store import cache
 
 logger = logging.getLogger(__name__)
@@ -113,6 +113,8 @@ _IMAGE_SELECTORS = (
 
 _IMAGE_ATTR_ORDER = (
     "data-src", "data-original", "data-lazy-src", "data-lazy",
+    # ND소프트/Froala 에디터 계열(slist 등) 본문 이미지 lazy 속성.
+    "data-fr-src", "data-echo", "data-lazyload",
     "data-image", "data-thumb", "data-url", "src",
 )
 
@@ -297,8 +299,16 @@ def _get_article_response(sess, url: str):
     except requests.RequestException:
         pass  # 워밍업 실패는 무시 — 본 요청 재시도가 본질
     time.sleep(random.uniform(0.3, 0.7))
-    return sess.get(url, headers=_full_browser_headers(referer="https://search.naver.com/"),
+    resp = sess.get(url, headers=_full_browser_headers(referer="https://search.naver.com/"),
                     timeout=REQUEST_TIMEOUT)
+    if resp.status_code not in _BLOCKED_STATUSES:
+        return resp
+    # 헤더로도 안 풀리면 TLS 지문(JA3) 검사 WAF — 실제 Chrome TLS 로 위장(curl_cffi,
+    # 선택 의존성)해 최후 재시도. 미설치/실패면 기존 응답으로 폴백.
+    imp = fetch_impersonated(url, referer="https://search.naver.com/")
+    if imp is not None and getattr(imp, "status_code", 599) < 400:
+        return imp
+    return resp
 
 
 def fetch_article(url: str, *, session=None) -> dict[str, str]:
@@ -311,7 +321,8 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
         resp = _get_article_response(sess, url)
         resp.raise_for_status()
         if resp.encoding is None or resp.encoding.lower() == "iso-8859-1":
-            resp.encoding = resp.apparent_encoding
+            # curl_cffi 응답엔 apparent_encoding 이 없다 → getattr 폴백(utf-8).
+            resp.encoding = getattr(resp, "apparent_encoding", None) or "utf-8"
     except requests.RequestException:
         return {"content": "", "image_url": ""}
 

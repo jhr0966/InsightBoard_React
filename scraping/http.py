@@ -39,6 +39,26 @@ def default_headers(referer: str | None = None) -> dict[str, str]:
     return headers
 
 
+def fetch_impersonated(url: str, *, referer: str | None = None,
+                       timeout: int = REQUEST_TIMEOUT):
+    """실제 Chrome 의 TLS 지문(JA3)으로 위장한 GET — WAF 차단 사이트 최후 폴백.
+
+    thebell 등 일부 사이트는 헤더가 완벽해도 **TLS 핑거프린트**로 python-requests 를
+    식별해 403 을 준다 → curl_cffi 의 chrome impersonation 으로만 통과 가능.
+    curl_cffi 미설치(선택 의존성)·요청 실패 시 None 반환(호출부가 기존 응답 유지).
+    응답 객체는 requests.Response 호환(status_code/text/encoding/raise_for_status).
+    """
+    try:
+        from curl_cffi import requests as cf_requests
+    except ImportError:
+        return None
+    try:
+        return cf_requests.get(url, impersonate="chrome", timeout=timeout,
+                               headers=default_headers(referer=referer))
+    except Exception:  # noqa: BLE001 — 폴백 실패는 None 으로 흡수(기존 응답 사용)
+        return None
+
+
 def build_session() -> requests.Session:
     """429/5xx 지수 백오프 + 풀 사이즈 고정."""
     session = requests.Session()

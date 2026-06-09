@@ -186,6 +186,21 @@ def _extract_original_link(description: str) -> str:
     return ""
 
 
+def _summary_echoes_title(summary: str, title: str, press: str) -> bool:
+    """RSS description 이 '제목(+언론사)' 반복뿐인지 판정.
+
+    구글 뉴스 RSS 의 description 은 `<a>제목</a>(·언론사)` 형태라 태그를 벗기면 제목이
+    그대로 남는다 → 카드/모달이 본문 폴백으로 쓰면 제목이 두 번 보인다. 제목 외
+    정보가 사실상 없으면 빈 summary 로 두는 편이 낫다(UI 가 content 로 폴백).
+    """
+    s = " ".join((summary or "").split())
+    t = " ".join((title or "").split())
+    if not s or not t:
+        return False
+    p = " ".join((press or "").split())
+    return t in s and len(s) <= len(t) + len(p) + 16
+
+
 def search(
     keyword: str,
     max_results: int = 10,
@@ -250,16 +265,22 @@ def search(
             list(ex.map(_resolve_one, parsed))
 
     # 3) 기사 dict 빌드.
-    return [{
-        "title": p["title"],
-        "press": p["press"],
-        "date": p["date"],
-        "published_at": _to_iso(p["date"]),
-        "link": p["link"],
+    out: list[dict] = []
+    for p in parsed:
         # 태그 제거 + HTML 엔티티(&nbsp; 등) 해제 + 공백 정리(폴백 노출 시 깨짐 방지).
-        "summary": " ".join(unescape(re.sub(r"<[^>]+>", " ", p["description"])).split()),
-        "image_url": p["image_url"],
-        "keywords": "",
-        "source": "google",
-        "query": keyword,
-    } for p in parsed]
+        summary = " ".join(unescape(re.sub(r"<[^>]+>", " ", p["description"])).split())
+        if _summary_echoes_title(summary, p["title"], p["press"]):
+            summary = ""  # 제목 반복뿐 → 비워서 UI 가 본문(content)으로 폴백하게.
+        out.append({
+            "title": p["title"],
+            "press": p["press"],
+            "date": p["date"],
+            "published_at": _to_iso(p["date"]),
+            "link": p["link"],
+            "summary": summary,
+            "image_url": p["image_url"],
+            "keywords": "",
+            "source": "google",
+            "query": keyword,
+        })
+    return out
