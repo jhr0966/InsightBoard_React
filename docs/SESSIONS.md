@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-06-09 — fix(UI): 기사 모달이 화면보다 커서 스크롤·버튼/사진 잘림 → 컴팩트화 (`claude/kind-volta-IWxix`)
+
+**무엇을**: enrich 수정으로 본문/사진은 잘 들어옴(✓). 남은 문제 — 본문이 길면 모달이 뷰포트를 넘어 다이얼로그 전체가 스크롤되고 닫기/원문 버튼·사진이 잘림.
+
+**어떻게**: `screens/data_management.css` — `.sc-modal-img` 280px·cover → **18vh·contain**(전체 표시)+배경, `.sc-modal-body` 60vh → **36vh**(내부 스크롤), 제목/여백 축소. `streamlit-overrides.css` 다이얼로그 `max-width:880px`(배너화 방지). `_news_modal_body` content 있으면 본문만(요약 중복 제거). 합계 ≈87vh 로 버튼 항상 보이게.
+
+**검증**: pytest **844 passed**(모달 본문/요약 폴백 테스트 갱신·신규) · 금지패턴 0. CSS 비율은 실배포 화면 확인 권장.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-09 — fix(★근본원인): 수집이 enrich 를 호출 안 해 본문/이미지 전부 빈칸이던 것 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 사용자가 "본문 하나도 못 가져옴, AI Times/구글 사진 없음, 구글 본문에 제목+&nbsp;" 보고. **이 환경은 외부 호스트 차단(Host not in allowlist)** 이라 라이브 스크래핑 불가 → 코드 흐름 추적으로 근본원인 발견: **`collect_batch` 가 enrich 를 전혀 호출하지 않아 content 가 항상 빈 채 저장**(검색 결과 content=""). 그동안의 enrich/셀렉터 개선이 실제 수집에 안 쓰였음(= 토큰 낭비 원인).
@@ -17,7 +29,7 @@
 
 **검증**: pytest **843 passed** · 금지패턴 0 · py_compile OK. ⚠️ 샌드박스 네트워크 차단으로 라이브 수집은 미검증 — **배포 앱에서 재수집 필요**. 코드 흐름·테스트로 "이제 enrich 가 돈다"는 검증함.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#137).
 
 ---
 

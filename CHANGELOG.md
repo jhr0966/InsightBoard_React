@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (기사 모달 — 박스가 화면보다 커서 스크롤·버튼/사진 잘림)
+- **모달을 뷰포트에 맞게 컴팩트화**(`assets/v2/screens/data_management.css`, `assets/v2/streamlit-overrides.css`): 본문이 길면 모달이 화면을 넘어 다이얼로그 전체가 스크롤되고 닫기/원문 버튼·사진이 잘리던 문제. 이미지 `max-height:280px·cover` → **`18vh·contain`**(잘리지 않게 전체 표시) + 배경, 본문 `max-height:60vh` → **`36vh`**(내부 스크롤로 가둠), 제목/여백 축소, 다이얼로그 `max-width:880px`(와이드 모니터 배너화 방지). 합계 ≈87vh 로 맞춰 **닫기·원문 버튼이 항상 보이게**.
+- **모달 본문 중복 제거**(`ui/data_management_v2.py _news_modal_body`): content 가 있으면 본문만, 없을 때만 요약을 본문 자리에 노출(요약+본문 이중 노출 → 길이 증가 방지).
+- 검증: pytest **844 passed**(모달 본문/요약 폴백 테스트 갱신·신규) · 금지패턴 0. (CSS 비율은 실배포 화면 확인 권장.)
+
 ### Fixed (★ 근본원인: 수집이 본문/이미지를 enrich 하지 않던 것 — 본문 전부 빈칸 해결)
 - **`collect_batch` 가 enrich 를 호출하지 않아 모든 기사 `content` 가 빈 채로 저장되던 버그 수정**(`scraping/run_daily.py`): 검색 결과는 `content=""`·리스트 이미지만 가졌는데 수집 경로에 enrich 단계가 **아예 없었다** → 데이터 표 본문 전부 빈칸, 카드/모달 본문 없음, 이미지는 로고/썸네일뿐. 이제 소스별 수집 직후 **`enrich.enrich_parallel`(병렬)** 로 각 기사 링크에서 **본문·og:image·빈도 키워드**를 가져와 채운 뒤 저장한다. (그동안의 enrich/셀렉터 개선이 비로소 실제 수집에 반영됨.)
 - **`scraping/enrich.py`**: `enrich_parallel`(ThreadPoolExecutor·기본 6 workers, 개별 실패 격리) 신규. `enrich_one` 이 본문 확보 시 **빈도 기반 키워드**(`extract_keywords`)도 채움(표/매칭용). `fetch_article` 이 **같은 출처(origin) referer** 를 실어 네이버 기사(referer 없으면 403)처럼 막던 사이트 대응.
