@@ -103,10 +103,14 @@ def _fake_tech(max_results_per_site: int = 10, **_) -> list[dict]:
 
 def _seed_news_via_collect(monkeypatch):
     """네트워크 mock 후 실제 collect_batch 실행 → news_db 영속화."""
+    from scraping import enrich as _enrich
     from scraping import run_daily
     monkeypatch.setattr(run_daily.naver_news, "search", _fake_naver)
     monkeypatch.setattr(run_daily.google_news, "search", _fake_google)
     monkeypatch.setattr(run_daily.tech_sites, "search_all", _fake_tech)
+    # enrich 본문 fetch 는 가짜 URL 이라 네트워크 불가 → 빈 stub(시나리오는 본문 불요).
+    monkeypatch.setattr(_enrich, "fetch_article",
+                        lambda url, **kw: {"content": "", "image_url": ""})
     return run_daily.collect_batch(
         ["용접 자동화", "도장 검사"], sources=("naver", "google", "tech"), max_results=5,
     )

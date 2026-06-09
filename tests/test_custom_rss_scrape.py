@@ -6,6 +6,14 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _no_enrich_network(monkeypatch):
+    """collect_batch 의 enrich 가 가짜 URL 로 실제 네트워크를 치지 않게(테스트 속도)."""
+    from scraping import enrich as _enrich
+    monkeypatch.setattr(_enrich, "fetch_article",
+                        lambda url, **kw: {"content": "", "image_url": ""})
+
+
 # ── scraping/rss.py 단위 ────────────────────────────────────
 
 _SAMPLE_RSS = """<?xml version="1.0" encoding="utf-8"?>

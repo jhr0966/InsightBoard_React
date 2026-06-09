@@ -4,9 +4,23 @@
 """
 from __future__ import annotations
 
+import pytest
+
+from scraping import enrich as _enrich
 from scraping import run_daily
 from store import news_db
 from store.paths import news_dir_for
+
+
+@pytest.fixture(autouse=True)
+def _no_enrich_network(monkeypatch):
+    """collect_batch 가 enrich 하며 가짜 URL 로 실제 네트워크를 치는 것을 막아 빠르게.
+
+    enrich(본문/이미지 fetch) 자체 동작은 test_enrich / 아래 전용 테스트가 검증한다.
+    개별 테스트가 다시 setattr 하면(아래 enrich 검증) 그쪽이 우선한다.
+    """
+    monkeypatch.setattr(_enrich, "fetch_article",
+                        lambda url, **kw: {"content": "", "image_url": ""})
 
 
 def _fake_naver_search(keyword: str, max_results: int = 10) -> list[dict]:
@@ -31,6 +45,44 @@ def _fake_tech_search_all(max_results_per_site: int = 10, **_) -> list[dict]:
         {"title": "AutomationWorld B", "link": "https://aw.example/b",
          "press": "AutomationWorld", "date": "2026-05-13", "summary": ""},
     ]
+
+
+def test_collect_batch_enriches_body_and_image(monkeypatch):
+    """수집 시 enrich 가 호출돼 각 기사의 content(본문)·image_url 이 채워진다.
+
+    이게 핵심 회귀 방지: 과거 collect_batch 는 enrich 를 호출하지 않아 content 가
+    항상 빈 채로 저장됐다(데이터 표 본문 전부 빈칸). 이제 링크에서 본문·og:image 를
+    가져와 채운다.
+    """
+    monkeypatch.setattr(run_daily.naver_news, "search", _fake_naver_search)
+    monkeypatch.setattr(run_daily.google_news, "search", lambda *a, **k: [])
+    monkeypatch.setattr(run_daily.tech_sites, "search_all", lambda *a, **k: [])
+    # enrich.fetch_article 이 본문·이미지를 돌려주도록(autouse 의 빈 stub 을 덮어씀).
+    monkeypatch.setattr(
+        _enrich, "fetch_article",
+        lambda url, **kw: {"content": f"이것은 {url} 기사의 전체 본문 내용입니다. " * 5,
+                           "image_url": "https://img.example/main.jpg"},
+    )
+    report = run_daily.collect_batch(["로봇"], sources=("naver",), max_results=5)
+    assert report.total_articles == 2
+
+    df = news_db.load_all_today()
+    assert not df.empty
+    assert (df["content"].astype(str).str.len() > 50).all()        # 모든 기사 본문 채워짐
+    assert (df["image_url"] == "https://img.example/main.jpg").all()  # og:image 채워짐
+    assert (df["keywords"].astype(str).str.len() > 0).all()        # 빈도 키워드도 채워짐
+
+
+def test_collect_batch_can_disable_enrich(monkeypatch):
+    """do_enrich=False 면 enrich 를 건너뛴다(검색 결과 그대로 저장)."""
+    called = {"n": 0}
+    monkeypatch.setattr(run_daily.naver_news, "search", _fake_naver_search)
+    monkeypatch.setattr(run_daily.google_news, "search", lambda *a, **k: [])
+    monkeypatch.setattr(run_daily.tech_sites, "search_all", lambda *a, **k: [])
+    monkeypatch.setattr(_enrich, "enrich_parallel",
+                        lambda *a, **k: called.__setitem__("n", called["n"] + 1) or a[0])
+    run_daily.collect_batch(["로봇"], sources=("naver",), max_results=5, do_enrich=False)
+    assert called["n"] == 0
 
 
 def test_collect_batch_dispatches_each_keyword_and_source(monkeypatch):

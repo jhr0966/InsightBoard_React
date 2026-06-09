@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Sequence
 
+from scraping import enrich as _enrich
 from scraping import google as google_news
 from scraping import naver as naver_news
 from scraping import tech_sites
@@ -76,6 +77,7 @@ def collect_batch(
     max_results: int = 10,
     on_step: Callable[[str, str, int], None] | None = None,
     extra_feeds: Sequence[tuple[str, str]] | None = None,
+    do_enrich: bool = True,
 ) -> CollectionReport:
     """키워드×소스 배치 수집 + 커스텀 RSS 피드.
 
@@ -114,6 +116,9 @@ def collect_batch(
                         {"source": src, "keyword": kw, "error": str(e)}
                     )
             if bucket:
+                if do_enrich:
+                    # 검색 결과는 content 가 비어 있다 → 링크에서 본문·og:image 를 병렬 fetch.
+                    _enrich.enrich_parallel(bucket, with_llm=False)
                 path = save_articles(bucket, source=src)
                 report.saved.append(
                     {
@@ -132,6 +137,8 @@ def collect_batch(
                         {"source": "tech", "keyword": site, "error": msg}
                     ),
                 )
+                if do_enrich:
+                    _enrich.enrich_parallel(articles, with_llm=False)
                 path = save_articles(articles, source="tech")
                 report.saved.append(
                     {
@@ -157,6 +164,8 @@ def collect_batch(
             try:
                 articles = _rss.fetch(url, source_name=name, max_results=max_results)
                 if articles:
+                    if do_enrich:
+                        _enrich.enrich_parallel(articles, with_llm=False)
                     path = save_articles(articles, source=name)
                     report.saved.append(
                         {
