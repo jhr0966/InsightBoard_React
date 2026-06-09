@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-09 — chore: 개발 자체검증 세팅 — 브라우저 + 웹크롤링 (`claude/dev-setup-testing-i4f082`)
+
+**무엇을**: 개발 준비 요청("브라우저 띄워 자체검증 + 웹크롤링 자체 테스트 세팅"). 의존성 설치·pytest 811 통과 확인 후, 환경 제약 2가지를 해결 — ① `verify_browser.py` 가 구버전 영역명(`🧱 데이터 관리`)을 쓰고 온보딩 모달이 모든 캡처를 가림, ② 외부망이 allowlist 차단이라 실 사이트 크롤링 테스트 불가.
+
+**어떻게**:
+- `scripts/verify_browser.py`: 영역명 현행화(뉴스 수집·작업 정의 → 7장), `_dismiss_onboarding`(화면마다 '다음에 하기' 클릭), chromium 경로 glob 폴백.
+- `scripts/verify_scrape.py` 신설: 로컬 fixture HTTP 서버(RSS·사이트·기사·네이버 마크업) + 실 모듈 경로(rss/tech_sites/enrich/naver 셀렉터) 스모크 4종, `--live` 로 실 외부 소스 시도.
+- `Makefile`: `verify-browser`/`verify-scrape` 타깃, `test` 를 `python -m pytest` 로(uv 격리 pytest 회피).
+
+**검증**: pytest 811 passed · verify_scrape 4/4 · verify_browser 7/7(온보딩 미노출 스크린샷 확인) · 금지패턴 0. 참고: 이 샌드박스에서 외부 크롤링은 `Host not in allowlist` 로 차단 — live 검증은 배포/로컬 환경에서.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-09 — refactor: 뉴스 수집 #133 재설계 잔재 일괄 제거 + 세션 정리 (`claude/kind-volta-IWxix`)
 
 **무엇을**: #133~#140 으로 뉴스 수집을 **카드 브라우저 + 기사 모달 + ⚙ 설정 서브뷰**로 재설계한 뒤, 옛 필터 폼·3탭/그룹 라우팅·옛 카드 빌더를 호환/테스트용으로 남겨뒀던 것을 적극 제거(요청: "코드 최적화 — 레거시 제거"). 데이터 관리 화면 템플릿도 헤더(KPI 4)만으로 축소.
