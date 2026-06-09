@@ -521,3 +521,54 @@ def test_img_src_from_attrs_supports_froala_lazy_attr():
     art = enrich.fetch_article("https://www.slist.kr/news/articleView.html?idxno=744335",
                                session=Sess())
     assert art["image_url"] == "https://cdn.slist.kr/news/photo/202606/744335_1.jpg"
+
+
+_ARC_SPA_HTML = """<html><head>
+<meta property="og:image" content="https://img.chosun.com/photo/1.jpg">
+<script type="application/ld+json">
+{"@type":"NewsArticle","headline":"제목","articleBody":"조선소 협동로봇 도입으로 용접 품질 편차가 줄었다. 비전 센서가 갭을 실시간 보정한다. ld+json 전문이 여기에 있다."}
+</script>
+<script>window.Fusion=window.Fusion||{};Fusion.globalContent={"content_elements":[
+{"type":"text","content":"조선소 협동로봇 도입으로 용접 품질 편차가 줄었다."},
+{"type":"image","url":"https://img.chosun.com/photo/1.jpg"},
+{"type":"text","content":"비전 센서가 갭을 실시간 측정해 위빙 폭을 보정하고, 작업자는 티칭과 검수에 집중한다."},
+{"type":"raw_html","content":"<p>재작업률이 한 자릿수로 내려왔다는 평가다.</p>"}
+]};Fusion.globalContentConfig={"source":"x"};</script>
+</head><body><div id="root"><h1>제목</h1><span>구독</span></div></body></html>"""
+
+
+def test_fetch_article_extracts_spa_body_from_structured_data():
+    """조선닷컴류 Arc SPA — DOM 에 본문이 없어도 ld+json/Fusion JSON 에서 전문 복원."""
+    class Sess:
+        def get(self, url, headers=None, timeout=None):
+            return _FakeResp(_ARC_SPA_HTML)
+
+    art = enrich.fetch_article("https://www.chosun.com/economy/x/", session=Sess())
+    assert "용접 품질 편차" in art["content"]
+    assert "위빙 폭" in art["content"] or "ld+json 전문" in art["content"]
+    assert art["image_url"] == "https://img.chosun.com/photo/1.jpg"
+
+
+def test_fetch_article_prefers_dom_when_longer_than_structured():
+    """서버렌더 사이트 — ld+json 이 요약 수준이면 기존 DOM 셀렉터 본문을 유지해야 한다."""
+    html = """<html><head><script type="application/ld+json">
+    {"@type":"NewsArticle","articleBody":"짧은 티저 요약입니다. 본문보다 훨씬 짧은 두 문장짜리 메타 요약이라 길이가 모자랍니다."}
+    </script></head><body><article itemprop="articleBody">
+    <p>이번 발표에서 회사는 비전 AI 기반 용접 검사 시스템을 공개했다.</p>
+    <p>해당 기술은 6축 매니퓰레이터와 결합해 검사 시간을 30% 단축한다.</p>
+    <p>현장 적용은 가공·조립 공정에서 우선 진행되며, 향후 도장·탑재 공정으로 확대될 예정이다.</p>
+    <p>회사 측은 연내 두 개 야드에 추가 공급 계약을 협의 중이라고 밝혔다.</p>
+    </article></body></html>"""
+
+    class Sess:
+        def get(self, url, headers=None, timeout=None):
+            return _FakeResp(html)
+
+    art = enrich.fetch_article("https://example.com/a", session=Sess())
+    assert "비전 AI" in art["content"] and "매니퓰레이터" in art["content"]
+    assert "짧은 티저" not in art["content"]
+
+
+def test_arc_fusion_body_handles_missing_marker_and_bad_json():
+    assert enrich._arc_fusion_body("<html>no marker</html>") == ""
+    assert enrich._arc_fusion_body("Fusion.globalContent = {broken") == ""

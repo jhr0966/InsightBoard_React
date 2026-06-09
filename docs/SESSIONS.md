@@ -5,7 +5,19 @@
 
 ---
 
-## 2026-06-09 — fix: 카드 제목 반복·thebell TLS 차단·slist 이미지 (`fix-collect-body-echo-images`)
+## 2026-06-10 — fix: 조선닷컴 본문 미수집 — SPA 구조화 데이터 추출 (`fix-spa-article-body`)
+
+**무엇을**: 구글 수집된 조선닷컴 기사 2건이 사진·제목만 되고 본문이 빔.
+
+**어떻게**: 조선닷컴=Arc Publishing SPA(본문이 DOM 아닌 JSON). `scraping/enrich.py` 에 `_ldjson_article_body`(NewsArticle articleBody, @graph 지원) + `_arc_fusion_body`(Fusion.globalContent content_elements 문단 복원) 신설 → `fetch_article` 이 script 제거 전에 확보, DOM 셀렉터 본문보다 길 때만 채택(서버렌더 사이트 보호). `diagnose_article.py` 에 구조화 데이터 길이 리포트 추가.
+
+**검증**: pytest 828 passed(신규 3) · 금지패턴 0. ⚠ 라이브는 배포 환경에서 재수집/진단 필요.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
+## 2026-06-09 — fix: 카드 제목 반복·thebell TLS 차단·slist 이미지 (`fix-collect-body-echo-images`, PR #143 ✅ merged)
 
 **무엇을**: ① 카드 본문 자리에 제목 반복(구글) ② 뉴스 수집 화면 전반 점검 ③ thebell 여전히 미수집 ④ slist 사진만 미수집.
 
