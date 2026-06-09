@@ -87,6 +87,37 @@ def test_fetch_article_takes_fullest_body():
     assert len(art["content"]) > len(lead) + 200            # 리드가 아닌 전체 본문
 
 
+_HTML_PORTAL_CHROME = """
+<html><head><meta property="og:image" content="https://x/photo.jpg"></head><body>
+<div id="mArticle">
+  <div class="tts_area">음성재생 설정 남성 여성 느림 보통 빠름 닫기 번역 beta Translated by</div>
+  <div class="foot_view">글자크기 설정 매우 작은 폰트 보통 폰트 큰 폰트 이 글자크기로 변경됩니다</div>
+  <section class="article_view" data-translation>
+    <p>애플이 8일 WWDC에서 음성비서 시리를 전면 개편한 시리 AI를 공개했다고 밝혔다.</p>
+    <p>새 시리 AI는 한 번의 명령에 그치지 않고 여러 차례 말을 주고받으며 대화의 맥락을 이해한다.</p>
+    <p>개발자용 시험판은 이날부터 배포되며 일반 베타는 다음 달, 정식 출시는 가을로 예정됐다.</p>
+  </section>
+  <div class="relate_news"><a href="/x">정청래 환송 불참</a><a href="/y">장동혁 득표수</a></div>
+  <div class="txt_copyright">Copyright © 동아일보. 무단 전재, 재배포 및 AI학습 이용 금지. 해당 언론사로 이동합니다.</div>
+</div>
+</body></html>
+"""
+
+
+def test_fetch_article_strips_portal_chrome_keeps_body():
+    """포털(다음 스타일) 기사 — 본문 컨테이너만 취하고 TTS/글자크기/번역/관련기사/저작권
+    chrome 은 제외한다(셀렉터 신뢰 + 노이즈 제거)."""
+    with patch.object(enrich, "build_session", lambda: _fake_session(_HTML_PORTAL_CHROME)):
+        art = enrich.fetch_article("https://v.daum.net/v/123")
+    body = art["content"]
+    assert "시리 AI" in body and "대화의 맥락" in body        # 실제 본문 포함
+    assert "음성재생 설정" not in body                        # TTS 위젯 제외
+    assert "글자크기 설정" not in body and "매우 작은 폰트" not in body
+    assert "Translated by" not in body                        # 번역 위젯 제외
+    assert "정청래" not in body                               # 관련기사 제외
+    assert "무단 전재" not in body                            # 저작권 제외
+
+
 def test_fetch_article_largest_block_fallback():
     """표준 셀렉터·<p> 가 없어도 링크 적은 최대 텍스트 블록을 폴백으로 추출(참고 스크래퍼 패턴)."""
     with patch.object(enrich, "build_session", lambda: _fake_session(_HTML_NO_SELECTORS_NO_P)):

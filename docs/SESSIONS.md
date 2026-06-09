@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-09 — fix: 본문에 포털 UI 텍스트 섞임 + AI Times 연재/목록 페이지 수집 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 구글 이미지는 batchexecute 로 정상화됨(✓). 남은 2건 — ① 다음/네이버 본문에 제목·TTS·글자크기·번역·관련기사·저작권 chrome 이 다 섞임, ② AI Times '연재/섹션 목록 페이지'(조금원의 디지털 세상 이야기 등)가 기사로 수집돼 동일 기본 이미지(VENDOR LOCK IN) 반복.
+
+**어떻게**:
+- ①: `enrich.fetch_article` 를 '최대 텍스트 블록' → **본문 셀렉터 우선(최장 셀렉터 매칭)** 으로 복원(없을 때만 문단/최대블록 폴백). 포털 chrome 노이즈 셀렉터(`.tts_area`/`[class*='relate']`/`[class*='copyright']`/`.foot_view`)+보일러플레이트(음성재생·글자크기·번역·무단전재·언론사 이동) 추가. 다음 본문 컨테이너(`.article_view`/`[data-translation]`/`#harmonyContainer`) 보강.
+- ②: `tech_sites._NAV_BLOCKLIST` 에 `articleList`·`sc_serial_code`·`sc_section_code`·`view_type=`·`/serial` 추가.
+- 테스트: `test_fetch_article_strips_portal_chrome_keeps_body`(다음 스타일 → 본문만), `test_tech_sites_rejects_list_and_serial_pages`.
+
+**검증**: pytest **851 passed** · 금지패턴 0. ①은 샘플 HTML 로 직접 검증(chrome 제외 확인). 라이브 사이트별 셀렉터는 배포 확인 권장.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-09 — fix: 구글 카드 이미지가 전부 'Google News 로고'이던 것 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 구글 카드 이미지가 전부 동일한 Google News 로고. 원인 — 구글 RSS 링크(불투명 토큰)가 원문으로 안 풀려 enrich 가 **구글 인터스티셜 페이지의 og:image(로고)** 를 가져옴. (이 환경은 외부망 차단이라 라이브 확인 불가 → 코드/테스트로 검증.)
@@ -16,7 +31,7 @@
 
 **검증**: pytest **849 passed** · 금지패턴 0(`session.post` 사용). ⚠️ batchexecute 라이브는 미검증(외부망 차단) — 배포 재수집 필요. 안전망으로 **로고 일괄 표시는 확실히 해소**.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#139).
 
 ---
 

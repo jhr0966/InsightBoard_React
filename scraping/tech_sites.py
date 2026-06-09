@@ -29,6 +29,10 @@ _NAV_BLOCKLIST = (
     "/privacy", "/terms", "/policy", "/sitemap", "/rss",
     "/tag/", "/tags/", "/category/", "/categories/", "/cat/",
     "/search?", "/search.",
+    # 개별 기사가 아닌 '연재/섹션/목록' 페이지(모우·모비 계열 CMS) — 기사 모음이라
+    # 본문이 없고 대표 og:image 가 사이트 기본 배너라 카드 이미지가 일괄로 같아진다.
+    "articlelist", "/list.html", "sc_serial_code", "sc_section_code",
+    "serial_code", "section_code", "view_type=", "/serial",
 )
 
 _MIN_TITLE_LEN = 15
