@@ -24,6 +24,23 @@ def test_is_junk_image():
     assert not is_junk_image("https://x/2026/06/main_photo.jpg")
 
 
+# ── tech_sites: 연재/목록 페이지 제외(개별 기사만) ──────────
+
+def test_tech_sites_rejects_list_and_serial_pages():
+    from scraping import tech_sites
+    host = "www.aitimes.com"
+    # 개별 기사 → 허용
+    assert tech_sites._is_article_link(
+        "https://www.aitimes.com/news/articleView.html?idxno=12345", host)
+    # 연재/섹션/목록 페이지 → 거부(기사 모음이라 대표 og:image 가 사이트 기본 배너)
+    assert not tech_sites._is_article_link(
+        "https://www.aitimes.com/news/articleList.html?sc_serial_code=SRN1", host)
+    assert not tech_sites._is_article_link(
+        "https://www.aitimes.com/news/articleList.html?view_type=sm", host)
+    assert not tech_sites._is_article_link(
+        "https://www.aitimes.com/news/articleView.html?sc_section_code=S1N20", host)
+
+
 # ── naver: 로고 건너뛰고 기사 썸네일 ────────────────────────
 
 def test_naver_image_skips_press_logo():

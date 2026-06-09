@@ -43,6 +43,9 @@ _CONTENT_SELECTORS = [
     "div#articleBody", "article#articleBody", "div.article_body", "div.article-body",
     "div#news_body_id", "div.news_body", "div#content-body",
     "div.news_content", "div.txt_article", "div.atc_body", "div.article_view",
+    # 포털(다음·네이버 등) 기사 본문 컨테이너 — section/div 무관 매칭.
+    ".article_view", "section.article_view", "[data-translation]",
+    "div#harmonyContainer", "div.news_view_body", "div#newsEndContents",
     "main article", "article", "main",
 ]
 
@@ -52,7 +55,11 @@ _NOISE_SELECTORS = (
     "header, footer, nav, aside, figure, figcaption, "
     ".ad, .ads, .advertisement, .banner, .sponsor, .sponsored, "
     ".share, .sns, .social, .related, .recommend, .copyright, "
-    ".reply, .comment, .comments, .byline, .tag, .tags"
+    ".reply, .comment, .comments, .byline, .tag, .tags, "
+    # 포털(다음·네이버) 기사 리더 UI 잡음 — TTS/글자크기/번역/관련기사/언론사 이동/저작권.
+    ".tts_area, [class*='tts'], [class*='relate'], [class*='copyright'], "
+    "[class*='promotion'], .alex-action, .foot_view, .relate_news, "
+    ".article_relation, .reporter_area, .copy_info, .txt_copyright, .link_news"
 )
 
 _MIN_CONTENT_LEN = 80
@@ -70,10 +77,17 @@ _CODE_LINE_PATTERNS = (
 
 _BOILERPLATE_PATTERNS = (
     re.compile(r"무단전재\s*(및)?\s*재배포\s*금지"),
+    re.compile(r"무단\s*전재.*금지|재배포.*금지|AI\s*학습.*(이용)?\s*금지"),
     re.compile(r"저작권자\s*©"),
-    re.compile(r"Copyright\s*\(c\)", re.IGNORECASE),
+    re.compile(r"Copyright\s*[©(]", re.IGNORECASE),
     re.compile(r"기자\s*=?\s*[\w.+-]+@[\w.-]+"),
-    re.compile(r"^\s*(관련기사|추천기사|인기기사|ADVERTISEMENT|광고)\s*$", re.IGNORECASE),
+    re.compile(r"^\s*(관련기사|추천기사|인기기사|많이 본 뉴스|ADVERTISEMENT|광고)\s*$", re.IGNORECASE),
+    # 포털 기사 리더 UI 텍스트(다음·네이버) — 음성/글자크기/번역 위젯, 언론사 이동 안내.
+    re.compile(r"음성\s*재생\s*설정|글자\s*크기\s*설정|이 글자크기로 변경됩니다"),
+    re.compile(r"매우\s*(작은|큰)\s*폰트|보통\s*폰트|파란원을 좌우로"),
+    re.compile(r"Translated by|번역\s*beta|음성으로 제공", re.IGNORECASE),
+    re.compile(r"해당\s*언론사로\s*이동|에서\s*직접\s*확인하세요"),
+    re.compile(r"다음뉴스를?\s*만나보세요|가장\s*빠른\s*뉴스가 있고"),
 )
 
 _IMAGE_SELECTORS = (
@@ -246,23 +260,27 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
         image_url = _extract_image_url(soup, url)
         _strip_noise(soup)
 
-        candidates: list[str] = []
+        # 1) 본문 컨테이너 셀렉터를 **신뢰**한다. 매칭되는 셀렉터 중 가장 긴 텍스트를
+        #    본문으로. 셀렉터는 기사 본문만 가리키므로 포털(다음·네이버)의 TTS·글자크기·
+        #    번역 위젯·관련기사·제목 같은 chrome 이 섞이지 않는다(이게 핵심 — 과거엔
+        #    '최대 텍스트 블록'을 무조건 취해 wrapper 의 chrome 까지 끌고 왔다).
+        selector_texts: list[str] = []
         for sel in _CONTENT_SELECTORS:
             tag = soup.select_one(sel)
             if tag:
                 text = _text_from_tag(tag)
                 if len(text) >= _MIN_CONTENT_LEN:
-                    candidates.append(text)
+                    selector_texts.append(text)
+        if selector_texts:
+            return {"content": max(selector_texts, key=len), "image_url": image_url}
 
+        # 2) 본문 셀렉터가 하나도 없을 때만 폴백: 문단(<p>) 합치기 → 그래도 빈약하면
+        #    링크 적은 '최대 텍스트 블록'. (비표준 마크업 사이트 대응.)
+        candidates: list[str] = []
         paragraphs = [_clean_article_text(p.get_text(separator="\n", strip=True)) for p in soup.select("p")]
         paragraphs = [p for p in paragraphs if len(p) > 30]
         if paragraphs:
             candidates.append("\n".join(paragraphs))
-
-        # '링크가 적은 최대 텍스트 블록'도 **항상** 후보에 포함한다(특정 셀렉터에 안
-        # 걸리거나 셀렉터가 본문 일부만 잡는 사이트에서 전체 본문을 확보하기 위함).
-        # 본문 정제·코드/보일러플레이트 제거(_text_from_tag) + 링크 8개 초과 블록 제외로
-        # 네비/광고가 아닌 실제 기사 본문을 노린다. 최종 본문은 후보 중 가장 긴 것.
         best_block = ""
         for block in soup.find_all(["div", "article", "section"]):
             try:

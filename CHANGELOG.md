@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (본문에 포털 UI 텍스트가 섞이던 것 + AI Times 연재/목록 페이지 수집)
+- **포털(다음·네이버) 기사 본문에 제목·TTS·글자크기·번역 위젯·관련기사·저작권 chrome 이 섞이던 문제**(`scraping/enrich.py`): 직전에 본문을 '가장 긴 텍스트 블록'으로 뽑게 바꿨더니, 포털 페이지에서 본문 컨테이너가 아니라 **본문+UI 전체 wrapper** 를 잡았다. → **본문 셀렉터를 신뢰(우선)** 하도록 복원(매칭 셀렉터 중 최장; 없을 때만 문단/최대블록 폴백). 포털 chrome 노이즈 셀렉터(`.tts_area`/`[class*='relate']`/`[class*='copyright']`/`.foot_view` 등) + 보일러플레이트 텍스트(음성재생·글자크기·번역 beta·무단전재·해당 언론사로 이동 등) 제거 추가. 다음 본문 컨테이너(`.article_view`/`[data-translation]`/`#harmonyContainer`) 셀렉터 보강.
+- **AI Times '연재/섹션 목록 페이지'가 기사로 수집돼 같은 기본 이미지(예: VENDOR LOCK IN)가 반복되던 문제**(`scraping/tech_sites.py`): `_NAV_BLOCKLIST` 에 `articleList`·`sc_serial_code`·`sc_section_code`·`view_type=`·`/serial` 등 추가 → 기사 모음 페이지를 개별 기사에서 제외.
+- 검증: pytest **851 passed** — 신규 `test_fetch_article_strips_portal_chrome_keeps_body`(다음 스타일 HTML → 본문만, chrome 제외)·`test_tech_sites_rejects_list_and_serial_pages`. 금지패턴 0.
+
 ### Fixed (구글 뉴스 카드 이미지가 전부 'Google News 로고'로 나오던 것)
 - **원인**: 구글 RSS 링크(`news.google.com/rss/articles/<불투명토큰>`)가 원문으로 해석되지 않아, enrich 가 **구글 인터스티셜 페이지**를 열어 그 페이지의 og:image(= Google News 로고)를 가져옴 → 모든 구글 카드가 같은 로고.
 - **안전망(확실)** `scraping/enrich.py`: **미해석 구글 링크(`news.google.com`)는 fetch 자체를 건너뛴다** → 로고가 안 들어오고, 원문이 풀린 퍼블리셔 링크만 본문·og:image 를 가져온다. (테스트로 검증 — 구글 미해석 링크 fetch 0회.)
