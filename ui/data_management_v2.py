@@ -1565,7 +1565,10 @@ def _consume_refresh_if_any() -> bool:
         persona = app_shell.get_persona()
         kws, used_default = _collect_keywords_with_default(persona)
         extra_feeds = _collect_extra_feeds()
-        report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
+        # 수집은 이제 기사별 본문·대표이미지(og:image)까지 병렬로 가져오므로 시간이
+        # 걸린다 → 스피너로 피드백.
+        with st.spinner("뉴스 수집 중… 기사 본문·이미지를 가져오는 중이에요."):
+            report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
         try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
             from store import run_log
             run_log.record_run(report, trigger="manual")

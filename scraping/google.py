@@ -182,7 +182,8 @@ def search(
             "date": pub_raw,
             "published_at": published_at,
             "link": resolved,
-            "summary": re.sub(r"<[^>]+>", " ", description).strip(),
+            # 태그 제거 + HTML 엔티티(&nbsp; 등) 해제 + 공백 정리(폴백 노출 시 깨짐 방지).
+            "summary": " ".join(unescape(re.sub(r"<[^>]+>", " ", description)).split()),
             "image_url": image_url,
             "keywords": "",
             "source": "google",

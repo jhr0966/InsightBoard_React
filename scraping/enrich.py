@@ -14,7 +14,7 @@ import random
 import re
 import time
 from typing import Callable
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import Comment
@@ -230,7 +230,10 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
     sess = session or build_session()
     try:
         time.sleep(random.uniform(0.2, 0.5))
-        resp = sess.get(url, headers=default_headers(), timeout=REQUEST_TIMEOUT)
+        # 같은 출처(origin)를 referer 로 — 브라우저가 사이트 내에서 클릭한 것처럼 보이게.
+        # 네이버 기사(n.news.naver.com)처럼 referer 없으면 403 주는 사이트 대응.
+        origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}/"
+        resp = sess.get(url, headers=default_headers(referer=origin), timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         if resp.encoding is None or resp.encoding.lower() == "iso-8859-1":
             resp.encoding = resp.apparent_encoding
@@ -332,6 +335,11 @@ def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
     article["content"] = content
     article["image_url"] = image_url
 
+    # 빈도 기반 키워드(LLM 무관) — 데이터 표/매칭에서 쓰는 keywords 채움. 이미 있으면 유지.
+    if content and not str(article.get("keywords") or "").strip():
+        from scraping.extract import extract_keywords
+        article["keywords"] = extract_keywords(content, top_n=6)
+
     if with_llm and content:
         from sola.client import LLMNotConfigured
 
@@ -382,4 +390,45 @@ def enrich_articles(
                 progress_cb(i, total, art)
             except Exception:  # noqa: BLE001
                 pass
+    return articles
+
+
+def enrich_parallel(
+    articles: list[dict],
+    *,
+    with_llm: bool = False,
+    max_workers: int = 6,
+    progress_cb: Callable[[int, int, dict | None], None] | None = None,
+) -> list[dict]:
+    """여러 기사의 본문/대표이미지/키워드를 **병렬**로 채운다(ThreadPoolExecutor).
+
+    수집(`run_daily.collect_batch`) 직후 호출 — 검색 결과는 content 가 비어 있으므로
+    각 기사 링크에서 본문·og:image 를 가져와 채운다. 입력 리스트를 in-place 갱신하고
+    동일 리스트 반환(순서 유지). 개별 기사 실패는 격리해 배치를 막지 않는다.
+
+    with_llm=False 가 기본(본문·이미지·빈도 키워드만, 빠름). LLM 요약/키워드가 필요하면
+    True(느림) — collect 경로는 속도를 위해 False 로 호출한다.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    total = len(articles)
+    if total == 0:
+        return articles
+
+    def _work(art: dict) -> None:
+        try:
+            enrich_one(art, with_llm=with_llm)
+        except Exception:  # noqa: BLE001 — 단일 기사 enrich 실패가 배치를 막지 않게.
+            logger.debug("기사 enrich 실패: %s", art.get("link"), exc_info=True)
+
+    done = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(_work, art) for art in articles]
+        for _ in as_completed(futures):
+            done += 1
+            if progress_cb:
+                try:
+                    progress_cb(done, total, None)
+                except Exception:  # noqa: BLE001
+                    pass
     return articles

@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-09 — fix(★근본원인): 수집이 enrich 를 호출 안 해 본문/이미지 전부 빈칸이던 것 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 사용자가 "본문 하나도 못 가져옴, AI Times/구글 사진 없음, 구글 본문에 제목+&nbsp;" 보고. **이 환경은 외부 호스트 차단(Host not in allowlist)** 이라 라이브 스크래핑 불가 → 코드 흐름 추적으로 근본원인 발견: **`collect_batch` 가 enrich 를 전혀 호출하지 않아 content 가 항상 빈 채 저장**(검색 결과 content=""). 그동안의 enrich/셀렉터 개선이 실제 수집에 안 쓰였음(= 토큰 낭비 원인).
+
+**어떻게**:
+- `run_daily.collect_batch`: 소스별 수집 직후 `enrich.enrich_parallel(bucket, with_llm=False)` 호출(naver/google/tech/rss 모두). `do_enrich` 파라미터(기본 True).
+- `enrich.enrich_parallel`(ThreadPool 6workers) 신규. `enrich_one` 본문 확보 시 빈도 키워드 채움. `fetch_article` 같은 origin referer(네이버 403 대응).
+- `google` summary unescape(&nbsp; 정리). `_consume_refresh_if_any` 에 `st.spinner`.
+- 테스트: `test_collect_batch_enriches_body_and_image`(수집이 content·image·keywords 채움 검증) + `can_disable_enrich`. 기존 collect_batch 테스트는 enrich fetch stub(autouse)으로 hermetic·고속 유지. e2e seed 도 stub.
+
+**검증**: pytest **843 passed** · 금지패턴 0 · py_compile OK. ⚠️ 샌드박스 네트워크 차단으로 라이브 수집은 미검증 — **배포 앱에서 재수집 필요**. 코드 흐름·테스트로 "이제 enrich 가 돈다"는 검증함.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-09 — fix: 뉴스 수집 — 구글 사진·카드 사진 크기·본문 전체 추출 (jhr0966/News 참고) (`claude/kind-volta-IWxix`)
 
 **무엇을**: ① 구글뉴스 사진 0건, ② 카드 사진 너무 작음, ③ 본문 전체 미수집. 사용자 레포 `jhr0966/News` scraper.py(WebFetch) 와 제공 코드 참고.
@@ -16,7 +32,7 @@
 
 **검증**: pytest **841 passed**(google `_extract_original_link`·전체 본문 선택 신규 테스트) · 금지패턴 0 · py_compile OK. 카드/사진 CSS·구글 신포맷 한계는 실배포 확인 권장.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#136).
 
 ---
 

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Fixed (★ 근본원인: 수집이 본문/이미지를 enrich 하지 않던 것 — 본문 전부 빈칸 해결)
+- **`collect_batch` 가 enrich 를 호출하지 않아 모든 기사 `content` 가 빈 채로 저장되던 버그 수정**(`scraping/run_daily.py`): 검색 결과는 `content=""`·리스트 이미지만 가졌는데 수집 경로에 enrich 단계가 **아예 없었다** → 데이터 표 본문 전부 빈칸, 카드/모달 본문 없음, 이미지는 로고/썸네일뿐. 이제 소스별 수집 직후 **`enrich.enrich_parallel`(병렬)** 로 각 기사 링크에서 **본문·og:image·빈도 키워드**를 가져와 채운 뒤 저장한다. (그동안의 enrich/셀렉터 개선이 비로소 실제 수집에 반영됨.)
+- **`scraping/enrich.py`**: `enrich_parallel`(ThreadPoolExecutor·기본 6 workers, 개별 실패 격리) 신규. `enrich_one` 이 본문 확보 시 **빈도 기반 키워드**(`extract_keywords`)도 채움(표/매칭용). `fetch_article` 이 **같은 출처(origin) referer** 를 실어 네이버 기사(referer 없으면 403)처럼 막던 사이트 대응.
+- **구글 요약 정리**(`scraping/google.py`): RSS description 폴백이 `&nbsp;`·중복 공백·제목 포함으로 지저분하던 것 → 태그 제거 + **HTML 엔티티 해제(unescape)** + 공백 정규화.
+- **수집 스피너**(`ui/data_management_v2.py`): enrich 로 수집이 길어져 '지금 뉴스 수집' 에 `st.spinner` 추가.
+- 검증: pytest **843 passed** — 신규 `test_collect_batch_enriches_body_and_image`·`test_collect_batch_can_disable_enrich`. 기존 collect_batch 테스트는 enrich 네트워크 stub(autouse)으로 hermetic 유지. 금지패턴 0. ⚠️ 샌드박스가 외부 호스트(naver/aitimes/google)를 차단해 이 환경에선 라이브 수집 검증 불가 — 배포 앱에서 재수집 시 채워진다.
+
 ### Fixed (뉴스 수집 — 구글 사진·카드 사진 크기·본문 전체 추출, jhr0966/News scraper.py 참고)
 - **구글 뉴스 사진 0건 완화**(`scraping/google.py`): RSS `description` 안의 **비-구글 원문 링크(`<a href>`)를 추출**해 원문 URL 로 저장(`_extract_original_link`) → enrich 가 실제 기사에서 og:image·본문을 가져온다. 우선순위: description 직링크 → base64 디코드 → 리디렉트 추적 → media:content/thumbnail·description 이미지. (참고 레포 `jhr0966/News` scraper.py 의 `_extract_original_link` 전략.)
 - **카드 사진 확대**(`assets/v2/screens/data_management.css`): 카드 이미지 높이 128px→**190px**(`.sc-card` 300px→360px) — 첨부 시안처럼 사진이 크게 보이도록. `object-fit:cover` 유지로 왜곡 없음.
