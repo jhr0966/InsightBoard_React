@@ -1327,23 +1327,26 @@ a.dm-tab:hover { text-decoration: none; }
 }
 .sc-empty-sub { font-size: 12.5px; }
 
-/* 기사 모달 (st.dialog 내부 본문) */
-.sc-modal { display: flex; flex-direction: column; gap: 10px; }
-.sc-modal-img { width: 100%; max-height: 280px; object-fit: cover; border-radius: 10px; display: block; }
+/* 기사 모달 (st.dialog 내부 본문) — 화면에 맞춰 컴팩트하게(뷰포트 초과 스크롤/버튼
+   잘림 방지). 이미지는 contain 으로 잘리지 않게, 본문/요약은 내부 스크롤로 가둔다. */
+.sc-modal { display: flex; flex-direction: column; gap: 8px; }
+.sc-modal-img { width: 100%; max-height: 18vh; object-fit: contain; border-radius: 10px;
+  display: block; background: var(--surface-soft); }
 .sc-modal-meta { font-size: 13px; font-weight: 700; color: var(--text-secondary); }
-.sc-modal-h { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.3;
+.sc-modal-h { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.3;
   letter-spacing: -0.02em; color: var(--text-primary); }
 .sc-modal-summary {
-  font-size: 14.5px; line-height: 1.6; color: var(--text-primary);
-  padding: 12px 14px; background: var(--surface-soft); border-radius: 10px;
+  font-size: 14px; line-height: 1.55; color: var(--text-primary);
+  padding: 10px 12px; background: var(--surface-soft); border-radius: 10px;
   border-left: 3px solid var(--accent-primary);
+  max-height: 14vh; overflow: auto;
 }
-.sc-modal-body { font-size: 14.5px; line-height: 1.75; color: var(--text-secondary);
-  flex: 1 1 auto; min-height: 0; max-height: 60vh; overflow: auto; }
-.sc-modal-body p { margin: 0 0 10px; }
+.sc-modal-body { font-size: 14px; line-height: 1.7; color: var(--text-secondary);
+  flex: 1 1 auto; min-height: 0; max-height: 36vh; overflow: auto; }
+.sc-modal-body p { margin: 0 0 9px; }
 .sc-modal-link, a.sc-modal-link, a.sc-modal-link:visited {
   align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
-  padding: 9px 16px; border-radius: 9px; font-size: 13.5px; font-weight: 700;
+  padding: 8px 14px; border-radius: 9px; font-size: 13.5px; font-weight: 700;
   color: #fff; background: var(--accent-primary); text-decoration: none;
 }
 .sc-modal-link:hover { background: var(--accent-hover); text-decoration: none; }

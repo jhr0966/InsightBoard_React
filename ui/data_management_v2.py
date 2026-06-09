@@ -1222,14 +1222,15 @@ def _news_modal_body(row: dict) -> None:
     if meta:
         parts.append(f'<div class="sc-modal-meta">{meta}</div>')
     parts.append(f'<h2 class="sc-modal-h">{_html.escape(title)}</h2>')
-    if summary:
-        parts.append(f'<div class="sc-modal-summary">{_html.escape(summary)}</div>')
     if content:
         paras = "".join(
             f"<p>{_html.escape(p.strip())}</p>" for p in content.splitlines() if p.strip()
         )
         parts.append(f'<div class="sc-modal-body">{paras}</div>')
-    elif not summary:
+    elif summary:
+        # 본문 미수집 시에만 요약(검색 설명)을 본문 자리에 노출 — 중복 방지.
+        parts.append(f'<div class="sc-modal-body"><p>{_html.escape(summary)}</p></div>')
+    else:
         parts.append('<div class="sc-modal-body"><p>본문이 아직 수집되지 않았어요. '
                      '원본 기사에서 확인하세요.</p></div>')
     if link[:4].lower() == "http":

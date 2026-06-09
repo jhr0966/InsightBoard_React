@@ -240,4 +240,5 @@ body:has(.db-topbar) .stApp {
 }
 [data-testid="stDialog"] [role="dialog"] {
   max-height: 90vh !important;
+  max-width: 880px !important;   /* 와이드 모니터에서 모달이 과하게 넓어지지 않게(사진 배너화 방지) */
 }

@@ -149,9 +149,20 @@ def test_modal_body_renders_content_link_and_escapes():
     html = captured[0]
     assert "모달 &lt;제목&gt;" in html                   # 제목 escape
     assert "문단1" in html and "문단2" in html            # 본문 단락 전체
-    assert "한줄 요약" in html                            # 요약 블록
+    assert "한줄 요약" not in html                        # content 있으면 요약 중복 노출 안 함
     assert "원본 기사 열기" in html and "https://c" in html  # 원본 링크
     assert 'src="https://img/c.jpg"' in html             # 모달 상단 사진
+
+
+def test_modal_body_falls_back_to_summary_when_no_content():
+    """본문 미수집(content 없음)이면 요약을 본문 자리에 노출."""
+    row = {"title": "T", "source": "naver", "press": "", "link": "https://x",
+           "summary": "검색 요약 문장", "content": "", "image_url": ""}
+    captured: list[str] = []
+    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
+         patch("streamlit.button", return_value=False):
+        dm._news_modal_body(row)
+    assert "검색 요약 문장" in captured[0]
 
 
 def test_modal_opens_from_news_query():
