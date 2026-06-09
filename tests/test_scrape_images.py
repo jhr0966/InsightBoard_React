@@ -75,6 +75,13 @@ def test_google_decode_url_opaque_returns_empty():
     assert google._decode_google_url(gurl) == ""
 
 
+def test_google_extract_original_link_from_description():
+    desc = '<a href="https://pub.example.com/article/5">기사 제목</a>&nbsp;<font>언론사</font>'
+    assert google._extract_original_link(desc) == "https://pub.example.com/article/5"
+    # 구글 링크만 있으면 빈 문자열(→ 디코드/리디렉트로 폴백)
+    assert google._extract_original_link('<a href="https://news.google.com/rss/articles/x">t</a>') == ""
+
+
 def test_google_resolve_prefers_decode_no_request():
     """디코드로 풀리면 네트워크 요청 없이 원문 URL 을 돌려준다."""
     original = "https://pub.example.com/a/b"

@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-09 — fix: 뉴스 수집 — 구글 사진·카드 사진 크기·본문 전체 추출 (jhr0966/News 참고) (`claude/kind-volta-IWxix`)
+
+**무엇을**: ① 구글뉴스 사진 0건, ② 카드 사진 너무 작음, ③ 본문 전체 미수집. 사용자 레포 `jhr0966/News` scraper.py(WebFetch) 와 제공 코드 참고.
+
+**어떻게**:
+- ①: `google._extract_original_link` — RSS description 의 비-구글 `<a href>` 를 원문 링크로 채택(우선) → enrich 가 og:image/본문 확보. 이후 base64 디코드→리디렉트→media 순.
+- ②: `.sc-card-img` 128→190px(`.sc-card` 300→360px).
+- ③: enrich `_CONTENT_SELECTORS` 에 AI Times/모우 CMS(`#article-view-content-div` 등) + 참고 누락 셀렉터 추가. 본문 선택을 '첫 매치'→**후보(셀렉터·문단·최대블록) 중 최장**으로 변경(전체 본문 확보).
+
+**검증**: pytest **841 passed**(google `_extract_original_link`·전체 본문 선택 신규 테스트) · 금지패턴 0 · py_compile OK. 카드/사진 CSS·구글 신포맷 한계는 실배포 확인 권장.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-09 — fix: 뉴스 수집 후속 — 카드 클릭 무반응·높이 통일·표 본문/행모달·사진 추출 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 직전 PR(#134) 사용 중 발견된 5건 — ① 카드 눌러도 모달 안 뜸, ② 카드 높이 불균일(본문 3줄로 통일), ③ 데이터 표에 본문, ④ 표 행 클릭 시 모달, ⑤ 사진 추출(오토메이션월드만 정상, AI Times 미흡·구글 0건·네이버 로고만).
@@ -17,7 +32,7 @@
 
 **검증**: pytest **839 passed**(신규 `tests/test_scrape_images.py` + 표 본문/행선택·카드클릭 테스트) · 금지패턴 0 · py_compile OK. CSS(카드클릭·모달중앙)는 실배포 시각 확인 권장(헤드리스 미설치).
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#135).
 
 ---
 

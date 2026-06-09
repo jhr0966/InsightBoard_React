@@ -73,6 +73,20 @@ _HTML_NO_SELECTORS_NO_P = """
 """
 
 
+def test_fetch_article_takes_fullest_body():
+    """셀렉터가 본문 일부만 잡아도 더 긴 본문 블록을 골라 전체 본문을 확보한다."""
+    lead = "셀렉터에 잡히는 짧은 리드 문장입니다. " * 3        # article_view 매치(부분)
+    full = "전체 본문 핵심 내용 문장입니다. " * 50             # 비표준 div(전체)
+    html = (
+        f'<html><body><div class="article_view">{lead}</div>'
+        f'<div class="zzz-custom-body">{full}</div></body></html>'
+    )
+    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+        art = enrich.fetch_article("https://example.com/a")
+    assert "전체 본문 핵심 내용" in art["content"]
+    assert len(art["content"]) > len(lead) + 200            # 리드가 아닌 전체 본문
+
+
 def test_fetch_article_largest_block_fallback():
     """표준 셀렉터·<p> 가 없어도 링크 적은 최대 텍스트 블록을 폴백으로 추출(참고 스크래퍼 패턴)."""
     with patch.object(enrich, "build_session", lambda: _fake_session(_HTML_NO_SELECTORS_NO_P)):

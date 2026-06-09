@@ -14,7 +14,7 @@ from xml.etree import ElementTree as ET
 
 import requests
 
-from scraping.extract import is_junk_image
+from scraping.extract import is_junk_image, soup_of
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 
 
@@ -105,6 +105,24 @@ def _image_from_description(description: str) -> str:
     return unescape(match.group(1)) if match else ""
 
 
+def _extract_original_link(description: str) -> str:
+    """RSS description 안의 **비-구글 원문 링크**(있으면). 일부 구글 뉴스 항목은
+    description 의 `<a href>` 가 퍼블리셔 직링크라, 리디렉트 추적 없이 원문을 얻는다.
+    (참고: jhr0966/News scraper.py 의 _extract_original_link 와 동일 전략.)
+    """
+    if not description:
+        return ""
+    try:
+        soup = soup_of(description)
+    except Exception:  # noqa: BLE001
+        return ""
+    for a in soup.find_all("a", href=True):
+        href = (a.get("href") or "").strip()
+        if href.startswith("http") and "news.google.com" not in href:
+            return href
+    return ""
+
+
 def search(
     keyword: str,
     max_results: int = 10,
@@ -154,7 +172,8 @@ def search(
         description = (item.findtext("description") or "").strip()
 
         # 원문 링크 복원(구글 리디렉트 → 실제 기사) — enrich 가 og:image/본문을 가져오게.
-        resolved = _resolve_link(session, link)
+        # 우선순위: description 직링크 → base64 디코드/리디렉트 추적(_resolve_link).
+        resolved = _extract_original_link(description) or _resolve_link(session, link)
         image_url = _media_image(item) or _image_from_description(description)
 
         articles.append({
