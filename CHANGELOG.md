@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Fixed (카드 본문 제목 반복 + thebell TLS 차단 + slist 이미지 — 뉴스 수집 화면 점검)
+- **카드/표/모달 본문 자리에 제목이 한 번 더 나오던 문제**: 두 경로가 겹친 원인 — ① 구글 뉴스 RSS 의 description(=`summary`)은 태그를 벗기면 '제목(+언론사)'만 남는데 카드가 `summary` 를 `content` 보다 우선 노출, ② 과거 수집분 `content` 가 '제목\n본문' 형태. → (소스 차단) `scraping/google.py` `_summary_echoes_title` — 제목 반복뿐인 description 은 summary 를 비워 저장(실제 스니펫 있는 건 보존). (렌더 방어) `ui/data_management_v2.py` `_news_body_src` — 카드·표·모달 공용 본문 선택 헬퍼: 라인 단위로 제목 라인을 제거하고, '제목(+언론사)' 한 줄뿐인 값은 건너뛰어 다음 폴백(content)으로. 모달 본문 단락에서도 제목 라인 스킵(레거시 데이터 대응). 브라우저 스크린샷으로 카드 발췌=본문만·제목 1회 확인.
+- **뉴스 수집 화면 전체 점검 결과**: 카테고리(키워드/포탈) 분류·출처칩·검색 필터·표 행 선택 가드·캐시 무효화 로직은 정상. 추가 발견 1건 — `http://` 이미지가 https 앱에서 **혼합콘텐츠로 차단**되어 사진이 안 보일 수 있음 → 카드·표·모달 렌더에서 `_https_img` 로 https 승격.
+- **thebell 본문·사진 여전히 미수집**: 직전의 헤더 강화 재시도로도 403 인 것은 WAF 가 **TLS 핑거프린트(JA3)** 로 python-requests 를 식별하는 케이스 → `scraping/http.py` `fetch_impersonated` 신설(curl_cffi 의 Chrome TLS 위장, **선택 의존성** — 미설치 시 None 폴백) + `enrich._get_article_response` 최후 폴백으로 연결. `requirements.txt` 에 `curl_cffi>=0.7` 추가(**배포 환경 `pip install -r requirements.txt` 재실행 필요**). ⚠ 샌드박스 망 차단으로 thebell 라이브는 미검증 — `scripts/diagnose_article.py` 로 배포 환경에서 확인.
+- **slist.kr 사진만 미수집**: ND소프트/Froala 계열 CMS 의 lazy 속성 누락이 유력 → `_IMAGE_ATTR_ORDER` 에 `data-fr-src`·`data-echo`·`data-lazyload` 추가 + http→https 렌더 승격(혼합콘텐츠 케이스). 정확한 원인 확정용 **기사 1건 진단 스크립트 `scripts/diagnose_article.py` 신설** — 요청 단계(기본/워밍업/TLS 위장)·메타/본문 이미지 후보(+junk 판정)·본문 셀렉터 매칭을 단계별 리포트.
+- 검증: pytest **825 passed**(신규 8 — 구글 summary 에코 차단·TLS 위장 폴백 2종·apparent_encoding 가드·Froala lazy 속성·본문 폴백/카드/모달 에코 방어·https 승격) · 금지패턴 0 · 카드/모달 브라우저 스크린샷 확인.
+
 ### Fixed (thebell 본문·사진 미수집 + 구글 뉴스 본문 노이즈 + 기사 모달 버튼 배치)
 - **thebell.co.kr 기사 본문·사진이 통째로 비던 문제**(`scraping/enrich.py`): thebell 류 구형 ASP/WAF 사이트가 세션 쿠키 없는 직접 진입·약식 헤더를 403 으로 차단 → `fetch_article` 이 빈 값 반환. **차단 응답(401/403/406/412/429) 시 1회 강화 재시도** 추가 — ① 사이트 홈 워밍업으로 세션 쿠키 획득 ② sec-fetch 브라우저 시그널 + 네이버 검색 referer(검색 클릭 유입 위장)로 재요청(`_get_article_response`/`_full_browser_headers`). ⚠ 샌드박스 외부망 차단으로 thebell 실사이트 라이브 동작은 미검증 — 배포 환경 재수집으로 확인 필요.
 - **구글 뉴스 본문에 제목 반복 + UI 버튼 텍스트(번역/beta/kaka i/닫기/작은·큰 폰트)·섹션명·날짜가 섞이던 문제**(`scraping/enrich.py`): 본문 셀렉터 미매칭 → 최대블록 폴백이 기사 wrapper 를 잡을 때 생기는 잔재. ① `_BOILERPLATE_PATTERNS` 에 퍼블리셔 UI 버튼(폰트/공유/번역/SNS)·섹션명 단독 라인·입력/수정 일시·날짜-only 라인 패턴 추가 ② `_strip_title_echo` 신설 — 본문에 제목과 동일한 라인이 반복되면 제거(8자 미만 제목은 오삭제 방지 위해 제외), `enrich_one` 경로에 적용.

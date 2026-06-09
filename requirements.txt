@@ -2,6 +2,7 @@ streamlit>=1.32
 beautifulsoup4
 lxml
 requests
+curl_cffi>=0.7  # TLS 지문 위장 — WAF 차단 사이트(thebell 등) 폴백(scraping/http.fetch_impersonated)
 pandas
 pyarrow
 openpyxl

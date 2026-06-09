@@ -283,3 +283,60 @@ def test_table_row_selection_opens_modal():
         dm._render_news_table("")
     assert "_sc_open_news" not in st.session_state               # 재오픈 안 함
     st.session_state.clear()
+
+
+# ── 본문 폴백(제목 에코 방어) + 이미지 https 승격 ──────────────
+
+
+def test_news_body_src_skips_title_echo_summary():
+    """summary 가 '제목(+언론사)' 반복뿐이면 건너뛰고 content 로 폴백해야 한다."""
+    row = {"title": "[단독] AI 글라스 커닝 적발",
+           "summary": "[단독] AI 글라스 커닝 적발 스포츠경향",
+           "content": "전기기사 시험에서 부정행위가 적발됐다."}
+    body = dm._news_body_src(row, ("summary_llm", "summary", "content"))
+    assert body == "전기기사 시험에서 부정행위가 적발됐다."
+    # 실제 요약(제목과 다른 텍스트)은 그대로 사용
+    row2 = {"title": "T제목입니다 충분히 김", "summary": "현장 적용이 확대되고 있다는 분석이다."}
+    assert "확대" in dm._news_body_src(row2, ("summary", "content"))
+
+
+def test_card_excerpt_uses_content_when_summary_echoes_title():
+    """summary 가 제목 에코, content 도 '제목\\n본문'(레거시) — 발췌엔 본문만 남아야 한다."""
+    row = {"title": "[단독] AI 글라스 커닝 적발", "source": "google", "press": "스포츠경향",
+           "summary": "[단독] AI 글라스 커닝 적발 스포츠경향",
+           "content": "[단독] AI 글라스 커닝 적발\n전기기사 시험에서 부정행위가 적발됐다.",
+           "image_url": "", "collected_at": "2026-06-09T10:00:00Z"}
+    html = dm._sc_card_visual_html(row)
+    assert "부정행위가 적발됐다" in html          # 본문 자리에 content 본문
+    assert html.count("AI 글라스 커닝 적발") == 1  # 제목은 h 영역 한 번만(발췌 미반복)
+
+
+def test_https_img_upgrades_plain_http():
+    assert dm._https_img("http://cdn.x.kr/a.jpg") == "https://cdn.x.kr/a.jpg"
+    assert dm._https_img("https://cdn.x.kr/a.jpg") == "https://cdn.x.kr/a.jpg"
+    assert dm._https_img("") == ""
+
+
+def test_modal_body_skips_title_line_and_echo_summary():
+    """모달: 레거시 content 의 제목 첫 줄은 걸러지고, 제목뿐인 content 면 요약으로 폴백."""
+    title = "[단독] AI 글라스 커닝 적발 보도"
+    row = {"title": title, "source": "google", "press": "", "link": "https://x",
+           "summary": "실제 요약 문장이 따로 있다.",
+           "content": f"{title}\n본문 첫 문단이다.", "image_url": ""}
+    captured: list[str] = []
+    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
+         patch("streamlit.button", return_value=False), \
+         patch("streamlit.columns", return_value=_modal_action_cols()):
+        dm._news_modal_body(row)
+    body_html = captured[0]
+    assert "본문 첫 문단이다" in body_html
+    assert body_html.count("AI 글라스 커닝 적발 보도") == 1   # h2 한 번만
+
+    # content 가 제목 한 줄뿐이면 → 요약 폴백
+    row2 = dict(row, content=title)
+    captured.clear()
+    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
+         patch("streamlit.button", return_value=False), \
+         patch("streamlit.columns", return_value=_modal_action_cols()):
+        dm._news_modal_body(row2)
+    assert "실제 요약 문장이 따로 있다" in captured[0]

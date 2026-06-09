@@ -80,3 +80,38 @@ def test_google_search_propagates_http_failure():
     with patch.object(google, "build_session", lambda: FailSession()):
         with pytest.raises(RuntimeError):
             google.search("x")
+
+
+_RSS_TITLE_ECHO = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>[단독] 수험생 안경 잡고 보니 AI 글라스 커닝 - 스포츠경향</title>
+      <link>https://news.google.com/rss/articles/CAAE1</link>
+      <pubDate>Tue, 09 Jun 2026 09:00:00 GMT</pubDate>
+      <description>&lt;a href="https://x"&gt;[단독] 수험생 안경 잡고 보니 AI 글라스 커닝&lt;/a&gt;&amp;nbsp;&amp;nbsp;스포츠경향</description>
+      <source url="https://sports.khan.co.kr">스포츠경향</source>
+    </item>
+    <item>
+      <title>조선소 협동로봇 확대 - 한국경제</title>
+      <link>https://news.google.com/rss/articles/CAAE2</link>
+      <pubDate>Tue, 09 Jun 2026 08:00:00 GMT</pubDate>
+      <description>&lt;a href="https://y"&gt;조선소 협동로봇 확대&lt;/a&gt; 조선소 현장에 협동로봇 보급이 빨라지며 용접·물류 공정의 자동화율이 높아지고 있다.</description>
+      <source url="https://www.hankyung.com">한국경제</source>
+    </item>
+  </channel>
+</rss>
+"""
+
+
+def test_google_search_blanks_summary_that_only_echoes_title():
+    """description 이 '제목(+언론사)' 반복뿐이면 summary 를 비운다(카드 제목 이중 노출 방지).
+
+    실제 정보가 더 있는 description 은 보존해야 한다.
+    """
+    with patch.object(google, "build_session", lambda: _fake_session(_RSS_TITLE_ECHO)):
+        arts = google.search("AI", max_results=10)
+    echo, real = arts[0], arts[1]
+    assert echo["summary"] == ""                        # 제목+언론사뿐 → 비움
+    assert "자동화율" in real["summary"]                 # 본문 스니펫 있는 건 유지
+    assert real["summary"] != real["title"]

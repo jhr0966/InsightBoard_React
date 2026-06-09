@@ -5,7 +5,23 @@
 
 ---
 
-## 2026-06-09 — fix: thebell 미수집·구글 본문 노이즈·모달 버튼 배치 (`claude/dev-setup-testing-i4f082`, PR #142)
+## 2026-06-09 — fix: 카드 제목 반복·thebell TLS 차단·slist 이미지 (`fix-collect-body-echo-images`)
+
+**무엇을**: ① 카드 본문 자리에 제목 반복(구글) ② 뉴스 수집 화면 전반 점검 ③ thebell 여전히 미수집 ④ slist 사진만 미수집.
+
+**어떻게**:
+- 제목 반복: `google.py` `_summary_echoes_title`(description=제목뿐이면 summary 비움) + `data_management_v2.py` `_news_body_src`(카드·표·모달 공용 — 제목 라인 제거·에코 스킵 후 폴백). 모달 단락도 제목 라인 스킵.
+- 화면 점검: 분류·칩·검색·표 선택 가드 정상. 추가 발견 — http:// 이미지 혼합콘텐츠 → `_https_img` 승격(카드/표/모달).
+- thebell: TLS 지문(JA3) 차단으로 판단 → `http.fetch_impersonated`(curl_cffi Chrome 위장, 선택 의존성) + enrich 최후 폴백. requirements 에 curl_cffi. **배포에서 pip install 재실행 + `scripts/diagnose_article.py` 로 확인 필요.**
+- slist: Froala lazy 속성(`data-fr-src` 등) 추가 + 진단 스크립트 신설.
+
+**검증**: pytest 825 passed(신규 8) · 금지패턴 0 · 카드/모달 스크린샷 확인. ⚠ thebell·slist 라이브는 망 차단으로 미검증(진단 스크립트 제공).
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
+## 2026-06-09 — fix: thebell 미수집·구글 본문 노이즈·모달 버튼 배치 (`claude/dev-setup-testing-i4f082`, PR #142 ✅ merged)
 
 **무엇을**: ① thebell.co.kr 만 본문·사진 미수집 ② 구글 뉴스 본문에 제목 반복 + UI 버튼 텍스트 혼입 ③ 기사 모달의 원본/닫기 버튼 병렬 배치 요청.
 
