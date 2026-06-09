@@ -88,6 +88,16 @@ _BOILERPLATE_PATTERNS = (
     re.compile(r"Translated by|번역\s*beta|음성으로 제공", re.IGNORECASE),
     re.compile(r"해당\s*언론사로\s*이동|에서\s*직접\s*확인하세요"),
     re.compile(r"다음뉴스를?\s*만나보세요|가장\s*빠른\s*뉴스가 있고"),
+    # 퍼블리셔(언론사 자체 페이지) 기사 wrapper 의 UI 버튼/위젯 텍스트 — 단독 라인만 제거.
+    # 본문 셀렉터 미매칭 → 최대블록 폴백 시 폰트/공유/번역 버튼 라벨이 본문에 섞이는 문제.
+    re.compile(r"^(번역(\s*beta)?|beta|닫기|공유(하기)?|스크랩|프린트|인쇄(하기)?)$", re.IGNORECASE),
+    re.compile(r"^(매우\s*)?(작은|큰|보통)\s*폰트$|^(글꼴|글자)\s*(크게|작게|크기)$"),
+    re.compile(r"^kaka\s*i$|^(카카오(톡|스토리)?|페이스북|페북|트위터|밴드|텔레그램|링크\s*복사|url\s*복사)$",
+               re.IGNORECASE),
+    # 기사 메타가 단독 라인으로 섞인 것 — 섹션명/입력·수정 일시/날짜만 있는 줄.
+    re.compile(r"^(사회|정치|경제|국제|문화|생활|스포츠|연예|오피니언|IT|과학|산업|증권|부동산|기획|칼럼)$"),
+    re.compile(r"^(입력|수정|업데이트|발행)\s*[:.]?\s*\d{4}"),
+    re.compile(r"^\d{4}\s*[.\-/]\s*\d{1,2}\s*[.\-/]\s*\d{1,2}\.?\s*(\d{1,2}:\d{2}(:\d{2})?)?$"),
 )
 
 _IMAGE_SELECTORS = (
@@ -190,6 +200,21 @@ def _text_from_tag(tag) -> str:
     return _clean_article_text(tag.get_text(separator="\n", strip=True))
 
 
+def _strip_title_echo(content: str, title: str) -> str:
+    """본문에 기사 제목이 그대로 한 줄로 반복되면 제거.
+
+    본문 셀렉터 미매칭 사이트에서 최대블록 폴백이 제목 영역까지 포함한 wrapper 를
+    잡으면, 모달에서 제목이 두 번(헤더 + 본문 첫 줄) 보인다 → 정규화 후 제목과
+    동일한 라인만 걷어낸다(본문 문장 오삭제 방지 위해 8자 미만 제목은 건너뜀).
+    """
+    norm_title = re.sub(r"\s+", " ", (title or "")).strip()
+    if not content or len(norm_title) < 8:
+        return content
+    kept = [line for line in content.splitlines()
+            if re.sub(r"\s+", " ", line).strip() != norm_title]
+    return "\n".join(kept)
+
+
 def _extract_image_url(soup, base_url: str) -> str:
     """Return the likely representative article image URL.
 
@@ -237,6 +262,45 @@ def content_needs_refresh(content: str) -> bool:
     return symbol_count / max(len(str(content)), 1) > 0.18 and not re.search(r"[가-힣]", str(content)[:500])
 
 
+# WAF/anti-bot 이 봇 의심 요청에 주로 돌려주는 상태코드 — 이때만 강화 재시도를 1회 수행.
+_BLOCKED_STATUSES = (401, 403, 406, 412, 429)
+
+
+def _full_browser_headers(referer: str | None = None) -> dict[str, str]:
+    """WAF 가 검사하는 브라우저 시그널(sec-fetch-*)까지 채운 강화 헤더."""
+    headers = default_headers(referer=referer)
+    headers.update({
+        "Sec-Fetch-Site": "cross-site" if referer else "none",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
+    })
+    return headers
+
+
+def _get_article_response(sess, url: str):
+    """기사 GET — WAF/anti-bot 차단 응답이면 홈 워밍업(쿠키) + 강화 헤더로 1회 재시도.
+
+    thebell 등 구형 ASP/WAF 사이트는 세션 쿠키 없는 직접 진입·약식 헤더를 403 으로
+    막아 본문·사진이 통째로 빈다 → ① 사이트 홈을 먼저 방문해 세션 쿠키를 받고
+    ② sec-fetch 시그널 + 네이버 검색 referer(검색 클릭 유입 위장)로 다시 요청한다.
+    """
+    # 같은 출처(origin)를 referer 로 — 브라우저가 사이트 내에서 클릭한 것처럼 보이게.
+    # 네이버 기사(n.news.naver.com)처럼 referer 없으면 403 주는 사이트 대응.
+    origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}/"
+    resp = sess.get(url, headers=default_headers(referer=origin), timeout=REQUEST_TIMEOUT)
+    if resp.status_code not in _BLOCKED_STATUSES:
+        return resp
+    try:
+        sess.get(origin, headers=_full_browser_headers(), timeout=REQUEST_TIMEOUT)
+    except requests.RequestException:
+        pass  # 워밍업 실패는 무시 — 본 요청 재시도가 본질
+    time.sleep(random.uniform(0.3, 0.7))
+    return sess.get(url, headers=_full_browser_headers(referer="https://search.naver.com/"),
+                    timeout=REQUEST_TIMEOUT)
+
+
 def fetch_article(url: str, *, session=None) -> dict[str, str]:
     """기사 URL → 정제된 본문과 대표 이미지 URL."""
     if not url or not url.startswith("http"):
@@ -244,10 +308,7 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
     sess = session or build_session()
     try:
         time.sleep(random.uniform(0.2, 0.5))
-        # 같은 출처(origin)를 referer 로 — 브라우저가 사이트 내에서 클릭한 것처럼 보이게.
-        # 네이버 기사(n.news.naver.com)처럼 referer 없으면 403 주는 사이트 대응.
-        origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}/"
-        resp = sess.get(url, headers=default_headers(referer=origin), timeout=REQUEST_TIMEOUT)
+        resp = _get_article_response(sess, url)
         resp.raise_for_status()
         if resp.encoding is None or resp.encoding.lower() == "iso-8859-1":
             resp.encoding = resp.apparent_encoding
@@ -354,6 +415,8 @@ def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
         fetched = fetch_article(link)
         content = fetched.get("content") or content
         image_url = fetched.get("image_url") or image_url
+    # wrapper 폴백 추출 시 제목이 본문 첫 줄로 반복되는 것 제거(모달 제목 이중 노출 방지).
+    content = _strip_title_echo(content, str(article.get("title") or ""))
     article["content"] = content
     article["image_url"] = image_url
 

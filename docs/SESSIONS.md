@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-06-09 — fix: thebell 미수집·구글 본문 노이즈·모달 버튼 배치 (`claude/dev-setup-testing-i4f082`, PR #142)
+
+**무엇을**: ① thebell.co.kr 만 본문·사진 미수집 ② 구글 뉴스 본문에 제목 반복 + UI 버튼 텍스트 혼입 ③ 기사 모달의 원본/닫기 버튼 병렬 배치 요청.
+
+**어떻게**:
+- `scraping/enrich.py`: ① thebell 류 WAF 403 → `_get_article_response` 신설(차단 응답 시 홈 워밍업 쿠키 + sec-fetch 헤더·네이버 referer 1회 재시도). ② `_BOILERPLATE_PATTERNS` 확장(폰트/공유/번역 버튼·섹션명·날짜 단독 라인) + `_strip_title_echo`(본문 내 제목 반복 라인 제거, enrich_one 적용).
+- `ui/data_management_v2.py` + `data_management.css`: 모달 하단을 `st.columns(2)` 액션 행으로 — 원본 링크(`sc-modal-link--row` 전폭) ∥ ✕ 닫기. 브라우저 스크린샷 검증 완료.
+
+**검증**: pytest 817 passed(신규 6) · 금지패턴 0 · 모달 시각검증 OK. ⚠ thebell 라이브는 샌드박스 망 차단으로 미검증(배포 환경 재수집 필요).
+
+**상태**: 🔄 진행 — PR #142 에 추가 커밋.
+
+---
+
 ## 2026-06-09 — chore: 개발 자체검증 세팅 — 브라우저 + 웹크롤링 (`claude/dev-setup-testing-i4f082`)
 
 **무엇을**: 개발 준비 요청("브라우저 띄워 자체검증 + 웹크롤링 자체 테스트 세팅"). 의존성 설치·pytest 811 통과 확인 후, 환경 제약 2가지를 해결 — ① `verify_browser.py` 가 구버전 영역명(`🧱 데이터 관리`)을 쓰고 온보딩 모달이 모든 캡처를 가림, ② 외부망이 allowlist 차단이라 실 사이트 크롤링 테스트 불가.

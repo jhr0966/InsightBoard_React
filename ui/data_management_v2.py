@@ -952,15 +952,22 @@ def _news_modal_body(row: dict) -> None:
     else:
         parts.append('<div class="sc-modal-body"><p>본문이 아직 수집되지 않았어요. '
                      '원본 기사에서 확인하세요.</p></div>')
-    if link[:4].lower() == "http":
-        parts.append(
-            f'<a class="sc-modal-link" href="{_html.escape(link, quote=True)}" '
-            f'target="_blank" rel="noopener noreferrer">원본 기사 열기 ↗</a>'
-        )
     parts.append('</div>')
     st.html(_components.prepare_screen_html("".join(parts)))
 
-    if st.button("✕ 닫기", key="_sc_news_close", use_container_width=True):
+    # 하단 액션 행 — 원본 링크와 ✕ 닫기를 같은 라인에 병렬 배치(링크 없으면 닫기만 전폭).
+    close_col = None
+    if link[:4].lower() == "http":
+        c1, close_col = st.columns(2, vertical_alignment="center")
+        with c1:
+            st.html(_components.prepare_screen_html(
+                f'<a class="sc-modal-link sc-modal-link--row" '
+                f'href="{_html.escape(link, quote=True)}" '
+                f'target="_blank" rel="noopener noreferrer">원본 기사 열기 ↗</a>'
+            ))
+    closed = (close_col.button if close_col else st.button)(
+        "✕ 닫기", key="_sc_news_close", use_container_width=True)
+    if closed:
         st.session_state.pop("_sc_open_news", None)
         st.rerun()
 

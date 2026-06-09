@@ -366,3 +366,92 @@ def test_enrich_articles_skips_failing_article(monkeypatch):
     assert progress == [1, 2]
     assert "비전 AI" in out[0]["content"]
     assert out[1]["content"] == ""
+
+
+def test_fetch_article_retries_blocked_with_warmup_and_browser_headers():
+    """WAF 403 차단 시 홈 워밍업(쿠키) + 강화 헤더·네이버 referer 로 1회 재시도해야 한다.
+
+    thebell 등 구형 ASP/WAF 사이트가 직접 진입을 403 으로 막아 본문·사진이 통째로
+    비던 문제의 회귀 방지.
+    """
+    calls: list[tuple[str, dict]] = []
+
+    class BlockingSession:
+        def get(self, url, headers=None, timeout=None):
+            calls.append((url, headers or {}))
+            if len(calls) == 1:
+                return _FakeResp("Forbidden", status=403)  # 최초 기사 요청 차단
+            if url.endswith("/"):
+                return _FakeResp("<html>home</html>")       # 홈 워밍업
+            return _FakeResp(_HTML_WITH_BODY)               # 재시도 성공
+
+    art = enrich.fetch_article("https://www.thebell.co.kr/front/newsview.asp?key=1",
+                               session=BlockingSession())
+    assert "비전 AI" in art["content"]
+    assert art["image_url"].endswith("/photo.jpg")
+    assert len(calls) == 3
+    assert calls[1][0] == "https://www.thebell.co.kr/"      # 홈 워밍업
+    retry_headers = calls[2][1]
+    assert retry_headers.get("Sec-Fetch-Mode") == "navigate"  # 강화 브라우저 시그널
+    assert "search.naver.com" in retry_headers.get("Referer", "")
+
+
+def test_fetch_article_no_retry_on_success():
+    """정상(200) 응답이면 차단 재시도 없이 1회 요청으로 끝나야 한다."""
+    calls: list[str] = []
+
+    class OkSession:
+        def get(self, url, headers=None, timeout=None):
+            calls.append(url)
+            return _FakeResp(_HTML_WITH_BODY)
+
+    art = enrich.fetch_article("https://example.com/a", session=OkSession())
+    assert "비전 AI" in art["content"]
+    assert len(calls) == 1
+
+
+def test_clean_article_text_drops_publisher_ui_buttons_and_meta_lines():
+    """퍼블리셔 페이지 UI 버튼(번역/beta/kaka i/닫기/폰트)·섹션명·날짜 단독 라인 제거."""
+    raw = "\n".join([
+        "사회",
+        "[단독] 수험생 안경 이상한데… 잡고 보니 AI 글라스 커닝",
+        "2026. 6. 10. 00:09",
+        "번역",
+        "beta",
+        "kaka i",
+        "닫기",
+        "작은 폰트",
+        "큰 폰트",
+        "전기기사 등 국가기술자격 시험서 부정행위가 적발됐다.",
+        "감독관 눈썰미로 3명이 적발돼 경찰에 고발됐다.",
+    ])
+    cleaned = enrich._clean_article_text(raw)
+    assert "부정행위가 적발됐다" in cleaned and "경찰에 고발됐다" in cleaned
+    for noise in ("번역", "beta", "kaka i", "닫기", "작은 폰트", "큰 폰트",
+                  "2026. 6. 10. 00:09"):
+        assert noise not in cleaned.splitlines(), noise
+    assert "사회" not in cleaned.splitlines()
+
+
+def test_strip_title_echo_removes_repeated_title_line_only():
+    """본문 첫 줄로 반복된 제목만 제거하고 본문 문장은 보존한다."""
+    title = "[단독] 수험생 안경 이상한데… 잡고 보니 AI 글라스 커닝"
+    content = "\n".join([title, "전기기사 시험서 부정행위가 적발됐다.", "후속 조치가 진행된다."])
+    out = enrich._strip_title_echo(content, title)
+    assert title not in out.splitlines()
+    assert "부정행위가 적발됐다" in out and "후속 조치" in out
+    # 제목이 너무 짧으면(오삭제 위험) 건드리지 않는다.
+    assert enrich._strip_title_echo("짧은 제목\n본문", "짧은 제목") == "짧은 제목\n본문"
+
+
+def test_enrich_one_strips_title_echo_from_content():
+    """enrich_one 경로에서도 제목 반복 라인이 본문에서 제거돼야 한다(모달 이중 노출 방지)."""
+    cache.clear()
+    title = "[단독] 수험생 안경 이상한데… 잡고 보니 AI 글라스 커닝"
+    body = ("전기기사 등 국가기술자격 시험에서 AI 글라스를 이용한 부정행위가 적발됐다. "
+            "감독관 눈썰미로 3명이 적발돼 경찰에 고발됐고 토익시험에서도 2건이 확인됐다.")
+    art = {"title": title, "link": "https://example.com/a",
+           "content": f"{title}\n{body}", "image_url": "https://example.com/i.jpg"}
+    out = enrich.enrich_one(art, with_llm=False)
+    assert title not in out["content"].splitlines()
+    assert "부정행위가 적발됐다" in out["content"]

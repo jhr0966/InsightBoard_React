@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
@@ -137,21 +137,45 @@ def test_find_record_by_link():
     assert miss is None
 
 
+def _modal_action_cols():
+    """모달 하단 액션 행(st.columns) 대역 — 닫기 버튼은 미클릭 상태."""
+    c1, c2 = MagicMock(), MagicMock()
+    c2.button.return_value = False
+    return c1, c2
+
+
 def test_modal_body_renders_content_link_and_escapes():
-    import streamlit as st
     row = {"title": "모달 <제목>", "source": "tech", "press": "AI Times", "link": "https://c",
            "summary": "한줄 요약", "content": "문단1\n문단2", "image_url": "https://img/c.jpg",
            "collected_at": "2026-06-03T10:00:00Z"}
     captured: list[str] = []
+    c1, c2 = _modal_action_cols()
     with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
-         patch("streamlit.button", return_value=False):
+         patch("streamlit.button", return_value=False), \
+         patch("streamlit.columns", return_value=(c1, c2)):
         dm._news_modal_body(row)
-    html = captured[0]
+    html = "\n".join(captured)
     assert "모달 &lt;제목&gt;" in html                   # 제목 escape
     assert "문단1" in html and "문단2" in html            # 본문 단락 전체
     assert "한줄 요약" not in html                        # content 있으면 요약 중복 노출 안 함
     assert "원본 기사 열기" in html and "https://c" in html  # 원본 링크
     assert 'src="https://img/c.jpg"' in html             # 모달 상단 사진
+
+
+def test_modal_action_row_places_link_beside_close_button():
+    """원본 기사 열기 링크와 ✕ 닫기 버튼이 같은 라인(2컬럼 행)에 병렬 배치돼야 한다."""
+    row = {"title": "T", "source": "tech", "press": "", "link": "https://c",
+           "summary": "", "content": "본문", "image_url": ""}
+    captured: list[str] = []
+    c1, c2 = _modal_action_cols()
+    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
+         patch("streamlit.button", return_value=False) as top_btn, \
+         patch("streamlit.columns", return_value=(c1, c2)) as cols:
+        dm._news_modal_body(row)
+    cols.assert_called_once()                             # 액션 행 = 2컬럼
+    assert "sc-modal-link--row" in "\n".join(captured)    # 링크가 행 전용 스타일로 1열에
+    c2.button.assert_called_once()                        # 닫기 버튼이 2열에
+    top_btn.assert_not_called()                           # 전폭 닫기 버튼은 미사용
 
 
 def test_modal_body_falls_back_to_summary_when_no_content():
@@ -160,7 +184,8 @@ def test_modal_body_falls_back_to_summary_when_no_content():
            "summary": "검색 요약 문장", "content": "", "image_url": ""}
     captured: list[str] = []
     with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
-         patch("streamlit.button", return_value=False):
+         patch("streamlit.button", return_value=False), \
+         patch("streamlit.columns", return_value=_modal_action_cols()):
         dm._news_modal_body(row)
     assert "검색 요약 문장" in captured[0]
 
