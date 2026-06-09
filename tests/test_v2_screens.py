@@ -375,23 +375,6 @@ def test_sola_composer_prefill_brief_empty_session_falls_back():
         st.query_params.clear()
 
 
-def test_topbar_search_filters_news_by_keyword():
-    """상단 실제 검색 — 제목·본문·키워드에 키워드가 든 뉴스만 필터(대소문자 무시)."""
-    import pandas as pd
-    from ui import data_management_v2 as dm
-
-    news = pd.DataFrame([
-        {"title": "용접 Robot 신기술", "content": "", "summary": "", "keywords": "", "link": "a"},
-        {"title": "환율 동향", "content": "조선소 용접 자동화 논의", "summary": "", "keywords": "", "link": "b"},
-        {"title": "도장 공정", "content": "", "summary": "", "keywords": "도장,검사", "link": "c"},
-    ])
-    assert set(dm._filter_news_by_query(news, "용접")["link"]) == {"a", "b"}   # 제목 + 본문
-    assert dm._filter_news_by_query(news, "robot")["link"].tolist() == ["a"]   # 대소문자 무시
-    assert dm._filter_news_by_query(news, "도장")["link"].tolist() == ["c"]     # 키워드 컬럼
-    assert dm._filter_news_by_query(news, "없는키워드").empty
-    assert len(dm._filter_news_by_query(news, "")) == 3                         # 빈 쿼리=원본
-
-
 def test_topbar_has_no_cmdk_or_command_badge():
     """가짜 검색/⌘K 팔레트 제거 확인 — topbar HTML 에 v2-cmdk/⌘K 흔적 없음."""
     from ui import app_shell

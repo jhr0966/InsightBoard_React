@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-09 — refactor: 뉴스 수집 #133 재설계 잔재 일괄 제거 + 세션 정리 (`claude/kind-volta-IWxix`)
+
+**무엇을**: #133~#140 으로 뉴스 수집을 **카드 브라우저 + 기사 모달 + ⚙ 설정 서브뷰**로 재설계한 뒤, 옛 필터 폼·3탭/그룹 라우팅·옛 카드 빌더를 호환/테스트용으로 남겨뒀던 것을 적극 제거(요청: "코드 최적화 — 레거시 제거"). 데이터 관리 화면 템플릿도 헤더(KPI 4)만으로 축소.
+
+**어떻게**:
+- `data_management_v2.py` −387 / `data_management_render.py` −223 / `data_management_main.html` −211: 미호출 레거시(`_render_news_filter_form`/`_render_jobs_split`/`_render_dm_tabs`/`_render_dm_tab_panel`/`_news_cards_html`/`_filter_news_by_query`/`_news_source_options`/`_strip_dm_mockups`/`_dm_tab_href`/`_dm_tabs_html`/`_dm_group_*`/`_dm_resolve_group_and_tab`/`_src_action_href` + 상수)를 일괄 삭제. render.py 는 출처색 그라데이션 + 기사 나이 라벨 헬퍼만 잔존.
+- **버그 동반 수정**: 템플릿 주석에 `{{DM_TABS}}` 토큰이 그대로 있어 `_render_dm_header` 의 split 이 **헤더 KPI 를 첫 occurrence(주석)에서 잘라먹던** 회귀 → 주석 문구 교체로 해소.
+- 테스트: `test_dm_area_groups.py` 삭제, `test_dm_cleanup`/`test_dm_news_filter` 재작성, 7개 파일에서 제거 심볼 참조 테스트 삭제/대체. 검색 필터 회귀는 `test_collect_browser.py` 가 커버.
+
+**검증**: pytest **811 passed** · 금지패턴 0 · 순변경 13파일 **−1193줄**.
+
+**상태**: 🔄 진행 — 커밋·푸시·PR·머지 예정.
+
+---
+
 ## 2026-06-09 — fix: 본문에 포털 UI 텍스트 섞임 + AI Times 연재/목록 페이지 수집 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 구글 이미지는 batchexecute 로 정상화됨(✓). 남은 2건 — ① 다음/네이버 본문에 제목·TTS·글자크기·번역·관련기사·저작권 chrome 이 다 섞임, ② AI Times '연재/섹션 목록 페이지'(조금원의 디지털 세상 이야기 등)가 기사로 수집돼 동일 기본 이미지(VENDOR LOCK IN) 반복.
@@ -16,7 +31,7 @@
 
 **검증**: pytest **851 passed** · 금지패턴 0. ①은 샘플 HTML 로 직접 검증(chrome 제외 확인). 라이브 사이트별 셀렉터는 배포 확인 권장.
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#140).
 
 ---
 

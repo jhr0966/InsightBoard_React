@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from unittest.mock import patch
-from urllib.parse import quote
 
 import pandas as pd
 import pytest
@@ -133,16 +132,6 @@ def test_all_active_combines_defaults_and_custom(isolated_sources):
     assert "AI Times" not in active
     assert "오토메이션월드" in active
     assert "X" in active
-
-
-# ── URL 빌더 ───────────────────────────────────────────────
-
-def test_src_action_href_includes_dm_tab_src_and_name():
-    from ui import data_management_v2 as dm
-    href = dm._src_action_href("toggle", "AI Times")
-    assert "dm_tab=src" in href
-    assert "src_action=toggle" in href
-    assert "src_name=" + quote("AI Times") in href
 
 
 # ── _consume_src_action_if_any ─────────────────────────────

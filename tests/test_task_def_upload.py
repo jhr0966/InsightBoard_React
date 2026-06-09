@@ -44,7 +44,7 @@ def test_consume_ingest_success_clears_caches_and_sets_toast(isolated_dirs):
     st.session_state["_do_task_def_ingest"] = ("sample.xlsx", 0, data)
 
     targets = [dm._dm_stats, dm._ingest_jobs_html, dm._hist_html,
-               dm._news_cards_html, dm._archive_stats_dm]
+               dm._archive_stats_dm]
     with patch.object(targets[0], "clear") as c0, \
          patch.object(targets[1], "clear") as c1, \
          patch("streamlit.rerun"):

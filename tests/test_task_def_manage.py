@@ -388,35 +388,11 @@ def test_consume_save_reports_validation_error():
 # manage 탭 통합 — data_management_v2 dispatcher
 # ═══════════════════════════════════════════════════════
 
-def test_manage_tab_in_tasks_group():
-    from ui import data_management_v2 as dm
-    assert "manage" in dm._DM_TABS
-    assert "manage" in dm._DM_GROUP_TABS["tasks"]
-
-
-def test_manage_is_default_tab_for_tasks_group():
-    from ui import data_management_v2 as dm
-    assert dm._DM_GROUP_DEFAULT_TAB["tasks"] == "manage"
-
-
-def test_dm_resolve_with_tasks_grp_defaults_to_manage():
-    from ui import data_management_v2 as dm
-    grp, tab = dm._dm_resolve_group_and_tab("tasks", None)
-    assert (grp, tab) == ("tasks", "manage")
-
-
 def test_dm_tab_body_html_returns_placeholder_for_manage():
     """manage 본문은 Streamlit 위젯이 render() 단계에서 채움."""
     from ui import data_management_v2 as dm
     html = dm._dm_tab_body_html("manage", persona=None, dm_stats={})
     assert "td-manage-placeholder" in html
-
-
-def test_dm_tabs_html_marks_manage_active():
-    from ui import data_management_v2 as dm
-    html = dm._dm_tabs_html("manage", {"active_sources": 0, "today_count": 0})
-    assert "작업 정의 관리" in html
-    assert html.count("dm-tab-active") == 1
 
 
 # ═══════════════════════════════════════════════════════
@@ -521,19 +497,6 @@ def test_row_card_html_links_to_td_view():
     assert "td_view=A1" in html
     # 검색어가 살아있어야 (뒤로가기 → 검색 결과 유지)
     assert "td_q=" in html
-
-
-def test_legacy_dm_tab_task_url_still_routes_to_tasks_group():
-    """기존 ?dm_tab=task 북마크 URL 호환 — PR-A 이후에도 동작."""
-    from ui import data_management_v2 as dm
-    assert dm._dm_resolve_group_and_tab(None, "task") == ("tasks", "task")
-
-
-def test_legacy_dm_tab_jobs_kw_src_still_route_to_news_group():
-    from ui import data_management_v2 as dm
-    for tab in ("jobs", "kw", "src"):
-        grp, t = dm._dm_resolve_group_and_tab(None, tab)
-        assert (grp, t) == ("news", tab)
 
 
 def test_consume_save_redirects_via_session_state():

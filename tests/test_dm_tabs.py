@@ -7,55 +7,6 @@ from urllib.parse import quote
 import pandas as pd
 
 
-# ── URL 빌더 ────────────────────────────────────────────────
-
-def test_dm_tab_href_jobs_omits_dm_tab_param():
-    from ui import data_management_v2 as dm
-    href = dm._dm_tab_href("jobs")
-    assert "app_area=" + quote("🧱 데이터 관리") in href
-    assert "dm_tab=" not in href  # 기본 탭은 깨끗한 URL
-
-
-def test_dm_tab_href_with_specific_tab():
-    from ui import data_management_v2 as dm
-    href = dm._dm_tab_href("kw")
-    assert "dm_tab=kw" in href
-    href2 = dm._dm_tab_href("src")
-    assert "dm_tab=src" in href2
-
-
-# ── _dm_tabs_html — <a> + 활성 마킹 ────────────────────────
-
-def test_dm_tabs_html_renders_anchors_not_disabled_buttons():
-    from ui import data_management_v2 as dm
-    # PR-A 이후 news 그룹은 jobs/kw/src 3개만 sub-탭으로 노출 (task 는 tasks 그룹).
-    html = dm._dm_tabs_html("jobs", {"active_sources": 4, "today_count": 32})
-    assert html.count('class="dm-tab"') + html.count('class="dm-tab dm-tab-active"') == 3
-    # disabled 자취 없음
-    assert "disabled" not in html
-    # B.5 PR 안내 텍스트 사라짐
-    assert "B.5 PR" not in html
-
-
-def test_dm_tabs_html_marks_selected_tab():
-    from ui import data_management_v2 as dm
-    html = dm._dm_tabs_html("kw", {"active_sources": 1, "today_count": 1})
-    # kw 만 active
-    assert html.count("dm-tab-active") == 1
-    assert html.count('aria-current="true"') == 1
-    assert 'aria-current="true"' in html
-    # 키워드 라벨에 활성
-    assert "키워드" in html
-
-
-def test_dm_tabs_html_invalid_falls_back_to_jobs():
-    from ui import data_management_v2 as dm
-    html = dm._dm_tabs_html("nuke", {"active_sources": 0, "today_count": 0})
-    # jobs 만 활성
-    assert html.count("dm-tab-active") == 1
-    assert "수집잡" in html
-
-
 # ── _dm_kw_body_html ────────────────────────────────────────
 
 def test_dm_kw_body_shows_user_terms_and_muted():
@@ -195,29 +146,6 @@ def test_render_dm_header_has_kpis_and_no_tab_bar():
     assert 'class="dm-tab"' not in html
     assert 'href="?dm_tab=' not in html
     assert "{{DM_TABS}}" not in html
-
-
-def test_render_jobs_split_emits_split_no_anchor_tabs():
-    """jobs 탭 본문은 dm-split(수집잡+뉴스 라이브러리)만. 헤더는 _render_dm_header 가
-    이미 그렸으므로 여기엔 KPI 가 없고, 앵커 탭/`?dm_tab=` 앵커도 없다."""
-    from ui import data_management_v2 as dm
-    stats = {"active_sources": 4, "today_count": 1, "total_chunks": 100, "last_update": "06:00"}
-    captured = []
-    with patch("streamlit.html", side_effect=lambda s: captured.append(s)), \
-         patch.object(dm._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
-         patch.object(dm, "_news_cards_html", return_value=""), \
-         patch.object(dm, "_render_news_filter_form", return_value=((), 3, "newest")), \
-         patch.object(dm, "_ingest_jobs_html", return_value=""), \
-         patch.object(dm, "_hist_html", return_value={"head": "", "svg": "", "foot": "", "runs": ""}):
-        dm._render_jobs_split(stats)
-    assert captured
-    html = captured[0]
-    # 기본 split 정상 노출
-    assert "dm-split" in html
-    # 앵커 탭/핸드오프 앵커 없음(전체 리로드 유발하던 `?dm_tab=` 제거)
-    assert 'class="dm-tab"' not in html
-    assert 'href="?dm_tab=' not in html
-    assert "{{DM_TABS}}" not in html  # 본문 슬라이스라 placeholder 자체가 없음
 
 
 # ── segmented_control 탭 바 — 활성 탭만 조건부 렌더, 활성 탭 세션 보존 ──────

@@ -1226,36 +1226,6 @@ a.dm-tab:hover { text-decoration: none; }
 }
 .dm-src-act-noop { text-align: center; color: var(--text-muted); font-weight: 700; }
 
-/* 뉴스 라이브러리 필터(_render_news_filter_form) — st.form '적용' 시에만 갱신.
-   컨테이너가 카드 룩, 내부 stForm 테두리는 제거해 한 줄 필터 바처럼 보이게. */
-.st-key-dm_news_filter {
-  margin: 0 28px 14px;
-  width: calc(100% - 56px) !important;  /* 본문(헤더·카드)과 폭 정렬 — collect_cta 와 동일 사유 */
-  padding: 12px 16px 6px;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-divider);
-  border-radius: 12px;
-}
-.st-key-dm_news_filter .dm-nf-head {
-  display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
-  font-size: 13px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.01em;
-}
-.st-key-dm_news_filter .dm-nf-hint { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
-.st-key-dm_news_filter [data-testid="stForm"] { border: none !important; padding: 0 !important; }
-/* '적용' 제출 버튼 — accent 채움(구 .dm-collect-cta 톤과 일치). 멀티셀렉트 내부
-   칩 삭제(×) 버튼까지 물들지 않게 form-submit 만 스코프. */
-.st-key-dm_news_filter [data-testid="stFormSubmitButton"] button {
-  background: var(--accent-primary) !important;
-  color: #fff !important;
-  border: 1px solid var(--accent-primary) !important;
-  border-radius: 9px !important;
-  font-weight: 700 !important;
-  min-height: 0 !important;
-}
-.st-key-dm_news_filter [data-testid="stFormSubmitButton"] button:hover {
-  background: var(--accent-hover) !important;
-}
-
 /* ════════════════════════════════════════════════════════════
    뉴스 수집 개편 — 카테고리 카드 브라우저 + 기사 모달 (sc-*)
    대분류 탭(키워드/포탈) + 출처칩 + 사진 카드 → 클릭 시 기사 모달.

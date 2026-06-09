@@ -119,9 +119,8 @@ def _seed_news_via_collect(monkeypatch):
 def _clear_ui_caches() -> None:
     """st.cache_data 는 테스트 간 전역 유지 → UI 화면 캐시를 비워 stale 방지."""
     mods_fns = [
-        ("ui.data_management_v2", ["_news_cards_html", "_news_source_options", "_dm_stats",
-                                   "_ingest_jobs_html", "_hist_html", "_archive_stats_dm",
-                                   "_sc_browse_records"]),
+        ("ui.data_management_v2", ["_dm_stats", "_ingest_jobs_html", "_hist_html",
+                                   "_archive_stats_dm", "_sc_browse_records"]),
         ("ui.board_v2", ["_board_kpis", "_archive_stats"]),
         ("ui.archive_v2", ["_oa_data", "_archive_stats_oa"]),
         ("ui.insights_v2", ["_ia_stats", "_archive_stats_ia"]),

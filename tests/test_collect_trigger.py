@@ -136,7 +136,7 @@ def test_refresh_always_clears_caches_even_on_collect_failure():
 
     st.query_params["refresh"] = "now"
     with patch.object(dm._dm_stats, "clear") as c1, \
-         patch.object(dm._news_cards_html, "clear") as c2, \
+         patch.object(dm._sc_browse_records, "clear") as c2, \
          patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
          patch("scraping.run_daily.collect_batch", side_effect=RuntimeError("net")):
         dm._consume_refresh_if_any()
