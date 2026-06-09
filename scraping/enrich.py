@@ -27,13 +27,20 @@ logger = logging.getLogger(__name__)
 
 
 _CONTENT_SELECTORS = [
+    # 한국 CMS(모우/모비 계열 — AI Times·오토메이션월드 등) 본문 컨테이너
+    "div#article-view-content-div", "article#article-view-content-div",
+    "div.article-view-content", "div.article_view_content",
+    # 네이버
     "div#dic_area", "div#articleBodyContents", "div.newsct_article",
-    "div._article_body_contents", "div[itemprop='articleBody']",
-    "article[itemprop='articleBody']", "div.editor-p",
-    "div#article_txt", "div.article_cont", "div.news_cnt_detail",
+    "div._article_body_contents",
+    # itemprop / 일반 CMS
+    "div[itemprop='articleBody']", "article[itemprop='articleBody']", "div.editor-p",
+    "div#cnbc-front-articleContent-area-font", "div.ab_text",
+    "div#aticle_txt", "div#article_txt", "div.text_area",
+    "div.article_cont", "div.news_cnt_detail",
     "div#cont_newstext", "div.detail-body", "div.news_txt",
-    "div.article_content", "div.view_con", "div#articleBody",
-    "article#articleBody", "div.article_body", "div.article-body",
+    "div.article_content", "div.v_article", "div.art_txt", "div.view_con",
+    "div#articleBody", "article#articleBody", "div.article_body", "div.article-body",
     "div#news_body_id", "div.news_body", "div#content-body",
     "div.news_content", "div.txt_article", "div.atc_body", "div.article_view",
     "main article", "article", "main",
@@ -50,9 +57,7 @@ _NOISE_SELECTORS = (
 
 _MIN_CONTENT_LEN = 80
 
-# 셀렉터·문단 폴백으로도 본문이 빈약할 때 쓰는 '최대 텍스트 블록' 폴백 한계치.
-# (참고 스크래퍼 패턴 — 동적/비표준 마크업 사이트 대응.)
-_FALLBACK_MIN_LEN = 200
+# '최대 텍스트 블록' 후보를 만들 때 제외할 링크 과다 블록 기준(네비/목록 컷).
 _FALLBACK_MAX_LINKS = 8
 
 _CODE_LINE_PATTERNS = (
@@ -251,24 +256,24 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
         if paragraphs:
             candidates.append("\n".join(paragraphs))
 
-        content = max(candidates, key=len) if candidates else ""
-
-        # 셀렉터·문단으로도 본문이 빈약하면(동적/비표준 마크업 사이트) 링크가 적은
-        # 최대 텍스트 블록을 마지막 폴백으로 채택한다. 본문 정제·코드/보일러플레이트
-        # 제거(_text_from_tag)는 동일 적용 → 네비/광고 블록이 아닌 실제 기사 본문을 노린다.
-        if len(content) < _FALLBACK_MIN_LEN:
-            best = content
-            for block in soup.find_all(["div", "article", "section"]):
-                try:
-                    if len(block.find_all("a")) > _FALLBACK_MAX_LINKS:
-                        continue
-                    text = _text_from_tag(block)
-                except Exception:  # noqa: BLE001 — 개별 블록 파싱 실패는 건너뛴다.
+        # '링크가 적은 최대 텍스트 블록'도 **항상** 후보에 포함한다(특정 셀렉터에 안
+        # 걸리거나 셀렉터가 본문 일부만 잡는 사이트에서 전체 본문을 확보하기 위함).
+        # 본문 정제·코드/보일러플레이트 제거(_text_from_tag) + 링크 8개 초과 블록 제외로
+        # 네비/광고가 아닌 실제 기사 본문을 노린다. 최종 본문은 후보 중 가장 긴 것.
+        best_block = ""
+        for block in soup.find_all(["div", "article", "section"]):
+            try:
+                if len(block.find_all("a")) > _FALLBACK_MAX_LINKS:
                     continue
-                if len(text) > len(best):
-                    best = text
-            content = best
+                text = _text_from_tag(block)
+            except Exception:  # noqa: BLE001 — 개별 블록 파싱 실패는 건너뛴다.
+                continue
+            if len(text) > len(best_block):
+                best_block = text
+        if best_block:
+            candidates.append(best_block)
 
+        content = max(candidates, key=len) if candidates else ""
         return {"content": content, "image_url": image_url}
     except Exception:  # noqa: BLE001 — 단일 페이지 파싱 실패가 전체 수집을 막지 않도록.
         logger.debug("기사 파싱 실패: %s", url, exc_info=True)

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (뉴스 수집 — 구글 사진·카드 사진 크기·본문 전체 추출, jhr0966/News scraper.py 참고)
+- **구글 뉴스 사진 0건 완화**(`scraping/google.py`): RSS `description` 안의 **비-구글 원문 링크(`<a href>`)를 추출**해 원문 URL 로 저장(`_extract_original_link`) → enrich 가 실제 기사에서 og:image·본문을 가져온다. 우선순위: description 직링크 → base64 디코드 → 리디렉트 추적 → media:content/thumbnail·description 이미지. (참고 레포 `jhr0966/News` scraper.py 의 `_extract_original_link` 전략.)
+- **카드 사진 확대**(`assets/v2/screens/data_management.css`): 카드 이미지 높이 128px→**190px**(`.sc-card` 300px→360px) — 첨부 시안처럼 사진이 크게 보이도록. `object-fit:cover` 유지로 왜곡 없음.
+- **본문 전체 추출 개선**(`scraping/enrich.py`): ① CONTENT_SELECTORS 에 **AI Times·오토메이션월드(모우 계열 CMS) 본문 컨테이너**(`#article-view-content-div`·`.article-view-content` 등) + 참고 스크래퍼의 누락 셀렉터(`ab_text`·`aticle_txt`·`text_area`·`v_article`·`art_txt`) 추가. ② 본문 선택을 '첫 매치'가 아니라 **셀렉터·문단·최대텍스트블록 후보 중 가장 긴 것**으로 바꿔(링크 8개 초과 블록 제외) 셀렉터가 일부만 잡는 사이트에서도 전체 본문을 확보.
+- 검증: pytest **841 passed**(신규 `_extract_original_link`·전체 본문 선택 테스트) · 금지패턴 0. (스크래퍼는 `scraping/http.py` 세션 사용 — §4 준수. 구글 신 포맷 불투명 링크는 서버 측 복원 한계로 일부 여전히 빌 수 있음 — 후속.)
+
 ### Fixed (뉴스 수집 후속 — 카드 클릭 무반응 · 카드 높이 불균일 · 표 본문/모달 · 사진 추출)
 - **카드 클릭 무반응 수정**(`assets/v2/streamlit-overrides.css` + `screens/data_management.css`): ① 모달이 안 뜨던 주원인이었던 `st.dialog` 박스의 `display:flex`·`min-height` 강제 CSS를 제거하고 **오버레이 세로 중앙 정렬 + max-height 90vh** 만 남겨 모달이 정상 렌더되게 함(전 테마). ② 카드 오버레이 버튼을 `[data-testid="stButton"]` 직접 절대배치에서 **`stElementContainer:has(stButton)` 절대배치**로 바꿔(버튼 컨테이너 전체가 카드를 덮음) 클릭 적중률을 높임.
 - **카드 높이 통일 + 본문 3줄**(`screens/data_management.css`): `.sc-card` 고정 높이(300px) + 이미지 `flex:0 0 128px`, 제목 `min-height:2.64em`(2줄 예약)·본문 `min-height:4.5em`+`line-clamp:3`(3줄 예약·클램프) → 본문 길이와 무관하게 모든 카드가 같은 높이·본문 3줄.
