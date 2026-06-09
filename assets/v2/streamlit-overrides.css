@@ -229,25 +229,15 @@ body:has(.db-topbar) .stApp {
   background: #F3F5F8 !important;
 }
 
-/* ── st.dialog 모달 — 화면 세로 중앙 + 더 긴 형태 ─────────────────
-   기본 다이얼로그는 상단에 붙고 콘텐츠 높이만큼만 짧게 떠서, 긴 기사 본문/
-   온보딩이 답답했다. 오버레이를 flex 중앙 정렬하고 박스 높이를 키운다.
+/* ── st.dialog 모달 — 화면 세로 중앙 정렬 ─────────────────────────
+   기본 다이얼로그는 오버레이 상단에 붙는다. 오버레이(flex)를 세로 중앙 정렬하고
+   박스 최대 높이만 키운다. **박스 자체의 display/flex/너비는 건드리지 않는다** —
+   Streamlit 내부 레이아웃(닫기 X·콘텐츠)이 깨져 모달이 안 보이는 것을 방지.
+   기사 본문이 길어 보이는 효과는 .sc-modal-body(max-height) 가 담당.
    (뉴스 기사 모달 + 페르소나/온보딩 모달 공통, 전 테마 적용.) */
 [data-testid="stDialog"] {
   align-items: center !important;
-  justify-content: center !important;
 }
 [data-testid="stDialog"] [role="dialog"] {
-  max-height: 92vh !important;
-  min-height: 58vh !important;
-  width: min(880px, 94vw) !important;
-  margin: 0 auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-/* 다이얼로그 본문 영역이 남는 세로 공간을 채우도록(스크롤은 내부에서) */
-[data-testid="stDialog"] [role="dialog"] [data-testid="stDialogContent"],
-[data-testid="stDialog"] [role="dialog"] > div:last-child {
-  flex: 1 1 auto;
-  min-height: 0;
+  max-height: 90vh !important;
 }

@@ -19,7 +19,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import Comment
 
-from scraping.extract import soup_of
+from scraping.extract import is_junk_image, soup_of
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 from store import cache
 
@@ -183,20 +183,17 @@ def _extract_image_url(soup, base_url: str) -> str:
         if not tag:
             continue
         val = (tag.get("content") or tag.get("href") or "").strip()
-        if val:
+        # og:image 라도 언론사 로고/플레이스홀더면 건너뛰고 본문 이미지로 폴백.
+        if val and not is_junk_image(val):
             return urljoin(base_url, val)
 
-    bad_fragments = ("spacer", "blank", "logo", "icon", "ad_", "/ad/", "1x1", "transparent")
     img_selectors = (
         "article img", "main img", "div[itemprop='articleBody'] img",
         "article picture source", "main picture source", "picture source", "img",
     )
     for img in soup.select(", ".join(img_selectors)):
         src = _img_src_from_attrs(img)
-        if not src:
-            continue
-        lower = src.lower()
-        if any(bad in lower for bad in bad_fragments):
+        if not src or is_junk_image(src):
             continue
         return urljoin(base_url, src)
     return ""
@@ -318,6 +315,11 @@ def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
     link = article.get("link", "")
     content = _clean_article_text(article.get("content") or "")
     image_url = str(article.get("image_url") or "")
+    # 리스트에서 가져온 이미지가 언론사 로고/플레이스홀더면 버린다 → fetch 의 og:image 가
+    # 채우도록 유도(네이버 검색결과 로고만 가져오던 문제 등). fetch 결과 이미지는
+    # _extract_image_url 가 이미 junk 를 걸러 반환하므로 그대로 우선한다.
+    if is_junk_image(image_url):
+        image_url = ""
     if link and (content_needs_refresh(content) or not image_url):
         fetched = fetch_article(link)
         content = fetched.get("content") or content

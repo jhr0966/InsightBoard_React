@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Fixed (뉴스 수집 후속 — 카드 클릭 무반응 · 카드 높이 불균일 · 표 본문/모달 · 사진 추출)
+- **카드 클릭 무반응 수정**(`assets/v2/streamlit-overrides.css` + `screens/data_management.css`): ① 모달이 안 뜨던 주원인이었던 `st.dialog` 박스의 `display:flex`·`min-height` 강제 CSS를 제거하고 **오버레이 세로 중앙 정렬 + max-height 90vh** 만 남겨 모달이 정상 렌더되게 함(전 테마). ② 카드 오버레이 버튼을 `[data-testid="stButton"]` 직접 절대배치에서 **`stElementContainer:has(stButton)` 절대배치**로 바꿔(버튼 컨테이너 전체가 카드를 덮음) 클릭 적중률을 높임.
+- **카드 높이 통일 + 본문 3줄**(`screens/data_management.css`): `.sc-card` 고정 높이(300px) + 이미지 `flex:0 0 128px`, 제목 `min-height:2.64em`(2줄 예약)·본문 `min-height:4.5em`+`line-clamp:3`(3줄 예약·클램프) → 본문 길이와 무관하게 모든 카드가 같은 높이·본문 3줄.
+- **데이터 표에 본문 + 행 클릭 모달**(`ui/data_management_v2.py _render_news_table`): `본문` 컬럼 추가(content 280자), `st.dataframe(on_select="rerun", selection_mode="single-row")` 로 **행을 클릭하면 기사 모달**(reload 없는 소켓 rerun). 닫은 직후 재오픈 루프는 `_sc_table_sel`(직전 처리 link) 가드로 방지.
+- **사진 추출 개선**(`scraping/{extract,enrich,naver,google}.py`): 공용 `is_junk_image`(로고·엠블럼·아이콘·플레이스홀더·data URI 판정) 신설. **네이버** 검색결과의 언론사 로고 img 를 건너뛰고 기사 썸네일을 고름(로고만 가져오던 문제). **enrich** 는 og:image 가 로고면 본문 이미지로 폴백하고, 리스트가 가져온 로고 이미지는 버려 og:image 가 채우게 함. **구글** 뉴스 리디렉트 링크를 base64 디코드(요청 없음) + 리디렉트 추적으로 원문 URL 복원 → enrich 가 og:image·본문을 가져옴(이미지 0건 완화) + RSS media 이미지 추출. (HTTP 단일 진입점 §4 준수 — 참고 코드의 직접 requests 미사용.)
+- 검증: pytest **839 passed**(신규 `tests/test_scrape_images.py` 로고제외·구글 디코드·og 폴백 + 표 본문/행선택 모달·카드 클릭 테스트) · 금지패턴(on_click/requests) 0. (CSS(카드 클릭·모달 중앙)는 **실배포 시각 확인 권장** — 환경상 헤드리스 브라우저 미설치.)
+
 ### Changed (뉴스 수집 — 카드 클릭 reload 제거 · 모달 세로 중앙/확대 · 데이터 표 탭 · 본문/사진 추출 개선)
 - **카드 클릭 시 문서 전체 reload(흰 깜빡임) 제거 → 즉시 모달**(`ui/data_management_v2.py`): 카드를 `?news=` 앵커(문서 네비게이션)에서 **카드 전체를 덮는 투명 `st.button` 오버레이**로 전환. 클릭은 소켓 rerun 으로 `_sc_open_news` 를 세팅해 reload 없이 기사 모달이 뜬다. 카드 시각은 `_sc_card_visual_html`(앵커 없음), 그리드는 `st.columns(3)` 행 + 카드별 컨테이너(`_render_card_grid`). `_sc_filtered_records` 로 필터 로직 분리. (구 `_sc_news_card_html`/`_sc_cards_html` 제거, `?news=` 딥링크 소비는 호환 유지.)
 - **모달(기사·페르소나/온보딩)을 화면 세로 중앙 + 더 긴 형태로**(`assets/v2/streamlit-overrides.css`): `st.dialog` 오버레이를 flex 중앙 정렬 + 박스 `min-height:58vh`·`max-height:92vh`·`width:min(880px,94vw)` + 본문 flex 신장 → 상단에 붙고 짧던 문제 해소(전 테마). 기사 본문 `.sc-modal-body` 최대 높이 46vh→60vh.

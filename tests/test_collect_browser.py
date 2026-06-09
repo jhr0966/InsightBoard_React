@@ -207,8 +207,8 @@ def test_card_click_opens_modal_without_reload():
     assert "sc-modal" in combined                                # 클릭 한 번에 모달
 
 
-def test_table_view_renders_dataframe():
-    """📋 데이터 표 모드 — 수집한 모든 뉴스가 st.dataframe 으로 렌더."""
+def test_table_view_renders_dataframe_with_body():
+    """📋 데이터 표 모드 — 수집한 모든 뉴스가 st.dataframe 으로 렌더(본문 컬럼 포함)."""
     at = _seed_app()
     at.session_state["sc_browse_mode"] = "table"
     with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()), \
@@ -216,5 +216,34 @@ def test_table_view_renders_dataframe():
         at.run()
     assert not at.exception
     assert len(at.dataframe) >= 1                                 # 데이터 표 존재
+    cols = list(at.dataframe[0].value.columns)
+    assert "본문" in cols and "제목" in cols and "사진" in cols    # 본문 포함
     combined = "\n".join(h.proto.body for h in at.get("html"))
     assert "sc-empty" not in combined                            # 데이터 있으니 빈 상태 아님
+
+
+def test_table_row_selection_opens_modal():
+    """데이터 표 행 선택 → 해당 기사 모달 플래그(_sc_open_news) 세팅(reload 없는 소켓 rerun)."""
+    import streamlit as st
+    from types import SimpleNamespace
+    st.session_state.clear()
+    recs = [
+        {"link": "https://a", "title": "A", "_cat": "keyword", "_chan": "네이버", "content": "본문A"},
+        {"link": "https://b", "title": "B", "_cat": "portal", "_chan": "AI Times", "content": "본문B"},
+    ]
+    event = SimpleNamespace(selection=SimpleNamespace(rows=[1]))   # 두 번째 행 선택
+    with patch.object(dm, "_sc_browse_records", return_value=recs), \
+         patch("streamlit.dataframe", return_value=event), \
+         patch("streamlit.caption"), patch("streamlit.rerun"):
+        dm._render_news_table("")
+    assert st.session_state.get("_sc_open_news") == "https://b"   # 선택 행 모달
+    assert st.session_state.get("_sc_table_sel") == "https://b"
+
+    # 같은 선택이 남아도(닫은 직후) 재오픈하지 않는다(가드)
+    st.session_state.pop("_sc_open_news", None)
+    with patch.object(dm, "_sc_browse_records", return_value=recs), \
+         patch("streamlit.dataframe", return_value=event), \
+         patch("streamlit.caption"), patch("streamlit.rerun"):
+        dm._render_news_table("")
+    assert "_sc_open_news" not in st.session_state               # 재오픈 안 함
+    st.session_state.clear()

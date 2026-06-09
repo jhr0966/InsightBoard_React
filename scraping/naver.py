@@ -7,7 +7,7 @@ from urllib.parse import quote, urljoin
 
 import requests
 
-from scraping.extract import first_tag, first_text, normalize_published_at, soup_of
+from scraping.extract import first_tag, first_text, is_junk_image, normalize_published_at, soup_of
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 
 
@@ -33,11 +33,18 @@ _DESC_SELECTORS = [
 
 
 def _image_from_item(item) -> str:
-    img = item.select_one("img")
-    if not img:
-        return ""
-    src = (img.get("data-src") or img.get("src") or "").strip()
-    return urljoin("https://search.naver.com", src) if src else ""
+    """검색결과 항목의 기사 썸네일. 언론사 로고/플레이스홀더 img 는 건너뛴다.
+
+    네이버 검색결과는 기사 썸네일과 함께 **언론사 로고** img 를 같이 둔다. 첫 img 를
+    그대로 쓰면 로고만 가져오던 문제가 있어, junk(로고/아이콘) 가 아닌 첫 img 를 고른다.
+    썸네일이 없어 모두 junk 면 빈 문자열 → enrich 가 본문 og:image 로 채운다.
+    """
+    for img in item.find_all("img"):
+        src = (img.get("data-src") or img.get("data-lazysrc") or img.get("src") or "").strip()
+        if not src or is_junk_image(src):
+            continue
+        return urljoin("https://search.naver.com", src)
+    return ""
 
 
 def _find_news_items(soup) -> list:

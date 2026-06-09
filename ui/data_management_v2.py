@@ -1002,7 +1002,12 @@ def _render_card_grid(cat: str, channel: str, q: str) -> None:
 
 
 def _render_news_table(q: str) -> None:
-    """📋 데이터 표 — 수집한 모든 뉴스를 표로(사진 썸네일·링크 포함). 상단 검색 적용."""
+    """📋 데이터 표 — 수집한 모든 뉴스를 표로(사진·제목·본문·링크). 행 클릭 시 기사 모달.
+
+    `st.dataframe(on_select="rerun", selection_mode="single-row")` 로 행을 선택하면
+    해당 기사 모달이 뜬다(reload 없는 소켓 rerun). 닫은 직후 같은 선택이 남아 모달이
+    재오픈되는 루프는 `_sc_table_sel`(직전 처리한 link) 가드로 막는다.
+    """
     import pandas as _pd
     recs = _sc_browse_records()
     ql = (q or "").strip().lower()
@@ -1017,9 +1022,11 @@ def _render_news_table(q: str) -> None:
     rows = []
     for r in recs:
         when = str(r.get("collected_at") or r.get("published_at") or "")
+        body = " ".join(str(r.get("content") or r.get("summary_llm") or r.get("summary") or "").split())
         rows.append({
             "사진": str(r.get("image_url", "") or ""),
             "제목": str(r.get("title", "") or ""),
+            "본문": (body[:280] + "…") if len(body) > 280 else body,
             "대분류": _SC_CAT_LABEL.get(str(r.get("_cat", "")), ""),
             "출처": str(r.get("_chan", "") or ""),
             "수집": _news_age_label(when) or when[:16],
@@ -1028,16 +1035,34 @@ def _render_news_table(q: str) -> None:
         })
     df = _pd.DataFrame(rows)
     with st.container(key="sc_table"):
-        st.caption(f"수집한 뉴스 전체 {len(df)}건 — 상단 검색으로 좁힐 수 있어요.")
-        st.dataframe(
+        st.caption(
+            f"수집한 뉴스 전체 {len(df)}건 · **행을 클릭하면 전체 내용을 모달로** 봅니다 "
+            "(상단 검색으로 좁힘)."
+        )
+        event = st.dataframe(
             df, use_container_width=True, hide_index=True, height=560,
+            key="sc_table_df", on_select="rerun", selection_mode="single-row",
             column_config={
                 "사진": st.column_config.ImageColumn("사진", width="small"),
-                "제목": st.column_config.TextColumn("제목", width="large"),
-                "키워드": st.column_config.TextColumn("키워드", width="medium"),
+                "제목": st.column_config.TextColumn("제목", width="medium"),
+                "본문": st.column_config.TextColumn("본문", width="large"),
+                "키워드": st.column_config.TextColumn("키워드", width="small"),
                 "링크": st.column_config.LinkColumn("링크", display_text="원문 ↗", width="small"),
             },
         )
+    # 행 선택 → 기사 모달(직전 처리한 link 와 다를 때만 → 닫은 뒤 재오픈 루프 방지)
+    try:
+        sel_rows = list(event.selection.rows) if (event and event.selection) else []
+    except Exception:  # noqa: BLE001
+        sel_rows = []
+    if sel_rows:
+        idx = sel_rows[0]
+        if 0 <= idx < len(recs):
+            link = str(recs[idx].get("link") or "")
+            if link and st.session_state.get("_sc_table_sel") != link:
+                st.session_state["_sc_table_sel"] = link
+                st.session_state["_sc_open_news"] = link
+                st.rerun()
 
 
 _SC_MODES: tuple[str, ...] = ("cards", "table")

@@ -5,18 +5,82 @@
 """
 from __future__ import annotations
 
+import base64
 from email.utils import parsedate_to_datetime
 import re
 from html import unescape
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from xml.etree import ElementTree as ET
 
 import requests
 
+from scraping.extract import is_junk_image
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 
 
 _RSS_URL = "https://news.google.com/rss/search?q={q}&hl={hl}&gl={gl}&ceid={ceid}"
+
+# 구글 뉴스 RSS 의 media 네임스페이스(일부 항목에 대표 이미지 포함).
+_MRSS = "{http://search.yahoo.com/mrss/}"
+# 링크 해석용 짧은 타임아웃(리디렉트 추적 — 본 RSS 타임아웃보다 짧게).
+_RESOLVE_TIMEOUT = 8
+
+
+def _media_image(item) -> str:
+    """RSS 항목의 media:content/thumbnail 대표 이미지(있으면). 로고류는 제외."""
+    for name in ("content", "thumbnail"):
+        tag = item.find(_MRSS + name)
+        if tag is not None:
+            url = (tag.attrib.get("url") or "").strip()
+            if url.startswith("http") and not is_junk_image(url):
+                return url
+    return ""
+
+
+def _decode_google_url(google_url: str) -> str:
+    """`news.google.com/rss/articles/<base64>` 토큰을 디코드해 원문 URL 추출(구 포맷).
+
+    구 포맷 토큰은 base64 안에 원문 URL 이 들어있다 → 추가 요청 없이 복원.
+    신 포맷(불투명 ID)은 URL 이 없어 빈 문자열(=실패)을 반환한다.
+    """
+    m = re.search(r"/articles/([A-Za-z0-9_\-]+)", google_url or "")
+    if not m:
+        return ""
+    token = m.group(1)
+    try:
+        raw = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+    except Exception:  # noqa: BLE001 — 잘못된 패딩/문자
+        return ""
+    text = raw.decode("latin-1", "ignore")
+    m2 = re.search(r"https?://[^\s\"'<>\\)]+", text)
+    if not m2:
+        return ""
+    url = m2.group(0)
+    host = urlparse(url).netloc
+    return url if (host and "google.com" not in host) else ""
+
+
+def _resolve_link(session, url: str) -> str:
+    """구글 뉴스 리디렉트 URL → 원문 URL(best-effort). 실패 시 원본 그대로.
+
+    1) base64 디코드(요청 없음) → 2) 리디렉트 추적(짧은 타임아웃). 둘 다 실패하면
+    원본 구글 링크 유지(브라우저에서 클릭하면 정상 이동). 원문이 풀려야 enrich 가
+    og:image·본문을 가져온다(구글 이미지 0건 문제 완화).
+    """
+    if not url or "news.google.com" not in url:
+        return url
+    decoded = _decode_google_url(url)
+    if decoded:
+        return decoded
+    try:
+        r = session.get(url, headers=default_headers(), timeout=_RESOLVE_TIMEOUT, allow_redirects=True)
+        final = str(getattr(r, "url", "") or "")
+        host = urlparse(final).netloc
+        if final.startswith("http") and host and "google.com" not in host:
+            return final
+    except requests.RequestException:
+        pass
+    return url
 
 
 def _to_iso(rfc822: str) -> str:
@@ -89,14 +153,18 @@ def search(
         published_at = _to_iso(pub_raw)
         description = (item.findtext("description") or "").strip()
 
+        # 원문 링크 복원(구글 리디렉트 → 실제 기사) — enrich 가 og:image/본문을 가져오게.
+        resolved = _resolve_link(session, link)
+        image_url = _media_image(item) or _image_from_description(description)
+
         articles.append({
             "title": title,
             "press": press,
             "date": pub_raw,
             "published_at": published_at,
-            "link": link,
+            "link": resolved,
             "summary": re.sub(r"<[^>]+>", " ", description).strip(),
-            "image_url": _image_from_description(description),
+            "image_url": image_url,
             "keywords": "",
             "source": "google",
             "query": keyword,
