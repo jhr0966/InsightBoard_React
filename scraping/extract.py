@@ -65,6 +65,28 @@ def extract_keywords(text: str, top_n: int = 5) -> str:
     return ", ".join(w for w, _ in Counter(filtered).most_common(top_n))
 
 
+# 대표 이미지로 부적합한(언론사 로고/엠블럼/아이콘/플레이스홀더/투명) URL 조각.
+# 네이버 검색결과의 언론사 로고, 공용 placeholder 등을 본문 대표 이미지로 오인하는 것을 막는다.
+_JUNK_IMAGE_FRAGMENTS = (
+    "logo", "emblem", "favicon", "sprite", "spacer", "1x1", "transparent",
+    "noimage", "no_image", "no-image", "blank.", "placeholder", "watermark",
+    "avatar", "/ci/", "ci_", "default_profile", "btn_", "_btn.", "/sns",
+)
+
+
+def is_junk_image(url: str) -> bool:
+    """대표 이미지로 부적합한(로고/아이콘/플레이스홀더/data URI) URL 인지 휴리스틱 판정.
+
+    빈 문자열도 junk(True) 로 본다 — 호출부가 'junk면 버리고 og:image 로 교체' 하기 쉽게.
+    """
+    if not url:
+        return True
+    low = url.lower()
+    if low.startswith("data:"):
+        return True
+    return any(frag in low for frag in _JUNK_IMAGE_FRAGMENTS)
+
+
 def first_text(parent, selectors: list[str]) -> str:
     for sel in selectors:
         tag = parent.select_one(sel)

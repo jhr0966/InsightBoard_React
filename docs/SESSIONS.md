@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-09 — fix: 뉴스 수집 후속 — 카드 클릭 무반응·높이 통일·표 본문/행모달·사진 추출 (`claude/kind-volta-IWxix`)
+
+**무엇을**: 직전 PR(#134) 사용 중 발견된 5건 — ① 카드 눌러도 모달 안 뜸, ② 카드 높이 불균일(본문 3줄로 통일), ③ 데이터 표에 본문, ④ 표 행 클릭 시 모달, ⑤ 사진 추출(오토메이션월드만 정상, AI Times 미흡·구글 0건·네이버 로고만).
+
+**어떻게**:
+- ①: `st.dialog` 박스 강제 `display:flex`/`min-height` CSS(모달 깨짐 주범 추정) 제거 → 오버레이 세로중앙+max-height 만. 카드 오버레이 버튼을 `stElementContainer:has(stButton)` 절대배치로(클릭 적중↑).
+- ②: `.sc-card` 고정 300px + 이미지 `flex:0 0 128px`, 제목 2줄·본문 3줄 `min-height` 예약 → 카드 높이 통일.
+- ③④: `_render_news_table` 에 `본문` 컬럼 + `st.dataframe(on_select="rerun", single-row)` → 행 선택 시 `_sc_open_news` 세팅(소켓 rerun 모달), `_sc_table_sel` 가드로 재오픈 루프 방지.
+- ⑤: `extract.is_junk_image` 신설(로고/아이콘/placeholder). naver 로고 img skip. enrich og:image 로고면 본문 img 폴백·리스트 로고 버리고 og 우선. google 리디렉트 링크 base64 디코드+리디렉트추적으로 원문 복원 + RSS media 이미지. (직접 requests 미사용 — §4.)
+
+**검증**: pytest **839 passed**(신규 `tests/test_scrape_images.py` + 표 본문/행선택·카드클릭 테스트) · 금지패턴 0 · py_compile OK. CSS(카드클릭·모달중앙)는 실배포 시각 확인 권장(헤드리스 미설치).
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
 ## 2026-06-08 — fix/feat: 뉴스 수집 — 카드 클릭 reload 제거 · 모달 중앙/확대 · 데이터 표 · 본문/사진 추출 개선 (`claude/kind-volta-IWxix`)
 
 **무엇을**: 사용자 4개 요청 — ① 카드 클릭 시 전체 새로고침 없이 즉시 모달, ② 기사·페르소나 모달을 화면 세로 중앙 + 더 길게, ③ 수집한 모든 뉴스를 보는 데이터 표 탭, ④ 본문·사진을 더 잘 가져오게(참고 스크래퍼 코드 반영).
@@ -17,7 +33,7 @@
 
 **검증**: pytest **827 passed**(카드 클릭→모달·데이터 표·필터 신구조 + enrich 최대블록 폴백 신규) · 금지패턴 0 · py_compile OK. (모달 세로중앙은 CSS — 실배포 시각 확인 권장.)
 
-**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+**상태**: ✅ merged (#134).
 
 ---
 
