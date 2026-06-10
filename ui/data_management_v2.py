@@ -868,6 +868,19 @@ def _render_news_browser(persona) -> None:
     _render_card_grid(cat, chan, q)
 
 
+@st.fragment
+def _render_browse_zone(persona) -> None:
+    """카드/표 브라우저 + 기사 모달 — 부분 rerun 경계(@st.fragment).
+
+    보기 모드·대분류 탭·출처칩 전환, 카드 [기사 보기], 표 행 선택, 모달 ✕ 닫기가
+    모두 이 fragment 안 위젯이라 **앱 전체 스크립트(topbar·사이드바·우측 채팅)를
+    재실행하지 않고 이 구역만** 다시 그린다 → 클릭 반응이 즉각적. 상단 검색·수집
+    실행·설정 토글은 fragment 밖이므로 기존대로 앱 전체 rerun.
+    """
+    _render_news_browser(persona)
+    _render_news_modal_if_open()
+
+
 def _render_collect_actionbar() -> None:
     """메인 카드뷰 액션바 — [🔄 지금 뉴스 수집] + [⚙ 수집 설정] (소켓 rerun)."""
     with st.container(key="sc_actionbar"):
@@ -1066,12 +1079,11 @@ def render_collect() -> None:
 
     if st.session_state.get("sc_collect_view") == "settings":
         _render_collect_settings(dm_stats, persona)
+        _render_news_modal_if_open()
     else:
         _render_dm_header(dm_stats)        # 수집 현황 요약(KPI 4)
         _render_collect_actionbar()         # [지금 수집][⚙ 수집 설정]
-        _render_news_browser(persona)       # 대분류 탭 + 출처칩 + 사진 카드
-
-    _render_news_modal_if_open()             # 카드 클릭 시 기사 모달
+        _render_browse_zone(persona)        # 탭/칩/카드/표 + 기사 모달 (부분 rerun)
 
 
 def render_taskdef() -> None:
