@@ -169,7 +169,10 @@ def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.Data
         return cached[1].copy()
 
     frames: list[pd.DataFrame] = []
-    for i in range(days):
+    # 과거 → 오늘 순으로 쌓는다 — drop_duplicates(keep="last") 가 **가장 최근 저장본**
+    # (예: refresh_articles 가 오늘 디렉토리에 upsert 한 과거 기사 보강본)을 남기게.
+    # 직전엔 오늘 → 과거 순이라 과거 일자 원본이 보강본을 가렸다.
+    for i in reversed(range(days)):
         d = (cur - timedelta(days=i)).strftime("%Y-%m-%d")
         day_df = _load_day_frame(d)
         if day_df is not None and not day_df.empty:

@@ -356,7 +356,13 @@ def _render_card_actions(col_key: str, top_bm: Bookmark) -> None:
     """컬럼 1순위 카드 액션 — 위젯 버튼(구 카드 안 앵커 대체).
 
     pending: 채택 / 수정(→SOLA) / 기각. adopted·rejected: 대기로 되돌리기.
-    on_click 미사용 — 클릭 시 pending/세션 세팅 후 st.rerun()(소켓 rerun)."""
+    on_click 미사용 — 클릭 시 pending/세션 세팅 후 st.rerun().
+
+    ⚠ scope="app" 필수: 이 버튼들은 칸반 fragment(`_render_kanban_zone`) 안에서
+    실행되지만, pending(`_do_archive_action`)의 소비자(`_consume_action_if_any`)와
+    헤더 KPI(`_header_html`)·SOLA 인계 디스패치(app.py)는 모두 fragment **밖**
+    (부모 render / 앱 최상단)에 있다 → fragment-scope rerun 으론 반영되지 않으므로
+    전체 rerun 으로 승격한다."""
     if not top_bm.id:
         return
     if col_key == "pending":
@@ -365,27 +371,31 @@ def _render_card_actions(col_key: str, top_bm: Bookmark) -> None:
             if st.button("✅ 채택", key=f"_oa_adopt_{top_bm.id}",
                          type="primary", use_container_width=True):
                 st.session_state["_do_archive_action"] = ("adopt", top_bm.id)
-                st.rerun()
+                st.rerun(scope="app")
         with c2:
             if st.button("✏️ 수정", key=f"_oa_edit_{top_bm.id}",
                          use_container_width=True):
                 _handoff_edit_to_sola(top_bm)
-                st.rerun()
+                st.rerun(scope="app")
         with c3:
             if st.button("🗂 기각", key=f"_oa_reject_{top_bm.id}",
                          use_container_width=True):
                 st.session_state["_do_archive_action"] = ("reject", top_bm.id)
-                st.rerun()
+                st.rerun(scope="app")
     else:
         if st.button("↶ 대기로 되돌리기", key=f"_oa_restore_{top_bm.id}",
                      use_container_width=True):
             st.session_state["_do_archive_action"] = ("restore", top_bm.id)
-            st.rerun()
+            st.rerun(scope="app")
 
 
 def _render_kanban_column(col_key: str, label: str, dot: str, meta: str,
                           items: list[Bookmark], *, expanded: bool) -> None:
-    """칸반 1개 컬럼 — 컨테이너(.oa-col 룩) > 헤더 + 1순위 액션 + 카드 + 더보기 버튼."""
+    """칸반 1개 컬럼 — 컨테이너(.oa-col 룩) > 헤더 + 1순위 액션 + 카드 + 더보기 버튼.
+
+    더보기/접기는 칸반 fragment 안에서만 의미 있는 표시 상태(`_oa_expanded`) 변경
+    이므로 scope="fragment" 부분 rerun — 헤더 KPI·topbar·우측 채팅은 건드리지 않는다.
+    """
     cnt = len(items)
     with st.container(key=f"oa_col_{col_key}"):
         st.html(_col_head_html(label, dot, cnt, meta))
@@ -398,7 +408,42 @@ def _render_kanban_column(col_key: str, label: str, dot: str, meta: str,
             lbl = f"− 접기 ({cnt}건)" if expanded else f"+ {n_more}건 더 보기"
             if st.button(lbl, key=f"_oa_more_{col_key}", use_container_width=True):
                 _toggle_expanded(col_key)
-                st.rerun()
+                st.rerun(scope="fragment")
+
+
+def _render_kanban_zone() -> None:
+    """칸반 3컬럼 본체 — 부분 rerun 경계(@st.fragment)의 몸체.
+
+    `_oa_data()`(30초 캐시)·`_expanded_cols()` 를 **매 실행마다** 다시 읽으므로
+    fragment-scope rerun(더보기/접기)에서도 최신 표시 상태로 그려진다.
+    카드 액션 버튼은 scope="app" 으로 승격 — 소비자(`_consume_action_if_any`)와
+    헤더 KPI 가 부모 `render()` 에 있기 때문(→ `_render_card_actions` docstring).
+    """
+    data = _oa_data()
+    expanded = _expanded_cols()
+    cols = st.columns(3, gap="small")
+    for col_st, (key, label, dot, meta) in zip(cols, _KANBAN_COLS):
+        with col_st:
+            _render_kanban_column(
+                key, label, dot, meta, data[key], expanded=(key in expanded))
+
+
+# 부분 rerun 경계 — 정밀 선례: ui/data_management_v2._render_browse_zone.
+_render_kanban_zone_fragment = st.fragment(_render_kanban_zone)
+
+
+def _has_run_ctx() -> bool:
+    """Streamlit 스크립트 런 컨텍스트 존재 여부.
+
+    `st.fragment` 래퍼는 ctx 가 없으면(단위테스트의 bare `render()` 직접 호출)
+    본체를 실행하지 않고 None 을 반환한다 → 그 경우 본체로 폴백해 칸반이 그려지게.
+    """
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+
+        return get_script_run_ctx(suppress_warning=True) is not None
+    except Exception:
+        return False
 
 
 def render() -> None:
@@ -406,7 +451,10 @@ def render() -> None:
 
     카드 액션(채택/수정/기각/되돌리기)·더보기는 위젯 버튼이라 클릭 시 문서 reload
     (흰 깜빡임)가 없다. 액션 트리거(`_do_archive_action` / 레거시 `?action=`)는
-    첫 단계에서 1회 소비 → 캐시 무효화 후 갱신된 칸반을 그린다.
+    첫 단계(fragment **밖**, 부모 스코프)에서 1회 소비 → 캐시 무효화 후 갱신된
+    칸반을 그린다. 칸반 3컬럼은 @st.fragment 부분 rerun 경계:
+      - 더보기/접기 → scope="fragment" (칸반 구역만 다시 그림)
+      - 채택/수정/기각/되돌리기 → scope="app" (최상단 소비자 + 헤더 KPI 갱신)
     """
     inject_screen_css("archive")
 
@@ -426,10 +474,8 @@ def render() -> None:
     )
     st.html(_components.prepare_screen_html(_header_html(data["stats"])))
 
-    expanded = _expanded_cols()
-    cols = st.columns(3, gap="small")
-    for col_st, (key, label, dot, meta) in zip(cols, _KANBAN_COLS):
-        with col_st:
-            _render_kanban_column(
-                key, label, dot, meta, data[key], expanded=(key in expanded))
+    if _has_run_ctx():
+        _render_kanban_zone_fragment()   # 부분 rerun 경계(@st.fragment)
+    else:
+        _render_kanban_zone()            # bare-call(pytest 직접 호출) 폴백
 
