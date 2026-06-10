@@ -13,7 +13,8 @@
 1. `store/news_db.py`: 일자별 parquet 메모 — 윈도우(3/14/30/56일) 섞어 불러도 날짜당 디스크 1회. (보드형 패턴 9×→1× 스캔)
 2. 자산/헬퍼 캐시: `components.read_asset_text`(CSS 6종+템플릿 4종 매 rerun 재읽기 제거), `_board_kw_mgr_html`·`_notif_count`·`_chat_context_collect_cached` ttl=60.
 3. `data_management_v2._render_browse_zone(@st.fragment)`: 탭/칩/모드/카드/모달이 구역만 부분 rerun — 브라우저 실측으로 dialog-in-fragment 확인.
-4. e2e S8(부분 갱신 시나리오) + 일자 메모 회귀 테스트. 잔여 앵커 전환은 REFACTOR_PLAN **Phase 4** 로 우선순위화(보드 kw/opp P1, taskdef td_* P1, 채팅 칩·스레드 P2, SVG 히트맵 P3).
+4. e2e S8(부분 갱신 시나리오) + 일자 메모 회귀 테스트.
+5. 채팅 빠른 작업 칩(`?sola_action=` 앵커) → `st.button`+pending 전환(reload 제거, 딥링크 호환 유지) — 브라우저 칩 렌더 확인. 잔여 앵커 전환은 REFACTOR_PLAN **Phase 4** 로 우선순위화(보드 kw/opp P1, taskdef td_* P1, 채팅 칩·스레드 P2, SVG 히트맵 P3).
 
 **측정**: 보드 콜드 4.13s→1.74s(-58%), 워밍 0.04~0.10s. pytest 832 passed · 금지패턴 0.
 

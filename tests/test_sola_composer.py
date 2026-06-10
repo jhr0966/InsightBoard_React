@@ -414,3 +414,19 @@ def test_auto_run_handoff_ignores_non_handoff_query():
     finally:
         st.query_params.clear()
         st.session_state.pop("_handoff_autorun_done", None)
+
+
+def test_sola_action_pending_flag_takes_priority_over_query():
+    """버튼 칩 경로 — `_sola_action_pending` 이 쿼리보다 먼저 소비돼 flag 로 매핑."""
+    import streamlit as st
+    from ui import sola_workshop_v2 as sola_v2
+    st.session_state["_sola_action_pending"] = {
+        "action": "generate_proposal", "dept": "도장", "lv3": "비전 검사", "from": "opp"}
+    try:
+        sola_v2._consume_sola_action_from_query_if_any()
+        payload = st.session_state.pop("_do_generate_proposal")
+        assert payload == {"dept": "도장", "lv3": "비전 검사", "kind": "opp"}
+        assert "_sola_action_pending" not in st.session_state
+    finally:
+        for k in ("_sola_action_pending", "_do_generate_proposal"):
+            st.session_state.pop(k, None)

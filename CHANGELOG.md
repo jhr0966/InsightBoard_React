@@ -11,6 +11,7 @@
 - **자산/헬퍼 캐시**: `ui/components.read_asset_text`((경로,mtime) 키) — CSS 6종 + 화면 템플릿 4종(board/insights/dm/archive)의 **매 rerun 디스크 재읽기 제거**(파일 수정 시 자동 갱신·핫리로드 유지). `_board_kw_mgr_html`·`_notif_count`·`chat_context_block_collect`(내부 `_chat_context_collect_cached` 분리)에 `@st.cache_data(ttl=60)`.
 - **측정**: 보드 콜드 렌더 4.13s → **1.74s(-58%)** · 보드형 로드 패턴(콜드) 0.071s → 0.045s(소규모 시드 기준, 데이터 누적 시 격차 확대) · 워밍 렌더 0.04~0.10s 유지.
 - **시나리오 시뮬레이션**: e2e **S8(부분 갱신)** 신설 — 표 전환→카드 복귀→모달 열기/닫기 상태 전이 한 세션 연속 검증 + `news_db` 일자 메모 디스크 읽기 횟수 회귀 테스트. 캐시 도입에 따른 테스트 격리(clear) 2건 보강.
+- **채팅 빠른 작업 칩 reload 제거**(`ui/chat_panel.py`, `ui/sola_workshop_v2.py`, `streamlit-overrides.css`): SOLA 작업실 우측 채팅의 빠른 작업(제안서 생성/뉴스 요약/새 대화)이 `?sola_action=` 앵커라 **클릭마다 문서 전체 reload** 였던 것을 `st.button` 칩(`_render_quick_action_chips`) + `_sola_action_pending` 플래그로 전환 — 소켓 rerun 만 탄다. 인계 컨텍스트(dept/lv3/from) 보존, 소비자는 pending 우선 + 쿼리(딥링크) 호환 유지. 버튼 칩 CSS 추가.
 - **잔여 로드맵**: 전체 reload 를 유발하는 same-screen 앵커(보드 kw/opp 액션·작업정의 td_* 스위트·채팅 칩·SOLA 스레드 전환 등) 전환 우선순위를 `docs/REFACTOR_PLAN.md` **Phase 4** 로 문서화.
 - 검증: pytest **832 passed**(신규 2) · 금지패턴 0 · 브라우저 실측 OK.
 

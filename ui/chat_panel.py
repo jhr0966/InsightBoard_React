@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import html as _html
 from datetime import datetime, timezone
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 
 import streamlit as st
 
@@ -130,39 +130,26 @@ _SOLA_QUICK_ACTIONS: list[tuple[str, str]] = [
 ]
 
 
-def _quick_actions_html(area_key: str) -> str:
-    """SOLA 작업실 area 전용 — 중앙 작업대 액션을 채팅 상단 quick-action 칩으로 흡수.
+def _render_quick_action_chips(area_key: str) -> None:
+    """SOLA 작업실 전용 빠른 작업 칩 — st.button 3개(소켓 rerun, 문서 reload 없음).
 
-    "채팅으로 통합" 결정에 따라 제안서 생성·뉴스 요약·새 대화를 채팅 단일
-    진입점으로 끌어온다. 각 칩은 `?sola_action=<name>` 링크(on_click 미사용)이며
-    인계 컨텍스트(dept/lv3/from)를 보존해 제안서 생성이 인계 작업을 그대로 쓴다.
-    `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 소비한다.
-    다른 area 는 빈 문자열(칩 미노출).
+    직전엔 `?sola_action=` 앵커라 클릭마다 **문서 전체 reload**(흰 깜빡임)였다 →
+    버튼 + `_sola_action_pending` 세션 플래그로 전환. 인계 컨텍스트(dept/lv3/from)는
+    쿼리에서 읽어 보존하고, `sola_workshop_v2._consume_sola_action_from_query_if_any`
+    가 쿼리보다 먼저 소비해 기존 pending flag(LLM 호출 경로)로 매핑한다.
+    다른 area 는 아무것도 그리지 않는다.
     """
     if area_key != _SOLA_AREA:
-        return ""
-    ctx = {
-        k: v for k, v in (
-            ("dept", st.query_params.get("dept", "")),
-            ("lv3", st.query_params.get("lv3", "")),
-            ("from", st.query_params.get("from", "")),
-        ) if v
-    }
-
-    def _href(action: str) -> str:
-        return "?" + urlencode({"sola_action": action, **ctx})
-
-    chip_html = "".join(
-        f'<a class="side-chat-action" href="{_html.escape(_href(action))}" '
-        f'target="_self">{_html.escape(label)}</a>'
-        for label, action in _SOLA_QUICK_ACTIONS
-    )
-    return (
-        '<div class="side-chat-actions">'
-        '<div class="side-chat-actions-h">빠른 작업</div>'
-        f'<div class="side-chat-actions-row">{chip_html}</div>'
-        '</div>'
-    )
+        return
+    ctx = {k: st.query_params.get(k, "") for k in ("dept", "lv3", "from")}
+    with st.container(key="side_quick_actions"):
+        st.html('<div class="side-chat-actions-h">빠른 작업</div>')
+        cols = st.columns(len(_SOLA_QUICK_ACTIONS))
+        for col, (label, action) in zip(cols, _SOLA_QUICK_ACTIONS):
+            with col:
+                if st.button(label, key=f"side_qa_{action}", use_container_width=True):
+                    st.session_state["_sola_action_pending"] = {"action": action, **ctx}
+                    st.rerun()
 
 
 def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
@@ -228,10 +215,8 @@ def render_side(persona: Persona, area_key: str) -> None:
     )
 
     # SOLA 작업실 — 작업대 액션을 채팅 상단 quick-action 칩으로(헤더 아래 고정,
-    # 스크롤에 묻히지 않음). 다른 area 는 빈 문자열이라 아무것도 그리지 않는다.
-    qa_html = _quick_actions_html(area_key)
-    if qa_html:
-        st.html(qa_html)
+    # 스크롤에 묻히지 않음). 버튼(소켓 rerun)이라 문서 reload 없음.
+    _render_quick_action_chips(area_key)
 
     try:
         messages = sw._load_messages()

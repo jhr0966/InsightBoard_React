@@ -54,36 +54,55 @@ def test_each_intro_has_headline_and_at_least_3_suggestions():
 # ── 빠른 작업(quick-action) — SOLA 작업실 채팅 통합 ────────────
 
 def test_quick_actions_only_for_sola_workshop():
-    """SOLA 작업실 area 에만 quick-action 칩, 나머지는 빈 문자열."""
+    """SOLA 작업실 area 에만 빠른 작업 버튼 칩 3개, 나머지는 미렌더(소켓 rerun 전환)."""
     import streamlit as st
+    from unittest.mock import MagicMock, patch
     st.query_params.clear()
     try:
-        out = chat_panel._quick_actions_html("🤖 SOLA 작업실")
-        assert "빠른 작업" in out
-        # 3 액션 모두 노출 + sola_action 링크
-        for _label, action in chat_panel._SOLA_QUICK_ACTIONS:
-            assert f"sola_action={action}" in out
-        # 다른 area 는 칩 미노출
-        for other in ("📊 오늘의 보드", "🔎 인사이트 분석", "📦 산출물 보관함"):
-            assert chat_panel._quick_actions_html(other) == ""
+        labels: list[str] = []
+        cols = (MagicMock(), MagicMock(), MagicMock())
+        with patch("streamlit.container", MagicMock()), \
+             patch("streamlit.html"), \
+             patch("streamlit.columns", return_value=cols), \
+             patch("streamlit.button", side_effect=lambda label, **kw: labels.append(label) or False):
+            chat_panel._render_quick_action_chips("🤖 SOLA 작업실")
+        assert labels == [l for l, _a in chat_panel._SOLA_QUICK_ACTIONS]
+
+        # 다른 area 는 아무 위젯도 안 그린다
+        with patch("streamlit.button") as btn, patch("streamlit.container") as cont:
+            for other in ("📊 오늘의 보드", "🔎 인사이트 분석", "📦 산출물 보관함"):
+                chat_panel._render_quick_action_chips(other)
+        btn.assert_not_called()
+        cont.assert_not_called()
     finally:
         st.query_params.clear()
 
 
-def test_quick_actions_preserve_handoff_context():
-    """제안서 생성 링크가 인계 컨텍스트(dept/lv3/from)를 보존."""
+def test_quick_action_click_sets_pending_with_handoff_context():
+    """칩 클릭 → `_sola_action_pending` 에 action + 인계 컨텍스트(dept/lv3/from) 보존."""
     import streamlit as st
+    from unittest.mock import MagicMock, patch
     st.query_params.clear()
     st.query_params["dept"] = "도장"
     st.query_params["lv3"] = "비전 검사"
     st.query_params["from"] = "opp"
     try:
-        out = chat_panel._quick_actions_html("🤖 SOLA 작업실")
-        # urlencode 라 한글은 percent-encoding — 키 존재로 검증
-        assert "dept=" in out and "lv3=" in out and "from=opp" in out
-        assert "sola_action=generate_proposal" in out
+        cols = (MagicMock(), MagicMock(), MagicMock())
+        # 첫 버튼(제안서 생성)만 클릭된 것으로
+        presses = iter([True, False, False])
+        with patch("streamlit.container", MagicMock()), \
+             patch("streamlit.html"), \
+             patch("streamlit.columns", return_value=cols), \
+             patch("streamlit.button", side_effect=lambda *a, **kw: next(presses)), \
+             patch("streamlit.rerun") as rr:
+            chat_panel._render_quick_action_chips("🤖 SOLA 작업실")
+        pend = st.session_state.pop("_sola_action_pending")
+        assert pend["action"] == "generate_proposal"
+        assert pend["dept"] == "도장" and pend["lv3"] == "비전 검사" and pend["from"] == "opp"
+        rr.assert_called_once()
     finally:
         st.query_params.clear()
+        st.session_state.pop("_sola_action_pending", None)
 
 
 # ── 메시지 렌더 ─────────────────────────────────────────────

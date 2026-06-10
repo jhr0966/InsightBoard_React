@@ -725,6 +725,22 @@ def _consume_sola_action_from_query_if_any() -> None:
 
     `generate_proposal` 은 인계 컨텍스트(dept/lv3/from)를 페이로드로 보존한다.
     """
+    # 버튼 칩(소켓 rerun) 경로 — `_sola_action_pending` 을 쿼리보다 먼저 소비.
+    pend = st.session_state.pop("_sola_action_pending", None)
+    if isinstance(pend, dict) and pend.get("action"):
+        action = str(pend["action"])
+        flag = _SOLA_ACTION_FLAGS.get(action)
+        if flag:
+            if action == "generate_proposal":
+                st.session_state[flag] = {
+                    "dept": str(pend.get("dept", "") or ""),
+                    "lv3": str(pend.get("lv3", "") or ""),
+                    "kind": str(pend.get("from", "") or ""),
+                }
+            else:
+                st.session_state[flag] = True
+        return
+
     action = st.query_params.get("sola_action")
     if not action:
         return
