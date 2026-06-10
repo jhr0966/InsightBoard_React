@@ -1,51 +1,62 @@
-"""수집 트리거 실 실행 — `?refresh=now` 가 collect_batch 호출 + 토스트."""
+"""수집 트리거 — 버튼/`?refresh=now` → 수집 현황 모달 플래그 + 모달 내 수집 실행."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+_FLAGS = ("_do_dm_collect", "_sc_collect_modal_pending", "_sc_collect_modal_result")
 
 
 @pytest.fixture(autouse=True)
 def reset_state():
     import streamlit as st
     st.query_params.clear()
-    for k in ("_dm_refresh_toast", "persona"):
+    for k in ("_dm_refresh_toast", "persona", *_FLAGS):
         st.session_state.pop(k, None)
     yield
     st.query_params.clear()
+    for k in ("_dm_refresh_toast", *_FLAGS):
+        st.session_state.pop(k, None)
 
 
-# ── 수집 버튼 pending(_do_dm_collect) → 실 수집 실행 ──────────
-# '지금 뉴스 수집' 은 앵커(?refresh=now)에서 st.button 으로 위젯화. 버튼은 pending
-# 을 세팅하고 _consume_refresh_if_any 가 둘(버튼 pending / 레거시 쿼리) 다 처리.
+# ── 트리거 번역 — 버튼 pending / ?refresh=now → 모달 플래그 ──────────
+# '지금 뉴스 수집' 버튼은 `_sc_collect_modal_pending` 을 세팅, 레거시
+# `_do_dm_collect` pending / `?refresh=now` 딥링크는 `_consume_refresh_if_any` 가
+# 모달 플래그로 번역한다. 실 수집은 모달 본문(_run_collect_for_modal)이 담당.
 
-def test_collect_button_pending_triggers_collect():
+def test_collect_button_pending_translates_to_modal_flag():
     from ui import data_management_v2 as dm
-    from scraping.run_daily import CollectionReport
     import streamlit as st
 
     st.session_state["_do_dm_collect"] = True
-    fake = CollectionReport(
-        saved=[{"source": "naver", "keywords": ["비전 검사"], "count": 5, "path": "x.parquet"}],
-        errors=[],
-    )
-    with patch("ui.board_v2._collect_keywords_for_persona", return_value=["비전 검사"]), \
-         patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
+    with patch("scraping.run_daily.collect_batch") as mock_cb:
         assert dm._consume_refresh_if_any() is True
-    mock_cb.assert_called_once()
-    # pending 은 1회 소비 (다음 run 에서 재실행 안 됨)
+    mock_cb.assert_not_called()  # render 도중 동기 수집은 더 이상 안 함
+    assert st.session_state.get("_sc_collect_modal_pending") is True
+    # pending 은 1회 소비 (다음 run 에서 재번역 안 됨)
     assert "_do_dm_collect" not in st.session_state
 
 
-# ── _consume_refresh_if_any — 키워드 있음 ────────────────────
-
-def test_refresh_calls_collect_batch_with_persona_keywords():
+def test_refresh_query_translates_to_modal_flag_and_strips_query():
     from ui import data_management_v2 as dm
-    from scraping.run_daily import CollectionReport
     import streamlit as st
 
     st.query_params["refresh"] = "now"
+    assert dm._consume_refresh_if_any() is True
+    assert st.session_state.get("_sc_collect_modal_pending") is True
+    assert "refresh" not in st.query_params
+    # 쿼리가 제거됐고 pending 도 없으므로 재진입 시 noop (모달 플래그는 별개)
+    assert dm._consume_refresh_if_any() is False
+
+
+# ── _run_collect_for_modal — 실 수집 + 결과 dict ────────────────────
+
+def test_run_collect_uses_persona_keywords():
+    from ui import data_management_v2 as dm
+    from scraping.run_daily import CollectionReport
+
     fake = CollectionReport(
         saved=[{"source": "naver", "keywords": ["비전 검사"], "count": 5, "path": "x.parquet"}],
         errors=[],
@@ -53,100 +64,217 @@ def test_refresh_calls_collect_batch_with_persona_keywords():
     with patch("ui.board_v2._collect_keywords_for_persona",
                return_value=["비전 검사", "도장 검사"]) as mock_kw, \
          patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
-        assert dm._consume_refresh_if_any() is True
+        result = dm._run_collect_for_modal()
 
     mock_kw.assert_called_once()
     mock_cb.assert_called_once()
     args, kwargs = mock_cb.call_args
     assert args[0] == ["비전 검사", "도장 검사"]
+    assert result["ok"] is True
+    assert "2개 키워드" in result["message"]
+    assert "5건" in result["message"]
+    assert result["total_articles"] == 5
+    assert result["total_files"] == 1
 
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert toast[0] == "ok"
-    assert "2개 키워드" in toast[1]
-    assert "5건" in toast[1]
 
-
-def test_refresh_includes_error_tail_when_partial_failure():
-    """일부 에러 + 일부 성공 → ok 토스트에 '일부 오류 N건' 표기."""
+def test_run_collect_passes_on_step_and_updates_progress():
+    """collect_batch 의 on_step 콜백이 progress 핸들을 갱신한다."""
     from ui import data_management_v2 as dm
     from scraping.run_daily import CollectionReport
-    import streamlit as st
 
-    st.query_params["refresh"] = "now"
+    fake = CollectionReport(
+        saved=[{"source": "naver", "keywords": ["X"], "count": 2, "path": "x"}],
+        errors=[],
+    )
+
+    def _fake_collect(kws, *, on_step=None, **kwargs):
+        if on_step:
+            on_step("naver", "X", 2)
+            on_step("google", "X", 0)
+        return fake
+
+    prog = MagicMock()
+    with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
+         patch("scraping.run_daily.collect_batch", side_effect=_fake_collect):
+        result = dm._run_collect_for_modal(prog)
+    assert result["ok"] is True
+    assert prog.progress.call_count == 2
+    # 진행 텍스트에 소스·키워드·건수
+    _, kwargs = prog.progress.call_args_list[0]
+    assert "naver" in kwargs.get("text", "") and "2건" in kwargs.get("text", "")
+
+
+def test_run_collect_partial_errors_in_message():
+    """일부 에러 + 일부 성공 → ok 결과 메시지에 '일부 오류 N건' + errors 목록."""
+    from ui import data_management_v2 as dm
+    from scraping.run_daily import CollectionReport
+
     fake = CollectionReport(
         saved=[{"source": "naver", "keywords": ["X"], "count": 3, "path": "x"}],
         errors=[{"source": "google", "keyword": "X", "error": "rate"}],
     )
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
          patch("scraping.run_daily.collect_batch", return_value=fake):
-        dm._consume_refresh_if_any()
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert toast[0] == "ok"
-    assert "일부 오류 1건" in toast[1]
+        result = dm._run_collect_for_modal()
+    assert result["ok"] is True
+    assert "일부 오류 1건" in result["message"]
+    assert result["errors"] == ["google · X: rate"]
 
 
-def test_refresh_error_toast_when_all_failed():
-    """전부 실패(saved=[], errors=N) → error 토스트."""
+def test_run_collect_error_result_when_all_failed():
+    """전부 실패(saved=[], errors=N) → ok=False + 첫 오류 메시지."""
     from ui import data_management_v2 as dm
     from scraping.run_daily import CollectionReport
-    import streamlit as st
 
-    st.query_params["refresh"] = "now"
     fake = CollectionReport(
         saved=[],
         errors=[{"source": "naver", "keyword": "X", "error": "boom"}],
     )
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
          patch("scraping.run_daily.collect_batch", return_value=fake):
-        dm._consume_refresh_if_any()
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert toast[0] == "error"
-    assert "boom" in toast[1]
+        result = dm._run_collect_for_modal()
+    assert result["ok"] is False
+    assert "boom" in result["message"]
+    assert result["errors"]
 
 
-# ── 페르소나 관심사 없을 때 — 기본 키워드(자동화·AI)로 폴백 ──
-
-def test_refresh_falls_back_to_default_keywords_when_no_keywords():
+def test_run_collect_falls_back_to_default_keywords():
     """관심사가 비어도 스킵하지 않고 기본 키워드(자동화·AI)로 collect_batch 호출."""
     from ui import data_management_v2 as dm
     from scraping.run_daily import CollectionReport
-    import streamlit as st
 
-    st.query_params["refresh"] = "now"
     fake = CollectionReport(
         saved=[{"source": "tech", "keywords": [], "count": 4, "path": "t.parquet"}],
         errors=[],
     )
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=[]), \
          patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
-        assert dm._consume_refresh_if_any() is True
+        result = dm._run_collect_for_modal()
     mock_cb.assert_called_once()
     assert mock_cb.call_args.args[0] == ["자동화", "AI"]
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert toast[0] == "ok"
-    assert "자동화" in toast[1] and "AI" in toast[1]
+    assert result["ok"] is True
+    assert "자동화" in result["message"] and "AI" in result["message"]
 
 
-# ── 캐시 무효화는 항상 수행 ─────────────────────────────────
-
-def test_refresh_always_clears_caches_even_on_collect_failure():
-    """collect_batch 실패해도 캐시는 무효화돼야 한다."""
+def test_run_collect_records_run_log_with_manual_trigger():
     from ui import data_management_v2 as dm
-    import streamlit as st
+    from scraping.run_daily import CollectionReport
 
-    st.query_params["refresh"] = "now"
+    fake = CollectionReport(saved=[], errors=[])
+    with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
+         patch("scraping.run_daily.collect_batch", return_value=fake), \
+         patch("store.run_log.record_run") as mock_log:
+        dm._run_collect_for_modal()
+    mock_log.assert_called_once()
+    assert mock_log.call_args.kwargs.get("trigger") == "manual"
+
+
+def test_run_collect_always_clears_caches_even_on_collect_failure():
+    """collect_batch 가 예외를 던져도 캐시는 무효화 + ok=False 결과."""
+    from ui import data_management_v2 as dm
+
     with patch.object(dm._dm_stats, "clear") as c1, \
          patch.object(dm._sc_browse_records, "clear") as c2, \
          patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
          patch("scraping.run_daily.collect_batch", side_effect=RuntimeError("net")):
-        dm._consume_refresh_if_any()
+        result = dm._run_collect_for_modal()
     c1.assert_called_once()
     c2.assert_called_once()
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert toast[0] == "error"
+    assert result["ok"] is False
+    assert "net" in result["message"]
 
 
-# ── 토스트 렌더 — kind 별 색상 ─────────────────────────────
+# ── 수집 현황 모달 본문 — 결과 요약 렌더 + 재실행 가드 + 닫기 ─────────
+
+def test_modal_body_renders_result_summary():
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    st.session_state["_sc_collect_modal_pending"] = True
+    st.session_state["_sc_collect_modal_result"] = {
+        "ok": True, "message": "✓ 2개 키워드로 7건 수집 (2개 파일).",
+        "total_articles": 7, "total_files": 2, "n_keywords": 2,
+        "used_default": False, "n_feeds": 1,
+        "errors": ["tech · AITimes: timeout"],
+    }
+    captured: list[str] = []
+    with patch("streamlit.html", side_effect=lambda s: captured.append(str(s))), \
+         patch("streamlit.button", return_value=False):
+        dm._collect_modal_body()
+    joined = "".join(captured)
+    assert "7건" in joined and "2개 파일" in joined        # 결과 메시지
+    assert "수집 기사" in joined and "저장 파일" in joined  # KPI 라벨
+    assert "오류 1건" in joined and "timeout" in joined     # 오류 목록
+
+
+def test_modal_body_escapes_external_error_strings():
+    """오류 문자열의 HTML 은 escape 되어 나간다 (XSS 방어)."""
+    from ui import data_management_v2 as dm
+
+    html_out = dm._collect_result_summary_html({
+        "ok": False, "message": "<b>주의</b>", "total_articles": 0,
+        "total_files": 0, "n_keywords": 0, "used_default": False,
+        "n_feeds": 0, "errors": ["naver: <script>alert(1)</script>"],
+    })
+    assert "<script>" not in html_out
+    assert "&lt;script&gt;" in html_out
+    assert "<b>주의</b>" not in html_out
+
+
+def test_modal_body_does_not_recollect_when_result_exists():
+    """결과가 세션에 있으면 collect 재실행 금지(1회 실행 가드)."""
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    st.session_state["_sc_collect_modal_result"] = {
+        "ok": True, "message": "✓", "total_articles": 1, "total_files": 1,
+        "n_keywords": 1, "used_default": False, "n_feeds": 0, "errors": [],
+    }
+    with patch.object(dm, "_run_collect_for_modal") as mock_run, \
+         patch("streamlit.html"), patch("streamlit.button", return_value=False):
+        dm._collect_modal_body()
+    mock_run.assert_not_called()
+
+
+def test_modal_close_clears_flags_and_reruns():
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    st.session_state["_sc_collect_modal_pending"] = True
+    st.session_state["_sc_collect_modal_result"] = {
+        "ok": True, "message": "✓", "total_articles": 1, "total_files": 1,
+        "n_keywords": 1, "used_default": False, "n_feeds": 0, "errors": [],
+    }
+    with patch("streamlit.html"), \
+         patch("streamlit.button", return_value=True), \
+         patch("streamlit.rerun") as mock_rerun:
+        dm._collect_modal_body()
+    assert "_sc_collect_modal_pending" not in st.session_state
+    assert "_sc_collect_modal_result" not in st.session_state
+    mock_rerun.assert_called_once()
+
+
+def test_render_collect_modal_noop_without_flag():
+    from ui import data_management_v2 as dm
+    with patch("streamlit.dialog") as mock_dlg:
+        dm._render_collect_modal_if_open()
+    mock_dlg.assert_not_called()
+
+
+def test_news_modal_skipped_while_collect_modal_pending():
+    """수집 모달 pending 중에는 기사 모달을 띄우지 않는다 (dialog 1개/run 제한)."""
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    st.session_state["_sc_collect_modal_pending"] = True
+    st.session_state["_sc_open_news"] = "https://x"
+    with patch("streamlit.dialog") as mock_dlg:
+        dm._render_news_modal_if_open()
+    mock_dlg.assert_not_called()
+    st.session_state.pop("_sc_open_news", None)
+
+
+# ── 토스트 렌더 — kind 별 색상 (다른 경로가 여전히 사용) ─────────────
 
 def test_refresh_toast_renders_ok_message():
     from ui import data_management_v2 as dm
