@@ -274,6 +274,128 @@ def test_news_modal_skipped_while_collect_modal_pending():
     st.session_state.pop("_sc_open_news", None)
 
 
+# ── 런 이력 → 모달 결과 재열람 (⚙ 수집 설정 [보기]) ─────────────────
+
+_RUN_ENTRY = {
+    "run_id": "20260610-080000-ab12",
+    "ts": "2026-06-10T08:00:00+00:00",
+    "trigger": "manual",
+    "ok": True,
+    "total_articles": 7,
+    "total_files": 2,
+    "duration_s": 12.3,
+    "sources": [
+        {"source": "naver", "count": 4, "keywords": ["자동화", "AI"], "ok": True},
+        {"source": "google", "count": 2, "keywords": ["AI"], "ok": True},
+        {"source": "myrss", "count": 1, "keywords": [], "ok": True},
+    ],
+    "error_sources": [],
+    "errors": [],
+}
+
+
+def test_run_log_to_modal_result_full_entry():
+    from ui import data_management_v2 as dm
+
+    result = dm._run_log_to_modal_result(dict(_RUN_ENTRY))
+    assert result["ok"] is True
+    assert result["total_articles"] == 7
+    assert result["total_files"] == 2
+    assert result["n_keywords"] == 2          # 자동화·AI 합집합
+    assert result["n_feeds"] == 1             # myrss (naver/google/tech 제외)
+    assert result["errors"] == []
+    assert result["from_log"] is True
+    assert result["run_id"] == "20260610-080000-ab12"
+    # 메시지에 시각·트리거·건수
+    assert "06-10" in result["message"] and "08:00" in result["message"]
+    assert "수동" in result["message"] and "7건" in result["message"]
+
+
+def test_run_log_to_modal_result_errors_formatted():
+    from ui import data_management_v2 as dm
+
+    run = dict(_RUN_ENTRY, ok=False,
+               errors=[{"source": "google", "keyword": "X", "error": "rate"}])
+    result = dm._run_log_to_modal_result(run)
+    assert result["ok"] is False
+    assert result["errors"] == ["google · X: rate"]
+    assert "오류 1건" in result["message"]
+
+
+def test_run_log_to_modal_result_defends_missing_fields():
+    """과거 로그(필드 누락)도 안전하게 변환 — ok 는 errors 유무로 유추."""
+    from ui import data_management_v2 as dm
+
+    result = dm._run_log_to_modal_result({})
+    assert result["ok"] is True               # errors 없음 → 정상 취급
+    assert result["total_articles"] == 0
+    assert result["total_files"] == 0
+    assert result["n_keywords"] == 0
+    assert result["n_feeds"] == 0
+    assert result["errors"] == []
+    assert result["from_log"] is True
+
+    # errors 만 있고 ok 누락 → 오류로 유추 + 문자열 에러도 수용
+    result2 = dm._run_log_to_modal_result({"errors": ["boom"]})
+    assert result2["ok"] is False
+    assert result2["errors"] == ["boom"]
+
+
+def test_open_run_result_modal_sets_flags_and_reruns():
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    with patch("streamlit.rerun") as mock_rerun:
+        dm._open_run_result_modal(dict(_RUN_ENTRY))
+    assert st.session_state.get("_sc_collect_modal_pending") is True
+    result = st.session_state.get("_sc_collect_modal_result")
+    assert result and result["from_log"] is True and result["total_articles"] == 7
+    mock_rerun.assert_called_once()
+
+
+def test_history_view_button_opens_modal_without_recollect():
+    """[📡 마지막 수집 결과 보기] 클릭 → 플래그 세팅 + 모달이 collect 없이 로그 결과 표시."""
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    # 1) 이력 버튼 클릭 — 첫 st.button(마지막 결과 보기)만 True
+    def _btn(label, *a, **k):
+        return "마지막 수집 결과 보기" in str(label)
+
+    with patch("store.run_log.load_runs", return_value=[dict(_RUN_ENTRY)]), \
+         patch("streamlit.button", side_effect=_btn), \
+         patch("streamlit.caption"), patch("streamlit.rerun") as mock_rerun:
+        dm._render_run_history_view_buttons()
+    assert st.session_state.get("_sc_collect_modal_pending") is True
+    assert st.session_state.get("_sc_collect_modal_result", {}).get("from_log") is True
+    mock_rerun.assert_called_once()
+
+    # 2) 모달 본문 — 결과가 이미 있으므로 collect_batch 재실행 금지, 로그 결과 표시
+    captured: list[str] = []
+    with patch("scraping.run_daily.collect_batch") as mock_cb, \
+         patch.object(dm, "_run_collect_for_modal") as mock_run, \
+         patch("streamlit.html", side_effect=lambda s: captured.append(str(s))), \
+         patch("streamlit.button", return_value=False):
+        dm._collect_modal_body()
+    mock_cb.assert_not_called()
+    mock_run.assert_not_called()
+    joined = "".join(captured)
+    assert "지난 수집 결과" in joined and "7건" in joined
+
+
+def test_history_view_buttons_noop_without_runs():
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    with patch("store.run_log.load_runs", return_value=[]), \
+         patch("streamlit.button") as mock_btn, \
+         patch("streamlit.caption") as mock_cap:
+        dm._render_run_history_view_buttons()
+    mock_btn.assert_not_called()
+    mock_cap.assert_called_once()
+    assert "_sc_collect_modal_pending" not in st.session_state
+
+
 # ── 토스트 렌더 — kind 별 색상 (다른 경로가 여전히 사용) ─────────────
 
 def test_refresh_toast_renders_ok_message():
