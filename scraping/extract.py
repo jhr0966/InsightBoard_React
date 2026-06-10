@@ -71,6 +71,8 @@ _JUNK_IMAGE_FRAGMENTS = (
     "logo", "emblem", "favicon", "sprite", "spacer", "1x1", "transparent",
     "noimage", "no_image", "no-image", "blank.", "placeholder", "watermark",
     "avatar", "/ci/", "ci_", "default_profile", "btn_", "_btn.", "/sns",
+    # UI 아이콘(공유/시계/구글 출처 등 — thebell `google_icon.png` 류)과 광고 배너.
+    "_icon.", "icon_", "/icons/", "/banner/", "share_", "_share.",
 )
 
 
