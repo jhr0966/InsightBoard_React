@@ -319,7 +319,7 @@ def _header_html(stats: dict[str, str]) -> str:
     """`.oa-head`(stats) 헤더 HTML — 칸반 보드는 st.columns 위젯으로 별도 렌더하므로
     템플릿(`archive_main.html`)은 헤더 전용이다(보드 section 은 제거됨)."""
     return (
-        _ARCHIVE_TEMPLATE.read_text(encoding="utf-8")
+        _components.read_asset_text(_ARCHIVE_TEMPLATE)
         .replace("{{OA_TOTAL}}", _html.escape(stats["total"]))
         .replace("{{OA_ADOPTED_PCT}}", _html.escape(stats["adopted_pct"]))
         .replace("{{OA_ADOPTED}}", _html.escape(stats["adopted"]))

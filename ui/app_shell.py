@@ -88,6 +88,7 @@ def render_setup_banner_if_needed() -> bool:
     return True
 
 
+@st.cache_data(ttl=60)
 def _notif_count() -> int:
     """topbar 알림 배지 수 — 채택 대기(pending) 제안서 건수.
 

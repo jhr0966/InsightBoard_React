@@ -475,9 +475,15 @@ def _archive_stats_dm() -> dict[str, int]:
 def chat_context_block_collect(persona: Persona) -> str:
     """뉴스 수집 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
 
-    헤더 4 stats + 14일 sparkline 일별 수집량 + 뉴스 라이브러리 6 + 수집잡 요약.
-    캐시된 helper 들이 같은 데이터를 계산해두므로 재호출은 캐시 hit.
+    페르소나 비의존(헤더 stats·추이·출처 분포·최근 기사) → 본문은 60s 캐시
+    (`_chat_context_collect_cached`). 직전엔 매 rerun 뉴스 윈도우 4회 로드였다.
     """
+    return _chat_context_collect_cached()
+
+
+@st.cache_data(ttl=60)
+def _chat_context_collect_cached() -> str:
+    """뉴스 수집 채팅 컨텍스트 본문 — 헤더 4 stats + 14일 추이 + 최근 6건 + 출처 분포."""
     parts: list[str] = ["--- 현재 화면: 뉴스 수집 (🗞) ---"]
 
     # 헤더 4 stats
@@ -1169,7 +1175,7 @@ def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
     """수집 현황 요약 헤더(브레드크럼·설명·KPI 4종) — 카드뷰/설정뷰 상단에 1회.
 
     `_DM_TEMPLATE` 의 헤더 부분({{DM_TABS}} 앞)만 잘라 KPI 를 끼워 렌더한다."""
-    template = _DM_TEMPLATE.read_text(encoding="utf-8")
+    template = _components.read_asset_text(_DM_TEMPLATE)
     head = template.split("{{DM_TABS}}", 1)[0]  # <div class=dm-shell>…<header>…</header>
     head_html = (
         head

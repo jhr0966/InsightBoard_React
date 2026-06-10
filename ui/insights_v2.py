@@ -64,6 +64,7 @@ def _news_filter_by_keyword(news_df, keyword: str):
     return news_df[mask]
 
 
+@st.cache_data(ttl=60)
 def _tkw_list_html(selected_kw: str | None = None) -> str:
     """ia-tkw-item 6개 동적 빌드. top_keywords + emergence 결합 + 클릭 wire.
 
@@ -1145,7 +1146,7 @@ def render() -> None:
     # 히트맵 셀 선택 — `?hm_select=proc|tech` 1회 stateless.
     selected_hm = _hm_selected_key()
 
-    template = _IA_TEMPLATE.read_text(encoding="utf-8")
+    template = _components.read_asset_text(_IA_TEMPLATE)
     html_out = (
         template
         .replace("{{IA_NEWS_30D}}", _html.escape(ia_stats["news_30d"]))

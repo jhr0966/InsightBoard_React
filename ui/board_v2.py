@@ -1024,6 +1024,7 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
       </div>"""
 
 
+@st.cache_data(ttl=60)
 def _board_kw_mgr_html(persona: Persona) -> str:
     """⑦ 내 키워드 관리 — SOLA 자동 추출 + 페르소나 관심사 그룹.
 
@@ -1605,7 +1606,7 @@ def render() -> None:
 def _render_main(*, persona: Persona, refresh_label: str) -> None:
     kpis = _board_kpis()
     # 델타는 yesterday snapshot 비교 후속 PR — 일단 빈 값
-    template = _BOARD_TEMPLATE.read_text(encoding="utf-8")
+    template = _components.read_asset_text(_BOARD_TEMPLATE)
     html_out = (
         template
         .replace("{{REFRESH_LABEL}}", _html.escape(refresh_label))

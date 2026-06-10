@@ -8,6 +8,7 @@ from __future__ import annotations
 import html as _html
 import re as _re
 from collections.abc import Iterable
+from pathlib import Path
 from urllib.parse import quote as _quote
 
 import streamlit as st
@@ -15,6 +16,23 @@ import streamlit as st
 
 _SVG_DATAURI_RE = _re.compile(r"data:image/svg\+xml;utf8,(<svg.*?</svg>)", _re.DOTALL)
 _SVG_INLINE_RE = _re.compile(r"(<svg\b[^>]*>).*?</svg>", _re.DOTALL)
+
+
+@st.cache_data(show_spinner=False)
+def _read_asset_cached(path_str: str, mtime_ns: int) -> str:
+    return Path(path_str).read_text(encoding="utf-8")
+
+
+def read_asset_text(path: Path) -> str:
+    """자산(CSS/HTML 템플릿) 텍스트 — (경로, mtime) 키 캐시.
+
+    CSS 6종·화면 템플릿을 **매 rerun 디스크에서 다시 읽던** 것을 제거. 파일을 수정하면
+    mtime 변경으로 자동 재읽기되므로 개발 중 핫리로드도 그대로 동작. 없으면 빈 문자열.
+    """
+    try:
+        return _read_asset_cached(str(path), path.stat().st_mtime_ns)
+    except OSError:
+        return ""
 
 
 def _svg_attr(open_tag: str, name: str) -> str:

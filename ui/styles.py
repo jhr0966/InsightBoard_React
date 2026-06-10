@@ -34,11 +34,13 @@ def inject_global_styles() -> None:
     못함이 확인됨 (수만 자 누락). `st.markdown(unsafe_allow_html=True)` 가 다른
     코드 경로로 보존하므로 그쪽 사용 — CSS 는 자체 자산이라 escape 불필요.
     """
+    from ui.components import read_asset_text  # lazy — 순환 import 방지
+
     parts: list[str] = []
     for rel in _V2_CSS_FILES:
-        path = ASSETS_DIR / rel
-        if path.exists():
-            parts.append(path.read_text(encoding="utf-8"))
+        css = read_asset_text(ASSETS_DIR / rel)
+        if css:
+            parts.append(css)
     if not parts:
         return
     st.markdown("<style>" + "\n".join(parts) + "</style>", unsafe_allow_html=True)
@@ -151,13 +153,12 @@ def inject_screen_css(name: str) -> None:
     `inject_global_styles` 와 동일 — `st.markdown(unsafe_allow_html=True)` 사용
     (`st.html` 은 큰 `<style>` 블록 mount 실패).
     """
-    path = ASSETS_DIR / "v2" / "screens" / f"{name}.css"
-    if not path.exists():
+    from ui.components import read_asset_text  # lazy — 순환 import 방지
+
+    css = read_asset_text(ASSETS_DIR / "v2" / "screens" / f"{name}.css")
+    if not css:
         return
-    st.markdown(
-        f"<style>{path.read_text(encoding='utf-8')}</style>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
 def page_header(
