@@ -309,3 +309,51 @@ def test_e2e_s7_archive_proposal_flow():
     assert bookmarks.set_status("prop-weld", "adopted") is True
     counts = bookmarks.summary_counts()
     assert counts["proposal_status"].get("adopted", 0) == 1
+
+
+# ── S8: 부분 갱신(fragment) — 브라우저 구역 상호작용이 한 세션에서 이어짐 ──
+
+def test_e2e_s8_partial_update_browse_zone(monkeypatch):
+    """카드→표 전환·모달 열기/닫기가 fragment 경계 안에서 예외 없이 이어져야 한다.
+
+    perf 리팩토링으로 브라우저+모달이 @st.fragment 로 묶였다 — AppTest 는 fragment 를
+    포함해 전체를 실행하므로, 여기선 (1) fragment 래핑이 살아있고 (2) 같은 세션에서
+    모드 전환→모달 열기→닫기 상태 전이가 깨지지 않음을 회귀 고정한다.
+    """
+    _seed_persona()
+    _clear_ui_caches()
+    _seed_news_via_collect(monkeypatch)
+
+    from ui import data_management_v2 as dm
+    # (1) fragment 래핑 확인 — st.fragment 데코는 원함수를 래퍼로 감싼다.
+    assert dm._render_browse_zone.__name__ == "_render_browse_zone"
+    assert dm._render_browse_zone is not dm._render_news_browser
+
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file("app.py", default_timeout=120)
+    at.session_state["app_area"] = "🗞 뉴스 수집"
+    at.run()
+    assert not at.exception
+
+    # (2) 표 모드 전환 → dataframe 렌더
+    at.session_state["sc_browse_mode"] = "table"
+    at.run()
+    assert not at.exception
+    assert len(at.dataframe) >= 1                      # 데이터 표
+
+    # (3) 카드 복귀 + 모달 열기(카드 클릭과 동일한 상태 전이) → sc-modal 렌더
+    at.session_state["sc_browse_mode"] = "cards"
+    from store import news_db
+    link = str(news_db.load_news_for_days(days=3).iloc[0]["link"])
+    at.session_state["_sc_open_news"] = link
+    at.run()
+    assert not at.exception
+    combined = "\n".join(h.proto.body for h in at.get("html"))
+    assert "sc-modal" in combined                      # 기사 모달 본문
+
+    # (4) 모달 닫기 상태 전이(✕ 가 플래그를 비움) → 모달 미렌더
+    at.session_state["_sc_open_news"] = ""
+    at.run()
+    assert not at.exception
+    closed = "\n".join(h.proto.body for h in at.get("html"))
+    assert "sc-modal-body" not in closed

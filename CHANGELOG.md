@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Changed (시스템 점검·리팩토링 1차 — 부분 갱신 + 성능)
+- **뉴스 수집 브라우저를 `@st.fragment` 부분 rerun 경계로**(`ui/data_management_v2.py` `_render_browse_zone`): 보기 모드(카드/표)·대분류 탭·출처칩 전환, 카드 [기사 보기], 표 행 선택, 모달 ✕ 닫기가 **앱 전체 스크립트(topbar·사이드바·우측 채팅) 재실행 없이 해당 구역만** 다시 그린다 → 클릭 반응 즉각화. dialog-in-fragment 동작은 브라우저 실측(모달 열림/닫힘·카드↔표 왕복)으로 확인.
+- **일자별 parquet 메모**(`store/news_db.py` `_day_frame_memo`): 보드 한 렌더가 3/14/30/56일 윈도우를 섞어 요청해도 **같은 날짜 parquet 은 1회만 디스크에서 읽는다**(직전: 윈도우마다 전체 재스캔 — 보드형 패턴 9×). `load_all_today` 도 공유. 새 수집 시 (mtime, 파일 수) 시그니처로 자동 무효화.
+- **자산/헬퍼 캐시**: `ui/components.read_asset_text`((경로,mtime) 키) — CSS 6종 + 화면 템플릿 4종(board/insights/dm/archive)의 **매 rerun 디스크 재읽기 제거**(파일 수정 시 자동 갱신·핫리로드 유지). `_board_kw_mgr_html`·`_notif_count`·`chat_context_block_collect`(내부 `_chat_context_collect_cached` 분리)에 `@st.cache_data(ttl=60)`.
+- **측정**: 보드 콜드 렌더 4.13s → **1.74s(-58%)** · 보드형 로드 패턴(콜드) 0.071s → 0.045s(소규모 시드 기준, 데이터 누적 시 격차 확대) · 워밍 렌더 0.04~0.10s 유지.
+- **시나리오 시뮬레이션**: e2e **S8(부분 갱신)** 신설 — 표 전환→카드 복귀→모달 열기/닫기 상태 전이 한 세션 연속 검증 + `news_db` 일자 메모 디스크 읽기 횟수 회귀 테스트. 캐시 도입에 따른 테스트 격리(clear) 2건 보강.
+- **잔여 로드맵**: 전체 reload 를 유발하는 same-screen 앵커(보드 kw/opp 액션·작업정의 td_* 스위트·채팅 칩·SOLA 스레드 전환 등) 전환 우선순위를 `docs/REFACTOR_PLAN.md` **Phase 4** 로 문서화.
+- 검증: pytest **832 passed**(신규 2) · 금지패턴 0 · 브라우저 실측 OK.
+
 ### Fixed (thebell 본문·사진 — 실제 마크업 기반 정밀 수정)
 - **본문 셀렉터 직결**(`scraping/enrich.py`): 사용자가 제공한 thebell 실페이지 HTML 로 확인 — 본문이 `<p>` 없이 `<br>` 구분 텍스트로 `div#article_main`(`.viewSection`) 에 직접 들어있어 셀렉터 미매칭이었음 → `_CONTENT_SELECTORS` 에 `div#article_main`·`div.viewSection` 추가(폴백이 아닌 정공 경로로 수집).
 - **사진 오선택/누락 수정**(`scraping/extract.py`, `enrich.py`): 기사 사진보다 문서 앞에 나오는 **구글 선호 출처 아이콘(`google_icon.png`)·공유 아이콘이 junk 필터에 안 걸려** 대표 이미지로 잡히던 구조 → junk 조각에 `_icon.`/`icon_`/`/icons/`/`/banner/`(광고 배너)/`share_` 추가. 이미지 탐색 순서에 본문 컨테이너 스코프(`div[id*='article'] img` 등)를 문서 전체 `img` 보다 앞에 추가.

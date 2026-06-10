@@ -21,6 +21,27 @@
 
 ---
 
+## Phase 4 — 부분 갱신(UX)·성능 (🔄 1차 완료, 잔여 로드맵)
+
+> 목표: 클릭/상태 변경 시 **문서 전체 reload(흰 깜빡임) 제거** + rerun 비용 절감.
+> 1차(PR: refactor-partial-updates): 일자별 parquet 메모 · 자산/헬퍼 캐시 · 뉴스 수집
+> 브라우저 `@st.fragment` 부분 rerun (dialog-in-fragment 브라우저 실측 OK).
+
+**잔여 — 앵커(`href="?…"`) → 위젯 전환 우선순위** (모두 same-screen·전체 reload 유발):
+
+| 우선 | 대상 | 위치 | 패턴 |
+|---|---|---|---|
+| P1 | 보드 자동화 기회 액션(보류/SOLA검토/채택) `?opp_action=` | `board_v2.py` (~1260) | 카드 오버레이 버튼(카드 그리드 동일) |
+| P1 | 보드 키워드 관리(음소거/삭제/수집) `?kw_action=` | `board_v2.py` (~1067·1096·1145) | 행 옆 컬럼 버튼 |
+| P1 | 작업 정의 `?td_view/td_edit/td_hist/td_action` 스위트 | `task_def_manage.py` | 목록=오버레이, 액션=버튼+pending |
+| P2 | 채팅 빠른 작업 칩 `?sola_action=` | `chat_panel.py` (~152) | 버튼 3개 + 칩 CSS |
+| P2 | SOLA 스레드 전환 `?switch_thread=` | `sola_workshop_v2.py` (~847) | 항목별 컨테이너+오버레이 |
+| P3 | 인사이트 히트맵/매트릭스 SVG 클릭 `?ia_*` | `insights_v2.py` | SVG 내 앵커라 위젯 전환 불가 — fragment 로 reload 비용만 절감 검토 |
+| P3 | persona_editor 앵커(topbar/사이드바) | `app_shell.py`·`sidebar.py` | HTML topbar 구조상 유지(빈도 높지만 reload 후 모달이라 체감 낮음) |
+
+**잔여 — fragment 후보**: 우측 채팅 패널(`chat_panel.render_side` — 송신 소비를 fragment
+내부로 이전 필요), 보관함 칸반(액션은 `st.rerun(scope="app")` 로 상단 소비자 유지).
+
 ## 결함 대장 (F-번호)
 
 코드 전수 확인 결과. **[실재]** 만 수정 대상, **[기각]** 은 과진단으로 확인돼 작업 없음.
