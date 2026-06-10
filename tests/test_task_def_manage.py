@@ -155,30 +155,62 @@ def test_form_add_remove_risk_and_automation():
 
 
 # ═══════════════════════════════════════════════════════
-# ui.task_def_manage — URL 빌더 + 렌더 헬퍼
+# ui.task_def_manage — 버튼 내비 pending → query 번역 + 렌더 헬퍼
 # ═══════════════════════════════════════════════════════
 
-def test_manage_href_points_to_taskdef_area():
-    from urllib.parse import quote
-    from ui.task_def_manage import _manage_href
-    href = _manage_href()
-    assert "app_area=" + quote("📋 작업 정의") in href
-    assert "dm_grp" not in href and "dm_tab" not in href
+def test_consume_nav_pending_sets_query_and_clears_stale_td_keys():
+    """pending 은 앵커와 동일한 td_* **전체 교체** 의미 — 스테일 td_edit 제거."""
+    from ui import task_def_manage as tdm
+    state: dict = {"_td_nav_pending": {"td_view": "A1", "td_q": "비전"}}
+    qp: dict = {"td_edit": "A1", "td_q": "old", "app_area": "📋 작업 정의"}
+    with patch("streamlit.query_params", qp), \
+         patch("streamlit.session_state", state):
+        tdm._consume_td_nav_pending()
+    assert qp.get("td_view") == "A1"
+    assert qp.get("td_q") == "비전"
+    assert "td_edit" not in qp                    # 전체 교체 — 스테일 제거
+    assert qp.get("app_area") == "📋 작업 정의"   # td_* 외 키는 보존
+    assert "_td_nav_pending" not in state
 
 
-def test_manage_href_appends_params():
-    from ui.task_def_manage import _manage_href
-    href = _manage_href(td_view="A1", td_q="비전")
-    assert "td_view=A1" in href
-    assert "td_q=" in href  # encoded
+def test_consume_nav_pending_skips_empty_values():
+    from ui import task_def_manage as tdm
+    state: dict = {"_td_nav_pending": {"td_q": "", "td_view": None, "td_add": "1"}}
+    qp: dict = {}
+    with patch("streamlit.query_params", qp), \
+         patch("streamlit.session_state", state):
+        tdm._consume_td_nav_pending()
+    assert qp == {"td_add": "1"}
 
 
-def test_manage_href_skips_empty_params():
-    from ui.task_def_manage import _manage_href
-    href = _manage_href(td_view="", td_q=None, td_add=False)
-    assert "td_view=" not in href
-    assert "td_q=" not in href
-    assert "td_add=" not in href
+def test_consume_nav_pending_noop_without_pending():
+    from ui import task_def_manage as tdm
+    qp: dict = {"td_view": "A1"}
+    with patch("streamlit.query_params", qp), \
+         patch("streamlit.session_state", {}):
+        tdm._consume_td_nav_pending()
+    assert qp == {"td_view": "A1"}  # 딥링크 쿼리는 그대로
+
+
+def test_consume_nav_pending_ignores_non_dict_and_pops():
+    from ui import task_def_manage as tdm
+    state: dict = {"_td_nav_pending": "td_view=A1"}
+    qp: dict = {}
+    with patch("streamlit.query_params", qp), \
+         patch("streamlit.session_state", state):
+        tdm._consume_td_nav_pending()
+    assert qp == {}
+    assert "_td_nav_pending" not in state
+
+
+def test_consume_nav_pending_resets_delete_confirm():
+    """내비가 발생하면 무장된 삭제 confirm 은 해제 (다음 진입 시 오발사 방지)."""
+    from ui import task_def_manage as tdm
+    state: dict = {"_td_nav_pending": {"td_q": ""}, "_td_del_confirm": "A1"}
+    with patch("streamlit.query_params", {}), \
+         patch("streamlit.session_state", state):
+        tdm._consume_td_nav_pending()
+    assert "_td_del_confirm" not in state
 
 
 # ── 검색 + 리스트 ───────────────────────────────────────
@@ -201,28 +233,28 @@ def test_search_rows_filters_by_query():
     assert [r["process_id"] for r in rows] == ["PNL-SEL-001"]
 
 
-def test_list_html_empty_state_with_query():
-    from ui.task_def_manage import _list_html
-    html = _list_html([], query="비전")
+def test_empty_html_with_query():
+    from ui.task_def_manage import _empty_html
+    html = _empty_html("비전")
     assert "검색 결과가 없어요" in html
 
 
-def test_list_html_empty_state_without_query():
-    from ui.task_def_manage import _list_html
-    html = _list_html([])
+def test_empty_html_without_query():
+    from ui.task_def_manage import _empty_html
+    html = _empty_html()
     assert "등록된 작업 정의가 없어요" in html
 
 
-def test_list_html_renders_cards_with_pid_and_name():
-    from ui.task_def_manage import _list_html
+def test_row_card_html_renders_pid_and_name_without_anchor():
+    """카드 클릭은 오버레이 st.button — 시각 html 엔 앵커(full reload)가 없다."""
+    from ui.task_def_manage import _row_card_html
     from store import task_defs_db
     task_defs_db.upsert("A1", _sample_json("A1"))
-    rows = task_defs_db.list_all()
-    html = _list_html(rows, query="")
+    html = _row_card_html(task_defs_db.get("A1"))
     assert "A1" in html
     assert "이름 A1" in html
-    # 상세 링크 포함
-    assert "td_view=A1" in html
+    assert "<a" not in html
+    assert "td_view=" not in html
 
 
 # ── 상세 ────────────────────────────────────────────────
@@ -232,17 +264,14 @@ def test_detail_html_renders_all_sections():
     from store import task_defs_db
     task_defs_db.upsert("A1", _sample_json("A1"))
     row = task_defs_db.get("A1")
-    html = _detail_html(row, query="")
+    html = _detail_html(row)
     assert "이름 A1" in html
     assert "설명" in html
     assert "목표1" in html
     assert "R" in html and "C" in html  # risk
     assert "AR" in html and "E" in html  # automation
-    # 액션 버튼 4개
-    assert "수정" in html
-    assert "history" in html
-    assert "삭제" in html
-    assert "← 목록" in html
+    # 액션은 _render_detail_actions 의 st.button — 시각 html 엔 앵커 없음
+    assert 'href="?' not in html
 
 
 def test_detail_html_escapes_html_injection():
@@ -256,7 +285,7 @@ def test_detail_html_escapes_html_injection():
         "org_meta": {"team": "T", "dept": "D"},
     }, ensure_ascii=False)
     task_defs_db.upsert("EVIL", js)
-    html = _detail_html(task_defs_db.get("EVIL"), query="")
+    html = _detail_html(task_defs_db.get("EVIL"))
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
 
@@ -330,6 +359,29 @@ def test_consume_delete_noop_without_action():
          patch("streamlit.session_state", state):
         tdm.consume_td_action_if_any()
     assert "_td_toast" not in state
+
+
+def test_delete_via_nav_pending_round_trip():
+    """[🗑️ 삭제 확정] 버튼 경로 — pending(td_action=delete) 이 같은 run 안에서
+    번역→소비돼 행 삭제 + 토스트, 쿼리에 td_action/td_pid 잔류 없음."""
+    from ui import task_def_manage as tdm
+    from store import task_defs_db
+    task_defs_db.upsert("A1", _sample_json("A1"))
+
+    state: dict = {
+        "_td_nav_pending": {"td_action": "delete", "td_pid": "A1", "td_q": "비전"},
+    }
+    qp: dict = {"td_view": "A1", "td_q": "비전"}
+    with patch("streamlit.query_params", qp), \
+         patch("streamlit.session_state", state):
+        tdm.consume_td_action_if_any()
+
+    assert task_defs_db.get("A1") is None
+    kind, msg = state["_td_toast"]
+    assert kind == "ok" and "A1" in msg
+    assert "td_action" not in qp and "td_pid" not in qp
+    assert "td_view" not in qp           # 전체 교체 — 상세에서 목록으로
+    assert qp.get("td_q") == "비전"      # 검색어는 유지
 
 
 def test_consume_save_creates_row_and_sets_toast():
@@ -481,28 +533,24 @@ def test_form_to_json_drops_empty_optional_top_level_fields():
     assert "overall_quality_risks" not in obj
 
 
-def test_manage_href_pid_with_special_chars_is_url_encoded():
-    """공정 ID 에 슬래시/공백이 들어가도 URL 안전."""
-    from ui.task_def_manage import _manage_href
-    href = _manage_href(td_view="A/1 B")
-    assert "td_view=A%2F1%20B" in href or "td_view=A/1 B" not in href
-
-
-def test_row_card_html_links_to_td_view():
+def test_row_card_html_escapes_injection():
+    """카드 시각 html — 작업명에 마크업이 들어와도 escape."""
     from ui.task_def_manage import _row_card_html
     from store import task_defs_db
-    task_defs_db.upsert("A1", _sample_json("A1"))
-    row = task_defs_db.get("A1")
-    html = _row_card_html(row, query="비전")
-    assert "td_view=A1" in html
-    # 검색어가 살아있어야 (뒤로가기 → 검색 결과 유지)
-    assert "td_q=" in html
+    evil = "<img src=x onerror=alert(1)>"
+    js = json.dumps({
+        "process_id": "EV2", "process_name": evil,
+        "org_meta": {"team": "T", "dept": "D"},
+    }, ensure_ascii=False)
+    task_defs_db.upsert("EV2", js)
+    html = _row_card_html(task_defs_db.get("EV2"))
+    assert "<img" not in html
+    assert "&lt;img" in html
 
 
-def test_consume_save_redirects_via_session_state():
-    """저장 후 redirect 키를 통해 detail 로 가도록 manage.render 에서 처리될 준비."""
-    # consume_td_save 자체는 redirect 를 설정하지 않지만, _render_form 의
-    # 저장 버튼 핸들러가 설정. 여기서는 _td_redirect 키가 form 검증과 별개임을 확인.
+def test_consume_save_keeps_nav_pending_for_render():
+    """저장 버튼은 `_do_td_save` + `_td_nav_pending`(detail 행선지)을 함께 설정.
+    consume_save 는 nav pending 을 건드리지 않는다 (번역은 nav consumer 몫)."""
     from ui import task_def_manage as tdm
     from roadmap.task_def_form import TaskDefForm
     from store import task_defs_db
@@ -512,10 +560,68 @@ def test_consume_save_redirects_via_session_state():
         org_meta={"team": "T", "dept": "D"},
     )
     state: dict = {"_do_td_save": {"mode": "create", "form": f},
-                   "_td_redirect": "?stub"}
+                   "_td_nav_pending": {"td_view": "X1", "td_q": ""}}
     with patch("streamlit.session_state", state):
         tdm.consume_td_save_if_any()
 
-    # consume_save 는 _td_redirect 를 건드리지 않음 (render 에서 처리)
-    assert state.get("_td_redirect") == "?stub"
+    assert state.get("_td_nav_pending") == {"td_view": "X1", "td_q": ""}
     assert task_defs_db.get("X1") is not None
+
+
+# ═══════════════════════════════════════════════════════
+# e2e — AppTest 로 app.py 구동 (버튼 내비 소켓 rerun)
+# ═══════════════════════════════════════════════════════
+
+def _taskdef_app():
+    from streamlit.testing.v1 import AppTest
+    from persona import store as ps
+    from persona.schema import Persona
+    ps.reset(); ps.clear_onboarding_dismiss()
+    ps.save(Persona(name="홍길동", dept="도장1팀", team="자동화1팀"))
+    at = AppTest.from_file("app.py", default_timeout=30)
+    at.session_state["app_area"] = "📋 작업 정의"
+    return at
+
+
+def test_apptest_nav_pending_opens_detail():
+    """세션 pending(`_td_nav_pending={"td_view": pid}`) → run 1회로 상세 렌더."""
+    from store import task_defs_db
+    task_defs_db.upsert("A1", _sample_json("A1"))
+    at = _taskdef_app()
+    at.session_state["_td_nav_pending"] = {"td_view": "A1"}
+    at.run()
+    assert not at.exception
+    htmls = "\n".join(h.proto.body for h in at.get("html"))
+    assert "td-detail" in htmls
+    assert "이름 A1" in htmls
+
+
+def test_apptest_list_renders_overlay_buttons_not_anchors():
+    """목록 — 카드 시각 html(td-card) + 오버레이 버튼(td_open_*), 앵커 카드 없음."""
+    from store import task_defs_db
+    task_defs_db.upsert("A1", _sample_json("A1"))
+    at = _taskdef_app()
+    at.run()
+    assert not at.exception
+    htmls = "\n".join(h.proto.body for h in at.get("html"))
+    assert "td-card" in htmls
+    assert '<a class="td-card"' not in htmls
+    keys = {(b.key or "") for b in at.get("button")}
+    assert "td_open_0" in keys      # 카드 오버레이
+    assert "td_add_btn" in keys     # ＋ 새 작업 추가
+
+
+def test_apptest_card_button_click_navigates_to_detail():
+    """카드 오버레이 버튼 클릭 → 소켓 rerun 으로 상세 진입 (예외 없음)."""
+    from store import task_defs_db
+    task_defs_db.upsert("A1", _sample_json("A1"))
+    at = _taskdef_app()
+    at.run()
+    btns = [b for b in at.get("button") if (b.key or "") == "td_open_0"]
+    assert btns
+    btns[0].click()
+    at.run()
+    assert not at.exception
+    htmls = "\n".join(h.proto.body for h in at.get("html"))
+    assert "td-detail" in htmls
+    assert "이름 A1" in htmls

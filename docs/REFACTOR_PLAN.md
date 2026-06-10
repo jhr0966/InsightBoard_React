@@ -33,7 +33,7 @@
 |---|---|---|---|
 | P1 | 보드 자동화 기회 액션(보류/SOLA검토/채택) `?opp_action=` | `board_v2.py` (~1260) | 카드 오버레이 버튼(카드 그리드 동일) |
 | P1 | 보드 키워드 관리(음소거/삭제/수집) `?kw_action=` | `board_v2.py` (~1067·1096·1145) | 행 옆 컬럼 버튼 |
-| P1 | 작업 정의 `?td_view/td_edit/td_hist/td_action` 스위트 | `task_def_manage.py` | 목록=오버레이, 액션=버튼+pending |
+| ~~P1~~ ✅ | ~~작업 정의 `?td_view/td_edit/td_hist/td_action` 스위트~~ → 목록=오버레이 버튼, 액션=버튼+`_td_nav_pending`(query 번역 — 딥링크 호환) 전환 완료 | `task_def_manage.py` | 완료(2026-06-10) |
 | ~~P2~~ ✅ | ~~채팅 빠른 작업 칩 `?sola_action=`~~ → 버튼+pending 전환 완료 | `chat_panel.py` `_render_quick_action_chips` | 완료(2026-06-10) |
 | P2 | SOLA 스레드 전환 `?switch_thread=` | `sola_workshop_v2.py` (~847) | 항목별 컨테이너+오버레이 |
 | P3 | 인사이트 히트맵/매트릭스 SVG 클릭 `?ia_*` | `insights_v2.py` | SVG 내 앵커라 위젯 전환 불가 — fragment 로 reload 비용만 절감 검토 |
