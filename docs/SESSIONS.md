@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-10 — feat: 수집 현황 모달 — [🔄 지금 뉴스 수집] 진행/결과 (`feat-collect-progress-modal`)
+
+**무엇을**: [지금 뉴스 수집] 클릭 시 화면 중앙에 **수집 현황 모달**(st.dialog) 을 띄워 진행 상황(st.status+st.progress, `collect_batch(on_step=)` 콜백)과 결과 요약(KPI 4 + 오류 목록)을 보여준다. 기존 `_consume_refresh_if_any` 의 render-도중 동기 수집 + 토스트 경로를 대체.
+
+**어떻게** (`ui/data_management_v2.py`):
+1. 버튼(액션바/설정) → `_sc_collect_modal_pending=True` + `st.rerun()`. `_consume_refresh_if_any` 는 `?refresh=now`/구 `_do_dm_collect` 를 모달 플래그로 **번역만**(딥링크 호환).
+2. `_render_collect_modal_if_open`(dismissible=False, 기사 모달과 동일 패턴) → `_collect_modal_body`: 결과 없으면 1회 수집(`_run_collect_for_modal` — collect_batch + run_log(trigger="manual") + 캐시 무효화 finally), 결과는 `_sc_collect_modal_result` 세션 유지(재수집 가드). [✕ 닫기]가 플래그·결과 정리 + rerun.
+3. 결과 요약 HTML(`_collect_result_summary_html`) 전부 escape. 수집 모달 pending 중 기사 모달 스킵(dialog 1개/run). CSS `.sc-collect-modal` 추가.
+4. 테스트: test_collect_trigger.py 재작성(16) + test_v2_screens/test_custom_rss_scrape 갱신. pytest **892 passed** · 금지패턴 0.
+5. 브라우저 실측: 수집 클릭 → 모달 진행 → (망 차단이라) 오류 요약 표시 → 닫기 정상. `/tmp/collect-modal.png`.
+
+**상태**: 🔄 push — PR 은 오케스트레이터가 생성.
+
+---
+
 ## 2026-06-10 — refactor: 시스템 점검 1차 — 부분 갱신(fragment) + 성능 (`refactor-partial-updates`)
 
 **무엇을**: 전체 점검("클릭 시 전체 새로고침 제거 + 느린 부분 발굴") — 에이전트 감사 2건(데이터/캐시, reload 앵커 전수) + 벤치마크로 진단 후 단계 커밋 3개.

@@ -882,7 +882,11 @@ def _render_browse_zone(persona) -> None:
 
 
 def _render_collect_actionbar() -> None:
-    """메인 카드뷰 액션바 — [🔄 지금 뉴스 수집] + [⚙ 수집 설정] (소켓 rerun)."""
+    """메인 카드뷰 액션바 — [🔄 지금 뉴스 수집] + [⚙ 수집 설정] (소켓 rerun).
+
+    수집 버튼은 `_sc_collect_modal_pending` 플래그만 세팅 → 다음 run 에서
+    수집 현황 모달(`_render_collect_modal_if_open`)이 떠서 진행·결과를 보여준다.
+    """
     with st.container(key="sc_actionbar"):
         c1, c2, _sp = st.columns([1.3, 1, 3])
         with c1:
@@ -891,7 +895,7 @@ def _render_collect_actionbar() -> None:
                 use_container_width=True,
                 help="페르소나 관심사 키워드(없으면 자동화·AI)로 지금 뉴스를 수집하고 화면을 새로 그립니다.",
             ):
-                st.session_state["_do_dm_collect"] = True
+                st.session_state["_sc_collect_modal_pending"] = True
                 st.rerun()
         with c2:
             if st.button(
@@ -1021,6 +1025,8 @@ def _news_modal_body(row: dict) -> None:
 
 def _render_news_modal_if_open() -> None:
     """`_sc_open_news` 플래그가 있으면 기사 모달을 띄운다(dismissible=False — ✕ 로만 닫음)."""
+    if st.session_state.get("_sc_collect_modal_pending"):
+        return  # 수집 현황 모달이 우선 — st.dialog 는 run 당 1개만 허용
     link = st.session_state.get("_sc_open_news")
     if not link:
         return
@@ -1037,8 +1043,9 @@ def _render_news_modal_if_open() -> None:
 def render_collect() -> None:
     """뉴스 수집 화면 — 수집 현황 요약 + 카테고리 카드 브라우저(+기사 모달).
 
-    `?refresh=now`(또는 '지금 뉴스 수집' 버튼)는 첫 단계에서 1회 소비 → 캐시
-    invalidate + 토스트. 메인은 카드뷰(수집 요약 → 액션바 → 대분류 탭/출처칩/카드),
+    `?refresh=now`(또는 '지금 뉴스 수집' 버튼)는 첫 단계에서 1회 소비 → 수집 현황
+    모달 플래그로 번역(모달이 수집 실행·진행·결과·캐시 invalidate 담당).
+    메인은 카드뷰(수집 요약 → 액션바 → 대분류 탭/출처칩/카드),
     `⚙ 수집 설정` 토글 시 설정 서브뷰(키워드·포탈·이력). 카드 클릭(?news=link)은
     기사 모달로 본문 전체 + 원본 링크를 보여준다.
     """
@@ -1084,6 +1091,8 @@ def render_collect() -> None:
         _render_dm_header(dm_stats)        # 수집 현황 요약(KPI 4)
         _render_collect_actionbar()         # [지금 수집][⚙ 수집 설정]
         _render_browse_zone(persona)        # 탭/칩/카드/표 + 기사 모달 (부분 rerun)
+
+    _render_collect_modal_if_open()         # 수집 현황 모달 (진행/결과)
 
 
 def render_taskdef() -> None:
@@ -1203,36 +1212,46 @@ def _render_collect_button() -> None:
     """'지금 뉴스 수집' — 구 앵커(`?refresh=now`) 대체 위젯.
 
     앵커는 클릭 시 문서 전체 reload(흰 깜빡임)였다. st.button 은 소켓 rerun → 클릭 시
-    `_do_dm_collect` pending 세팅 후 `st.rerun()`(on_click 미사용), 다음 run 의
-    `_consume_refresh_if_any` 가 collect_batch 를 실행한다. 룩은 `.st-key-dm_collect_cta`
-    스코프(우측 정렬 + accent 채움)로 구 `.dm-btn-primary` 에 맞춘다.
+    `_sc_collect_modal_pending` 플래그 세팅 후 `st.rerun()`(on_click 미사용), 다음 run 에서
+    수집 현황 모달이 떠서 collect_batch 진행·결과를 보여준다. 룩은
+    `.st-key-dm_collect_cta` 스코프(우측 정렬 + accent 채움)로 구 `.dm-btn-primary` 에 맞춘다.
     """
     with st.container(key="dm_collect_cta"):
         if st.button(
             "🔄 지금 뉴스 수집", key="_dm_collect_btn", type="primary",
             help="페르소나 관심사 키워드(없으면 자동화·AI)로 지금 뉴스를 수집하고 화면을 새로 그립니다.",
         ):
-            st.session_state["_do_dm_collect"] = True
+            st.session_state["_sc_collect_modal_pending"] = True
             st.rerun()
 
 
 def _consume_refresh_if_any() -> bool:
-    """수집 트리거 1회 소비 — collect_batch 동기 호출 + 캐시 무효화 + 토스트.
+    """수집 트리거 1회 소비 — 수집 현황 **모달 플래그**(`_sc_collect_modal_pending`)로 번역.
 
-    트리거는 둘 중 하나: '지금 뉴스 수집' 버튼이 세팅한 `_do_dm_collect` pending(신규,
-    문서 reload 없음) 또는 레거시 `?refresh=now` 쿼리(북마크/딥링크 호환). 수집 키워드는
-    페르소나 관심사(interest_tasks + interest_lv3). 비어 있으면 기본 키워드(자동화·AI)로
-    폴백하고, tech 사이트·커스텀 RSS 는 키워드 무관하게 항상 함께 수집한다 — 빈
-    페르소나에서도 실제로 수집을 실행한다. 수집 실패 시 error 토스트(캐시는 안전하게
-    무효화 — 다음 렌더가 최신).
+    트리거는 둘 중 하나: '지금 뉴스 수집' 버튼(구버전 호환 `_do_dm_collect` pending)
+    또는 레거시 `?refresh=now` 쿼리(북마크/딥링크 호환). 과거엔 여기서 collect_batch 를
+    render 도중 동기 실행했지만, 이제 실제 수집·진행 표시·결과 요약·캐시 무효화는
+    모두 수집 현황 모달(`_collect_modal_body` → `_run_collect_for_modal`)이 담당한다.
     """
     triggered = bool(st.session_state.pop("_do_dm_collect", False))
     if not triggered and st.query_params.get("refresh") != "now":
         return False
 
-    # 모든 dm 관련 캐시 무효화 — `_archive_stats_dm` 는 이제 `board_v2._archive_stats()`
-    # 위임이므로 그 내부의 `_board_kpis` 60초 캐시도 함께 비워야 좌측 nav 카운트가
-    # 즉시 새 수집 결과로 갱신된다 (Phase 2 dedup 회귀 방지).
+    st.session_state["_sc_collect_modal_pending"] = True
+    if "refresh" in st.query_params:
+        del st.query_params["refresh"]
+    return True
+
+
+# ── 수집 현황 모달 ([🔄 지금 뉴스 수집] → st.dialog 진행/결과) ──────────
+
+def _invalidate_collect_caches() -> None:
+    """수집 직후 dm 관련 캐시 일괄 무효화.
+
+    `_archive_stats_dm` 는 `board_v2._archive_stats()` 위임이므로 그 내부의
+    `_board_kpis` 60초 캐시도 함께 비워야 좌측 nav 카운트가 즉시 새 수집 결과로
+    갱신된다 (Phase 2 dedup 회귀 방지).
+    """
     from ui import board_v2 as _bv2  # lazy
 
     for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _sc_browse_records,
@@ -1240,53 +1259,161 @@ def _consume_refresh_if_any() -> bool:
         if hasattr(fn, "clear"):
             fn.clear()
 
-    # 수집 실행 — 페르소나 관심사 키워드(없으면 자동화·AI 폴백) + 등록된 커스텀 RSS.
-    # tech 사이트·RSS 는 키워드 무관하게 수집되므로 빈 페르소나에서도 건너뛰지 않는다.
+
+def _run_collect_for_modal(progress=None) -> dict:
+    """collect_batch 동기 실행 → 모달 본문 표시용 결과 dict. 캐시 무효화 포함.
+
+    수집 키워드는 페르소나 관심사(interest_tasks + interest_lv3), 비어 있으면 기본
+    키워드(자동화·AI)로 폴백. tech 사이트·커스텀 RSS 는 키워드 무관하게 항상 함께
+    수집한다. `progress` 가 주어지면(st.progress 핸들) collect_batch 의 `on_step`
+    콜백으로 소스·키워드 단위 진행률을 갱신한다. 모든 예외는 dict 로 흡수 —
+    네트워크 차단 환경에서도 모달이 오류 요약을 보여준다. 캐시 무효화는 성공/실패
+    무관하게 finally 에서 수행(다음 렌더가 최신).
+    """
     try:
         from ui.board_v2 import _collect_keywords_with_default, _collect_extra_feeds
         from scraping.run_daily import collect_batch
         persona = app_shell.get_persona()
         kws, used_default = _collect_keywords_with_default(persona)
         extra_feeds = _collect_extra_feeds()
-        # 수집은 이제 기사별 본문·대표이미지(og:image)까지 병렬로 가져오므로 시간이
-        # 걸린다 → 스피너로 피드백.
-        with st.spinner("뉴스 수집 중… 기사 본문·이미지를 가져오는 중이에요."):
-            report = collect_batch(kws, max_results=10, extra_feeds=extra_feeds)
+        # 진행률 분모 — 키워드×(naver+google) + tech 1회 + RSS 피드 수
+        total_steps = len(kws) * 2 + 1 + len(extra_feeds)
+        done = {"n": 0}
+
+        def _on_step(source: str, keyword: str, found: int) -> None:
+            done["n"] += 1
+            if progress is None:
+                return
+            label = str(source) + (f" · {keyword}" if keyword else "") + f" — {found}건"
+            try:
+                progress.progress(min(done["n"] / max(total_steps, 1), 1.0), text=label)
+            except Exception:  # noqa: BLE001 — 진행 표시 실패가 수집을 깨면 안 됨
+                pass
+
+        report = collect_batch(
+            kws, max_results=10, extra_feeds=extra_feeds, on_step=_on_step,
+        )
         try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
             from store import run_log
             run_log.record_run(report, trigger="manual")
         except Exception:  # noqa: BLE001
             pass
+
         n_articles = report.total_articles
         n_files = report.total_files
         n_err = len(report.errors)
+        errors = [
+            str(e.get("source", "?"))
+            + (f" · {e.get('keyword')}" if e.get("keyword") else "")
+            + f": {e.get('error', '')}"
+            for e in report.errors
+        ]
         if n_err and n_articles == 0:
-            st.session_state["_dm_refresh_toast"] = (
-                "error",
-                f"⚠️ 수집 실패 — 첫 오류: {report.errors[0].get('error','unknown')}",
-            )
+            ok = False
+            message = f"⚠️ 수집 실패 — 첫 오류: {report.errors[0].get('error', 'unknown')}"
         else:
-            feeds_label = (
-                f", RSS {len(extra_feeds)}건" if extra_feeds else ""
-            )
+            ok = True
+            feeds_label = f", RSS {len(extra_feeds)}건" if extra_feeds else ""
             err_tail = f", 일부 오류 {n_err}건" if n_err else ""
             kw_label = (
                 "관심사가 비어 기본 키워드(자동화·AI)" if used_default
                 else f"{len(kws)}개 키워드"
             )
-            st.session_state["_dm_refresh_toast"] = (
-                "ok",
+            message = (
                 f"✓ {kw_label}{feeds_label}로 {n_articles}건 수집 "
-                f"({n_files}개 파일){err_tail}.",
+                f"({n_files}개 파일){err_tail}."
             )
-    except Exception as exc:
-        st.session_state["_dm_refresh_toast"] = (
-            "error", f"⚠️ 수집 처리 실패: {type(exc).__name__}: {exc}",
-        )
+        return {
+            "ok": ok, "message": message,
+            "total_articles": n_articles, "total_files": n_files,
+            "n_keywords": len(kws), "used_default": used_default,
+            "n_feeds": len(extra_feeds), "errors": errors,
+        }
+    except Exception as exc:  # noqa: BLE001 — 모달이 오류 요약을 표시
+        return {
+            "ok": False,
+            "message": f"⚠️ 수집 처리 실패: {type(exc).__name__}: {exc}",
+            "total_articles": 0, "total_files": 0,
+            "n_keywords": 0, "used_default": False, "n_feeds": 0,
+            "errors": [f"{type(exc).__name__}: {exc}"],
+        }
+    finally:
+        _invalidate_collect_caches()
 
-    if "refresh" in st.query_params:
-        del st.query_params["refresh"]
-    return True
+
+def _collect_result_summary_html(result: dict) -> str:
+    """수집 결과 요약 HTML — 상태 배지 + 한 줄 메시지 + KPI 4 + 오류 목록(전부 escape)."""
+    ok = bool(result.get("ok"))
+    badge = ('<span class="sc-cm-badge sc-cm-ok">정상</span>' if ok
+             else '<span class="sc-cm-badge sc-cm-fail">오류</span>')
+    msg = _html.escape(str(result.get("message", "")))
+    stats = (
+        ("수집 기사", f"{int(result.get('total_articles', 0) or 0)}건"),
+        ("저장 파일", f"{int(result.get('total_files', 0) or 0)}개"),
+        ("키워드", f"{int(result.get('n_keywords', 0) or 0)}개"),
+        ("RSS 출처", f"{int(result.get('n_feeds', 0) or 0)}건"),
+    )
+    cells = "".join(
+        f'<div class="sc-cm-stat"><div class="sc-cm-v">{_html.escape(v)}</div>'
+        f'<div class="sc-cm-k">{_html.escape(k)}</div></div>'
+        for k, v in stats
+    )
+    errors = [str(e) for e in (result.get("errors") or []) if e]
+    err_html = ""
+    if errors:
+        shown = errors[:8]
+        items = "".join(f"<li>{_html.escape(e)}</li>" for e in shown)
+        more = (f"<li>… 외 {len(errors) - len(shown)}건</li>"
+                if len(errors) > len(shown) else "")
+        err_html = (
+            f'<div class="sc-cm-errs"><div class="sc-cm-errs-t">⚠ 오류 {len(errors)}건</div>'
+            f"<ul>{items}{more}</ul></div>"
+        )
+    return (
+        '<div class="sc-collect-modal">'
+        f'<div class="sc-cm-msg">{badge}<span>{msg}</span></div>'
+        f'<div class="sc-cm-stats">{cells}</div>{err_html}</div>'
+    )
+
+
+def _collect_modal_body() -> None:
+    """수집 현황 모달 본문 — 미수집이면 1회 수집 실행(진행 표시), 결과 요약 + [✕ 닫기].
+
+    결과는 `_sc_collect_modal_result` 세션에 저장 → rerun 에도 유지되고 재수집을
+    가드한다(결과 존재 시 collect_batch 재실행 금지). [✕ 닫기]가 플래그·결과를
+    비우고 rerun — 캐시 무효화는 수집 직후(`_run_collect_for_modal`) 이미 끝났으므로
+    닫힌 화면은 최신 데이터로 그려진다.
+    """
+    result = st.session_state.get("_sc_collect_modal_result")
+    if result is None:
+        with st.status("📡 뉴스 수집 중… 기사 본문·이미지를 가져오는 중이에요.",
+                       expanded=True) as _stat:
+            prog = st.progress(0.0, text="수집 준비 중…")
+            result = _run_collect_for_modal(prog)
+            st.session_state["_sc_collect_modal_result"] = result
+            _stat.update(
+                label="수집 완료" if result.get("ok") else "수집 중 오류 발생",
+                state="complete" if result.get("ok") else "error",
+                expanded=False,
+            )
+    st.html(_components.prepare_screen_html(_collect_result_summary_html(result)))
+    if st.button("✕ 닫기", key="_sc_collect_modal_close", type="primary",
+                 use_container_width=True):
+        st.session_state.pop("_sc_collect_modal_pending", None)
+        st.session_state.pop("_sc_collect_modal_result", None)
+        st.rerun()
+
+
+def _render_collect_modal_if_open() -> None:
+    """`_sc_collect_modal_pending` 플래그가 있으면 수집 현황 모달을 띄운다.
+
+    dismissible=False — [✕ 닫기] 버튼으로만 닫는다(기사 모달과 동일 패턴 →
+    backdrop/ESC 로 닫혀 '플래그 잔존 → 재오픈' 버그가 없다).
+    """
+    if not st.session_state.get("_sc_collect_modal_pending"):
+        return
+    dlg = st.dialog("📡 뉴스 수집 현황", width="large", dismissible=False)
+    dlg(_collect_modal_body)()
 
 
 def _render_refresh_toast_if_needed() -> None:

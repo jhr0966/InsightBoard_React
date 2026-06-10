@@ -233,20 +233,17 @@ def test_collect_extra_feeds_empty_when_no_custom(isolated_sources):
     assert board_v2._collect_extra_feeds() == []
 
 
-def test_dm_refresh_passes_extra_feeds_to_collect_batch(isolated_sources):
-    """데이터관리 새로고침이 등록된 커스텀 RSS 도 함께 전달."""
+def test_dm_collect_passes_extra_feeds_to_collect_batch(isolated_sources):
+    """데이터관리 수집(모달 경로)이 등록된 커스텀 RSS 도 함께 전달."""
     from ui import data_management_v2 as dm
     from scraping.run_daily import CollectionReport
-    import streamlit as st
 
     isolated_sources.add_custom("RSSx", "https://rss.x/feed")
-    st.query_params.clear()
-    st.query_params["refresh"] = "now"
     fake = CollectionReport(saved=[], errors=[])
 
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=["AI"]), \
          patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
-        dm._consume_refresh_if_any()
+        dm._run_collect_for_modal()
 
     mock_cb.assert_called_once()
     _, kwargs = mock_cb.call_args
@@ -254,16 +251,13 @@ def test_dm_refresh_passes_extra_feeds_to_collect_batch(isolated_sources):
     assert kwargs["extra_feeds"] == [("RSSx", "https://rss.x/feed")]
 
 
-def test_dm_refresh_toast_mentions_rss_count(isolated_sources):
-    """ok 토스트에 등록된 RSS 출처 수가 표시된다."""
+def test_dm_collect_result_mentions_rss_count(isolated_sources):
+    """수집 결과 메시지에 등록된 RSS 출처 수가 표시된다."""
     from ui import data_management_v2 as dm
     from scraping.run_daily import CollectionReport
-    import streamlit as st
 
     isolated_sources.add_custom("A", "https://a.com/rss")
     isolated_sources.add_custom("B", "https://b.com/rss")
-    st.query_params.clear()
-    st.query_params["refresh"] = "now"
     fake = CollectionReport(
         saved=[{"source": "A", "keywords": [], "count": 3, "path": "x"}],
         errors=[],
@@ -271,8 +265,8 @@ def test_dm_refresh_toast_mentions_rss_count(isolated_sources):
 
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
          patch("scraping.run_daily.collect_batch", return_value=fake):
-        dm._consume_refresh_if_any()
+        result = dm._run_collect_for_modal()
 
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert toast[0] == "ok"
-    assert "RSS 2건" in toast[1]
+    assert result["ok"] is True
+    assert "RSS 2건" in result["message"]
+    assert result["n_feeds"] == 2

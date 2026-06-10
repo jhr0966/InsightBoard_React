@@ -1397,3 +1397,38 @@ a.sc-modal-link--row, a.sc-modal-link--row:visited {
 }
 .st-key-td_del_yes button:hover { background: #FEE2E2 !important; }
 .st-key-td_back { margin: 0 24px 24px; }
+
+/* ── 수집 현황 모달 (📡 [지금 뉴스 수집] → st.dialog 진행/결과) ───────────
+   결과 요약: 상태 배지 + 한 줄 메시지 + KPI 4 그리드 + 오류 목록. */
+.sc-collect-modal { padding: 2px 2px 6px; }
+.sc-cm-msg {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; color: var(--text-strong, #0F172A);
+  line-height: 1.5; margin-bottom: 12px;
+}
+.sc-cm-badge {
+  flex-shrink: 0; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: 0.02em;
+}
+.sc-cm-ok   { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+.sc-cm-fail { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+.sc-cm-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  margin-bottom: 4px;
+}
+.sc-cm-stat {
+  padding: 10px 12px; border: 1px solid var(--surface-divider, #E2E8F0);
+  border-radius: 10px; background: var(--surface-soft, #F8FAFC); text-align: center;
+}
+.sc-cm-v { font-size: 18px; font-weight: 800; color: var(--text-strong, #0F172A); }
+.sc-cm-k { font-size: 11.5px; color: var(--text-muted, #64748B); margin-top: 2px; }
+.sc-cm-errs {
+  margin-top: 12px; padding: 10px 14px; background: #FFFBEB;
+  border: 1px solid #FDE68A; border-radius: 10px;
+}
+.sc-cm-errs-t { font-size: 12.5px; font-weight: 800; color: #92400E; margin-bottom: 4px; }
+.sc-cm-errs ul { margin: 0; padding-left: 18px; }
+.sc-cm-errs li {
+  font-size: 12px; color: #92400E; line-height: 1.6;
+  word-break: break-all; overflow-wrap: anywhere;
+}

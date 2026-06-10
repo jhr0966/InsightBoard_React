@@ -459,17 +459,25 @@ def test_archive_consume_action_noop_when_action_missing():
         st.query_params.clear()
 
 
-def test_data_management_refresh_clears_caches_and_sets_toast():
+def test_data_management_refresh_translates_to_modal_and_collect_clears_caches():
     from ui import data_management_v2
     from unittest.mock import patch
     from scraping.run_daily import CollectionReport
     import streamlit as st
 
     st.query_params.clear()
-    st.session_state.pop("_dm_refresh_toast", None)
+    st.session_state.pop("_sc_collect_modal_pending", None)
     st.query_params["refresh"] = "now"
 
-    # 캐시 clear 가 호출되는지 + collect_batch 가 호출되는지 mock
+    # ?refresh=now → 수집 현황 모달 플래그로 번역(쿼리 제거)
+    assert data_management_v2._consume_refresh_if_any() is True
+    assert st.session_state.get("_sc_collect_modal_pending") is True
+    assert "refresh" not in st.query_params
+    # 재진입(쿼리·펜딩 없음) 시 noop
+    assert data_management_v2._consume_refresh_if_any() is False
+    st.session_state.pop("_sc_collect_modal_pending", None)
+
+    # 모달 내 수집 실행 — 캐시 clear + collect_batch 호출 + 결과 dict
     fake_report = CollectionReport(
         saved=[{"source": "naver", "keywords": ["X"], "count": 3, "path": "x.parquet"}],
         errors=[],
@@ -482,30 +490,21 @@ def test_data_management_refresh_clears_caches_and_sets_toast():
          patch.object(targets[1], "clear") as c2, \
          patch("ui.board_v2._collect_keywords_for_persona", return_value=["AI 비전"]), \
          patch("scraping.run_daily.collect_batch", return_value=fake_report) as mock_cb:
-        assert data_management_v2._consume_refresh_if_any() is True
+        result = data_management_v2._run_collect_for_modal()
         c1.assert_called_once()
         c2.assert_called_once()
         mock_cb.assert_called_once()
 
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert isinstance(toast, tuple) and toast[0] == "ok"
-    assert "1개 키워드" in toast[1]
-    assert "refresh" not in st.query_params
-
-    # 재진입(쿼리 없음) 시 noop
-    assert data_management_v2._consume_refresh_if_any() is False
+    assert result["ok"] is True
+    assert "1개 키워드" in result["message"]
 
 
 def test_refresh_uses_default_keywords_when_persona_has_no_keywords():
     """페르소나 관심사 없을 때 → 스킵하지 않고 기본 키워드(자동화·AI)로 수집."""
     from ui import data_management_v2
     from unittest.mock import patch
-    from scraping.run_daily import CollectionReport
-    import streamlit as st
 
-    st.query_params.clear()
-    st.session_state.pop("_dm_refresh_toast", None)
-    st.query_params["refresh"] = "now"
+    from scraping.run_daily import CollectionReport
 
     fake = CollectionReport(
         saved=[{"source": "tech", "keywords": [], "count": 2, "path": "t"}],
@@ -513,29 +512,22 @@ def test_refresh_uses_default_keywords_when_persona_has_no_keywords():
     )
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=[]), \
          patch("scraping.run_daily.collect_batch", return_value=fake) as mock_cb:
-        data_management_v2._consume_refresh_if_any()
+        result = data_management_v2._run_collect_for_modal()
     mock_cb.assert_called_once()
     assert mock_cb.call_args.args[0] == ["자동화", "AI"]
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert isinstance(toast, tuple) and toast[0] == "ok"
+    assert result["ok"] is True
 
 
-def test_refresh_error_toast_on_collect_exception():
-    """collect_batch 가 예외를 던지면 error 토스트."""
+def test_refresh_error_result_on_collect_exception():
+    """collect_batch 가 예외를 던지면 ok=False 오류 결과."""
     from ui import data_management_v2
     from unittest.mock import patch
-    import streamlit as st
-
-    st.query_params.clear()
-    st.session_state.pop("_dm_refresh_toast", None)
-    st.query_params["refresh"] = "now"
 
     with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
          patch("scraping.run_daily.collect_batch", side_effect=RuntimeError("net down")):
-        data_management_v2._consume_refresh_if_any()
-    toast = st.session_state.get("_dm_refresh_toast")
-    assert isinstance(toast, tuple) and toast[0] == "error"
-    assert "net down" in toast[1]
+        result = data_management_v2._run_collect_for_modal()
+    assert result["ok"] is False
+    assert "net down" in result["message"]
 
 
 def test_board_matrix_label_ellipsis_when_too_long():

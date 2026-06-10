@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (수집 현황 모달 — [🔄 지금 뉴스 수집] 진행/결과 표시) — `feat-collect-progress-modal`
+- **수집 현황 모달**(`ui/data_management_v2.py`): [🔄 지금 뉴스 수집] 클릭 시 render 도중 동기 수집 + 토스트 대신 **화면 중앙 st.dialog("📡 뉴스 수집 현황", dismissible=False)** 가 떠서 진행(st.status + st.progress, `collect_batch(on_step=)` 콜백으로 소스·키워드 단위 진행률/현재 단계 텍스트)과 결과 요약(수집 기사/저장 파일/키워드/RSS 출처 KPI 4 + 오류 목록, 전부 `html.escape`)을 보여준다. 결과는 `_sc_collect_modal_result` 세션에 저장 → rerun 에도 유지 + 재수집 가드(1회 실행). [✕ 닫기]가 플래그·결과를 비우고 rerun.
+- **트리거 경로 정리**: 액션바/설정 수집 버튼은 `_sc_collect_modal_pending` 플래그 + `st.rerun()` 만. `_consume_refresh_if_any` 는 레거시 `?refresh=now` 딥링크·구 `_do_dm_collect` pending 을 모달 플래그로 **번역**(호환 유지, 동기 수집 제거). 실 수집·run_log 기록(trigger="manual")·캐시 무효화(`_invalidate_collect_caches` — `_dm_stats`/`_sc_browse_records`/`_board_kpis` 등, 실패 시에도 finally)는 `_run_collect_for_modal` 로 이동.
+- **dialog 1개/run 가드**: 수집 모달 pending 중에는 기사 모달(`_render_news_modal_if_open`)을 띄우지 않는다.
+- `assets/v2/screens/data_management.css`: 모달 결과 요약(`.sc-collect-modal` — 상태 배지/KPI 그리드/오류 목록) 스타일 추가.
+- 테스트: `tests/test_collect_trigger.py` 모달 경로로 재작성(+16 — 플래그 번역, on_step 진행, 부분/전체 오류, run_log trigger, XSS escape, 재수집 가드, 닫기 정리), `test_v2_screens.py`·`test_custom_rss_scrape.py` 의 동기 수집 테스트를 `_run_collect_for_modal` 기준으로 갱신.
+- 검증: pytest **892 passed** · 금지패턴 0 · 브라우저 실측(모달 진행→오류 요약 표시→닫기) OK.
+
 ### Changed (시스템 점검·리팩토링 1차 — 부분 갱신 + 성능)
 - **뉴스 수집 브라우저를 `@st.fragment` 부분 rerun 경계로**(`ui/data_management_v2.py` `_render_browse_zone`): 보기 모드(카드/표)·대분류 탭·출처칩 전환, 카드 [기사 보기], 표 행 선택, 모달 ✕ 닫기가 **앱 전체 스크립트(topbar·사이드바·우측 채팅) 재실행 없이 해당 구역만** 다시 그린다 → 클릭 반응 즉각화. dialog-in-fragment 동작은 브라우저 실측(모달 열림/닫힘·카드↔표 왕복)으로 확인.
 - **일자별 parquet 메모**(`store/news_db.py` `_day_frame_memo`): 보드 한 렌더가 3/14/30/56일 윈도우를 섞어 요청해도 **같은 날짜 parquet 은 1회만 디스크에서 읽는다**(직전: 윈도우마다 전체 재스캔 — 보드형 패턴 9×). `load_all_today` 도 공유. 새 수집 시 (mtime, 파일 수) 시그니처로 자동 무효화.
