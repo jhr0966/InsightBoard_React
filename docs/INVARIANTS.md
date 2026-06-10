@@ -114,14 +114,20 @@ I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 
 
 ## I-13 — 글로벌 채팅 패널은 `ui/chat_panel.py` 단일 진입점 (Phase A: 우측 컬럼)
 
-v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st.sidebar`(nav) + `st.columns([2.3, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `ui/chat_panel.render_side(persona, area_key=...)` 단 한 곳에서 마운트한다. 어느 area 에서든 사용자가 채팅 form 으로 전송한 텍스트는 render 직전 `chat_panel.consume_send_if_any(persona)` 가 단일 처리한다.
+v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st.sidebar`(nav) + `st.columns([2.3, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `ui/chat_panel.render_side(persona, area_key=...)` 단 한 곳에서 마운트한다. 채팅 전송(`_do_sola_send` pending)의 소비자는 `chat_panel.consume_send_if_any(persona)` **단일 구현**이지만, 호출 지점은 **2곳(이중 소비 설계)** 이다:
+
+1. **app.py 최상단** (`scope="app"`, 기본) — SOLA 작업실 form 전송과 인계 자동 전송(`sw._consume_prefill_ask_if_any`)처럼 **앱 전체 rerun 으로 도착하는** send 를 본문 렌더 **전에** 처리한다(작업실 중앙 캔버스 '현재 산출물'이 같은 런에서 답변을 반영).
+2. **`chat_panel._render_side_fragment` 최상단** (`scope="fragment"`) — 그 외 area 의 form 전송을 **채팅 컬럼 부분 rerun 안에서** 처리(앱 전체 재실행 없음).
+
+같은 pending 키를 `session_state.pop` 으로 소비(**pop-once**)하므로 이중 처리는 구조적으로 불가 — 풀런에서는 app.py 가 먼저 pop 해 fragment 쪽은 no-op 이고, fragment rerun 중에는 fragment 쪽만 실행된다. (구 `sola_workshop_v2._consume_send_if_any` 는 끝에서 전체 `st.rerun()` 을 고정 호출해 부분 rerun 을 깨므로 chat_panel 재구현으로 대체·삭제됨, 2026-06-10.)
 
 - **app.py 규약**: 5개 area **전부(SOLA 작업실 포함)** 를 `with main_col:` 안에서 렌더하고, `with chat_col:` 안에서 `chat_panel.render_side(_persona, area_key=...)` 호출 — 모든 화면이 동일한 `[좌 사이드바 │ 중앙 │ 우 채팅]`. 작업실 중앙은 산출물 작업대(스레드 + composer), 우측은 글로벌 채팅(통일 설계). *(작업실에서 우측 채팅을 억제하려면 코드 변경 필요 — 현재는 의도적으로 미억제.)*
 - **우측 채팅 구현**: `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 담기지 않는다 → `render_side` 는 `st.form`(text_area + form_submit_button) 으로 송신하고 `_do_sola_send` pending 을 세팅한다. 컬럼 sticky 패널화는 `.side-chat-marker` 훅 + `streamlit-overrides.css` 의 `[data-testid="stColumn"]:has(.side-chat-marker)`.
 - **금지**: 화면별 고정 HTML 우측 패널(구 `app_shell.render_app_sola` 의 disabled 목업)을 부활시키지 말 것. 우측 LLM 채팅은 `render_side` 단일 경로(**모든 area 동일** — 작업실 예외 없음).
 - **area_key 네임스페이스**: area 슬러그(이모지 포함)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 분리 저장 (I-15).
 - **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 저장돼 다음 send 에서 사용된다.
-- **SOLA 작업실 = 채팅 단일 진입점**: 작업대 액션(제안서 생성·뉴스 요약·새 대화)은 중앙 버튼이 아니라 우측 채팅 상단 **빠른 작업** 칩(`chat_panel._quick_actions_html`, SOLA area 한정, `?sola_action=<name>` 링크)으로 노출된다. `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 이를 기존 pending flag 로 매핑하고, 같은 run 의 후속 consumer 가 LLM 호출·rerun 을 위임받는다. `sola_action` 만 소비하고 `dept`/`lv3`/`from` 인계 컨텍스트는 보존한다(제안서 생성이 인계 작업을 그대로 사용).
+- **SOLA 작업실 = 채팅 단일 진입점**: 작업대 액션(제안서 생성·뉴스 요약·새 대화)은 중앙 버튼이 아니라 우측 채팅 상단 **빠른 작업** 칩(`chat_panel._render_quick_action_chips`, SOLA area 한정)으로 노출된다. 칩은 `st.button` — 클릭 시 `_sola_action_pending` 세션 플래그 + `st.rerun(scope="app")`(소비자가 fragment 밖이므로 승격 필수). `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 이 pending 을 **`?sola_action=` 쿼리(딥링크 호환 유지)보다 먼저** 소비해 기존 pending flag(`_do_generate_proposal` 등)로 매핑하고, 같은 run 의 후속 consumer 가 LLM 호출·rerun 을 위임받는다. `sola_action` 만 소비하고 `dept`/`lv3`/`from` 인계 컨텍스트는 보존한다(제안서 생성이 인계 작업을 그대로 사용).
+- **fragment rerun scope 규약**: 우측 채팅 패널 본체는 `@st.fragment`(`_render_side_fragment`) — 패널 안에서 끝나는 상호작용(일반 area 전송·추천 질문 pill)은 `st.rerun(scope="fragment")` 로 **채팅 컬럼만** 부분 rerun. **효과가 fragment 밖(중앙 컬럼)에 보여야 하는 상호작용은 `scope="app"` 으로 승격**한다 — SOLA 작업실 form 전송(중앙 작업대 캔버스 갱신), 빠른 작업 칩(소비자 = `sola_workshop_v2.render` 최상단). Streamlit 1.58 제약: `scope="fragment"` rerun 은 fragment rerun 중에만 허용 — 풀런 경로의 send 를 app.py 가 먼저 pop 해 두는 이유이기도 하다.
 - **인계 자동 실행**: `?from=brief/opp/matrix/ia_map/edit` 인계는 `_auto_run_handoff_if_any` 가 prefill 이 있을 때 **1회 자동 전송**한다(`_handoff_signature` 로 같은 인계 재전송 차단, 빈 prefill 무시). 배너는 자동검토 confirm 줄을 덧붙인다.
 - **데드 정리 완료 (Phase 3)**: 좌측은 네이티브 `st.sidebar`, 우측 LLM 채팅은 `chat_panel.render_side` 단일 경로. 구 고정 HTML 패널 `app_shell.render_app_side`/`render_app_sola`(no-op)·패널 토글 클러스터·`chat_panel.render`(구 bottom expander)·`ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`task_defs_db.upsert_many` 모두 삭제됨.
 
@@ -195,6 +201,16 @@ a.foo, a.foo:visited { color: <원래색>; }
 화면 전환·액션을 거는 `<a href="?param=…">` 앵커는 클릭 시 **브라우저 문서 전체 reload**(흰 깜빡임)다. 같은 결과를 reload 없이 내려면 **`st.button`** 으로 바꾸고 클릭 핸들러에서 상태를 세팅한 뒤 `st.rerun()` 한다(`on_click` 금지 — CLAUDE.md #3):
 
 - **같은 화면 액션**(예: 산출물 채택/기각, 출처 토글, 수집): `st.session_state["_do_…"] = payload` pending → 다음 run 의 `_consume_…` 가 처리. 기존 `?param=` 소비 경로는 **레거시 호환으로 남겨** 둘 다 받게 한다(북마크/딥링크 + 기존 테스트).
+- **pending 우선 + 쿼리 폴백 (이중 소비 순서 규약)**: 같은 의미의 버튼 pending 과 `?param=` 딥링크가 공존하면 소비 함수는 **반드시 pending flag 를 쿼리보다 먼저** 소비한다(최신 클릭 승, 둘 다 pop/strip — 1회 처리 보장). 위젯 인스턴스화 전(render/consume 최상단)에서 처리. 현행 등록부:
+
+  | pending flag | 쿼리 폴백 | 소비 함수 |
+  |---|---|---|
+  | `_kw_action_pending` | `?kw_action=&keyword=` | `board_v2.consume_kw_action_if_any` |
+  | `_opp_action_pending` | `?opp_action=&dept=&lv3=&title=` | `board_v2.consume_opp_action_if_any` |
+  | `_td_nav_pending` | `?td_*=` 스위트 | `task_def_manage._consume_td_nav_pending` (pending 을 쿼리로 **번역** — td_* 전체 교체) |
+  | `_sola_action_pending` | `?sola_action=` | `sola_workshop_v2._consume_sola_action_from_query_if_any` |
+  | `_switch_thread_pending` | `?switch_thread=` | `sola_workshop_v2._switch_thread_from_query_if_any` (pending 경로는 rerun 없이 같은 run 계속, 쿼리 경로만 strip+rerun) |
+  | `_do_sola_send` | (쿼리 없음) | `chat_panel.consume_send_if_any` — app 최상단 + fragment 최상단 2곳, pop-once (I-13) |
 - **컨텍스트 딥링크**(예: 산출물 수정 → SOLA, dept/lv3/from 인계): 핸들러에서 `st.session_state["app_area"]=…` + **`st.query_params[k]=v`** 를 세팅하고 `st.rerun()`. **`st.query_params` 할당은 문서 reload 없이 URL 만 갱신**하므로, 소비자(SOLA 등)가 `st.query_params` 를 읽는 기존 경로를 **그대로 둬도** 된다(소비자 코드 변경 0) — 이게 딥링크 위젯화의 핵심 레버.
 - **레이아웃 함정**: 위젯은 `st.html` 블록 안에 못 넣는다. HTML 카드/그리드에 박힌 액션은 ① 카드를 **표시 전용 HTML** 로 두고 ② 컬럼/행을 `st.container`+`st.columns` 로 감싸 **컨테이너에 기존 룩(테두리·배경)** 을 주고 ③ 액션만 `st.button` 으로 그 안/옆에 배치한다(`.st-key-*` 스코프 CSS). SVG 시각화 셀(히트맵·매트릭스)은 위젯화하면 시각화가 깨지므로 제외.
 - **드리프트 주의**: 템플릿 일부만 쓰게 되면 `test_template_placeholders`·`test_*_cleanup` 가 미소비 `{{TOKEN}}` 을 잡는다 → 죽은 section 은 템플릿에서 **삭제**.
