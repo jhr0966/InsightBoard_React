@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (thebell 본문·사진 — 실제 마크업 기반 정밀 수정)
+- **본문 셀렉터 직결**(`scraping/enrich.py`): 사용자가 제공한 thebell 실페이지 HTML 로 확인 — 본문이 `<p>` 없이 `<br>` 구분 텍스트로 `div#article_main`(`.viewSection`) 에 직접 들어있어 셀렉터 미매칭이었음 → `_CONTENT_SELECTORS` 에 `div#article_main`·`div.viewSection` 추가(폴백이 아닌 정공 경로로 수집).
+- **사진 오선택/누락 수정**(`scraping/extract.py`, `enrich.py`): 기사 사진보다 문서 앞에 나오는 **구글 선호 출처 아이콘(`google_icon.png`)·공유 아이콘이 junk 필터에 안 걸려** 대표 이미지로 잡히던 구조 → junk 조각에 `_icon.`/`icon_`/`/icons/`/`/banner/`(광고 배너)/`share_` 추가. 이미지 탐색 순서에 본문 컨테이너 스코프(`div[id*='article'] img` 등)를 문서 전체 `img` 보다 앞에 추가.
+- **노이즈 차단**: `_NOISE_SELECTORS` 에 thebell 광고/UI 박스(`.article_content_banner`·`.newsADBox`·`.linkNews`·`.linkBox`·`.optionIcon`·`.googleSearch`), 보일러플레이트에 '무료로 공개된 기사입니다'·'구글 검색 선호 출처로 추가'·`^(책갈피|프린트|작게|크게)$` 추가.
+- 검증: pytest **830 passed**(신규 2 — thebell 실마크업 본문/사진 추출·UI 아이콘/배너 junk 판정) · 금지패턴 0. ⚠ 단, **fetch 자체가 403 으로 막히면**(TLS/IP 차단) 이 수정으로도 수집 불가 — 배포 환경에서 `pip install -r requirements.txt`(curl_cffi) 후 `scripts/diagnose_article.py` 로 요청 단계 확인 필요.
+
 ### Fixed (조선닷컴 본문 미수집 — SPA 구조화 데이터 본문 추출)
 - **조선닷컴 기사가 사진·제목만 되고 본문이 비던 문제**(`scraping/enrich.py`): 조선닷컴은 Arc Publishing(Fusion) 기반 SPA 라 **본문 문단이 DOM 에 없고**(JS 렌더) 페이지 내 JSON 에만 있다 → 셀렉터/문단 폴백이 빈손. 구조화 데이터 추출 2종 신설 — ① `_ldjson_article_body`: schema.org NewsArticle ld+json 의 `articleBody`(범용, `@graph` 중첩 지원) ② `_arc_fusion_body`: `Fusion.globalContent` JSON 의 `content_elements`(type=text/raw_html) 문단 복원(`raw_decode` 로 안전 파싱). `fetch_article` 에서 `_strip_noise` 가 script 를 지우기 **전에** 확보하고, DOM 셀렉터 본문보다 길 때만 채택(서버렌더 사이트는 기존 경로 유지 — ld+json 이 티저 요약뿐인 사이트 보호).
 - `scripts/diagnose_article.py` 에 ⑥-b 구조화 데이터 본문(ld+json/Fusion 길이) 리포트 추가.

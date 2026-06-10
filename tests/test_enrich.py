@@ -572,3 +572,69 @@ def test_fetch_article_prefers_dom_when_longer_than_structured():
 def test_arc_fusion_body_handles_missing_marker_and_bad_json():
     assert enrich._arc_fusion_body("<html>no marker</html>") == ""
     assert enrich._arc_fusion_body("Fusion.globalContent = {broken") == ""
+
+
+_THEBELL_HTML = """<html><body><div class="viewBox">
+<div class="viewHead">
+  <p class="tit">아이티센글로벌, '2026 오픈 이노베이션' 시동
+    <em>AI·웹3 생태계 확립, 글로벌 엑셀러레이터 '드레이퍼' 맞손</em></p>
+  <div class="userBox"><span class="user">김인규 기자</span>
+    <span class="date">2026-06-10 08:48:04</span></div>
+  <div class="googleSearch"><a href="https://google.com/preferences/source?q=thebell.co.kr">
+    <img src="https://image.thebell.co.kr/thebell10/img/2025/google_icon.png" width="14px">구글 검색 선호 출처로 추가</a></div>
+  <div class="optionIcon"><ul>
+    <li><a href="/front/NewsScrap.asp?Key=1">책갈피</a></li>
+    <li><a href="javascript:do_print('1')">프린트</a></li>
+    <li><a href="javascript:changeTextStyle('minus');">작게</a></li>
+    <li><a href="javascript:changeTextStyle('plus');">크게</a></li></ul>
+    <div class="share-wrapper"><button><img src="https://image.thebell.co.kr/thebell10/img/2025//share_icon.png"></button></div>
+  </div>
+</div>
+<div id="article_main" class="viewSection">
+  <p class="tip mgb20">이 기사는 2026년 06월 10일 08:47에 무료로 공개된 기사입니다. </p>
+  <div class="article_content_banner"><a href="http://x"><img class="ADVIMG"
+    src="https://image.thebell.co.kr/banner/20260602163419032.gif"></a></div>
+  아이티센글로벌이 그룹 내 주요 계열사들을 이끌고 국내 유망 스타트업과의 전략적 투자 및
+  협업을 통한 글로벌 시장 진출을 본격화한다고 10일 밝혔다.<br><br>
+  <img alt="" height="60" src="https://image.thebell.co.kr/news/photo/2026/06/10/20260610083644372_n.jpg"
+    style="float:left" width="300">아이티센글로벌은 오픈 이노베이션 프로그램을 글로벌
+  액셀러레이터 네트워크 '드레이퍼 스타트업 하우스 코리아센터'와 공동 개최하고 참가
+  기업을 모집한다고 10일 밝혔다.<br><br>
+  이번 프로그램은 그룹 내 핵심 계열사 5개사가 참여하는 통합 이니셔티브다.
+</div>
+<div class="reference">&lt; 저작권자 ⓒ 자본시장 미디어 'thebell', 무단 전재, 재배포 및 AI학습 이용 금지&gt;</div>
+<div class="linkNews"><p class="tit">관련기사</p><ul>
+  <li><img src="https://image.thebell.co.kr/thebell10/img/time_icon.png">
+    <a href="/front/newsview.asp?key=2">아이티센그룹, 에이전틱 AI 전사 도입</a></li></ul></div>
+<div class="newsADBox"><a><img class="ADVIMG" src="https://image.thebell.co.kr/banner/20260602163911480.gif"></a></div>
+</div></body></html>"""
+
+
+def test_fetch_article_thebell_body_and_photo():
+    """thebell 실마크업 — div#article_main 의 <br> 본문과 기사 사진을 정확히 수집.
+
+    헤더 UI(구글 출처 아이콘·책갈피/프린트/폰트)·광고 배너·무료 공개 안내·관련기사가
+    본문/이미지에 섞이면 안 된다.
+    """
+    class Sess:
+        def get(self, url, headers=None, timeout=None):
+            return _FakeResp(_THEBELL_HTML)
+
+    art = enrich.fetch_article("https://www.thebell.co.kr/front/newsview.asp?key=1",
+                               session=Sess())
+    body = art["content"]
+    assert "아이티센글로벌이 그룹 내" in body and "드레이퍼 스타트업 하우스" in body
+    assert "통합 이니셔티브" in body
+    for noise in ("무료로 공개된", "구글 검색 선호", "책갈피", "프린트", "관련기사", "저작권자"):
+        assert noise not in body, noise
+    # 사진 — 구글 아이콘/배너가 아니라 기사 사진
+    assert art["image_url"] == ("https://image.thebell.co.kr/news/photo/2026/06/10/"
+                                "20260610083644372_n.jpg")
+
+
+def test_is_junk_image_flags_ui_icons_and_banners():
+    from scraping.extract import is_junk_image
+    assert is_junk_image("https://image.thebell.co.kr/thebell10/img/2025/google_icon.png")
+    assert is_junk_image("https://image.thebell.co.kr/banner/20260602163419032.gif")
+    assert is_junk_image("https://image.thebell.co.kr/thebell10/img/2025//share_icon.png")
+    assert not is_junk_image("https://image.thebell.co.kr/news/photo/2026/06/10/1_n.jpg")

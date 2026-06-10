@@ -31,6 +31,8 @@ _CONTENT_SELECTORS = [
     # 한국 CMS(모우/모비 계열 — AI Times·오토메이션월드 등) 본문 컨테이너
     "div#article-view-content-div", "article#article-view-content-div",
     "div.article-view-content", "div.article_view_content",
+    # thebell(구형 ASP) — 본문이 <p> 없이 <br> 구분 텍스트로 div#article_main 에 직접 들어있다.
+    "div#article_main", "div.viewSection",
     # 네이버
     "div#dic_area", "div#articleBodyContents", "div.newsct_article",
     "div._article_body_contents",
@@ -60,7 +62,9 @@ _NOISE_SELECTORS = (
     # 포털(다음·네이버) 기사 리더 UI 잡음 — TTS/글자크기/번역/관련기사/언론사 이동/저작권.
     ".tts_area, [class*='tts'], [class*='relate'], [class*='copyright'], "
     "[class*='promotion'], .alex-action, .foot_view, .relate_news, "
-    ".article_relation, .reporter_area, .copy_info, .txt_copyright, .link_news"
+    ".article_relation, .reporter_area, .copy_info, .txt_copyright, .link_news, "
+    # thebell — 본문 컨테이너 안 광고 배너 + 헤더 옵션(책갈피/프린트/폰트/공유)·관련기사·태그.
+    ".article_content_banner, .newsADBox, .linkNews, .linkBox, .optionIcon, .googleSearch"
 )
 
 _MIN_CONTENT_LEN = 80
@@ -99,6 +103,9 @@ _BOILERPLATE_PATTERNS = (
     re.compile(r"^(사회|정치|경제|국제|문화|생활|스포츠|연예|오피니언|IT|과학|산업|증권|부동산|기획|칼럼)$"),
     re.compile(r"^(입력|수정|업데이트|발행)\s*[:.]?\s*\d{4}"),
     re.compile(r"^\d{4}\s*[.\-/]\s*\d{1,2}\s*[.\-/]\s*\d{1,2}\.?\s*(\d{1,2}:\d{2}(:\d{2})?)?$"),
+    # thebell — 무료 공개 안내 라인 + 헤더 옵션 버튼/구글 출처 추가 라벨.
+    re.compile(r"무료로 공개된 기사입니다|구글 검색 선호 출처로 추가"),
+    re.compile(r"^(책갈피|프린트|작게|크게)$"),
 )
 
 _IMAGE_SELECTORS = (
@@ -236,6 +243,9 @@ def _extract_image_url(soup, base_url: str) -> str:
 
     img_selectors = (
         "article img", "main img", "div[itemprop='articleBody'] img",
+        # 본문 컨테이너로 추정되는 div 내부를 문서 전체보다 먼저 — 헤더/사이드 UI 아이콘
+        # (thebell 구글 출처 아이콘 등)이 첫 img 로 잡히는 것을 방지.
+        "div[id*='article'] img", "div[class*='article'] img", "div.viewSection img",
         "article picture source", "main picture source", "picture source", "img",
     )
     for img in soup.select(", ".join(img_selectors)):

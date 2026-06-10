@@ -5,7 +5,19 @@
 
 ---
 
-## 2026-06-10 — fix: 조선닷컴 본문 미수집 — SPA 구조화 데이터 추출 (`fix-spa-article-body`)
+## 2026-06-10 — fix: thebell 본문·사진 — 실마크업 기반 정밀 수정 (`fix-thebell-extract`)
+
+**무엇을**: thebell 여전히 본문·사진 미수집. 사용자가 실페이지 HTML 제공 → 정확 진단 가능해짐.
+
+**어떻게**: ① 본문이 `div#article_main` 에 `<br>` 구분 텍스트 → `_CONTENT_SELECTORS` 에 `div#article_main`/`div.viewSection` 추가. ② 기사 사진보다 앞에 있는 `google_icon.png`/광고 배너가 대표 이미지로 오선택되는 구조 → junk 조각(`_icon.`·`/banner/`·`share_` 등) + 본문 컨테이너 스코프 img 셀렉터 우선. ③ 노이즈(`.optionIcon`·`.googleSearch`·광고 박스)와 보일러플레이트('무료로 공개된'·'책갈피/프린트/작게/크게') 차단.
+
+**검증**: pytest 830 passed(신규 2 — 실마크업 fixture) · 금지패턴 0. fetch 403 여부는 배포 환경 diagnose_article.py 로 확인 필요(파싱은 이제 보장).
+
+**상태**: 🔄 진행 — 커밋·푸시·PR 예정.
+
+---
+
+## 2026-06-10 — fix: 조선닷컴 본문 미수집 — SPA 구조화 데이터 추출 (`fix-spa-article-body`, PR #144 ✅ merged)
 
 **무엇을**: 구글 수집된 조선닷컴 기사 2건이 사진·제목만 되고 본문이 빔.
 
