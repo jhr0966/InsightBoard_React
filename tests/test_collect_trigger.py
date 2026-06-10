@@ -221,6 +221,48 @@ def test_modal_body_escapes_external_error_strings():
     assert "<b>주의</b>" not in html_out
 
 
+def test_summary_html_renders_per_source_rows():
+    """결과 요약에 소스별 건수 표 — 0건/오류 소스 행 + 이름 escape."""
+    from ui import data_management_v2 as dm
+
+    html_out = dm._collect_result_summary_html({
+        "ok": True, "message": "✓", "total_articles": 5, "total_files": 2,
+        "n_keywords": 1, "used_default": False, "n_feeds": 1, "errors": [],
+        "sources": [
+            {"source": "naver", "count": 4, "ok": True},
+            {"source": "<rss>피드", "count": 0, "ok": False},
+        ],
+    })
+    assert "소스별 수집 건수" in html_out
+    assert "naver" in html_out and "4건" in html_out and "정상" in html_out
+    assert "0건" in html_out and "오류" in html_out          # 0건·오류 소스 행
+    assert "<rss>" not in html_out and "&lt;rss&gt;" in html_out  # escape
+    # sources 없으면(과거 결과 dict) 표 자체를 생략
+    html_old = dm._collect_result_summary_html({
+        "ok": True, "message": "✓", "total_articles": 1, "total_files": 1,
+        "n_keywords": 1, "used_default": False, "n_feeds": 0, "errors": [],
+    })
+    assert "소스별 수집 건수" not in html_old
+
+
+def test_run_collect_result_includes_per_source_rows():
+    """라이브 수집 결과 dict 에 sources 행 — saved + 오류만 난 소스(0건) 병합."""
+    from ui import data_management_v2 as dm
+    from scraping.run_daily import CollectionReport
+
+    fake = CollectionReport(
+        saved=[{"source": "naver", "keywords": ["X"], "count": 3, "path": "x"}],
+        errors=[{"source": "google", "keyword": "X", "error": "rate"}],
+    )
+    with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
+         patch("scraping.run_daily.collect_batch", return_value=fake):
+        result = dm._run_collect_for_modal()
+    assert result["sources"] == [
+        {"source": "naver", "count": 3, "ok": True},
+        {"source": "google", "count": 0, "ok": False},
+    ]
+
+
 def test_modal_body_does_not_recollect_when_result_exists():
     """결과가 세션에 있으면 collect 재실행 금지(1회 실행 가드)."""
     from ui import data_management_v2 as dm
@@ -272,6 +314,145 @@ def test_news_modal_skipped_while_collect_modal_pending():
         dm._render_news_modal_if_open()
     mock_dlg.assert_not_called()
     st.session_state.pop("_sc_open_news", None)
+
+
+# ── 런 이력 → 모달 결과 재열람 (⚙ 수집 설정 [보기]) ─────────────────
+
+_RUN_ENTRY = {
+    "run_id": "20260610-080000-ab12",
+    "ts": "2026-06-10T08:00:00+00:00",
+    "trigger": "manual",
+    "ok": True,
+    "total_articles": 7,
+    "total_files": 2,
+    "duration_s": 12.3,
+    "sources": [
+        {"source": "naver", "count": 4, "keywords": ["자동화", "AI"], "ok": True},
+        {"source": "google", "count": 2, "keywords": ["AI"], "ok": True},
+        {"source": "myrss", "count": 1, "keywords": [], "ok": True},
+    ],
+    "error_sources": [],
+    "errors": [],
+}
+
+
+def test_run_log_to_modal_result_full_entry():
+    from ui import data_management_v2 as dm
+
+    result = dm._run_log_to_modal_result(dict(_RUN_ENTRY))
+    assert result["ok"] is True
+    assert result["total_articles"] == 7
+    assert result["total_files"] == 2
+    assert result["n_keywords"] == 2          # 자동화·AI 합집합
+    assert result["n_feeds"] == 1             # myrss (naver/google/tech 제외)
+    assert result["errors"] == []
+    assert result["from_log"] is True
+    assert result["run_id"] == "20260610-080000-ab12"
+    # 메시지에 시각·트리거·건수
+    assert "06-10" in result["message"] and "08:00" in result["message"]
+    assert "수동" in result["message"] and "7건" in result["message"]
+
+
+def test_run_log_to_modal_result_includes_sources():
+    """런 로그 재열람 결과도 sources 행 포함 — 라이브 수집과 동일 표 렌더."""
+    from ui import data_management_v2 as dm
+
+    run = dict(_RUN_ENTRY,
+               errors=[{"source": "tech", "keyword": "", "error": "timeout"}])
+    result = dm._run_log_to_modal_result(run)
+    assert result["sources"] == [
+        {"source": "naver", "count": 4, "ok": True},
+        {"source": "google", "count": 2, "ok": True},
+        {"source": "myrss", "count": 1, "ok": True},
+        {"source": "tech", "count": 0, "ok": False},   # 오류만 난 소스 → 0건 행
+    ]
+    # 필드 누락 로그도 빈 리스트로 방어
+    assert dm._run_log_to_modal_result({})["sources"] == []
+
+
+def test_run_log_to_modal_result_errors_formatted():
+    from ui import data_management_v2 as dm
+
+    run = dict(_RUN_ENTRY, ok=False,
+               errors=[{"source": "google", "keyword": "X", "error": "rate"}])
+    result = dm._run_log_to_modal_result(run)
+    assert result["ok"] is False
+    assert result["errors"] == ["google · X: rate"]
+    assert "오류 1건" in result["message"]
+
+
+def test_run_log_to_modal_result_defends_missing_fields():
+    """과거 로그(필드 누락)도 안전하게 변환 — ok 는 errors 유무로 유추."""
+    from ui import data_management_v2 as dm
+
+    result = dm._run_log_to_modal_result({})
+    assert result["ok"] is True               # errors 없음 → 정상 취급
+    assert result["total_articles"] == 0
+    assert result["total_files"] == 0
+    assert result["n_keywords"] == 0
+    assert result["n_feeds"] == 0
+    assert result["errors"] == []
+    assert result["from_log"] is True
+
+    # errors 만 있고 ok 누락 → 오류로 유추 + 문자열 에러도 수용
+    result2 = dm._run_log_to_modal_result({"errors": ["boom"]})
+    assert result2["ok"] is False
+    assert result2["errors"] == ["boom"]
+
+
+def test_open_run_result_modal_sets_flags_and_reruns():
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    with patch("streamlit.rerun") as mock_rerun:
+        dm._open_run_result_modal(dict(_RUN_ENTRY))
+    assert st.session_state.get("_sc_collect_modal_pending") is True
+    result = st.session_state.get("_sc_collect_modal_result")
+    assert result and result["from_log"] is True and result["total_articles"] == 7
+    mock_rerun.assert_called_once()
+
+
+def test_history_view_button_opens_modal_without_recollect():
+    """[📡 마지막 수집 결과 보기] 클릭 → 플래그 세팅 + 모달이 collect 없이 로그 결과 표시."""
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    # 1) 이력 버튼 클릭 — 첫 st.button(마지막 결과 보기)만 True
+    def _btn(label, *a, **k):
+        return "마지막 수집 결과 보기" in str(label)
+
+    with patch("store.run_log.load_runs", return_value=[dict(_RUN_ENTRY)]), \
+         patch("streamlit.button", side_effect=_btn), \
+         patch("streamlit.caption"), patch("streamlit.rerun") as mock_rerun:
+        dm._render_run_history_view_buttons()
+    assert st.session_state.get("_sc_collect_modal_pending") is True
+    assert st.session_state.get("_sc_collect_modal_result", {}).get("from_log") is True
+    mock_rerun.assert_called_once()
+
+    # 2) 모달 본문 — 결과가 이미 있으므로 collect_batch 재실행 금지, 로그 결과 표시
+    captured: list[str] = []
+    with patch("scraping.run_daily.collect_batch") as mock_cb, \
+         patch.object(dm, "_run_collect_for_modal") as mock_run, \
+         patch("streamlit.html", side_effect=lambda s: captured.append(str(s))), \
+         patch("streamlit.button", return_value=False):
+        dm._collect_modal_body()
+    mock_cb.assert_not_called()
+    mock_run.assert_not_called()
+    joined = "".join(captured)
+    assert "지난 수집 결과" in joined and "7건" in joined
+
+
+def test_history_view_buttons_noop_without_runs():
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    with patch("store.run_log.load_runs", return_value=[]), \
+         patch("streamlit.button") as mock_btn, \
+         patch("streamlit.caption") as mock_cap:
+        dm._render_run_history_view_buttons()
+    mock_btn.assert_not_called()
+    mock_cap.assert_called_once()
+    assert "_sc_collect_modal_pending" not in st.session_state
 
 
 # ── 토스트 렌더 — kind 별 색상 (다른 경로가 여전히 사용) ─────────────

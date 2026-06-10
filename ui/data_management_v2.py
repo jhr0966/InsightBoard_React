@@ -936,9 +936,10 @@ def _render_collect_settings(dm_stats: dict[str, str | int], persona) -> None:
     # 포탈/출처 설정 — 기본 토글 + 커스텀 RSS 추가
     _render_src_table(dm_stats)
     _render_src_add_form()
-    # 수집 실행(설정에서도 가능) + 이력 상세
+    # 수집 실행(설정에서도 가능) + 이력 상세 + 런 결과 재열람([보기] → 수집 현황 모달)
     _render_collect_button()
     st.html(_components.prepare_screen_html(_sc_history_html()))
+    _render_run_history_view_buttons()
 
 
 # ── 기사 모달 (카드 클릭 → ?news=<link> → st.dialog) ──────────
@@ -1260,6 +1261,37 @@ def _invalidate_collect_caches() -> None:
             fn.clear()
 
 
+def _collect_source_rows(saved: list, errors: list) -> list[dict]:
+    """소스별 수집 건수 행 — saved(소스·건수) + 오류 소스 병합 (순수 변환).
+
+    반환: `[{"source", "count", "ok"}, ...]` — saved 순서 유지, 오류만 나고
+    저장이 없는 소스는 뒤에 0건·ok=False 로 추가(0건/오류 소스도 표에 보이게).
+    saved 에 있어도 같은 소스에 오류가 있으면 ok=False (부분 오류 표시).
+    라이브 수집(`CollectionReport.saved/errors`)과 런 로그(`sources/errors`)
+    양쪽 스키마를 모두 수용한다 (둘 다 source/count 키 동형).
+    """
+    err_sources = {
+        str(e.get("source", ""))
+        for e in errors
+        if isinstance(e, dict) and e.get("source")
+    }
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for s in saved:
+        if not isinstance(s, dict):
+            continue
+        name = str(s.get("source", "") or "?")
+        rows.append({
+            "source": name,
+            "count": int(s.get("count", 0) or 0),
+            "ok": name not in err_sources,
+        })
+        seen.add(name)
+    for name in sorted(err_sources - seen):
+        rows.append({"source": name, "count": 0, "ok": False})
+    return rows
+
+
 def _run_collect_for_modal(progress=None) -> dict:
     """collect_batch 동기 실행 → 모달 본문 표시용 결과 dict. 캐시 무효화 포함.
 
@@ -1290,12 +1322,15 @@ def _run_collect_for_modal(progress=None) -> dict:
             except Exception:  # noqa: BLE001 — 진행 표시 실패가 수집을 깨면 안 됨
                 pass
 
+        import time as _time
+        _t0 = _time.monotonic()
         report = collect_batch(
             kws, max_results=10, extra_feeds=extra_feeds, on_step=_on_step,
         )
-        try:  # 런 로그 기록 — '수집 헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
+        _dur = _time.monotonic() - _t0
+        try:  # 런 로그 기록 — '수집 헬스'·[보기] 재열람이 읽음. 로깅 실패가 수집을 깨면 안 됨.
             from store import run_log
-            run_log.record_run(report, trigger="manual")
+            run_log.record_run(report, trigger="manual", duration_s=_dur)
         except Exception:  # noqa: BLE001
             pass
 
@@ -1328,6 +1363,9 @@ def _run_collect_for_modal(progress=None) -> dict:
             "total_articles": n_articles, "total_files": n_files,
             "n_keywords": len(kws), "used_default": used_default,
             "n_feeds": len(extra_feeds), "errors": errors,
+            "sources": _collect_source_rows(
+                list(report.saved or []), list(report.errors or []),
+            ),
         }
     except Exception as exc:  # noqa: BLE001 — 모달이 오류 요약을 표시
         return {
@@ -1335,14 +1373,128 @@ def _run_collect_for_modal(progress=None) -> dict:
             "message": f"⚠️ 수집 처리 실패: {type(exc).__name__}: {exc}",
             "total_articles": 0, "total_files": 0,
             "n_keywords": 0, "used_default": False, "n_feeds": 0,
-            "errors": [f"{type(exc).__name__}: {exc}"],
+            "errors": [f"{type(exc).__name__}: {exc}"], "sources": [],
         }
     finally:
         _invalidate_collect_caches()
 
 
+_RUN_LOG_TRIG_LABEL: dict[str, str] = {
+    "cron": "자동(cron)", "manual": "수동 수집", "board": "보드 수집",
+}
+
+
+def _run_log_to_modal_result(run: dict) -> dict:
+    """런 로그 엔트리(`store.run_log` 스키마) → 수집 현황 모달 결과 dict (순수 변환).
+
+    ⚙ 수집 설정의 [📡 마지막 수집 결과 보기]/[보기] 가 과거 런을 모달 결과 요약
+    모드로 재열람할 때 쓴다. 과거 로그의 필드 누락(ok/sources/errors 등)에 방어:
+    - ok 누락 → errors 유무로 유추
+    - n_keywords → sources[].keywords 합집합 크기
+    - n_feeds → 키워드 검색(naver/google)·tech 가 아닌 소스 수(커스텀 RSS 근사)
+    결과 dict 에 `from_log=True` 마커 → 모달이 재수집 없이 요약만 보여준다
+    (기존 '결과 존재 시 collect 스킵' 가드 활용).
+    """
+    run = run if isinstance(run, dict) else {}
+    sources = [s for s in (run.get("sources") or []) if isinstance(s, dict)]
+
+    kws: list[str] = []
+    for s in sources:
+        for k in (s.get("keywords") or []):
+            k = str(k)
+            if k and k not in kws:
+                kws.append(k)
+    n_feeds = sum(
+        1 for s in sources
+        if str(s.get("source", "")) not in (*_SC_KEYWORD_SOURCES, "tech")
+    )
+
+    errors: list[str] = []
+    for e in (run.get("errors") or []):
+        if isinstance(e, dict):
+            errors.append(
+                str(e.get("source", "?"))
+                + (f" · {e.get('keyword')}" if e.get("keyword") else "")
+                + f": {e.get('error', '')}"
+            )
+        elif e:
+            errors.append(str(e))
+
+    ok = bool(run.get("ok")) if "ok" in run else not errors
+    total = int(run.get("total_articles", 0) or 0)
+    files = int(run.get("total_files", 0) or 0)
+    date, time = _run_when_parts(run.get("ts", ""))
+    when = f"{date} {time}".strip()
+    trig_raw = str(run.get("trigger", "") or "")
+    trig = _RUN_LOG_TRIG_LABEL.get(trig_raw, trig_raw or "—")
+    status = "정상" if ok else (f"오류 {len(errors)}건" if errors else "오류")
+    err_tail = f", 일부 오류 {len(errors)}건" if (ok and errors) else ""
+    message = (
+        f"📜 지난 수집 결과 ({trig} · {when}) — "
+        f"{total}건 수집 ({files}개 파일), {status}{err_tail}."
+    )
+    return {
+        "ok": ok, "message": message,
+        "total_articles": total, "total_files": files,
+        "n_keywords": len(kws), "used_default": False,
+        "n_feeds": n_feeds, "errors": errors,
+        "sources": _collect_source_rows(sources, run.get("errors") or []),
+        "from_log": True, "run_id": str(run.get("run_id", "") or ""),
+    }
+
+
+def _open_run_result_modal(run: dict) -> None:
+    """런 로그 1건 → 모달 결과 세션 주입 + 수집 현황 모달 오픈(재수집 없음) + rerun."""
+    st.session_state["_sc_collect_modal_result"] = _run_log_to_modal_result(run)
+    st.session_state["_sc_collect_modal_pending"] = True
+    st.rerun()
+
+
+_RUN_HISTORY_VIEW_N = 5  # ⚙ 수집 설정 이력에서 [보기] 버튼을 붙일 최근 런 수
+
+
+def _render_run_history_view_buttons() -> None:
+    """⚙ 수집 설정 이력 영역 — [📡 마지막 수집 결과 보기] + 최근 런별 [보기] 버튼.
+
+    클릭 시 `_open_run_result_modal` 이 런 로그를 모달 결과 dict 로 변환해 세션에
+    넣고 수집 현황 모달을 연다. 결과가 이미 있으므로 모달은 재수집하지 않는다.
+    런 로그가 없으면 안내 caption 만 (버튼 없음).
+    """
+    try:
+        from store import run_log
+        runs = run_log.load_runs(limit=_RUN_HISTORY_VIEW_N)
+    except Exception:  # noqa: BLE001
+        runs = []
+    with st.container(key="sc_runlog_views"):
+        if not runs:
+            st.caption("아직 수집 런 기록이 없어요 — [🔄 지금 뉴스 수집]으로 시작하세요.")
+            return
+        if st.button(
+            "📡 마지막 수집 결과 보기", key="_sc_runlog_last_btn",
+            use_container_width=True,
+            help="가장 최근 수집 런의 결과 요약을 수집 현황 모달로 다시 봅니다 (재수집 없음).",
+        ):
+            _open_run_result_modal(runs[0])
+        for i, run in enumerate(runs):
+            date, time = _run_when_parts(run.get("ts", ""))
+            trig_raw = str(run.get("trigger", "") or "")
+            trig = _RUN_LOG_TRIG_LABEL.get(trig_raw, trig_raw or "—")
+            ok = bool(run.get("ok")) if "ok" in run else not (run.get("errors") or [])
+            total = int(run.get("total_articles", 0) or 0)
+            c1, c2 = st.columns([4, 1], vertical_alignment="center")
+            with c1:
+                st.caption(
+                    f"{date} {time} · {trig} · {total}건 · "
+                    f"{'정상' if ok else '⚠ 오류'}"
+                )
+            with c2:
+                if st.button("보기", key=f"_sc_runlog_view_{i}",
+                             use_container_width=True):
+                    _open_run_result_modal(run)
+
+
 def _collect_result_summary_html(result: dict) -> str:
-    """수집 결과 요약 HTML — 상태 배지 + 한 줄 메시지 + KPI 4 + 오류 목록(전부 escape)."""
+    """수집 결과 요약 HTML — 배지 + 메시지 + KPI 4 + 소스별 건수 표 + 오류 목록(전부 escape)."""
     ok = bool(result.get("ok"))
     badge = ('<span class="sc-cm-badge sc-cm-ok">정상</span>' if ok
              else '<span class="sc-cm-badge sc-cm-fail">오류</span>')
@@ -1358,6 +1510,27 @@ def _collect_result_summary_html(result: dict) -> str:
         f'<div class="sc-cm-k">{_html.escape(k)}</div></div>'
         for k, v in stats
     )
+    # 소스별 수집 건수 표 — KPI 아래. 0건·오류 소스도 행으로 노출(어디서 안 왔는지).
+    src_rows = [s for s in (result.get("sources") or []) if isinstance(s, dict)]
+    src_html = ""
+    if src_rows:
+        trs = "".join(
+            '<tr class="{cls}"><td class="sc-cm-src-n">{name}</td>'
+            '<td class="sc-cm-src-c">{count}건</td>'
+            '<td class="sc-cm-src-s">{status}</td></tr>'.format(
+                cls="sc-cm-src-err" if not r.get("ok") else "",
+                name=_html.escape(str(r.get("source", "?") or "?")),
+                count=int(r.get("count", 0) or 0),
+                status="정상" if r.get("ok") else "⚠ 오류",
+            )
+            for r in src_rows
+        )
+        src_html = (
+            '<div class="sc-cm-srcs"><div class="sc-cm-srcs-t">소스별 수집 건수</div>'
+            '<table class="sc-cm-src-table">'
+            "<thead><tr><th>소스</th><th>건수</th><th>상태</th></tr></thead>"
+            f"<tbody>{trs}</tbody></table></div>"
+        )
     errors = [str(e) for e in (result.get("errors") or []) if e]
     err_html = ""
     if errors:
@@ -1372,7 +1545,7 @@ def _collect_result_summary_html(result: dict) -> str:
     return (
         '<div class="sc-collect-modal">'
         f'<div class="sc-cm-msg">{badge}<span>{msg}</span></div>'
-        f'<div class="sc-cm-stats">{cells}</div>{err_html}</div>'
+        f'<div class="sc-cm-stats">{cells}</div>{src_html}{err_html}</div>'
     )
 
 

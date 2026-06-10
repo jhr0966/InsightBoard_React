@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-10 — feat: 수집 현황 모달 ↔ 런 이력 연동 — 마지막 수집 결과 재열람 (`feat-collect-history-link`)
+
+**무엇을**: 수집 현황 모달의 결과를 ⚙ 수집 설정의 런 이력과 연동 — [📡 마지막 수집 결과 보기] / 런별 [보기] 로 과거 수집 결과를 모달로 재열람(재수집 없음).
+
+**어떻게** (`ui/data_management_v2.py`):
+1. `_run_log_to_modal_result`: run_log 엔트리 → 모달 결과 dict 단일 변환 헬퍼(순수). 필드 누락 방어(ok 유추, 키워드 합집합, feeds 근사, errors dict/str 수용), `from_log=True` 마커.
+2. `_render_run_history_view_buttons`(설정 서브뷰 이력 아래): [📡 마지막 수집 결과 보기] + 최근 5런 행별 [보기]. 클릭 → `_open_run_result_modal` 이 `_sc_collect_modal_result` 주입 + `_sc_collect_modal_pending` + rerun → 기존 '결과 존재 시 collect 스킵' 가드로 모달이 요약만 표시.
+3. `_run_collect_for_modal`: `record_run(..., duration_s=실측)` 보강(스키마 내 필드).
+3-1. 소스별 건수 표: `_collect_source_rows` 헬퍼 + 결과 요약 KPI 아래 소스별 표(0건/오류 소스 포함, escape) — 라이브/런 로그 결과 dict 모두 `sources` 포함, CSS `.sc-cm-srcs` 추가. 테스트 +3, pytest 901 passed.
+4. 테스트 +6(test_collect_trigger.py — 변환 정상/오류/누락, 플래그 세팅, 재수집 금지 단언, 런 없음 noop). pytest **898 passed** · 금지패턴 0.
+5. 브라우저 실측: ⚙ 수집 설정 → 보기 버튼 → 모달 결과 요약(지난 런 22:47 표시, collect 미실행). `/tmp/collect-history.png`.
+
+**상태**: 🔄 push — PR 은 오케스트레이터가 생성.
+
+---
+
 ## 2026-06-10 — feat: 수집 현황 모달 — [🔄 지금 뉴스 수집] 진행/결과 (`feat-collect-progress-modal`)
 
 **무엇을**: [지금 뉴스 수집] 클릭 시 화면 중앙에 **수집 현황 모달**(st.dialog) 을 띄워 진행 상황(st.status+st.progress, `collect_batch(on_step=)` 콜백)과 결과 요약(KPI 4 + 오류 목록)을 보여준다. 기존 `_consume_refresh_if_any` 의 render-도중 동기 수집 + 토스트 경로를 대체.
