@@ -59,8 +59,17 @@ with st.sidebar:
 _persona = st.session_state.get("persona") or _persona_store.load()
 st.session_state["persona"] = _persona
 
-# 글로벌 chat 전송 핸들러 — 어느 area 에서든 chat_input/form 으로 송신한 텍스트를
-# LLM 호출 → 응답 append → chat_log 영구화 (활성 thread 의 chat_key 로 저장).
+# 글로벌 chat 전송 핸들러(풀런 경로) — **유지 필수**. 우측 채팅은 fragment 라
+# 일반 area 전송은 chat_panel._render_side_fragment 최상단(scope="fragment")이
+# 처리하지만, 다음 두 send 는 앱 전체 rerun 으로 도착하므로 여기서 본문 렌더
+# **전에** 소비해야 한다 (LLM 호출 → 응답 append → chat_log 영구화):
+#   1. SOLA 작업실 form 전송(scope="app") — 중앙 작업대 캔버스('현재 산출물' =
+#      마지막 assistant 메시지)가 같은 런에서 답변을 반영해야 함.
+#   2. 작업실 인계 자동 전송(sola_workshop_v2._consume_prefill_ask_if_any) —
+#      `_do_sola_send` 세팅 후 전체 rerun 하는 기존 경로.
+# 같은 pending 키를 pop 하므로 fragment 쪽과 이중 처리는 없다. 또한 풀런에서
+# 먼저 pop 해 두면 fragment 최상단 consume 는 fragment rerun 중에만 발화 —
+# st.rerun(scope="fragment") 의 1.58 제약(풀런 중 호출 금지)을 함께 보장한다.
 chat_panel.consume_send_if_any(_persona)
 
 _is_persona = bool(st.session_state.get("show_persona_editor"))

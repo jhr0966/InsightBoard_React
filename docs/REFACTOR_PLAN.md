@@ -21,6 +21,26 @@
 
 ---
 
+## Phase 4 — 부분 갱신(UX)·성능 (🔄 1차 완료, 잔여 로드맵)
+
+> 목표: 클릭/상태 변경 시 **문서 전체 reload(흰 깜빡임) 제거** + rerun 비용 절감.
+> 1차(PR: refactor-partial-updates): 일자별 parquet 메모 · 자산/헬퍼 캐시 · 뉴스 수집
+> 브라우저 `@st.fragment` 부분 rerun (dialog-in-fragment 브라우저 실측 OK).
+
+**잔여 — 앵커(`href="?…"`) → 위젯 전환 우선순위** (모두 same-screen·전체 reload 유발):
+
+| 우선 | 대상 | 위치 | 패턴 |
+|---|---|---|---|
+| ~~P1~~ ✅ | 보드 기회 액션 → 버튼+pending 전환 완료(2026-06-10) | `board_v2.py` | 완료 |
+| ~~P1~~ ✅ | 보드 키워드 관리 → 버튼+pending 전환 완료(2026-06-10) | `board_v2.py` | 완료 |
+| ~~P1~~ ✅ | ~~작업 정의 `?td_view/td_edit/td_hist/td_action` 스위트~~ → 목록=오버레이 버튼, 액션=버튼+`_td_nav_pending`(query 번역 — 딥링크 호환) 전환 완료 | `task_def_manage.py` | 완료(2026-06-10) |
+| ~~P2~~ ✅ | ~~채팅 빠른 작업 칩 `?sola_action=`~~ → 버튼+pending 전환 완료 | `chat_panel.py` `_render_quick_action_chips` | 완료(2026-06-10) |
+| P2 | SOLA 스레드 전환 `?switch_thread=` | `sola_workshop_v2.py` (~847) | 항목별 컨테이너+오버레이 |
+| P3 | 인사이트 히트맵/매트릭스 SVG 클릭 `?ia_*` | `insights_v2.py` | SVG 내 앵커라 위젯 전환 불가 — fragment 로 reload 비용만 절감 검토 |
+| P3 | persona_editor 앵커(topbar/사이드바) | `app_shell.py`·`sidebar.py` | HTML topbar 구조상 유지(빈도 높지만 reload 후 모달이라 체감 낮음) |
+
+**fragment**: ✅ 우측 채팅 패널 완료(2026-06-10 — SOLA 작업실 외 화면 부분 rerun). 잔여 후보: 보관함 칸반(액션은 `st.rerun(scope="app")` 로 상단 소비자 유지).
+
 ## 결함 대장 (F-번호)
 
 코드 전수 확인 결과. **[실재]** 만 수정 대상, **[기각]** 은 과진단으로 확인돼 작업 없음.

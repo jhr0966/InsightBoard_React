@@ -16,10 +16,8 @@ import streamlit as st
 
 from persona import context as persona_ctx
 from persona.schema import Persona
-from sola import client as sola_client
 from sola import propose as sola_propose
 from sola import summarize as sola_summarize
-from sola.preview import format_messages_preview
 from store import bookmarks as bookmarks_store
 from store import chat_log
 from store import sola_threads
@@ -518,42 +516,11 @@ def _render_messages_html(messages: list[dict]) -> str:
     return "\n".join(_msg_html(m["role"], m["content"], m.get("ts", "")) for m in messages)
 
 
-# ── send 핸들러 (run 최상단) ─────────────────────────────────
-
-def _consume_send_if_any(persona: Persona) -> None:
-    """`_do_sola_send` pending → LLM 호출 → 메시지 추가 → rerun.
-
-    오류는 assistant 메시지로 노출 (UX 단절 방지). LLM 미설정은
-    `sola.preview` 미리보기로 폴백.
-    """
-    payload = st.session_state.pop("_do_sola_send", None)
-    if not payload:
-        return
-    user_text = str(payload).strip()
-    if not user_text:
-        return
-
-    _append_message("user", user_text)
-    msgs = _load_messages()
-    llm_messages = _build_llm_messages(persona, msgs)
-
-    try:
-        with st.spinner("SOLA 가 답변을 작성하고 있어요…"):
-            answer = sola_client.chat(llm_messages)
-        _append_message("assistant", answer)
-    except sola_client.LLMNotConfigured:
-        preview = format_messages_preview(
-            llm_messages,
-            header="ℹ️ LLM 미설정 — 아래는 실제로 전달될 입력 컨텍스트입니다.",
-            footer_hint=True,
-        )
-        _append_message("assistant", preview)
-    except Exception as exc:
-        _append_message("assistant", f"⚠️ 응답 생성 실패: {type(exc).__name__}: {exc}")
-    st.rerun()
-
-
 # ── 제안서 생성·저장 (Phase B — 제품 핵심 루프) ──────────────
+# (send 소비자는 chat_panel.consume_send_if_any 단일 구현 — app.py 최상단
+#  scope="app" + fragment 최상단 scope="fragment" 2곳에서 pop-once 소비.
+#  구 `_consume_send_if_any` 는 chat_panel 재구현으로 production-unused 가 되어
+#  삭제됨 — 끝에서 전체 st.rerun() 을 고정 호출해 fragment 부분 rerun 을 깼다.)
 
 def _related_news_df(dept: str, lv3: str, *, limit: int = 8):
     """제안서 근거용 관련 뉴스 — 최근 뉴스 중 작업(dept/lv3)과 매칭 상위 N건.
@@ -725,6 +692,22 @@ def _consume_sola_action_from_query_if_any() -> None:
 
     `generate_proposal` 은 인계 컨텍스트(dept/lv3/from)를 페이로드로 보존한다.
     """
+    # 버튼 칩(소켓 rerun) 경로 — `_sola_action_pending` 을 쿼리보다 먼저 소비.
+    pend = st.session_state.pop("_sola_action_pending", None)
+    if isinstance(pend, dict) and pend.get("action"):
+        action = str(pend["action"])
+        flag = _SOLA_ACTION_FLAGS.get(action)
+        if flag:
+            if action == "generate_proposal":
+                st.session_state[flag] = {
+                    "dept": str(pend.get("dept", "") or ""),
+                    "lv3": str(pend.get("lv3", "") or ""),
+                    "kind": str(pend.get("from", "") or ""),
+                }
+            else:
+                st.session_state[flag] = True
+        return
+
     action = st.query_params.get("sola_action")
     if not action:
         return
@@ -822,62 +805,66 @@ def _filter_threads_by_query(threads: "list[sola_threads.Thread]", query: str) -
     return [t for t in threads if q in (t.title or "").lower()]
 
 
-def _render_thread_list_html(threads: "list[sola_threads.Thread]", active_id: str,
-                             search_query: str = "") -> str:
-    """좌측 thread list — 시안 마크업과 호환되는 ul.ws-th-list 그룹 HTML.
+def _thread_item_html(t: "sola_threads.Thread", active_id: str) -> str:
+    """thread 1건 **시각 html** — 앵커 없음(클릭은 오버레이 st.button 이 받는다).
 
-    Args:
-        threads: 표시할 thread 리스트 (이미 정렬됨).
-        active_id: 강조할 활성 thread id.
-        search_query: 검색어 (있으면 결과를 단일 '검색 결과 N건' 그룹으로 평탄화).
+    직전엔 `?app_area=…&switch_thread=<id>` 앵커라 클릭마다 문서 전체 reload
+    (흰 깜빡임)였다. ws-th-item / ws-th-active 클래스는 유지(스타일 호환),
+    항목이 st.container 로 감싸이며 ul 흐름에서 분리됐으므로 li → div.
     """
-    if not threads and not search_query.strip():
-        return (
-            '<div style="padding: 18px 14px; text-align: center; color: var(--text-muted);'
-            ' font-size: 13px; line-height: 1.6;">'
-            '아직 대화가 없어요.<br>'
-            '<span style="font-size:12px;">아래 입력창에 질문하면 첫 스레드가 만들어져요.</span>'
-            '</div>'
-        )
+    active_cls = " ws-th-active" if t.id == active_id else ""
+    time_label = _hhmm(t.updated_at or t.created_at)
+    pin_mark = " · ★ 고정" if t.pinned else ""
+    return (
+        f'<div class="ws-th-item{active_cls}">'
+        '<div class="ws-th-l" style="display:flex; align-items:center; gap:10px; flex:1;">'
+        '<div class="ws-th-icon"><span style="font-size:11px;">💬</span></div>'
+        '<div>'
+        f'<div class="ws-th-name">{_html.escape(t.title or "새 대화")}</div>'
+        f'<div class="ws-th-meta">{_html.escape(time_label)} · 메시지 {int(t.message_count)}{pin_mark}</div>'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
 
-    def _item_html(t: "sola_threads.Thread") -> str:
-        active_cls = " ws-th-active" if t.id == active_id else ""
-        time_label = _hhmm(t.updated_at or t.created_at)
-        pin_mark = " · ★ 고정" if t.pinned else ""
-        href = f"?app_area={_AREA_QUOTED}&switch_thread={t.id}"
-        return (
-            f'<li class="ws-th-item{active_cls}">'
-            f'<a class="ws-th-l" href="{href}" target="_self" style="display:flex; align-items:center; gap:10px; flex:1; text-decoration:none; color:inherit;">'
-            f'<div class="ws-th-icon"><span style="font-size:11px;">💬</span></div>'
-            f'<div>'
-            f'<div class="ws-th-name">{_html.escape(t.title or "새 대화")}</div>'
-            f'<div class="ws-th-meta">{_html.escape(time_label)} · 메시지 {int(t.message_count)}{pin_mark}</div>'
-            f'</div>'
-            f'</a>'
-            f'</li>'
-        )
 
-    parts: list[str] = []
+def _thread_list_empty_html() -> str:
+    """thread 0건 + 검색어 없음 — 첫 사용 안내 카드."""
+    return (
+        '<div style="padding: 18px 14px; text-align: center; color: var(--text-muted);'
+        ' font-size: 13px; line-height: 1.6;">'
+        '아직 대화가 없어요.<br>'
+        '<span style="font-size:12px;">아래 입력창에 질문하면 첫 스레드가 만들어져요.</span>'
+        '</div>'
+    )
 
-    # 검색 모드 — 단일 평탄 그룹
+
+def _thread_search_empty_html(search_query: str) -> str:
+    """검색 0 매칭 — 검색어(escape · 40자 cap) 노출 + 지우기 안내."""
+    return (
+        '<div class="ws-th-grp">검색 결과</div>'
+        '<div style="padding: 18px 14px; text-align: center; color: var(--text-muted);'
+        ' font-size: 13px; line-height: 1.6;">'
+        f'“{_html.escape(search_query[:40])}” 와 일치하는 대화가 없어요.<br>'
+        '<span style="font-size:12px;">검색을 지우면 전체 목록으로 돌아갑니다.</span>'
+        '</div>'
+    )
+
+
+def _thread_groups(
+    threads: "list[sola_threads.Thread]", search_query: str = "",
+) -> "list[tuple[str, list[sola_threads.Thread]]]":
+    """thread 그룹 [(라벨, 항목들)] — 렌더와 분리된 순수 그룹핑(테스트 대상).
+
+    검색어가 있으면 단일 평탄 "검색 결과 N건" 그룹(0 매칭이면 빈 리스트),
+    없으면 ★ 고정 → 오늘 → 어제 → 이번 주 → 이전 순서.
+    """
     if search_query.strip():
         filtered = _filter_threads_by_query(threads, search_query)
         if not filtered:
-            return (
-                f'<div class="ws-th-grp">검색 결과</div>'
-                '<div style="padding: 18px 14px; text-align: center; color: var(--text-muted);'
-                ' font-size: 13px; line-height: 1.6;">'
-                f'“{_html.escape(search_query[:40])}” 와 일치하는 대화가 없어요.<br>'
-                '<span style="font-size:12px;">검색을 지우면 전체 목록으로 돌아갑니다.</span>'
-                '</div>'
-            )
-        parts.append(f'<div class="ws-th-grp">검색 결과 {len(filtered)}건</div>')
-        parts.append('<ul class="ws-th-list">')
-        parts.extend(_item_html(t) for t in filtered)
-        parts.append('</ul>')
-        return "\n".join(parts)
+            return []
+        return [(f"검색 결과 {len(filtered)}건", filtered)]
 
-    # 일반 모드 — 그룹별 묶기 (순서: ★고정 → 오늘 → 어제 → 이번 주 → 이전)
     groups: dict[str, list[sola_threads.Thread]] = {}
     pinned: list[sola_threads.Thread] = []
     for t in threads:
@@ -887,20 +874,43 @@ def _render_thread_list_html(threads: "list[sola_threads.Thread]", active_id: st
         g = _group_label(t.updated_at or t.created_at)
         groups.setdefault(g, []).append(t)
 
-    def _emit_group(label: str, items: "list[sola_threads.Thread]") -> None:
-        if not items:
-            return
-        parts.append(f'<div class="ws-th-grp">{_html.escape(label)}</div>')
-        parts.append('<ul class="ws-th-list">')
-        parts.extend(_item_html(t) for t in items)
-        parts.append('</ul>')
-
+    out: list[tuple[str, list[sola_threads.Thread]]] = []
     if pinned:
-        _emit_group("★ 고정", pinned)
+        out.append(("★ 고정", pinned))
     for label in ("오늘", "어제", "이번 주", "이전"):
-        _emit_group(label, groups.get(label, []))
+        if groups.get(label):
+            out.append((label, groups[label]))
+    return out
 
-    return "\n".join(parts)
+
+def _render_thread_list(threads: "list[sola_threads.Thread]", active_id: str,
+                        search_query: str = "") -> None:
+    """좌측 thread list — 그룹 헤더는 html, **항목은 컨테이너+투명 오버레이 버튼**.
+
+    항목 클릭 = 오버레이 st.button(`ws_th_open_<i>`) → `_switch_thread_pending=<id>`
+    → st.rerun() → 다음 run 최상단 `_switch_thread_from_query_if_any` 가 쿼리보다
+    먼저 소비(소켓 rerun — 문서 reload 없음, I-23). 작업 정의 `td_card_*` 목록과
+    동일 하우스 패턴 — 오버레이 CSS 는 `assets/v2/screens/sola.css`.
+    """
+    if not threads and not search_query.strip():
+        st.html(_thread_list_empty_html())
+        return
+
+    groups = _thread_groups(threads, search_query)
+    if not groups:  # 검색 모드 0 매칭
+        st.html(_thread_search_empty_html(search_query))
+        return
+
+    idx = 0
+    for label, items in groups:
+        st.html(f'<div class="ws-th-grp">{_html.escape(label)}</div>')
+        for t in items:
+            with st.container(key=f"ws_th_{idx}"):
+                st.html(_thread_item_html(t, active_id))
+                if st.button("열기", key=f"ws_th_open_{idx}", use_container_width=True):
+                    st.session_state["_switch_thread_pending"] = t.id
+                    st.rerun()
+            idx += 1
 
 
 def _render_thread_filters_html(threads: "list[sola_threads.Thread]") -> str:
@@ -915,7 +925,24 @@ def _render_thread_filters_html(threads: "list[sola_threads.Thread]") -> str:
 
 
 def _switch_thread_from_query_if_any() -> None:
-    """?switch_thread=<id> 가 URL 에 있으면 1회 소비 → active 전환 + query strip."""
+    """thread 전환 1회 소비 — **pending flag(오버레이 버튼)를 쿼리보다 먼저**.
+
+    1. `_switch_thread_pending` — 목록 항목의 투명 오버레이 st.button 경로
+       (소켓 rerun, 문서 reload 없음 — I-23). render() 최상단(위젯 인스턴스화 전)
+       이라 active 전환 후 같은 run 으로 계속 — 추가 rerun 불필요, URL 도 깨끗.
+    2. `?switch_thread=<id>` — 딥링크/북마크 호환 경로(유지): active 전환 +
+       query strip + rerun (재방문 재실행 방지).
+
+    둘 다 있으면 pending(최신 클릭) 승 — 스테일 쿼리는 함께 strip.
+    """
+    pend = st.session_state.pop("_switch_thread_pending", None)
+    if pend:
+        if sola_threads.get(str(pend)):
+            st.session_state[_ACTIVE_THREAD_KEY] = str(pend)
+        if "switch_thread" in st.query_params:  # 스테일 딥링크 잔재 방어
+            del st.query_params["switch_thread"]
+        return
+
     tid = st.query_params.get("switch_thread")
     if not tid:
         return
@@ -925,11 +952,6 @@ def _switch_thread_from_query_if_any() -> None:
     if "switch_thread" in st.query_params:
         del st.query_params["switch_thread"]
     st.rerun()
-
-
-# 5-nav area_key 의 URL quote 캐시 (thread link 에 사용).
-from urllib.parse import quote as _urlquote
-_AREA_QUOTED = _urlquote("🤖 SOLA 작업실")
 
 
 def _handoff_signature(from_kind: str) -> str:
@@ -1080,11 +1102,11 @@ def _render_workbench(persona: Persona) -> None:
                   label_visibility="collapsed")
     search_query = st.session_state.get("_sola_search_q", "") or ""
     active_th = _active_thread()
-    st.html(
-        '<div class="ws-threads" style="margin-top:4px;">'
-        + _render_thread_list_html(all_threads, active_th.id, search_query)
-        + '</div>'
-    )
+    # 구 단일 st.html(.ws-threads 카드)을 컨테이너로 — 항목이 위젯(오버레이 버튼)
+    # 이 되면서 한 HTML 문자열로 만들 수 없다. 카드 룩은 `.st-key-ws_threads`
+    # (sola.css)가 복제.
+    with st.container(key="ws_threads"):
+        _render_thread_list(all_threads, active_th.id, search_query)
 
     # 현재 세션 관리 (고정 / 삭제) — 기능 보존
     m1, m2, _m3 = st.columns([1.3, 1.3, 2])

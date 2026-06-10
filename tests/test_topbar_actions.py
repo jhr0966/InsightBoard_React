@@ -10,6 +10,7 @@ import pytest
 
 def test_notif_count_reads_pending_from_bookmarks():
     from ui import app_shell
+    app_shell._notif_count.clear()          # 60s 캐시 — 테스트 격리
     fake_summary = {"proposal_status": {"pending": 3, "adopted": 1}}
     with patch("store.bookmarks.summary_counts", return_value=fake_summary):
         assert app_shell._notif_count() == 3
@@ -17,6 +18,7 @@ def test_notif_count_reads_pending_from_bookmarks():
 
 def test_notif_count_zero_when_no_pending():
     from ui import app_shell
+    app_shell._notif_count.clear()          # 60s 캐시 — 테스트 격리
     fake_summary = {"proposal_status": {"adopted": 2}}
     with patch("store.bookmarks.summary_counts", return_value=fake_summary):
         assert app_shell._notif_count() == 0

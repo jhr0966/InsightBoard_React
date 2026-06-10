@@ -103,3 +103,61 @@ def test_load_news_for_days_memo_hit_invalidate_and_copy():
     # 새 parquet 저장 → 디렉토리 mtime/수 변화 → 캐시 무효화 → 신규 반영
     save_articles([{"title": "b", "link": "l2", "source": "google"}], source="google")
     assert len(load_news_for_days(days=1)) == 2
+
+
+def test_day_frame_memo_dedupes_disk_reads(monkeypatch, tmp_path):
+    """윈도우(3/7/30일)가 달라도 같은 날짜 parquet 은 디스크에서 1회만 읽어야 한다."""
+    import pandas as _pd
+    from store import news_db
+
+    news_db.save_articles(
+        [{"title": "t1", "link": "https://a", "source": "naver"}], source="naver")
+
+    calls = {"n": 0}
+    real = _pd.read_parquet
+
+    def counting(*a, **kw):
+        calls["n"] += 1
+        return real(*a, **kw)
+
+    monkeypatch.setattr(_pd, "read_parquet", counting)
+    news_db._day_frame_memo.clear()
+    news_db._news_window_memo.clear()
+
+    news_db.load_news_for_days(days=3)
+    news_db.load_news_for_days(days=7)
+    news_db.load_news_for_days(days=30)
+    news_db.load_all_today()
+    assert calls["n"] == 1                      # 오늘 1개 파일 → 정확히 1회
+
+    # 새 parquet 추가(수집) → 해당 일자만 재읽기(파일 2개 = +2회)
+    news_db.save_articles(
+        [{"title": "t2", "link": "https://b", "source": "google"}], source="google")
+    df = news_db.load_news_for_days(days=7)
+    assert calls["n"] == 3
+    assert set(df["link"]) == {"https://a", "https://b"}  # 무효화 후 합본 정상
+
+
+def test_multiday_window_prefers_latest_saved_row_for_old_articles(tmp_path):
+    """과거 일자 기사를 오늘 upsert(재-enrich 보강)하면 다일 윈도우가 보강본을 반환해야 한다."""
+    from datetime import datetime, timedelta, timezone
+    from store import news_db
+    from config import NEWS_DIR
+
+    # 어제 디렉토리에 원본(빈 본문) 저장
+    yday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    day_dir = NEWS_DIR / yday
+    day_dir.mkdir(parents=True, exist_ok=True)
+    news_db._to_df([{"title": "옛 기사", "link": "https://old", "source": "naver",
+                     "content": ""}]).to_parquet(day_dir / "naver_000001Z.parquet", index=False)
+
+    # 오늘 디렉토리에 보강본 upsert
+    news_db.upsert_articles(
+        [{"title": "옛 기사", "link": "https://old", "source": "naver",
+          "content": "보강된 본문입니다."}], source="naver")
+
+    news_db._day_frame_memo.clear(); news_db._news_window_memo.clear()
+    df = news_db.load_news_for_days(days=7)
+    row = df[df["link"] == "https://old"].iloc[-1]
+    assert row["content"] == "보강된 본문입니다."
+    assert len(df[df["link"] == "https://old"]) == 1   # link dedup 유지

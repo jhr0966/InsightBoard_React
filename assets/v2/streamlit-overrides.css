@@ -212,6 +212,16 @@ body:has(.db-topbar) [data-testid="stHorizontalBlock"]:has(.side-chat-marker)
   transition: opacity 120ms;
 }
 .side-chat-action:hover { opacity: 0.88; }
+/* 빠른 작업 — 네이티브 버튼 칩 (앵커 reload 제거 후속: st.button 을 칩 룩으로) */
+.st-key-side_quick_actions { margin: 2px 0 8px; }
+.st-key-side_quick_actions button {
+  font-size: 12px; font-weight: 700; padding: 4px 6px; min-height: 30px;
+  border-radius: 999px; border: 1px solid var(--surface-divider);
+  background: var(--surface-soft); color: var(--text-secondary);
+}
+.st-key-side_quick_actions button:hover {
+  border-color: var(--accent-primary); color: var(--accent-primary); opacity: 0.92;
+}
 
 /* 사이드바를 접으면 좌상단 펼치기 버튼이 페이지 헤더 첫 글자를 가리지 않도록
    페이지 헤더(.db-topbar)만 좌측으로 살짝 민다 (aria-expanded="false" = 접힘). */

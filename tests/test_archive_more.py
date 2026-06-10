@@ -168,3 +168,92 @@ def test_handoff_edit_sets_sola_area_and_query():
         assert st.query_params.get("title") == "제안서 A"
     finally:
         st.query_params.clear()
+
+
+# ── 칸반 fragment — 부분 rerun 경계 + rerun scope 규약 ─────────
+
+def test_kanban_fragment_wraps_zone_body():
+    """`_render_kanban_zone_fragment` = st.fragment(본체). 본체는 bare 폴백용으로 보존."""
+    from ui import archive_v2
+    assert archive_v2._render_kanban_zone_fragment is not archive_v2._render_kanban_zone
+    # st.fragment 는 functools.wraps 로 감싼다 → __wrapped__ 가 본체
+    assert getattr(archive_v2._render_kanban_zone_fragment, "__wrapped__", None) \
+        is archive_v2._render_kanban_zone
+
+
+def test_card_action_button_sets_pending_and_app_scope_rerun():
+    """채택 버튼 → `_do_archive_action` pending + 전체 rerun(scope="app").
+
+    소비자(`_consume_action_if_any`)·헤더 KPI 는 fragment 밖(부모 render)이라
+    fragment-scope 면 칸반만 다시 그려져 액션이 반영되지 않는다.
+    """
+    from unittest.mock import patch
+    from ui import archive_v2
+    import streamlit as st
+    bm = _mk_items(1)[0]
+    st.session_state.pop("_do_archive_action", None)
+    try:
+        with patch("streamlit.button",
+                   side_effect=lambda *a, key=None, **k: key == f"_oa_adopt_{bm.id}"), \
+             patch("streamlit.rerun") as rr:
+            archive_v2._render_card_actions("pending", bm)
+        assert st.session_state["_do_archive_action"] == ("adopt", bm.id)
+        rr.assert_called_once_with(scope="app")
+    finally:
+        st.session_state.pop("_do_archive_action", None)
+
+
+def test_restore_button_sets_pending_and_app_scope_rerun():
+    from unittest.mock import patch
+    from ui import archive_v2
+    import streamlit as st
+    bm = _mk_items(1, status="adopted")[0]
+    st.session_state.pop("_do_archive_action", None)
+    try:
+        with patch("streamlit.button",
+                   side_effect=lambda *a, key=None, **k: key == f"_oa_restore_{bm.id}"), \
+             patch("streamlit.rerun") as rr:
+            archive_v2._render_card_actions("adopted", bm)
+        assert st.session_state["_do_archive_action"] == ("restore", bm.id)
+        rr.assert_called_once_with(scope="app")
+    finally:
+        st.session_state.pop("_do_archive_action", None)
+
+
+def test_more_toggle_uses_fragment_scope_rerun():
+    """더보기/접기 → 표시 상태(`_oa_expanded`)만 바꾸므로 fragment 부분 rerun."""
+    from unittest.mock import patch
+    from ui import archive_v2
+    import streamlit as st
+    st.session_state.pop("_oa_expanded", None)
+    try:
+        with patch("streamlit.button",
+                   side_effect=lambda *a, key=None, **k: key == "_oa_more_pending"), \
+             patch("streamlit.rerun") as rr, \
+             patch("streamlit.html"):
+            archive_v2._render_kanban_column(
+                "pending", "대기", "#0369A1", "검토 대기 중",
+                _mk_items(6), expanded=False)
+        assert archive_v2._expanded_cols() == frozenset({"pending"})
+        rr.assert_called_once_with(scope="fragment")
+    finally:
+        st.session_state.pop("_oa_expanded", None)
+
+
+def test_render_falls_back_to_zone_body_without_run_ctx():
+    """bare 호출(ctx 없음 — 단위테스트 직접 render)은 fragment 가 no-op 이므로
+    본체 폴백으로 칸반이 실제로 그려져야 한다 (e2e S7 보호)."""
+    from unittest.mock import patch
+    from ui import archive_v2
+    assert archive_v2._has_run_ctx() is False     # pytest bare = ctx 없음
+    with patch.object(archive_v2, "_render_kanban_zone") as body, \
+         patch.object(archive_v2, "_render_kanban_zone_fragment") as frag, \
+         patch.object(archive_v2, "_consume_action_if_any", return_value=None), \
+         patch.object(archive_v2, "_oa_data", return_value={
+             "stats": {"total": "0", "adopted": "0", "pending": "0",
+                       "rejected": "0", "adopted_pct": "—"},
+             "pending": [], "adopted": [], "rejected": []}), \
+         patch("streamlit.html"):
+        archive_v2.render()
+    body.assert_called_once()
+    frag.assert_not_called()

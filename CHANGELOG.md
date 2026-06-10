@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+### Changed (시스템 점검·리팩토링 1차 — 부분 갱신 + 성능)
+- **뉴스 수집 브라우저를 `@st.fragment` 부분 rerun 경계로**(`ui/data_management_v2.py` `_render_browse_zone`): 보기 모드(카드/표)·대분류 탭·출처칩 전환, 카드 [기사 보기], 표 행 선택, 모달 ✕ 닫기가 **앱 전체 스크립트(topbar·사이드바·우측 채팅) 재실행 없이 해당 구역만** 다시 그린다 → 클릭 반응 즉각화. dialog-in-fragment 동작은 브라우저 실측(모달 열림/닫힘·카드↔표 왕복)으로 확인.
+- **일자별 parquet 메모**(`store/news_db.py` `_day_frame_memo`): 보드 한 렌더가 3/14/30/56일 윈도우를 섞어 요청해도 **같은 날짜 parquet 은 1회만 디스크에서 읽는다**(직전: 윈도우마다 전체 재스캔 — 보드형 패턴 9×). `load_all_today` 도 공유. 새 수집 시 (mtime, 파일 수) 시그니처로 자동 무효화.
+- **자산/헬퍼 캐시**: `ui/components.read_asset_text`((경로,mtime) 키) — CSS 6종 + 화면 템플릿 4종(board/insights/dm/archive)의 **매 rerun 디스크 재읽기 제거**(파일 수정 시 자동 갱신·핫리로드 유지). `_board_kw_mgr_html`·`_notif_count`·`chat_context_block_collect`(내부 `_chat_context_collect_cached` 분리)에 `@st.cache_data(ttl=60)`.
+- **측정**: 보드 콜드 렌더 4.13s → **1.74s(-58%)** · 보드형 로드 패턴(콜드) 0.071s → 0.045s(소규모 시드 기준, 데이터 누적 시 격차 확대) · 워밍 렌더 0.04~0.10s 유지.
+- **시나리오 시뮬레이션**: e2e **S8(부분 갱신)** 신설 — 표 전환→카드 복귀→모달 열기/닫기 상태 전이 한 세션 연속 검증 + `news_db` 일자 메모 디스크 읽기 횟수 회귀 테스트. 캐시 도입에 따른 테스트 격리(clear) 2건 보강.
+- **채팅 빠른 작업 칩 reload 제거**(`ui/chat_panel.py`, `ui/sola_workshop_v2.py`, `streamlit-overrides.css`): SOLA 작업실 우측 채팅의 빠른 작업(제안서 생성/뉴스 요약/새 대화)이 `?sola_action=` 앵커라 **클릭마다 문서 전체 reload** 였던 것을 `st.button` 칩(`_render_quick_action_chips`) + `_sola_action_pending` 플래그로 전환 — 소켓 rerun 만 탄다. 인계 컨텍스트(dept/lv3/from) 보존, 소비자는 pending 우선 + 쿼리(딥링크) 호환 유지. 버튼 칩 CSS 추가.
+- **작업 정의 관리 td_* 앵커 스위트 reload 제거**(`ui/task_def_manage.py`, `assets/v2/screens/data_management.css`): 목록 카드(`?td_view=`)·상세 액션 4종(목록/수정/이력/삭제 `?td_edit/td_hist/td_action=`)·[+ 새 작업 추가](`?td_add=`)·폼 취소/저장 redirect 가 모두 앵커/URL 조립이라 **클릭마다 문서 전체 reload** 였던 것을 위젯으로 전환 — 카드는 투명 오버레이 `st.button`(sc_card 하우스 패턴), 액션 바는 `st.button` 4종(+삭제는 JS confirm 대신 2-step 확정), 모두 `_td_nav_pending` 에 행선지를 담고 `_consume_td_nav_pending` 이 위젯 인스턴스화 전에 **query params 로 번역**(td_* 전체 교체 = 앵커와 동일 의미)해 기존 쿼리 주도 로직·딥링크(`?td_view=` 직접 입력) 호환 유지. 부수 수정: 구 `_td_redirect` 가 스테일 `td_edit/td_add` 를 안 지워 저장/취소 후 폼에 머물던 잠재 결함이 전체 교체 번역으로 해소. `_manage_href` URL 빌더 삭제(사용처 0).
+- **보드 기회/키워드 액션 reload 제거**(`ui/board_v2.py`, `board_main.html`, `board.css`): 템플릿을 두 placeholder 경계로 분할 렌더하고, 기회 카드 보류/채택·키워드 ×(숨김/제거)·즉시 수집 CTA 를 `st.button`+pending 으로 전환(SOLA와 검토 인계 링크만 앵커 유지). 소비자는 pending 우선+쿼리 호환.
+- **우측 채팅 패널 `@st.fragment` 부분 rerun**(`ui/chat_panel.py`, `app.py`): SOLA 작업실 외 화면에서 보내기/추천질문 pill 이 **채팅 컬럼만** 갱신(LLM 호출·영구화 포함). SOLA 작업실 송신·빠른 작업 칩은 중앙 작업대 동기화를 위해 `scope="app"`. 앱 상단 소비는 유지(인계 자동송신 경로·pop-once 라 이중 처리 없음).
+- **잔여 로드맵**: 전체 reload 를 유발하는 same-screen 앵커(보드 kw/opp 액션·작업정의 td_* 스위트·채팅 칩·SOLA 스레드 전환 등) 전환 우선순위를 `docs/REFACTOR_PLAN.md` **Phase 4** 로 문서화.
+- 검증: pytest **832 passed**(신규 2) · 금지패턴 0 · 브라우저 실측 OK.
+
 ### Fixed (thebell 본문·사진 — 실제 마크업 기반 정밀 수정)
 - **본문 셀렉터 직결**(`scraping/enrich.py`): 사용자가 제공한 thebell 실페이지 HTML 로 확인 — 본문이 `<p>` 없이 `<br>` 구분 텍스트로 `div#article_main`(`.viewSection`) 에 직접 들어있어 셀렉터 미매칭이었음 → `_CONTENT_SELECTORS` 에 `div#article_main`·`div.viewSection` 추가(폴백이 아닌 정공 경로로 수집).
 - **사진 오선택/누락 수정**(`scraping/extract.py`, `enrich.py`): 기사 사진보다 문서 앞에 나오는 **구글 선호 출처 아이콘(`google_icon.png`)·공유 아이콘이 junk 필터에 안 걸려** 대표 이미지로 잡히던 구조 → junk 조각에 `_icon.`/`icon_`/`/icons/`/`/banner/`(광고 배너)/`share_` 추가. 이미지 탐색 순서에 본문 컨테이너 스코프(`div[id*='article'] img` 등)를 문서 전체 `img` 보다 앞에 추가.

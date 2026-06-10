@@ -475,9 +475,15 @@ def _archive_stats_dm() -> dict[str, int]:
 def chat_context_block_collect(persona: Persona) -> str:
     """뉴스 수집 화면이 보여주는 모든 데이터를 LLM 컨텍스트로 packaging.
 
-    헤더 4 stats + 14일 sparkline 일별 수집량 + 뉴스 라이브러리 6 + 수집잡 요약.
-    캐시된 helper 들이 같은 데이터를 계산해두므로 재호출은 캐시 hit.
+    페르소나 비의존(헤더 stats·추이·출처 분포·최근 기사) → 본문은 60s 캐시
+    (`_chat_context_collect_cached`). 직전엔 매 rerun 뉴스 윈도우 4회 로드였다.
     """
+    return _chat_context_collect_cached()
+
+
+@st.cache_data(ttl=60)
+def _chat_context_collect_cached() -> str:
+    """뉴스 수집 채팅 컨텍스트 본문 — 헤더 4 stats + 14일 추이 + 최근 6건 + 출처 분포."""
     parts: list[str] = ["--- 현재 화면: 뉴스 수집 (🗞) ---"]
 
     # 헤더 4 stats
@@ -862,6 +868,19 @@ def _render_news_browser(persona) -> None:
     _render_card_grid(cat, chan, q)
 
 
+@st.fragment
+def _render_browse_zone(persona) -> None:
+    """카드/표 브라우저 + 기사 모달 — 부분 rerun 경계(@st.fragment).
+
+    보기 모드·대분류 탭·출처칩 전환, 카드 [기사 보기], 표 행 선택, 모달 ✕ 닫기가
+    모두 이 fragment 안 위젯이라 **앱 전체 스크립트(topbar·사이드바·우측 채팅)를
+    재실행하지 않고 이 구역만** 다시 그린다 → 클릭 반응이 즉각적. 상단 검색·수집
+    실행·설정 토글은 fragment 밖이므로 기존대로 앱 전체 rerun.
+    """
+    _render_news_browser(persona)
+    _render_news_modal_if_open()
+
+
 def _render_collect_actionbar() -> None:
     """메인 카드뷰 액션바 — [🔄 지금 뉴스 수집] + [⚙ 수집 설정] (소켓 rerun)."""
     with st.container(key="sc_actionbar"):
@@ -1060,12 +1079,11 @@ def render_collect() -> None:
 
     if st.session_state.get("sc_collect_view") == "settings":
         _render_collect_settings(dm_stats, persona)
+        _render_news_modal_if_open()
     else:
         _render_dm_header(dm_stats)        # 수집 현황 요약(KPI 4)
         _render_collect_actionbar()         # [지금 수집][⚙ 수집 설정]
-        _render_news_browser(persona)       # 대분류 탭 + 출처칩 + 사진 카드
-
-    _render_news_modal_if_open()             # 카드 클릭 시 기사 모달
+        _render_browse_zone(persona)        # 탭/칩/카드/표 + 기사 모달 (부분 rerun)
 
 
 def render_taskdef() -> None:
@@ -1169,7 +1187,7 @@ def _render_dm_header(dm_stats: dict[str, str | int]) -> None:
     """수집 현황 요약 헤더(브레드크럼·설명·KPI 4종) — 카드뷰/설정뷰 상단에 1회.
 
     `_DM_TEMPLATE` 의 헤더 부분({{DM_TABS}} 앞)만 잘라 KPI 를 끼워 렌더한다."""
-    template = _DM_TEMPLATE.read_text(encoding="utf-8")
+    template = _components.read_asset_text(_DM_TEMPLATE)
     head = template.split("{{DM_TABS}}", 1)[0]  # <div class=dm-shell>…<header>…</header>
     head_html = (
         head

@@ -1,4 +1,9 @@
-"""SOLA composer 실 LLM 호출 wire — 전송 → 응답 → 영구화 / 폴백 / 컨텍스트 빌드."""
+"""SOLA composer wire — 컨텍스트 빌드 / 영구화 / thread 액션·전환 / 인계 자동 전송.
+
+send 소비(`_do_sola_send` → LLM → append → rerun)는 `chat_panel.consume_send_if_any`
+단일 구현으로 이동 — happy/폴백/예외/noop 커버리지는 `test_chat_panel.py` 참조.
+(구 `sola_workshop_v2._consume_send_if_any` 는 production-unused 로 삭제됨.)
+"""
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -6,7 +11,6 @@ from unittest.mock import patch
 import pytest
 
 from persona.schema import Persona
-from sola.client import LLMNotConfigured
 from ui import sola_workshop_v2 as sola_v2
 
 
@@ -185,69 +189,77 @@ def test_load_messages_seeds_from_chat_log_when_session_empty(clean_chat_log):
     assert msgs[0]["content"] == "이전 질문"
 
 
-# ── consume_send happy / 미설정 폴백 / 일반 예외 ─────────────
+# ── thread 전환 소비 — pending(오버레이 버튼) 우선 → 쿼리(딥링크) 폴백 ──
 
-def _active_msgs(st_module) -> list[dict]:
-    """B.4: 활성 thread 의 메시지 캐시 key (`_sola_messages_<id>`) 에서 읽기."""
-    tid = st_module.session_state.get("_sola_thread_id")
-    if not tid:
-        return []
-    return st_module.session_state.get(f"_sola_messages_{tid}", [])
-
-
-def test_consume_send_happy_path_appends_user_and_assistant(clean_chat_log):
+def test_switch_thread_pending_sets_active_without_rerun(clean_chat_log):
+    """오버레이 버튼 경로 — render 최상단 소비라 같은 run 으로 계속(rerun 불필요)."""
     import streamlit as st
-    st.session_state["_do_sola_send"] = "테스트 질문"
-    with patch("sola.client.chat", return_value="테스트 답변"), \
-         patch("streamlit.rerun"):
-        sola_v2._consume_send_if_any(Persona(name="홍길동"))
-    msgs = _active_msgs(st)
-    assert [m["role"] for m in msgs] == ["user", "assistant"]
-    assert msgs[0]["content"] == "테스트 질문"
-    assert msgs[1]["content"] == "테스트 답변"
-    # pending flag 소비됨
-    assert "_do_sola_send" not in st.session_state
+    from store import sola_threads
+    th = sola_threads.create("전환 대상")
+    st.query_params.clear()
+    st.session_state["_switch_thread_pending"] = th.id
+    try:
+        with patch("streamlit.rerun") as rr:
+            sola_v2._switch_thread_from_query_if_any()
+            rr.assert_not_called()
+        assert st.session_state["_sola_thread_id"] == th.id
+        assert "_switch_thread_pending" not in st.session_state   # pop-once
+    finally:
+        st.query_params.clear()
+        st.session_state.pop("_switch_thread_pending", None)
 
 
-def test_consume_send_llm_not_configured_falls_back_to_preview(clean_chat_log):
+def test_switch_thread_pending_wins_over_query_and_strips(clean_chat_log):
+    """pending(최신 클릭)이 쿼리보다 먼저 — 스테일 ?switch_thread= 는 함께 strip."""
     import streamlit as st
-    st.session_state["_do_sola_send"] = "Q"
-    with patch("sola.client.chat", side_effect=LLMNotConfigured("no key")), \
-         patch("streamlit.rerun"):
-        sola_v2._consume_send_if_any(Persona())
-    msgs = _active_msgs(st)
-    assert len(msgs) == 2
-    # preview 마커 — sola.preview.format_messages_preview 의 typical 출력
-    assert "LLM 미설정" in msgs[1]["content"] or "system" in msgs[1]["content"]
+    from store import sola_threads
+    a = sola_threads.create("a")
+    b = sola_threads.create("b")
+    st.query_params.clear()
+    st.query_params["switch_thread"] = a.id
+    st.session_state["_switch_thread_pending"] = b.id
+    try:
+        with patch("streamlit.rerun"):
+            sola_v2._switch_thread_from_query_if_any()
+        assert st.session_state["_sola_thread_id"] == b.id
+        assert "switch_thread" not in st.query_params
+    finally:
+        st.query_params.clear()
+        st.session_state.pop("_switch_thread_pending", None)
 
 
-def test_consume_send_general_exception_yields_friendly_assistant_msg(clean_chat_log):
+def test_switch_thread_pending_unknown_id_keeps_active(clean_chat_log):
+    """존재하지 않는 id 는 무시(active 유지) — pending 은 소비."""
     import streamlit as st
-    st.session_state["_do_sola_send"] = "Q"
-    with patch("sola.client.chat", side_effect=RuntimeError("network")), \
-         patch("streamlit.rerun"):
-        sola_v2._consume_send_if_any(Persona())
-    msgs = _active_msgs(st)
-    assert msgs[-1]["role"] == "assistant"
-    assert "응답 생성 실패" in msgs[-1]["content"]
-    assert "RuntimeError" in msgs[-1]["content"]
+    from store import sola_threads
+    keep = sola_threads.create("유지")
+    st.session_state["_sola_thread_id"] = keep.id
+    st.session_state["_switch_thread_pending"] = "th_nonexistent_xxxxx"
+    try:
+        with patch("streamlit.rerun") as rr:
+            sola_v2._switch_thread_from_query_if_any()
+            rr.assert_not_called()
+        assert st.session_state["_sola_thread_id"] == keep.id
+        assert "_switch_thread_pending" not in st.session_state
+    finally:
+        st.session_state.pop("_switch_thread_pending", None)
 
 
-def test_consume_send_empty_payload_is_noop(clean_chat_log):
+def test_switch_thread_query_deep_link_still_works(clean_chat_log):
+    """딥링크 호환 유지 — ?switch_thread= 1회 소비 → 전환 + strip + rerun."""
     import streamlit as st
-    st.session_state["_do_sola_send"] = "   "  # whitespace only
-    with patch("sola.client.chat") as cli, patch("streamlit.rerun"):
-        sola_v2._consume_send_if_any(Persona())
-        cli.assert_not_called()
-    assert _active_msgs(st) == []
-
-
-def test_consume_send_no_pending_is_noop(clean_chat_log):
-    import streamlit as st
-    st.session_state.pop("_do_sola_send", None)
-    with patch("sola.client.chat") as cli, patch("streamlit.rerun"):
-        sola_v2._consume_send_if_any(Persona())
-        cli.assert_not_called()
+    from store import sola_threads
+    th = sola_threads.create("딥링크")
+    st.query_params.clear()
+    st.query_params["switch_thread"] = th.id
+    try:
+        with patch("streamlit.rerun") as rr:
+            sola_v2._switch_thread_from_query_if_any()
+            rr.assert_called_once()
+        assert st.session_state["_sola_thread_id"] == th.id
+        assert "switch_thread" not in st.query_params   # 재방문 재실행 방지
+    finally:
+        st.query_params.clear()
 
 
 # ── prefill ask 흐름 ─────────────────────────────────────────
@@ -414,3 +426,19 @@ def test_auto_run_handoff_ignores_non_handoff_query():
     finally:
         st.query_params.clear()
         st.session_state.pop("_handoff_autorun_done", None)
+
+
+def test_sola_action_pending_flag_takes_priority_over_query():
+    """버튼 칩 경로 — `_sola_action_pending` 이 쿼리보다 먼저 소비돼 flag 로 매핑."""
+    import streamlit as st
+    from ui import sola_workshop_v2 as sola_v2
+    st.session_state["_sola_action_pending"] = {
+        "action": "generate_proposal", "dept": "도장", "lv3": "비전 검사", "from": "opp"}
+    try:
+        sola_v2._consume_sola_action_from_query_if_any()
+        payload = st.session_state.pop("_do_generate_proposal")
+        assert payload == {"dept": "도장", "lv3": "비전 검사", "kind": "opp"}
+        assert "_sola_action_pending" not in st.session_state
+    finally:
+        for k in ("_sola_action_pending", "_do_generate_proposal"):
+            st.session_state.pop(k, None)

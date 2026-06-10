@@ -110,6 +110,7 @@ def test_board_chat_context_empty_state_does_not_crash():
 def test_data_mgmt_chat_context_includes_screen_marker_and_stats():
     from ui import data_management_v2
 
+    data_management_v2._chat_context_collect_cached.clear()  # 60s 캐시 — 테스트 격리
     with patch.object(data_management_v2, "_dm_stats", return_value={
         "active_sources": "4", "today_count": "125", "total_chunks": "8.4k", "last_update": "08:24"}), \
          patch.object(data_management_v2._news_db, "load_news_for_days", return_value=pd.DataFrame()), \
@@ -124,6 +125,7 @@ def test_data_mgmt_chat_context_includes_screen_marker_and_stats():
 def test_data_mgmt_chat_context_includes_news_library_and_sources():
     from ui import data_management_v2
 
+    data_management_v2._chat_context_collect_cached.clear()  # 60s 캐시 — 테스트 격리
     news = pd.DataFrame([
         {"title": "현대重 AI 비전 PoC", "source": "AI Times",
          "collected_at": "2026-05-29T08:00:00+00:00", "summary_llm": "38% 불량률 절감"},

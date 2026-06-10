@@ -1,9 +1,15 @@
 """작업 정의 관리 UI (PR-6) — 검색 / 1건 보기 / 추가·수정·삭제 / history.
 
-`docs/TASK_DEF_PLAN.md` M3 — 1차 완성. `📋 작업 데이터` 그룹의 `manage` sub-탭.
+`docs/TASK_DEF_PLAN.md` M3. `📋 작업 정의` 화면에서 단독 렌더.
 
-URL 파라미터 (stateless):
-  ?dm_grp=tasks&dm_tab=manage
+내비게이션은 **st.button + `_td_nav_pending`** (소켓 rerun — 문서 전체 reload 없음).
+직전엔 `?td_*=` 앵커라 클릭마다 흰 깜빡임(full reload)이었다. 버튼 클릭 시
+`_td_nav_pending` 에 td_* 파라미터 dict 를 담고 `st.rerun()`,
+`_consume_td_nav_pending` 이 위젯 인스턴스화 전에 **query params 로 번역**한다
+(앵커와 동일 의미 — 기존 td_* 전체 교체). URL 이 같이 갱신되므로 공유/딥링크 호환.
+
+URL 파라미터 (딥링크 — 직접 입력해도 동작):
+    ?app_area=📋 작업 정의
     &td_q=<검색어>
     &td_view=<process_id>           1건 상세
     &td_edit=<process_id>           수정 폼
@@ -16,7 +22,6 @@ from __future__ import annotations
 import html as _html
 import json
 from typing import Any
-from urllib.parse import quote
 
 import streamlit as st
 
@@ -29,7 +34,6 @@ from store import task_defs_db
 # 이 화면의 동적 st.html 은 screen CSS(.td-*) 가 안정적으로 적용되지 않아
 # (전역 CSS 만 주입됨) inline style 을 함께 박는다. PR-5 diff 미리보기/토스트
 # 와 동일한 코드베이스 관행. 클래스도 유지해 screen CSS 동작 시 호환.
-_S_LIST = "margin:8px 24px 24px;display:grid;gap:8px;"
 _S_CARD = (
     "display:grid;gap:4px;padding:12px 14px;background:var(--surface-card);"
     "border:1px solid var(--surface-divider);border-radius:10px;text-decoration:none;"
@@ -39,7 +43,7 @@ _S_CARD_NAME = "font-size:15px;font-weight:700;color:var(--text-primary);"
 _S_CARD_META = "font-size:12.5px;color:var(--text-secondary);"
 _S_CARD_PID = "font-size:12px;color:var(--text-muted);font-family:ui-monospace,monospace;"
 _S_DETAIL = (
-    "margin:8px 24px 24px;padding:18px 22px;background:var(--surface-card);"
+    "margin:8px 24px 10px;padding:18px 22px;background:var(--surface-card);"
     "border:1px solid var(--surface-divider);border-radius:12px;"
 )
 _S_DETAIL_NAME = "font-size:22px;font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;"
@@ -50,40 +54,56 @@ _S_TAG = (
 )
 _S_SECTION_H = "margin:14px 0 6px;font-size:14px;color:var(--text-primary);font-weight:700;"
 _S_UL = "margin:0;padding-left:20px;color:var(--text-secondary);line-height:1.6;"
-_S_ACTIONS = (
-    "display:flex;gap:8px;margin-top:18px;padding-top:14px;"
-    "border-top:1px solid var(--surface-divider);"
-)
-_S_BTN = "padding:7px 14px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;"
-_S_BTN_PRIMARY = _S_BTN + "background:var(--accent-primary);color:#fff;"
-_S_BTN_SECONDARY = _S_BTN + "background:var(--surface-soft);color:var(--text-primary);"
-_S_BTN_DANGER = _S_BTN + "background:rgba(185,28,28,0.12);color:var(--semantic-danger);border:1px solid rgba(185,28,28,0.30);"
 _S_HISTORY = (
     "margin:18px 24px 24px;padding:14px 18px;background:var(--surface-card);"
     "border:1px solid var(--surface-divider);border-radius:12px;"
 )
 
 
-# ── URL 빌더 ────────────────────────────────────────────
+# ── 버튼 내비 pending → query params 번역 ──────────────
 
-def _manage_href(**params: Any) -> str:
-    """`?app_area=📋 작업 정의&...` URL 빌더(작업 정의 화면 액션). 빈 값은 자동 생략.
+_TD_NAV_KEYS = ("td_q", "td_view", "td_edit", "td_add", "td_hist", "td_action", "td_pid")
 
-    구 `?dm_grp=tasks&dm_tab=manage` 탭 핸드오프는 화면 분리(뉴스 수집/작업 정의)로
-    불필요 — manage 는 작업 정의 화면에 탭 없이 단독 렌더된다.
+
+def _consume_td_nav_pending() -> None:
+    """`_td_nav_pending` (버튼 내비, 소켓 rerun) 1회 소비 → query params 번역.
+
+    구 앵커 navigation 과 동일한 **td_* 전체 교체** 의미: 기존 td_* 를 모두 지우고
+    pending 의 값만 설정한다(빈 값은 생략). 이후 기존 쿼리 주도 로직
+    (`consume_td_action_if_any` → `render`)이 그대로 이어지므로 URL 공유/딥링크
+    호환이 유지되고, 문서 reload 없이 소켓 rerun 으로만 화면이 바뀐다.
+
+    위젯 인스턴스화 전에 호출돼야 한다 — `consume_td_action_if_any` 최상단(운영
+    경로: `data_management_v2.render_taskdef`)과 `render` 최상단(방어)에서 호출.
     """
-    parts = [f"app_area={quote('📋 작업 정의')}"]
-    for k, v in params.items():
+    pend = st.session_state.pop("_td_nav_pending", None)
+    if not isinstance(pend, dict):
+        return
+    st.session_state.pop("_td_del_confirm", None)  # 내비 발생 시 삭제 confirm 해제
+    for k in _TD_NAV_KEYS:
+        try:
+            del st.query_params[k]
+        except Exception:  # noqa: BLE001
+            pass
+    for k in _TD_NAV_KEYS:
+        v = pend.get(k)
         if v in (None, "", False):
             continue
-        parts.append(f"{k}={quote(str(v))}")
-    return "?" + "&".join(parts)
+        try:
+            st.query_params[k] = str(v)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 # ── action consumer (URL 액션 → pending → toast) ──────
 
 def consume_td_action_if_any() -> None:
-    """`?td_action=delete&td_pid=<pid>` 1회 소비. 삭제 토스트 설정."""
+    """`?td_action=delete&td_pid=<pid>` 1회 소비. 삭제 토스트 설정.
+
+    버튼 내비 pending(`_td_nav_pending`)을 **쿼리보다 먼저** 번역해 [🗑️ 삭제 확정]
+    버튼 → 같은 run 안에서 삭제가 수행되게 한다. 딥링크(?td_action=) 경로도 유지.
+    """
+    _consume_td_nav_pending()
     action = (st.query_params.get("td_action") or "").strip()
     pid = (st.query_params.get("td_pid") or "").strip()
     if not action or not pid:
@@ -167,8 +187,11 @@ def _search_rows(query: str, limit: int = 50) -> list[dict]:
     return task_defs_db.list_all(limit=limit)
 
 
-def _row_card_html(row: dict, query: str = "") -> str:
-    """검색 결과 1건 카드 — 작업명 · 부서/공정 · pid."""
+def _row_card_html(row: dict) -> str:
+    """검색 결과 1건 카드 **시각 html** — 작업명 · 부서/공정 · pid. 앵커 없음.
+
+    클릭은 `_render_list` 의 투명 오버레이 st.button 이 받는다(소켓 rerun).
+    """
     pid = row.get("process_id") or ""
     obj = row.get("json_obj") or {}
     if not isinstance(obj, dict):
@@ -179,30 +202,41 @@ def _row_card_html(row: dict, query: str = "") -> str:
     task = row.get("task") or ""
     chain = " · ".join(p for p in (dept, process, task) if p)
 
-    view_href = _manage_href(td_view=pid, td_q=query)
     return (
-        f'<a class="td-card" style="{_S_CARD}" href="' + _html.escape(view_href)
-        + '" target="_self">'
+        f'<div class="td-card" style="{_S_CARD}">'
         f'<div class="td-card-name" style="{_S_CARD_NAME}">{_html.escape(str(name))}</div>'
         f'<div class="td-card-meta" style="{_S_CARD_META}">{_html.escape(chain)}</div>'
         f'<div class="td-card-pid" style="{_S_CARD_PID}"><code>{_html.escape(str(pid))}</code></div>'
-        '</a>'
+        '</div>'
     )
 
 
-def _list_html(rows: list[dict], query: str = "") -> str:
+def _empty_html(query: str = "") -> str:
+    msg = "검색 결과가 없어요." if query else "등록된 작업 정의가 없어요."
+    return (
+        '<div class="td-empty" style="padding:32px;text-align:center;'
+        'color:var(--text-secondary);font-size:14px;">'
+        f'{_html.escape(msg)}</div>'
+    )
+
+
+def _render_list(rows: list[dict], query: str = "") -> None:
+    """매칭 리스트 — 카드마다 컨테이너(시각 html) + 투명 오버레이 st.button.
+
+    카드 클릭 = 오버레이 버튼(`td_open_<i>`) → `_td_nav_pending={"td_view": pid}`
+    → 소켓 rerun 으로 상세 진입(문서 reload 없음). 뉴스 수집 카드 그리드
+    (`sc_card_*`)와 동일한 하우스 패턴 — CSS 는 `data_management.css` taskdef zone.
+    """
     if not rows:
-        msg = "검색 결과가 없어요." if query else "등록된 작업 정의가 없어요."
-        return (
-            '<div class="td-empty" style="padding:32px;text-align:center;'
-            'color:var(--text-secondary);font-size:14px;">'
-            f'{_html.escape(msg)}</div>'
-        )
-    parts = [f'<div class="td-list" style="{_S_LIST}">']
-    for r in rows:
-        parts.append(_row_card_html(r, query=query))
-    parts.append("</div>")
-    return "".join(parts)
+        st.html(_empty_html(query))
+        return
+    for i, r in enumerate(rows):
+        pid = str(r.get("process_id") or "")
+        with st.container(key=f"td_card_{i}"):
+            st.html(_row_card_html(r))
+            if st.button("보기", key=f"td_open_{i}", use_container_width=True):
+                st.session_state["_td_nav_pending"] = {"td_view": pid, "td_q": query}
+                st.rerun()
 
 
 # ── 1건 상세 (read-only) ───────────────────────────────
@@ -223,7 +257,9 @@ def _str_list_section(title: str, items: Any) -> str:
     )
 
 
-def _detail_html(row: dict, query: str = "") -> str:
+def _detail_html(row: dict) -> str:
+    """1건 상세 **시각 html** — 액션(목록/수정/이력/삭제)은 `_render_detail_actions`
+    의 st.button 이 담당한다(앵커 없음)."""
     pid = row.get("process_id") or ""
     obj = row.get("json_obj") or {}
     if not isinstance(obj, dict):
@@ -359,29 +395,57 @@ def _detail_html(row: dict, query: str = "") -> str:
             f'<div class="td-section"><h4 style="{_S_SECTION_H}">🔗 공정 연결</h4>'
             f'<div style="color:var(--text-secondary);line-height:1.8;">{chain}</div></div>'
         )
-    # 액션 링크
-    edit_href = _manage_href(td_edit=pid, td_q=query)
-    hist_href = _manage_href(td_view=pid, td_hist=pid, td_q=query)
-    delete_href = _manage_href(td_action="delete", td_pid=pid, td_q=query)
-    back_href = _manage_href(td_q=query)
-    parts.append(
-        f'<div class="td-actions" style="{_S_ACTIONS}">'
-        f'<a class="td-btn td-btn-secondary" style="{_S_BTN_SECONDARY}" '
-        f'href="{_html.escape(back_href)}" target="_self">← 목록</a>'
-        f'<a class="td-btn td-btn-primary" style="{_S_BTN_PRIMARY}" '
-        f'href="{_html.escape(edit_href)}" target="_self">✏️ 수정</a>'
-        f'<a class="td-btn td-btn-secondary" style="{_S_BTN_SECONDARY}" '
-        f'href="{_html.escape(hist_href)}" target="_self">🕒 history</a>'
-        f'<a class="td-btn td-btn-danger" style="{_S_BTN_DANGER}" '
-        f'href="{_html.escape(delete_href)}" target="_self" '
-        f'onclick="return confirm(\'정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.\');">'
-        f'🗑️ 삭제</a>'
-        '</div>'
-    )
-
-    # history (선택)
     parts.append("</div>")
     return "".join(parts)
+
+
+def _render_detail_actions(pid: str, query: str, *, hist_open: bool) -> None:
+    """상세 하단 액션 바 — st.button 4종(소켓 rerun, 문서 reload 없음).
+
+    구 앵커 4종(← 목록/✏️ 수정/🕒 history/🗑️ 삭제+JS confirm)을 대체한다.
+    삭제는 JS `confirm()` 을 쓸 수 없으므로 2-step: [🗑️ 삭제] → 경고 +
+    [🗑️ 삭제 확정][↩ 취소]. 확정 시 `_td_nav_pending` 에 td_action=delete 를 담아
+    기존 `consume_td_action_if_any` 삭제 경로(토스트 포함)를 그대로 재사용한다.
+    """
+    confirm = st.session_state.get("_td_del_confirm") == pid
+    with st.container(key="td_actionbar"):
+        if confirm:
+            st.warning(f"`{pid}` 작업 정의를 정말 삭제할까요? 되돌릴 수 없어요.")
+            c_yes, c_no, _sp = st.columns([1, 1, 2])
+            with c_yes:
+                if st.button("🗑️ 삭제 확정", key="td_del_yes",
+                             type="primary", use_container_width=True):
+                    st.session_state.pop("_td_del_confirm", None)
+                    st.session_state["_td_nav_pending"] = {
+                        "td_action": "delete", "td_pid": pid, "td_q": query,
+                    }
+                    st.rerun()
+            with c_no:
+                if st.button("↩ 취소", key="td_del_no", use_container_width=True):
+                    st.session_state.pop("_td_del_confirm", None)
+                    st.rerun()
+            return
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            if st.button("← 목록", key="td_back_btn", use_container_width=True):
+                st.session_state["_td_nav_pending"] = {"td_q": query}
+                st.rerun()
+        with c2:
+            if st.button("✏️ 수정", key="td_edit_btn", use_container_width=True):
+                st.session_state["_td_nav_pending"] = {"td_edit": pid, "td_q": query}
+                st.rerun()
+        with c3:
+            label = "🕒 이력 닫기" if hist_open else "🕒 이력"
+            if st.button(label, key="td_hist_btn", use_container_width=True):
+                nav: dict[str, Any] = {"td_view": pid, "td_q": query}
+                if not hist_open:
+                    nav["td_hist"] = pid
+                st.session_state["_td_nav_pending"] = nav
+                st.rerun()
+        with c4:
+            if st.button("🗑️ 삭제", key="td_del_btn", use_container_width=True):
+                st.session_state["_td_del_confirm"] = pid
+                st.rerun()
 
 
 def _history_html(pid: str, limit: int = 20) -> str:
@@ -576,16 +640,14 @@ def _render_form(form: TaskDefForm, *, mode: str, query: str = "") -> None:
         label_visibility="collapsed",
     )
 
-    # 액션
+    # 액션 — 취소/저장 모두 `_td_nav_pending` 버튼 내비(소켓 rerun)
     col_a, col_b = st.columns([1, 2])
     with col_a:
-        cancel_target = (
-            _manage_href(td_view=form.process_id, td_q=query)
-            if not is_create else _manage_href(td_q=query)
-        )
-        # 취소는 단순 링크 — 일관성 위해 [← 취소] 버튼도 제공
         if st.button("← 취소", key=f"_td_cancel_{mode}"):
-            st.session_state["_td_redirect"] = cancel_target
+            st.session_state["_td_nav_pending"] = (
+                {"td_q": query} if is_create
+                else {"td_view": form.process_id, "td_q": query}
+            )
             st.rerun()
     with col_b:
         if st.button("💾 저장", type="primary", key=f"_td_save_{mode}"):
@@ -596,32 +658,23 @@ def _render_form(form: TaskDefForm, *, mode: str, query: str = "") -> None:
                 st.error(f"⚠️ 검증 실패: {exc}")
                 return
             st.session_state["_do_td_save"] = {"mode": mode, "form": form}
-            st.session_state["_td_redirect"] = _manage_href(
-                td_view=form.process_id, td_q=query,
-            )
+            st.session_state["_td_nav_pending"] = {
+                "td_view": form.process_id, "td_q": query,
+            }
             st.rerun()
 
 
 # ── 진입점: render() — 외부 호출용 ─────────────────────
 
 def render(query_params_getter) -> None:
-    """`manage` sub-탭 본문. query_params_getter 는 `st.query_params`.
+    """작업 정의 관리 본문. query_params_getter 는 `st.query_params`.
 
     URL 파라미터에 따라 list / detail / form / history 모드 전환.
+    버튼 내비 pending 은 운영 경로에선 `consume_td_action_if_any` (render_taskdef
+    최상단)가 이미 번역했다 — 여기서 한 번 더 부르는 건 직접 render() 만 호출하는
+    경로(테스트 등) 방어. pop-once 라 중복 소비는 없다.
     """
-    # redirect (저장/취소 후) 1회 소비
-    redirect = st.session_state.pop("_td_redirect", None)
-    if redirect:
-        # streamlit 의 query_params 재할당으로 URL 갱신
-        for kv in redirect.lstrip("?").split("&"):
-            if "=" not in kv:
-                continue
-            k, v = kv.split("=", 1)
-            from urllib.parse import unquote
-            try:
-                st.query_params[unquote(k)] = unquote(v)
-            except Exception:  # noqa: BLE001
-                pass
+    _consume_td_nav_pending()
 
     render_td_toast_if_needed()
 
@@ -652,30 +705,31 @@ def render(query_params_getter) -> None:
         row = task_defs_db.get(view)
         if row is None:
             st.warning(f"⚠️ `{view}` 작업을 찾을 수 없어요.")
-            back_href = _manage_href(td_q=q)
-            st.html(
-                f'<a class="td-btn td-btn-secondary" style="{_S_BTN_SECONDARY}" '
-                f'href="{_html.escape(back_href)}" target="_self">← 목록</a>'
-            )
+            with st.container(key="td_back"):
+                if st.button("← 목록", key="td_back_missing"):
+                    st.session_state["_td_nav_pending"] = {"td_q": q}
+                    st.rerun()
             return
-        st.html(_detail_html(row, query=q))
+        st.html(_detail_html(row))
+        _render_detail_actions(view, q, hist_open=bool(hist))
         if hist:
             st.html(_history_html(hist))
         return
 
     # ── 목록 (검색) ────────────────────────────────
-    # 검색창 + 새 작업 추가 버튼 — 둘 다 stateless URL
-    add_href = _manage_href(td_add=1, td_q=q)
-    head = (
-        '<div class="td-head" style="display:flex;gap:12px;align-items:center;'
-        'margin:18px 24px 8px;">'
-        '<div class="td-head-title" style="flex:1;font-size:18px;font-weight:800;'
-        'color:var(--text-primary);">📋 작업 정의 관리</div>'
-        f'<a class="td-btn td-btn-primary" style="{_S_BTN_PRIMARY}" '
-        f'href="{_html.escape(add_href)}" target="_self">+ 새 작업 추가</a>'
-        '</div>'
-    )
-    st.html(head)
+    # 헤더(타이틀 html) + [＋ 새 작업 추가] st.button (소켓 rerun)
+    with st.container(key="td_head"):
+        col_t, col_b = st.columns([3, 1], vertical_alignment="center")
+        with col_t:
+            st.html(
+                '<div class="td-head-title" style="font-size:18px;font-weight:800;'
+                'color:var(--text-primary);">📋 작업 정의 관리</div>'
+            )
+        with col_b:
+            if st.button("＋ 새 작업 추가", key="td_add_btn",
+                         type="primary", use_container_width=True):
+                st.session_state["_td_nav_pending"] = {"td_add": "1", "td_q": q}
+                st.rerun()
 
     # Streamlit 검색창은 폼-없이 URL 갱신 패턴
     typed = st.text_input(
@@ -698,4 +752,4 @@ def render(query_params_getter) -> None:
     total = task_defs_db.count()
     sub = f"검색 결과 {len(rows)}건" if q else f"전체 {total}건"
     st.caption(sub)
-    st.html(_list_html(rows, query=q))
+    _render_list(rows, query=q)

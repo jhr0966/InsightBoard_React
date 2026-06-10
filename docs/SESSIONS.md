@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-10 — refactor: 시스템 점검 1차 — 부분 갱신(fragment) + 성능 (`refactor-partial-updates`)
+
+**무엇을**: 전체 점검("클릭 시 전체 새로고침 제거 + 느린 부분 발굴") — 에이전트 감사 2건(데이터/캐시, reload 앵커 전수) + 벤치마크로 진단 후 단계 커밋 3개.
+
+**어떻게**:
+1. `store/news_db.py`: 일자별 parquet 메모 — 윈도우(3/14/30/56일) 섞어 불러도 날짜당 디스크 1회. (보드형 패턴 9×→1× 스캔)
+2. 자산/헬퍼 캐시: `components.read_asset_text`(CSS 6종+템플릿 4종 매 rerun 재읽기 제거), `_board_kw_mgr_html`·`_notif_count`·`_chat_context_collect_cached` ttl=60.
+3. `data_management_v2._render_browse_zone(@st.fragment)`: 탭/칩/모드/카드/모달이 구역만 부분 rerun — 브라우저 실측으로 dialog-in-fragment 확인.
+4. e2e S8(부분 갱신 시나리오) + 일자 메모 회귀 테스트.
+5-2. (병렬 에이전트 3건) 보드 기회/키워드 액션 버튼화(템플릿 3분할), 작업정의 td_* 위젯 내비(_consume_td_nav_pending — 딥링크 호환), 우측 채팅 패널 @st.fragment(SOLA 외 화면 부분 rerun, 작업실은 scope='app' 유지). 전체 864 passed.
+5. 채팅 빠른 작업 칩(`?sola_action=` 앵커) → `st.button`+pending 전환(reload 제거, 딥링크 호환 유지) — 브라우저 칩 렌더 확인. 잔여 앵커 전환은 REFACTOR_PLAN **Phase 4** 로 우선순위화(보드 kw/opp P1, taskdef td_* P1, 채팅 칩·스레드 P2, SVG 히트맵 P3).
+6. 작업 정의 td_* 앵커 스위트(P1) → 위젯 전환(`task_def_manage.py`): 목록 카드=투명 오버레이 버튼, 상세 액션/추가/폼 취소·저장=`st.button`+`_td_nav_pending`, `_consume_td_nav_pending` 이 위젯 전에 query 로 번역(td_* 전체 교체 — 딥링크 호환, 스테일 td_edit 잔류 결함도 해소). 삭제는 2-step confirm. AppTest e2e 3종(pending→상세, 오버레이 버튼 렌더, 카드 클릭→상세) 추가, taskdef CSS zone 추가. pytest 대상 5파일 104 passed.
+
+**측정**: 보드 콜드 4.13s→1.74s(-58%), 워밍 0.04~0.10s. pytest 832 passed · 금지패턴 0.
+
+**상태**: 🔄 진행 — 푸시·PR 예정.
+
+---
+
 ## 2026-06-10 — fix: thebell 본문·사진 — 실마크업 기반 정밀 수정 (`fix-thebell-extract`)
 
 **무엇을**: thebell 여전히 본문·사진 미수집. 사용자가 실페이지 HTML 제공 → 정확 진단 가능해짐.

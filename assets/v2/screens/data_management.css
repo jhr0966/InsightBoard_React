@@ -1357,3 +1357,43 @@ a.sc-modal-link--row, a.sc-modal-link--row:visited {
   box-shadow: 0 4px 14px rgba(37,99,235,0.08);
   transform: translateY(-2px);
 }
+
+/* ── 작업 정의 관리(td_*) — 앵커 → 위젯 내비 (taskdef zone) ─────────────────
+   목록 카드 = 카드 시각 html 위 투명 오버레이 st.button(소켓 rerun, reload 없음).
+   sc_card_* 오버레이와 동일 하우스 패턴. 액션 바/추가/뒤로는 일반 st.button. */
+.st-key-td_head { margin: 18px 24px 0; }
+.st-key-td_head button {
+  border-radius: 8px !important; font-weight: 700 !important; min-height: 0 !important;
+}
+[class*="st-key-td_card_"] { position: relative; margin: 0 24px 8px; }
+[class*="st-key-td_card_"] > div { gap: 0 !important; }   /* html 과 버튼 사이 간격 제거 */
+[class*="st-key-td_card_"] [data-testid="stElementContainer"]:has([data-testid="stButton"]) {
+  position: absolute !important; inset: 0 !important; margin: 0 !important; z-index: 5;
+}
+[class*="st-key-td_card_"] [data-testid="stButton"],
+[class*="st-key-td_card_"] [data-testid="stButton"] button {
+  width: 100%; height: 100%; min-height: 0 !important;
+}
+[class*="st-key-td_card_"] [data-testid="stButton"] button {
+  opacity: 0; padding: 0; border: 0; cursor: pointer; background: transparent;
+}
+[class*="st-key-td_card_"] [data-testid="stElementContainer"]:has([data-testid="stHtml"]) {
+  margin: 0 !important;
+}
+[class*="st-key-td_card_"]:hover .td-card {
+  border-color: rgba(37,99,235,0.32);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.08);
+  transform: translateY(-1px);
+}
+/* 상세 하단 액션 바 + 못 찾음 화면의 [← 목록] */
+.st-key-td_actionbar { margin: 0 24px 14px; }
+.st-key-td_actionbar button {
+  border-radius: 8px !important; font-weight: 700 !important;
+  min-height: 0 !important; font-size: 13px !important;
+}
+.st-key-td_del_yes button {
+  background: #FEF2F2 !important; color: #991B1B !important;
+  border: 1px solid #FECACA !important;
+}
+.st-key-td_del_yes button:hover { background: #FEE2E2 !important; }
+.st-key-td_back { margin: 0 24px 24px; }

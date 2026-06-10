@@ -2,10 +2,14 @@
 
 설계:
   - 활성 thread (sola_threads) 의 메시지 load + `st.form`(text_area + 보내기)
-  - LLM 호출 인프라(sola_workshop_v2._consume_send_if_any/_build_llm_messages)
-    재사용 — 풀 SOLA workshop 과 같은 thread/영구화 공유
+  - LLM 호출 인프라(sola_workshop_v2 의 _append_message/_load_messages/
+    _build_llm_messages) 재사용 — 풀 SOLA workshop 과 같은 thread/영구화 공유
   - 빈 thread 일 때: area 별 "이 화면에서 이런 걸 물어보세요" 안내 카드
   - 우측 컬럼 sticky 패널(`.side-chat-marker` + streamlit-overrides.css)
+  - **부분 rerun**: 패널 본체는 `_render_side_fragment`(@st.fragment) — 메시지
+    전송·추천 질문 pill 이 앱 전체가 아니라 **채팅 컬럼만** 다시 그린다.
+    (예외: SOLA 작업실 form 전송과 빠른 작업 칩은 중앙 작업대가 결과를 봐야
+    하므로 scope="app" 전체 rerun.)
 
 각 area 의 진입점:
     chat_panel.render_side(persona, area_key="📊 오늘의 보드")
@@ -16,12 +20,14 @@ from __future__ import annotations
 
 import html as _html
 from datetime import datetime, timezone
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 
 import streamlit as st
 
 from persona.schema import Persona
+from sola import client as sola_client
 from sola.client import is_configured as _llm_ready
+from sola.preview import format_messages_preview
 
 
 _SOLA_AREA = "🤖 SOLA 작업실"
@@ -130,39 +136,30 @@ _SOLA_QUICK_ACTIONS: list[tuple[str, str]] = [
 ]
 
 
-def _quick_actions_html(area_key: str) -> str:
-    """SOLA 작업실 area 전용 — 중앙 작업대 액션을 채팅 상단 quick-action 칩으로 흡수.
+def _render_quick_action_chips(area_key: str) -> None:
+    """SOLA 작업실 전용 빠른 작업 칩 — st.button 3개(소켓 rerun, 문서 reload 없음).
 
-    "채팅으로 통합" 결정에 따라 제안서 생성·뉴스 요약·새 대화를 채팅 단일
-    진입점으로 끌어온다. 각 칩은 `?sola_action=<name>` 링크(on_click 미사용)이며
-    인계 컨텍스트(dept/lv3/from)를 보존해 제안서 생성이 인계 작업을 그대로 쓴다.
-    `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 소비한다.
-    다른 area 는 빈 문자열(칩 미노출).
+    직전엔 `?sola_action=` 앵커라 클릭마다 **문서 전체 reload**(흰 깜빡임)였다 →
+    버튼 + `_sola_action_pending` 세션 플래그로 전환. 인계 컨텍스트(dept/lv3/from)는
+    쿼리에서 읽어 보존하고, `sola_workshop_v2._consume_sola_action_from_query_if_any`
+    가 쿼리보다 먼저 소비해 기존 pending flag(LLM 호출 경로)로 매핑한다.
+    다른 area 는 아무것도 그리지 않는다.
+
+    ⚠ scope="app" 필수: 이 pending 의 소비자(`sola_workshop_v2.render` 최상단)는
+    **중앙 컬럼** — 채팅 fragment 바깥이다. fragment 부분 rerun 으론 중앙이 다시
+    실행되지 않으므로 칩 클릭은 반드시 앱 전체 rerun 으로 승격한다.
     """
     if area_key != _SOLA_AREA:
-        return ""
-    ctx = {
-        k: v for k, v in (
-            ("dept", st.query_params.get("dept", "")),
-            ("lv3", st.query_params.get("lv3", "")),
-            ("from", st.query_params.get("from", "")),
-        ) if v
-    }
-
-    def _href(action: str) -> str:
-        return "?" + urlencode({"sola_action": action, **ctx})
-
-    chip_html = "".join(
-        f'<a class="side-chat-action" href="{_html.escape(_href(action))}" '
-        f'target="_self">{_html.escape(label)}</a>'
-        for label, action in _SOLA_QUICK_ACTIONS
-    )
-    return (
-        '<div class="side-chat-actions">'
-        '<div class="side-chat-actions-h">빠른 작업</div>'
-        f'<div class="side-chat-actions-row">{chip_html}</div>'
-        '</div>'
-    )
+        return
+    ctx = {k: st.query_params.get(k, "") for k in ("dept", "lv3", "from")}
+    with st.container(key="side_quick_actions"):
+        st.html('<div class="side-chat-actions-h">빠른 작업</div>')
+        cols = st.columns(len(_SOLA_QUICK_ACTIONS))
+        for col, (label, action) in zip(cols, _SOLA_QUICK_ACTIONS):
+            with col:
+                if st.button(label, key=f"side_qa_{action}", use_container_width=True):
+                    st.session_state["_sola_action_pending"] = {"action": action, **ctx}
+                    st.rerun(scope="app")
 
 
 def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
@@ -200,19 +197,42 @@ def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
 
 
 def render_side(persona: Persona, area_key: str) -> None:
-    """우측 컬럼 SOLA 채팅 (Phase A) — 모든 area 본문 우측에 **실제 작동** 채팅.
+    """우측 컬럼 SOLA 채팅 진입점 — 얇은 래퍼, 본체는 `_render_side_fragment`.
+
+    app.py 가 chat_col 안에서 호출하는 공개 시그니처는 그대로 두고, 실제 렌더는
+    @st.fragment 본체에 위임 → 패널 내부 상호작용(전송·추천 질문 pill)이
+    **채팅 컬럼만** 부분 rerun 한다(본문·사이드바·topbar 재실행 없음).
+    """
+    _render_side_fragment(persona, area_key)
+
+
+@st.fragment
+def _render_side_fragment(persona: Persona, area_key: str) -> None:
+    """우측 컬럼 SOLA 채팅 본체 — 부분 rerun 경계(@st.fragment).
 
     이전 `app_shell.render_app_sola` 의 disabled 목업을 대체한다.
     - 활성 thread 의 최근 메시지(없으면 area 별 안내 카드).
     - 레이아웃: 안내 카드(상단) → 추천 질문 칩(`_render_chat_suggestions`, 안내 바로 밑)
       → 대화 스크롤(중단) → 입력 form(`_render_chat_input`, 컬럼 하단 고정). 칩과
       입력창이 분리돼 칩은 위에, 입력+보내기는 항상 맨 아래 핀.
-    - `st.form`(text_area + submit) 송신 → `_do_sola_send` pending → 다음 run 의
-      `consume_send_if_any` 가 LLM 호출 + append + chat_log 영구화.
+    - `st.form`(text_area + submit) 송신 → `_do_sola_send` pending → fragment rerun
+      최상단의 `consume_send_if_any(scope="fragment")` 가 LLM 호출 + append +
+      chat_log 영구화 → 새 메시지가 **이 fragment rerun 안에서** 바로 그려진다.
+      (SOLA 작업실만 scope="app" 전송 — 중앙 작업대 캔버스가 같은 런에서 갱신돼야
+      하므로 app.py 최상단 consume 경로를 탄다. `_render_chat_input` 참고.)
+    - LLM 컨텍스트(`_chat_context_for_sola`)는 직전 풀런에서 app.py 가 세션에 저장한
+      값을 `sw._build_llm_messages` 가 session_state 로 읽으므로 fragment rerun
+      에서도 그대로 유효하다.
     - `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 담기지 않으므로 form 사용.
 
     `.side-chat-marker` 는 `streamlit-overrides.css` 가 컬럼을 sticky 패널로 만드는 훅.
     """
+    # 부분 rerun 경로의 송신 처리 — 메시지 목록·위젯 생성 **전에** 소비해야
+    # 이번 fragment rerun 에 새 user/assistant 메시지가 보인다. 풀런에서는
+    # app.py 최상단 consume 가 먼저 pop 하므로 여기는 fragment rerun 에서만 발화
+    # (scope="fragment" 는 fragment rerun 중에만 유효 — Streamlit 1.58 제약).
+    consume_send_if_any(persona, scope="fragment")
+
     from ui import sola_workshop_v2 as sw
 
     title_safe = _html.escape(area_key)
@@ -228,10 +248,8 @@ def render_side(persona: Persona, area_key: str) -> None:
     )
 
     # SOLA 작업실 — 작업대 액션을 채팅 상단 quick-action 칩으로(헤더 아래 고정,
-    # 스크롤에 묻히지 않음). 다른 area 는 빈 문자열이라 아무것도 그리지 않는다.
-    qa_html = _quick_actions_html(area_key)
-    if qa_html:
-        st.html(qa_html)
+    # 스크롤에 묻히지 않음). 버튼(소켓 rerun)이라 문서 reload 없음.
+    _render_quick_action_chips(area_key)
 
     try:
         messages = sw._load_messages()
@@ -254,15 +272,16 @@ def render_side(persona: Persona, area_key: str) -> None:
     # 대화 스크롤(중단) — 메시지만
     st.html('<div class="side-chat-scroll">' + _format_recent_messages(messages) + '</div>')
     # 입력창 + 보내기 — 하단 고정(CSS margin-top:auto)
-    _render_chat_input(input_key, safe_area)
+    _render_chat_input(input_key, safe_area, area_key)
 
 
 def _render_chat_suggestions(area_key: str, input_key: str) -> None:
     """추천 질문 칩(안내 바로 밑, 상단). 칩 클릭은 하단 입력창에 텍스트만 채운다.
 
-    칩과 입력창이 분리된 별도 영역이라 fragment 스코프로는 못 채운다 → 전체 rerun
-    (소켓 rerun, 문서 리로드/흰 깜빡임 없음). on_click 미사용: pending(`__prefill`)을
-    세팅하고 st.rerun() → 다음 run 의 `_apply_pending_prefill` 이 입력창 값으로 주입."""
+    pills 와 입력창 모두 같은 `_render_side_fragment` 안이므로 fragment 부분 rerun
+    으로 충분 — 클릭 이벤트 자체가 fragment rerun 으로 도착하고, 그 안에서
+    pending(`__prefill`)을 세팅한 뒤 st.rerun(scope="fragment") → 같은 fragment 의
+    다음 rerun 에서 `_apply_pending_prefill` 이 입력창 값으로 주입(on_click 미사용)."""
     sugg = _suggestions_for(area_key)
     if not sugg:
         return
@@ -275,12 +294,20 @@ def _render_chat_suggestions(area_key: str, input_key: str) -> None:
     if picked:
         st.session_state[f"{input_key}__prefill"] = picked
         st.session_state[f"{input_key}__reset_pills"] = True
-        st.rerun()
+        st.rerun(scope="fragment")
 
 
-def _render_chat_input(input_key: str, safe_area: str) -> None:
+def _render_chat_input(input_key: str, safe_area: str, area_key: str) -> None:
     """입력 form(text_area + 보내기) — 컬럼 하단 고정(streamlit-overrides.css 가
-    margin-top:auto 로 핀). 제출 시 `_do_sola_send` pending → app.py 가 LLM 호출."""
+    margin-top:auto 로 핀). 제출 시 `_do_sola_send` pending → rerun → consume.
+
+    rerun scope 분기:
+      - 일반 area: scope="fragment" — fragment rerun 최상단의
+        `consume_send_if_any(scope="fragment")` 가 처리 → 채팅 컬럼만 갱신.
+      - SOLA 작업실: scope="app" — 중앙 작업대 캔버스('현재 산출물' = 마지막
+        assistant 메시지)가 답변을 같은 런에서 반영해야 하므로 전체 rerun 으로
+        승격, app.py 최상단 consume 가 본문 렌더 **전에** 처리한다.
+    """
     with st.container(key="side_chat_inputbar"):
         with st.form(key=f"_side_chat_form_{safe_area}", clear_on_submit=True):
             user_input = st.text_area(
@@ -291,7 +318,7 @@ def _render_chat_input(input_key: str, safe_area: str) -> None:
             sent = st.form_submit_button("➤ 보내기", use_container_width=True)
     if sent and user_input and user_input.strip():
         st.session_state["_do_sola_send"] = user_input.strip()
-        st.rerun()
+        st.rerun(scope="app" if area_key == _SOLA_AREA else "fragment")
 
 
 def _apply_pending_prefill(input_key: str) -> bool:
@@ -320,13 +347,50 @@ def _consume_prefill(input_key: str) -> None:
     del st.query_params["sola_prefill"]
 
 
-def consume_send_if_any(persona: Persona) -> None:
-    """글로벌 채팅 전송 핸들러 — app.py 최상단에서 호출.
+def consume_send_if_any(persona: Persona, *, scope: str = "app") -> None:
+    """글로벌 채팅 전송 핸들러 — `_do_sola_send` pending → LLM → append → rerun.
 
-    sola_workshop_v2._consume_send_if_any 와 동일 흐름이지만 어느 area 에서든
-    동작하도록 분리. 실제 LLM 호출은 sw 의 함수 위임.
+    호출 지점 2곳 (같은 pending 키를 pop 하므로 이중 처리는 구조적으로 불가):
+      1. **app.py 최상단** (scope="app", 기본) — SOLA 작업실 form 전송과 인계 자동
+         전송(`sw._consume_prefill_ask_if_any`)처럼 **앱 전체 rerun 으로 도착하는**
+         send 를 본문 렌더 전에 처리한다. 작업실 중앙 캔버스('현재 산출물' =
+         마지막 assistant 메시지)가 같은 런에서 답변을 반영하려면 필수.
+      2. **`_render_side_fragment` 최상단** (scope="fragment") — 그 외 area 의
+         form 전송을 채팅 컬럼 부분 rerun 안에서 처리(앱 전체 재실행 없음).
+
+    sw._consume_send_if_any 위임을 풀고 같은 빌딩블록(_append_message /
+    _load_messages / _build_llm_messages)으로 재구성한 이유: sw 버전은 끝에서
+    `st.rerun()`(전체 rerun)을 고정 호출해 fragment 부분 rerun 을 깨기 때문.
+    화면 컨텍스트는 `sw._build_llm_messages` 가 session_state 의
+    `_chat_context_for_sola`(직전 풀런에서 각 화면이 저장)를 읽어 첨부한다.
+
+    오류는 assistant 메시지로 노출(UX 단절 방지), LLM 미설정은 `sola.preview`
+    미리보기로 폴백 — sw._consume_send_if_any 와 동일 정책.
     """
+    payload = st.session_state.pop("_do_sola_send", None)
+    if not payload:
+        return
+    user_text = str(payload).strip()
+    if not user_text:
+        return
+
     from ui import sola_workshop_v2 as sw
 
-    # _consume_send_if_any 가 _do_sola_send pending 을 소비 + LLM 호출 + append + rerun
-    sw._consume_send_if_any(persona)
+    sw._append_message("user", user_text)
+    msgs = sw._load_messages()
+    llm_messages = sw._build_llm_messages(persona, msgs)
+
+    try:
+        with st.spinner("SOLA 가 답변을 작성하고 있어요…"):
+            answer = sola_client.chat(llm_messages)
+        sw._append_message("assistant", answer)
+    except sola_client.LLMNotConfigured:
+        preview = format_messages_preview(
+            llm_messages,
+            header="ℹ️ LLM 미설정 — 아래는 실제로 전달될 입력 컨텍스트입니다.",
+            footer_hint=True,
+        )
+        sw._append_message("assistant", preview)
+    except Exception as exc:
+        sw._append_message("assistant", f"⚠️ 응답 생성 실패: {type(exc).__name__}: {exc}")
+    st.rerun(scope=scope)  # type: ignore[arg-type]
