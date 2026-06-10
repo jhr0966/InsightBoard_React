@@ -91,16 +91,29 @@ _OPP_ACTION_TO_STATUS: dict[str, str] = {
 
 
 def consume_opp_action_if_any() -> tuple[str, str, str] | None:
-    """`?opp_action=accept|hold&dept=&lv3=&title=` 1회 소비 → bookmark 추가.
+    """자동화 기회 보류/채택 액션 1회 소비 → bookmark 추가.
+
+    트리거는 둘 중 하나 — 카드의 보류/채택 st.button 이 세팅한
+    `_opp_action_pending` 세션 플래그(신규, 소켓 rerun·문서 reload 없음)를 먼저
+    소비하고, 없으면 레거시 `?opp_action=accept|hold&dept=&lv3=&title=` 쿼리
+    (북마크/딥링크 호환)를 소비한다.
 
     반환: 성공 시 (action, dept, lv3), 아니면 None.
     부수효과: bookmarks_store.add + session_state["_opp_action_toast"] +
-    query strip (재실행 방지).
+    query strip (쿼리 경로일 때만 — 재실행 방지).
     """
-    action = st.query_params.get("opp_action")
-    dept_q = st.query_params.get("dept", "")
-    lv3_q = st.query_params.get("lv3", "")
-    title_q = st.query_params.get("title", "")
+    pending = st.session_state.pop("_opp_action_pending", None)
+    from_query = not isinstance(pending, dict)
+    if from_query:
+        action = st.query_params.get("opp_action")
+        dept_q = st.query_params.get("dept", "")
+        lv3_q = st.query_params.get("lv3", "")
+        title_q = st.query_params.get("title", "")
+    else:
+        action = str(pending.get("action") or "")
+        dept_q = str(pending.get("dept") or "")
+        lv3_q = str(pending.get("lv3") or "")
+        title_q = str(pending.get("title") or "")
 
     if action not in _OPP_ACTION_TO_STATUS:
         return None
@@ -129,10 +142,11 @@ def consume_opp_action_if_any() -> tuple[str, str, str] | None:
             "error", f"⚠️ 처리 실패: {type(exc).__name__}: {exc}",
         )
 
-    # query strip (재실행 방지)
-    for k in ("opp_action", "dept", "lv3", "title"):
-        if k in st.query_params:
-            del st.query_params[k]
+    # query strip (재실행 방지) — 쿼리 경로일 때만
+    if from_query:
+        for k in ("opp_action", "dept", "lv3", "title"):
+            if k in st.query_params:
+                del st.query_params[k]
     return (action, dept_q, lv3_q)
 
 
@@ -181,7 +195,12 @@ def _kw_action_href(action: str, *, keyword: str = "") -> str:
 
 
 def consume_kw_action_if_any() -> tuple[str, str] | None:
-    """`?kw_action=del_user|mute|collect&keyword=` 1회 소비.
+    """⑦ 키워드 관리 액션 1회 소비.
+
+    트리거는 둘 중 하나 — × / '지금 즉시 수집 실행' st.button 이 세팅한
+    `_kw_action_pending` 세션 플래그(신규, 소켓 rerun·문서 reload 없음)를 먼저
+    소비하고, 없으면 레거시 `?kw_action=del_user|mute|collect&keyword=` 쿼리
+    (북마크/딥링크 호환)를 소비한다.
 
     - del_user: persona.interest_lv3 / interest_tasks 에서 keyword 제거 → save
     - mute:    persona.muted_keywords 에 keyword 추가(중복 제거) → save
@@ -189,10 +208,16 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
 
     반환: 성공 시 (action, keyword), 알 수 없는 action 이면 None (쿼리 유지).
     부수효과: persona save / scraping 실행 / session_state["_kw_action_toast"] /
-    query strip.
+    query strip (쿼리 경로일 때만).
     """
-    action = st.query_params.get("kw_action")
-    keyword = (st.query_params.get("keyword", "") or "").strip()
+    pending = st.session_state.pop("_kw_action_pending", None)
+    from_query = not isinstance(pending, dict)
+    if from_query:
+        action = st.query_params.get("kw_action")
+        keyword = (st.query_params.get("keyword", "") or "").strip()
+    else:
+        action = str(pending.get("action") or "")
+        keyword = str(pending.get("keyword") or "").strip()
 
     if action not in _KW_ACTIONS:
         return None
@@ -271,10 +296,11 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
             "error", f"⚠️ 처리 실패: {type(exc).__name__}: {exc}",
         )
 
-    # query strip (재실행 방지)
-    for k in ("kw_action", "keyword"):
-        if k in st.query_params:
-            del st.query_params[k]
+    # query strip (재실행 방지) — 쿼리 경로일 때만
+    if from_query:
+        for k in ("kw_action", "keyword"):
+            if k in st.query_params:
+                del st.query_params[k]
     return (action, keyword)
 
 
@@ -1025,19 +1051,31 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
 
 
 @st.cache_data(ttl=60)
-def _board_kw_mgr_html(persona: Persona) -> str:
-    """⑦ 내 키워드 관리 — SOLA 자동 추출 + 페르소나 관심사 그룹.
+def _board_kw_mgr_parts(persona: Persona) -> dict[str, object]:
+    """⑦ 내 키워드 관리 — 그룹/요약 HTML 조각 + 위젯(× 버튼)용 키워드 리스트.
 
     Group 1: top_keywords(news_30d) 상위 6개 (히트 = count, tier dot)
     Group 2: persona.interest_lv3 + interest_tasks (최대 4) — 30d 본문 substring
              count 로 히트 산출
     Summary: 키워드 수 / 예상 일별 수집량(전체 30d/30) / 출처 수
+
+    × 숨김/제거와 '지금 즉시 수집 실행' 은 `_render_kw_mgr_zone` 의 네이티브
+    st.button 이 담당하므로 칩/summary HTML 에는 액션 앵커를 넣지 않는다
+    (앵커 클릭 = 문서 전체 reload 였던 것을 소켓 rerun 으로 전환).
+
+    Returns keys: empty(빈 상태 html — 있으면 나머지 무시), g1_html, g2_html,
+    summary_html, auto_kws(list[str]), user_kws(list[str]).
     """
+    out: dict[str, object] = {
+        "empty": "", "g1_html": "", "g2_html": "", "summary_html": "",
+        "auto_kws": [], "user_kws": [],
+    }
     news_30 = None
     with guard("키워드 관리 — 뉴스(30d) 로드"):
         news_30 = _news_db.load_news_for_days(days=30)
     if news_30 is None or news_30.empty:
-        return _kw_mgr_empty_html()
+        out["empty"] = _kw_mgr_empty_html()
+        return out
 
     # Group 1
     muted = {str(m).strip() for m in (persona.muted_keywords or []) if str(m).strip()}
@@ -1045,6 +1083,7 @@ def _board_kw_mgr_html(persona: Persona) -> str:
     with guard("키워드 관리 — 상위 키워드 산출"):
         # 숨김 키워드를 고려해 여유롭게 가져온 뒤 필터링.
         top_df = _trends.top_keywords(news_30, top_n=6 + len(muted))
+    auto_kws: list[str] = []
     auto_chips: list[str] = []
     if top_df is not None and not top_df.empty:
         # 숨김 처리 + 상위 6개로 truncate
@@ -1059,14 +1098,12 @@ def _board_kw_mgr_html(persona: Persona) -> str:
                 else "db-mid-dot" if ratio >= 0.2
                 else "db-low-dot"
             )
-            x_href = _kw_action_href("mute", keyword=kw)
+            auto_kws.append(kw)
             auto_chips.append(
                 f'<span class="db-kchip">'
                 f'<span class="db-kchip-dot {dot_cls}"></span>'
                 f'{_html.escape(kw)}'
                 f'<span class="db-kchip-hits">{c}</span>'
-                f'<a class="db-kchip-x" href="{x_href}" target="_self" '
-                f'title="자동 추출에서 숨기기">×</a>'
                 f'</span>'
             )
 
@@ -1089,13 +1126,10 @@ def _board_kw_mgr_html(persona: Persona) -> str:
                         term, regex=False, case=False
                     )
                 hits = int(mask.sum())
-            x_href = _kw_action_href("del_user", keyword=term)
             user_chips.append(
                 f'<span class="db-kchip db-kchip-user">'
                 f'{_html.escape(term)}'
                 f'<span class="db-kchip-hits">{hits}</span>'
-                f'<a class="db-kchip-x" href="{x_href}" target="_self" '
-                f'title="관심사에서 제거">×</a>'
                 f'</span>'
             )
 
@@ -1143,16 +1177,33 @@ def _board_kw_mgr_html(persona: Persona) -> str:
         f'<div class="db-kw-sum-t">최근 30일 평균 <b>~ {daily_avg}건/일</b> 수집 · 출처 {n_sources}개</div>'
         f'<div class="db-kw-sum-s">희소(주황) 키워드는 시그널이 옅을 수 있어요 — 30일 모니터링 후 재평가됩니다.</div>'
         f'</div>'
-        f'<a class="db-kw-sum-cta" href="{_kw_action_href("collect")}" '
-        f'target="_self">지금 즉시 수집 실행</a>'
         f'</div>'
     )
 
-    return f"""<div class="db-kw-mgr">
-        <div class="db-kwg">{g1_head}{g1_chips}</div>
-        <div class="db-kwg">{g2_head}<div class="db-kwg-chips">{g2_chips_inner}</div></div>
-        {summary}
-      </div>"""
+    out["g1_html"] = f'<div class="db-kwg">{g1_head}{g1_chips}</div>'
+    out["g2_html"] = (
+        f'<div class="db-kwg">{g2_head}'
+        f'<div class="db-kwg-chips">{g2_chips_inner}</div></div>'
+    )
+    out["summary_html"] = summary
+    out["auto_kws"] = auto_kws
+    out["user_kws"] = user_terms
+    return out
+
+
+def _board_kw_mgr_html(persona: Persona) -> str:
+    """⑦ 전체 박스 HTML — 조각(`_board_kw_mgr_parts`) 조립.
+
+    존(`_render_kw_mgr_zone`)은 버튼을 끼우기 위해 parts 를 직접 렌더하고,
+    이 함수는 단일 문자열이 필요한 호출부(테스트·회귀 베이크)용 조립이다.
+    """
+    parts = _board_kw_mgr_parts(persona)
+    if parts["empty"]:
+        return str(parts["empty"])
+    return (
+        f'<div class="db-kw-mgr">{parts["g1_html"]}{parts["g2_html"]}'
+        f'{parts["summary_html"]}</div>'
+    )
 
 
 def _kw_mgr_empty_html() -> str:
@@ -1172,11 +1223,12 @@ def _matrix_empty_html() -> str:
 
 
 @st.cache_data(ttl=60)
-def _opportunities_html() -> str:
-    """자동화 기회 4-grid — opportunity.score_cells → 카드.
+def _opp_cells_for_board() -> pd.DataFrame:
+    """자동화 기회 top 4 cells — ④ 존(카드+보류/채택 버튼)의 데이터 소스.
 
     각 cell: dept × lv3 + sample_tasks/sample_news 보유. 시안의 ROI/TRL/기간/
     예산 메트릭은 score 기반 휴리스틱 (실제 cost/timeline 수집 후속 PR).
+    빈 데이터/실패 시 빈 DataFrame (존이 friendly empty 카드 렌더).
     """
     news_df = None
     with guard("기회 매트릭스 — 뉴스(14d) 로드"):
@@ -1189,19 +1241,25 @@ def _opportunities_html() -> str:
         news_df is None or news_df.empty
         or tasks_df is None or tasks_df.empty
     ):
-        return _opp_empty_html()
+        return pd.DataFrame()
 
     try:
         cells = _score_cells(news_df, tasks_df)
     except Exception:
-        return _opp_empty_html()
+        return pd.DataFrame()
+    return cells.head(4)
+
+
+def _opportunities_html() -> str:
+    """자동화 기회 카드 HTML 묶음 — `_opp_cells_for_board` 조립.
+
+    존은 카드별로 분해 렌더(`_render_opportunities_zone`)하므로 이 함수는
+    단일 문자열이 필요한 호출부(테스트·회귀 베이크)용이다.
+    """
+    cells = _opp_cells_for_board()
     if cells.empty:
         return _opp_empty_html()
-
-    cards = []
-    for _, row in cells.head(4).iterrows():
-        cards.append(_opp_card_html(row))
-    return "\n".join(cards)
+    return "\n".join(_opp_card_html(row) for _, row in cells.iterrows())
 
 
 def _opp_empty_html() -> str:
@@ -1237,9 +1295,9 @@ def _opp_card_html(row: pd.Series) -> str:
     # 점수 표시 — score 자체가 추상적이라 0-100 범위로 매핑 (cell_score 는 누적)
     roi_score = min(int(cell_score), 99)
 
+    # 보류/채택은 ④ 존의 네이티브 st.button(소켓 rerun) — 앵커였을 땐 클릭마다
+    # 문서 전체 reload. 'SOLA와 검토 →' 는 area 전환(딥링크)이라 앵커 유지.
     discuss_href = _sola_handoff_href("opp", dept=dept_raw, lv3=lv3_raw)
-    hold_href = _opp_action_href("hold", dept=dept_raw, lv3=lv3_raw, title=f"{dept_raw} · {lv3_raw} 자동화 기회")
-    accept_href = _opp_action_href("accept", dept=dept_raw, lv3=lv3_raw, title=f"{dept_raw} · {lv3_raw} 자동화 기회")
 
     return f"""<article class="db-prop">
       <div class="db-prop-top">
@@ -1258,9 +1316,7 @@ def _opp_card_html(row: pd.Series) -> str:
       </div>
 
       <div class="db-prop-actions">
-        <a class="db-prop-hold" href="{hold_href}" target="_self" title="보류 — 산출물 보관함에 대기 상태로 추가">보류</a>
         <a class="db-prop-discuss" href="{discuss_href}" target="_self">SOLA와 검토 →</a>
-        <a class="db-prop-accept" href="{accept_href}" target="_self" title="채택 — 산출물 보관함에 채택 상태로 추가">채택</a>
       </div>
     </article>"""
 
@@ -1604,6 +1660,13 @@ def render() -> None:
 
 
 def _render_main(*, persona: Persona, refresh_label: str) -> None:
+    """본문 3분할 렌더 — html(①②③) → ④ 존 → html(⑤⑥) → ⑦ 존 → html(footer).
+
+    ④ 자동화 기회(보류/채택)와 ⑦ 키워드 관리(× 숨김/제거·즉시 수집)는 네이티브
+    st.button 이 필요해 `{{BOARD_OPPORTUNITIES}}` / `{{BOARD_KW_MGR}}` placeholder
+    를 split 마커로 템플릿을 3조각낸다. 각 조각은 `<main class="db-main">…</main>`
+    균형을 맞춘 독립 유효 HTML — 브라우저 자동 닫힘이 그리드를 깨지 않는다.
+    """
     kpis = _board_kpis()
     # 델타는 yesterday snapshot 비교 후속 PR — 일단 빈 값
     template = _components.read_asset_text(_BOARD_TEMPLATE)
@@ -1626,10 +1689,8 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{KPI_OPP_CLS}}", "db-delta-flat")
         .replace("{{KPI_PENDING_CLS}}", "db-delta-flat")
         .replace("{{BOARD_STORIES}}", _board_stories_html())
-        .replace("{{BOARD_OPPORTUNITIES}}", _opportunities_html())
         .replace("{{BOARD_TREND}}", _board_trend_block_html())
         .replace("{{BOARD_MATRIX}}", _board_matrix_html(selected_key=_mx_selected_key()))
-        .replace("{{BOARD_KW_MGR}}", _board_kw_mgr_html(persona))
     )
     # persona 라벨을 캐시 키로 — 부서·직무 바뀌면 브리핑 재생성
     brief = _brief_html(persona_label=persona.label() or "")
@@ -1642,7 +1703,149 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BRIEF_TTS_BTN}}", brief.get("tts_btn", ""))
     )
     html_out = _clean_board_html(html_out)
-    st.html(_components.prepare_screen_html(html_out))
+
+    # 위젯 존 2곳을 경계로 3분할 — head 는 <main> 이 열린 채 끝나고 tail 은
+    # </main> 만 들고 있으므로 각 조각을 직접 닫고/열어 균형을 맞춘다.
+    head, rest = html_out.split("{{BOARD_OPPORTUNITIES}}", 1)
+    mid, tail = rest.split("{{BOARD_KW_MGR}}", 1)
+    st.html(_components.prepare_screen_html(head + "</main>"))
+    _render_opportunities_zone()
+    st.html(_components.prepare_screen_html(f'<main class="db-main">{mid}</main>'))
+    _render_kw_mgr_zone(persona)
+    st.html(_components.prepare_screen_html(f'<main class="db-main">{tail}'))
+
+
+def _opp_sec_head_html() -> str:
+    """④ 섹션 머리 — 템플릿에서 존으로 이동한 시안 마크업 (분할 렌더)."""
+    ins_href = "?app_area=" + quote("🔎 인사이트 분석")
+    return (
+        '<div class="db-sec-head">'
+        '<div>'
+        '<div class="db-sec-eye">자동화 기회 · SOLA 자동 제안서 초안</div>'
+        '<h2 class="db-sec-title">자동화 기회</h2>'
+        '</div>'
+        '<div class="db-sec-meta">'
+        f'<a class="db-sec-link" href="{ins_href}" target="_self">전체 보러가기 →</a>'
+        '</div>'
+        '</div>'
+    )
+
+
+def _render_opportunities_zone() -> None:
+    """④ 자동화 기회 존 — 카드(시각 HTML) + 보류/채택 네이티브 버튼.
+
+    직전엔 카드 안 보류/채택이 `?opp_action=` 앵커라 클릭마다 **문서 전체
+    reload(흰 깜빡임)** 였다 → `if st.button(): pending; st.rerun()` 패턴으로
+    전환(on_click 미사용). 다음 run 의 `consume_opp_action_if_any` 가
+    `_opp_action_pending` 을 소비해 bookmark 추가 + 토스트를 띄운다.
+    'SOLA와 검토 →' 는 화면 전환(딥링크)이라 카드 HTML 안 앵커 유지.
+    """
+    with st.container(key="board_opps_zone"):
+        st.html(_components.prepare_screen_html(_opp_sec_head_html()))
+        cells = _opp_cells_for_board()
+        if cells.empty:
+            st.html(_components.prepare_screen_html(_opp_empty_html()))
+            return
+        rows = list(cells.iterrows())
+        for base in range(0, len(rows), 2):
+            cols = st.columns(2, gap="small")
+            for j, (_, row) in enumerate(rows[base:base + 2]):
+                i = base + j
+                dept_raw = str(row.get("dept", "") or "—")
+                lv3_raw = str(row.get("lv3", "") or "—")
+                title = f"{dept_raw} · {lv3_raw} 자동화 기회"
+                with cols[j], st.container(key=f"opp_card_{i}"):
+                    st.html(_components.prepare_screen_html(_opp_card_html(row)))
+                    b_hold, b_accept = st.columns(2, gap="small")
+                    with b_hold:
+                        if st.button(
+                            "보류", key=f"opp_hold_{i}", use_container_width=True,
+                            help="보류 — 산출물 보관함에 대기 상태로 추가",
+                        ):
+                            st.session_state["_opp_action_pending"] = {
+                                "action": "hold", "dept": dept_raw,
+                                "lv3": lv3_raw, "title": title,
+                            }
+                            st.rerun()
+                    with b_accept:
+                        if st.button(
+                            "채택", key=f"opp_accept_{i}", use_container_width=True,
+                            help="채택 — 산출물 보관함에 채택 상태로 추가",
+                        ):
+                            st.session_state["_opp_action_pending"] = {
+                                "action": "accept", "dept": dept_raw,
+                                "lv3": lv3_raw, "title": title,
+                            }
+                            st.rerun()
+
+
+def _kw_sec_head_html() -> str:
+    """⑦ 섹션 머리 — 템플릿에서 존으로 이동한 시안 마크업 (분할 렌더)."""
+    return (
+        '<div class="db-sec-head">'
+        '<div>'
+        '<div class="db-sec-eye">내 키워드 관리</div>'
+        '<h2 class="db-sec-title">매일 새벽 06:00 이 키워드로 수집됩니다</h2>'
+        '</div>'
+        '</div>'
+    )
+
+
+def _render_kw_mgr_zone(persona: Persona) -> None:
+    """⑦ 내 키워드 관리 존 — 칩 그룹(시각 HTML) + ×/즉시 수집 네이티브 버튼.
+
+    직전엔 칩의 × 와 '지금 즉시 수집 실행' CTA 가 `?kw_action=` 앵커라 클릭마다
+    **문서 전체 reload(흰 깜빡임)** 였다 → `if st.button(): pending; st.rerun()`
+    패턴으로 전환(on_click 미사용). 다음 run 의 `consume_kw_action_if_any` 가
+    `_kw_action_pending` 을 소비해 persona save / collect_batch 를 실행한다.
+    """
+    parts = _board_kw_mgr_parts(persona)
+    with st.container(key="board_kw_zone"):
+        st.html(_components.prepare_screen_html(_kw_sec_head_html()))
+        with st.container(key="board_kw_box"):
+            if parts["empty"]:
+                st.html(_components.prepare_screen_html(str(parts["empty"])))
+            else:
+                st.html(_components.prepare_screen_html(str(parts["g1_html"])))
+                _render_kw_x_buttons(
+                    list(parts["auto_kws"]), action="mute", key_prefix="kw_mute",
+                    help_text="자동 추출에서 숨기기",
+                )
+                st.html(_components.prepare_screen_html(str(parts["g2_html"])))
+                _render_kw_x_buttons(
+                    list(parts["user_kws"]), action="del_user", key_prefix="kw_del",
+                    help_text="관심사에서 제거",
+                )
+                st.html(_components.prepare_screen_html(str(parts["summary_html"])))
+            with st.container(key="kw_collect_cta"):
+                if st.button(
+                    "지금 즉시 수집 실행", key="_kw_collect_btn", type="primary",
+                    help="페르소나 키워드(없으면 자동화·AI)로 지금 수집을 실행하고 보드를 새로 그립니다.",
+                ):
+                    st.session_state["_kw_action_pending"] = {
+                        "action": "collect", "keyword": "",
+                    }
+                    st.rerun()
+
+
+def _render_kw_x_buttons(keywords: list[str], *, action: str, key_prefix: str,
+                         help_text: str) -> None:
+    """칩 그룹 바로 아래 × 제거 버튼 행 — 키워드당 작은 pill 버튼 1개.
+
+    클릭 시 `_kw_action_pending` 세팅 후 st.rerun() (on_click 미사용).
+    """
+    if not keywords:
+        return
+    with st.container(key=f"{key_prefix}_row"):
+        for i, kw in enumerate(keywords):
+            if st.button(
+                f"× {kw}", key=f"{key_prefix}_{i}",
+                help=f"'{kw}' — {help_text}",
+            ):
+                st.session_state["_kw_action_pending"] = {
+                    "action": action, "keyword": str(kw),
+                }
+                st.rerun()
 
 
 def _board_trend_block_html() -> str:

@@ -91,22 +91,10 @@
 
         <!-- ════════════════════════════════════════════════════
               ④ 자동화 기회 · 제안서 초안 그리드
+              (placeholder 는 split 마커 — 섹션 머리+카드+보류/채택 버튼은
+               Streamlit 존 board_v2._render_opportunities_zone 이 렌더)
              ════════════════════════════════════════════════════ -->
-        <section class="db-sec">
-          <div class="db-sec-head">
-            <div>
-              <div class="db-sec-eye">자동화 기회 · SOLA 자동 제안서 초안</div>
-              <h2 class="db-sec-title">자동화 기회</h2>
-            </div>
-            <div class="db-sec-meta">
-              <a class="db-sec-link" href="insights-analysis.html">전체 보러가기 →</a>
-            </div>
-          </div>
-
-          <div class="db-proposals">
-            {{BOARD_OPPORTUNITIES}}
-          </div>
-        </section>
+        {{BOARD_OPPORTUNITIES}}
 
         <!-- ════════════════════════════════════════════════════
               ⑤ 트렌드 (차트 + 키워드)
@@ -144,17 +132,10 @@
 
         <!-- ════════════════════════════════════════════════════
               ⑦ 내 키워드 관리
+              (placeholder 는 split 마커 — 섹션 머리+칩 그룹+×/수집 버튼은
+               Streamlit 존 board_v2._render_kw_mgr_zone 이 렌더)
              ════════════════════════════════════════════════════ -->
-        <section class="db-sec">
-          <div class="db-sec-head">
-            <div>
-              <div class="db-sec-eye">내 키워드 관리</div>
-              <h2 class="db-sec-title">매일 새벽 06:00 이 키워드로 수집됩니다</h2>
-            </div>
-          </div>
-
-          {{BOARD_KW_MGR}}
-        </section>
+        {{BOARD_KW_MGR}}
 
         <div class="db-footer-end">
           여기까지가 오늘의 보드입니다. 더 궁금한 점은 우측 SOLA 패널에서 질문하세요.

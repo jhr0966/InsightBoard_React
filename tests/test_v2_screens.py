@@ -25,11 +25,13 @@ def test_board_empty_state_helpers_dont_raise():
          patch.object(board_v2, "_load_tasks", return_value=pd.DataFrame()):
         # cache clear (other tests can populate)
         for fn in (
+            board_v2._opp_cells_for_board,
             board_v2._opportunities_html,
             board_v2._board_stories_html,
             board_v2._brief_html,
             board_v2._board_trend,
             board_v2._board_matrix_html,
+            board_v2._board_kw_mgr_parts,
         ):
             if hasattr(fn, "clear"):
                 fn.clear()
