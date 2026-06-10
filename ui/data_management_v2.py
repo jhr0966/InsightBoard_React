@@ -1261,6 +1261,37 @@ def _invalidate_collect_caches() -> None:
             fn.clear()
 
 
+def _collect_source_rows(saved: list, errors: list) -> list[dict]:
+    """소스별 수집 건수 행 — saved(소스·건수) + 오류 소스 병합 (순수 변환).
+
+    반환: `[{"source", "count", "ok"}, ...]` — saved 순서 유지, 오류만 나고
+    저장이 없는 소스는 뒤에 0건·ok=False 로 추가(0건/오류 소스도 표에 보이게).
+    saved 에 있어도 같은 소스에 오류가 있으면 ok=False (부분 오류 표시).
+    라이브 수집(`CollectionReport.saved/errors`)과 런 로그(`sources/errors`)
+    양쪽 스키마를 모두 수용한다 (둘 다 source/count 키 동형).
+    """
+    err_sources = {
+        str(e.get("source", ""))
+        for e in errors
+        if isinstance(e, dict) and e.get("source")
+    }
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for s in saved:
+        if not isinstance(s, dict):
+            continue
+        name = str(s.get("source", "") or "?")
+        rows.append({
+            "source": name,
+            "count": int(s.get("count", 0) or 0),
+            "ok": name not in err_sources,
+        })
+        seen.add(name)
+    for name in sorted(err_sources - seen):
+        rows.append({"source": name, "count": 0, "ok": False})
+    return rows
+
+
 def _run_collect_for_modal(progress=None) -> dict:
     """collect_batch 동기 실행 → 모달 본문 표시용 결과 dict. 캐시 무효화 포함.
 
@@ -1332,6 +1363,9 @@ def _run_collect_for_modal(progress=None) -> dict:
             "total_articles": n_articles, "total_files": n_files,
             "n_keywords": len(kws), "used_default": used_default,
             "n_feeds": len(extra_feeds), "errors": errors,
+            "sources": _collect_source_rows(
+                list(report.saved or []), list(report.errors or []),
+            ),
         }
     except Exception as exc:  # noqa: BLE001 — 모달이 오류 요약을 표시
         return {
@@ -1339,7 +1373,7 @@ def _run_collect_for_modal(progress=None) -> dict:
             "message": f"⚠️ 수집 처리 실패: {type(exc).__name__}: {exc}",
             "total_articles": 0, "total_files": 0,
             "n_keywords": 0, "used_default": False, "n_feeds": 0,
-            "errors": [f"{type(exc).__name__}: {exc}"],
+            "errors": [f"{type(exc).__name__}: {exc}"], "sources": [],
         }
     finally:
         _invalidate_collect_caches()
@@ -1404,6 +1438,7 @@ def _run_log_to_modal_result(run: dict) -> dict:
         "total_articles": total, "total_files": files,
         "n_keywords": len(kws), "used_default": False,
         "n_feeds": n_feeds, "errors": errors,
+        "sources": _collect_source_rows(sources, run.get("errors") or []),
         "from_log": True, "run_id": str(run.get("run_id", "") or ""),
     }
 
@@ -1459,7 +1494,7 @@ def _render_run_history_view_buttons() -> None:
 
 
 def _collect_result_summary_html(result: dict) -> str:
-    """수집 결과 요약 HTML — 상태 배지 + 한 줄 메시지 + KPI 4 + 오류 목록(전부 escape)."""
+    """수집 결과 요약 HTML — 배지 + 메시지 + KPI 4 + 소스별 건수 표 + 오류 목록(전부 escape)."""
     ok = bool(result.get("ok"))
     badge = ('<span class="sc-cm-badge sc-cm-ok">정상</span>' if ok
              else '<span class="sc-cm-badge sc-cm-fail">오류</span>')
@@ -1475,6 +1510,27 @@ def _collect_result_summary_html(result: dict) -> str:
         f'<div class="sc-cm-k">{_html.escape(k)}</div></div>'
         for k, v in stats
     )
+    # 소스별 수집 건수 표 — KPI 아래. 0건·오류 소스도 행으로 노출(어디서 안 왔는지).
+    src_rows = [s for s in (result.get("sources") or []) if isinstance(s, dict)]
+    src_html = ""
+    if src_rows:
+        trs = "".join(
+            '<tr class="{cls}"><td class="sc-cm-src-n">{name}</td>'
+            '<td class="sc-cm-src-c">{count}건</td>'
+            '<td class="sc-cm-src-s">{status}</td></tr>'.format(
+                cls="sc-cm-src-err" if not r.get("ok") else "",
+                name=_html.escape(str(r.get("source", "?") or "?")),
+                count=int(r.get("count", 0) or 0),
+                status="정상" if r.get("ok") else "⚠ 오류",
+            )
+            for r in src_rows
+        )
+        src_html = (
+            '<div class="sc-cm-srcs"><div class="sc-cm-srcs-t">소스별 수집 건수</div>'
+            '<table class="sc-cm-src-table">'
+            "<thead><tr><th>소스</th><th>건수</th><th>상태</th></tr></thead>"
+            f"<tbody>{trs}</tbody></table></div>"
+        )
     errors = [str(e) for e in (result.get("errors") or []) if e]
     err_html = ""
     if errors:
@@ -1489,7 +1545,7 @@ def _collect_result_summary_html(result: dict) -> str:
     return (
         '<div class="sc-collect-modal">'
         f'<div class="sc-cm-msg">{badge}<span>{msg}</span></div>'
-        f'<div class="sc-cm-stats">{cells}</div>{err_html}</div>'
+        f'<div class="sc-cm-stats">{cells}</div>{src_html}{err_html}</div>'
     )
 
 

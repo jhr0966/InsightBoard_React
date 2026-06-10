@@ -221,6 +221,48 @@ def test_modal_body_escapes_external_error_strings():
     assert "<b>주의</b>" not in html_out
 
 
+def test_summary_html_renders_per_source_rows():
+    """결과 요약에 소스별 건수 표 — 0건/오류 소스 행 + 이름 escape."""
+    from ui import data_management_v2 as dm
+
+    html_out = dm._collect_result_summary_html({
+        "ok": True, "message": "✓", "total_articles": 5, "total_files": 2,
+        "n_keywords": 1, "used_default": False, "n_feeds": 1, "errors": [],
+        "sources": [
+            {"source": "naver", "count": 4, "ok": True},
+            {"source": "<rss>피드", "count": 0, "ok": False},
+        ],
+    })
+    assert "소스별 수집 건수" in html_out
+    assert "naver" in html_out and "4건" in html_out and "정상" in html_out
+    assert "0건" in html_out and "오류" in html_out          # 0건·오류 소스 행
+    assert "<rss>" not in html_out and "&lt;rss&gt;" in html_out  # escape
+    # sources 없으면(과거 결과 dict) 표 자체를 생략
+    html_old = dm._collect_result_summary_html({
+        "ok": True, "message": "✓", "total_articles": 1, "total_files": 1,
+        "n_keywords": 1, "used_default": False, "n_feeds": 0, "errors": [],
+    })
+    assert "소스별 수집 건수" not in html_old
+
+
+def test_run_collect_result_includes_per_source_rows():
+    """라이브 수집 결과 dict 에 sources 행 — saved + 오류만 난 소스(0건) 병합."""
+    from ui import data_management_v2 as dm
+    from scraping.run_daily import CollectionReport
+
+    fake = CollectionReport(
+        saved=[{"source": "naver", "keywords": ["X"], "count": 3, "path": "x"}],
+        errors=[{"source": "google", "keyword": "X", "error": "rate"}],
+    )
+    with patch("ui.board_v2._collect_keywords_for_persona", return_value=["X"]), \
+         patch("scraping.run_daily.collect_batch", return_value=fake):
+        result = dm._run_collect_for_modal()
+    assert result["sources"] == [
+        {"source": "naver", "count": 3, "ok": True},
+        {"source": "google", "count": 0, "ok": False},
+    ]
+
+
 def test_modal_body_does_not_recollect_when_result_exists():
     """결과가 세션에 있으면 collect 재실행 금지(1회 실행 가드)."""
     from ui import data_management_v2 as dm
@@ -309,6 +351,23 @@ def test_run_log_to_modal_result_full_entry():
     # 메시지에 시각·트리거·건수
     assert "06-10" in result["message"] and "08:00" in result["message"]
     assert "수동" in result["message"] and "7건" in result["message"]
+
+
+def test_run_log_to_modal_result_includes_sources():
+    """런 로그 재열람 결과도 sources 행 포함 — 라이브 수집과 동일 표 렌더."""
+    from ui import data_management_v2 as dm
+
+    run = dict(_RUN_ENTRY,
+               errors=[{"source": "tech", "keyword": "", "error": "timeout"}])
+    result = dm._run_log_to_modal_result(run)
+    assert result["sources"] == [
+        {"source": "naver", "count": 4, "ok": True},
+        {"source": "google", "count": 2, "ok": True},
+        {"source": "myrss", "count": 1, "ok": True},
+        {"source": "tech", "count": 0, "ok": False},   # 오류만 난 소스 → 0건 행
+    ]
+    # 필드 누락 로그도 빈 리스트로 방어
+    assert dm._run_log_to_modal_result({})["sources"] == []
 
 
 def test_run_log_to_modal_result_errors_formatted():

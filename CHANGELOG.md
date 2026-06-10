@@ -9,6 +9,7 @@
 - **런 로그 → 모달 결과 변환 헬퍼**(`ui/data_management_v2.py` `_run_log_to_modal_result`): `store/run_log` 엔트리를 수집 현황 모달 결과 dict 로 변환(순수 함수). 과거 로그 필드 누락 방어 — `ok` 누락 시 errors 유무로 유추, `n_keywords`=sources 키워드 합집합, `n_feeds`=naver/google/tech 외 소스 수, dict/문자열 혼재 errors 모두 수용. `from_log=True` 마커 포함.
 - **⚙ 수집 설정 이력 — [📡 마지막 수집 결과 보기] + 런별 [보기]**(`_render_run_history_view_buttons`): 이력 카드 아래에 최근 5개 런 행(시각·트리거·건수·정상/오류 caption) + [보기] 버튼. 클릭 시 `_open_run_result_modal` 이 변환 결과를 `_sc_collect_modal_result` 에 넣고 `_sc_collect_modal_pending` 세팅 + rerun → 기존 수집 현황 모달이 **재수집 없이** 결과 요약 모드로 열린다(결과 존재 시 collect 스킵 가드 활용). 런 기록 없으면 안내 caption.
 - **run_log 기록 보강**(`_run_collect_for_modal`): `record_run` 에 `duration_s` 전달(기존 스키마 필드) — 수집 헬스 1행의 소요 시간 표시·재열람 정보가 실측값으로 채워진다.
+- **결과 요약에 소스별 건수 표**(`_collect_source_rows` + `_collect_result_summary_html` + `data_management.css` `.sc-cm-srcs`): KPI 아래에 소스별(naver/google/tech/RSS 이름) 수집 건수 표 추가 — 오류만 난 소스도 0건·⚠ 오류 행으로 노출, 소스명 `html.escape`. 라이브 수집(`_run_collect_for_modal`)과 런 로그 재열람(`_run_log_to_modal_result`) 결과 dict 양쪽에 `sources` 필드를 일관 포함해 동일하게 렌더.
 - 테스트: `tests/test_collect_trigger.py` +6 — 변환 헬퍼(정상/오류 포맷/필드 누락·빈 dict), 버튼 클릭→플래그 세팅+rerun, 모달이 collect_batch/`_run_collect_for_modal` 호출 없이 로그 결과 표시, 런 없음 noop.
 - 검증: pytest **898 passed** · 금지패턴 0 · 브라우저 실측(⚙ 수집 설정 → [📡 마지막 수집 결과 보기] → 모달 결과 요약, 재수집 없음) OK.
 
