@@ -13,6 +13,8 @@
 - **② 브리핑 items 에 link 포함**(`_brief_html`): summary 보강 루프가 `item["link"]` 로 원기사를 찾는데 items 에 link 가 없어 항상 미스(데드 루프)였던 것 수정 — LLM 브리핑 입력에 기사 요약이 실제로 합류.
 - **보드 캐시 일괄 무효화**(`invalidate_board_caches` 신설): 수집 직후 `_board_kpis` 만 비워 브리핑/스토리/트렌드/기회/매트릭스/키워드가 TTL(60s) 동안 옛 데이터로 남던 것 → 보드 '지금 즉시 수집'(`consume_kw_action_if_any`)과 수집 모달(`data_management_v2._invalidate_collect_caches`) 양쪽이 전 섹션 캐시를 비운다.
 - **검증**: ① 41건 합성 뉴스(8주 분포·4출처·작업정의 연관 키워드) 시드 후 7개 섹션 집계를 독립 계산과 대조(KPI 수집8/매칭6/기회3 · 스토리 10장 · 트렌드 주별 버킷·델타 · 기회 top3 · 키워드 auto6/user) — 전부 일치. ② Playwright 실측: KPI/인사 문구·스토리 10장·트렌드 차트·매트릭스 버블 클릭→상세 전환·보류→토스트·키워드 ×→mute 토스트·**추천 질문 클릭→즉시 전송→assistant 메시지 수신**·직접 입력 전송 — 전부 통과(LLM 호스트는 샌드박스 차단이라 오류 메시지 폴백 경로로 확인). ③ pytest **939 passed**(신규 4: 버블 충돌/스파크라인 크기/KPI 14d/브리핑 link) · 금지패턴 0.
+### Changed (온보딩 모달 높이 통일) — `style-onboarding-fixed-height`
+- **`ui/onboarding.py`**: 모달 본문 전체를 `onb_body` 컨테이너로 감싸고 `min-height: 430px`(가장 긴 4단계 기준) + 마지막 요소(네비 버튼/캡션) `margin-top:auto` 하단 고정 — 단계 전환 때마다 창 높이가 출렁이던 것을 통일, 콘텐츠가 더 길면(수집 결과 요약 등) 자연 확장.
 
 ### Added (머지 브랜치 정리 워크플로) — `chore-branch-cleanup-workflow`
 - **`.github/workflows/branch_cleanup.yml` 신설**: workflow_dispatch 수동 트리거로 머지 확정 원격 브랜치(기본 목록 67개 — 머지 PR head + main ancestry + CHANGELOG/SESSIONS 머지 기록 교차 검증)를 `GITHUB_TOKEN`(contents:write)으로 서버 측 일괄 삭제. `branches` 입력으로 임의 목록 지정 가능, main/master 는 가드로 항상 보호, 이미 없는 브랜치는 skip. 원격 실행 환경의 git 프록시가 삭제 push 를 차단(403)해 Actions 경유로 우회.

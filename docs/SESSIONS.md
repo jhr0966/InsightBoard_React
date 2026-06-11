@@ -19,6 +19,13 @@
 **다음**: ① 브리핑 top3 다양화(같은 주제 편중 시 lv3 분산) ② KPI 어제 대비 델타 표시(스냅샷 비교) ③ 트렌드 Y축 라벨 균등화(nice_max 배수 보정).
 
 ---
+## 2026-06-11 — style: 온보딩 모달 높이 통일 (`style-onboarding-fixed-height`)
+
+**무엇을**: 최초 접속 페르소나 마법사가 단계마다 창 높이가 변하던 것 → 전 단계 동일 높이.
+
+**어떻게**: `_dialog_body` 본문을 `st.container(key="onb_body")` 로 감싸고 CSS `min-height:430px` + 마지막 요소 `margin-top:auto`(버튼 하단 고정). 더 긴 콘텐츠(수집 결과)는 자연 확장. pytest 936 · 브라우저 실측으로 단계별 높이 동일 확인.
+
+**상태**: 🔄 PR.
 
 ## 2026-06-11 — chore: 머지 브랜치 정리 워크플로 (`chore-branch-cleanup-workflow`)
 

@@ -204,6 +204,25 @@ def _inject_css() -> None:
             text-align: center; font-size: 13.5px; color: #64748B;
             margin: 0 auto 6px; line-height: 1.5;
           }
+          /* 단계마다 모달 높이가 출렁이지 않게 본문 높이 통일 —
+             가장 긴 입력 단계(2/4) 기준 min-height, 더 길면 자연 확장.
+             st.container(key=) 는 stVerticalBlock 자체에 st-key-* 클래스가 붙는다. */
+          .st-key-onb_body { min-height: 470px; }
+          /* 입력 단계 — 본문 바로 아래(1뎁스) 내부 컨테이너만 남은 높이를 차지하고,
+             그 마지막 요소(네비 버튼 행)를 하단 고정해 빈 공간이 본문 중간에 생기게.
+             (컬럼 내부의 중첩 VerticalBlock 은 건드리지 않는다) */
+          .st-key-onb_body > div[data-testid="stVerticalBlock"],
+          .st-key-onb_body > div > div[data-testid="stVerticalBlock"] {
+            flex-grow: 1;
+          }
+          .st-key-onb_body > div[data-testid="stVerticalBlock"] > div:last-child,
+          .st-key-onb_body > div > div[data-testid="stVerticalBlock"] > div:last-child {
+            margin-top: auto;
+          }
+          /* 환영 화면 — 시작 버튼부터 아래(버튼 2 + 캡션)를 하단 고정. */
+          .st-key-onb_body > div:has([class*="st-key-onb_start_btn"]) {
+            margin-top: auto; flex-grow: 0 !important;
+          }
         </style>
         """
     )
@@ -250,31 +269,38 @@ def render(persona: Persona) -> None:
 
 
 def _dialog_body(persona: Persona) -> None:
-    """모달 내부 — 단계에 따라 환영 / 입력 스텝 / 수집 제안·실행."""
+    """모달 내부 — 단계에 따라 환영 / 입력 스텝 / 수집 제안·실행.
+
+    본문 전체를 `onb_body` 컨테이너(min-height 고정 + 마지막 요소 하단 고정)로
+    감싸 단계마다 모달 높이가 출렁이지 않게 통일한다 (`_inject_css` 참고).
+    """
     _inject_css()
     step = st.session_state.get("_onb_step", 0)
-    if step == 0:
-        _render_welcome()
-    elif step == _STEP_COLLECT_OFFER:
-        _render_collect_offer()
-    elif step == _STEP_COLLECT_RUN:
-        _render_collect_run()
-    else:
-        _render_step(step, persona)
-        # 키보드 UX — 모달 첫 입력 자동 포커스 + Enter→다음 입력 이동.
-        # nonce=step: 단계 전환(rerun) 시 스크립트 재실행 → 새 단계 첫 입력 재포커스.
-        # submit: 마지막 텍스트 입력 Enter = [다음] 클릭 (4단계는 키워드 Enter=칩 등록이라 제외).
-        # chips: 키워드 multiselect 에서 콤마 입력 → 칩(버블) 즉시 등록.
-        submit_sel = (
-            f".st-key-onb_next_{step} button" if step < _TOTAL_INPUT_STEPS else ""
-        )
-        chips_sel = ".st-key-onb_keywords" if step == _TOTAL_INPUT_STEPS else ""
-        inject_focus_nav(
-            '[data-testid="stDialog"]',
-            nonce=f"onb-step-{step}",
-            submit_selector=submit_sel,
-            chips_selector=chips_sel,
-        )
+    with st.container(key="onb_body"):
+        if step == 0:
+            _render_welcome()
+        elif step == _STEP_COLLECT_OFFER:
+            _render_collect_offer()
+        elif step == _STEP_COLLECT_RUN:
+            _render_collect_run()
+        else:
+            _render_step(step, persona)
+            # 키보드 UX — 모달 첫 입력 자동 포커스 + Enter→다음 입력 이동.
+            # nonce=step: 단계 전환(rerun) 시 스크립트 재실행 → 새 단계 첫 입력 재포커스.
+            # submit: 마지막 텍스트 입력 Enter = [다음] 클릭 (4단계는 키워드 Enter=칩 등록이라 제외).
+            # chips: 키워드 multiselect 에서 콤마 입력 → 칩(버블) 즉시 등록.
+            # 주입 위치는 onb_body 컨테이너 **안** — 밖에 두면 단계 화면만 요소+gap
+            # 16px 이 더 생겨 환영/제안 화면과 모달 높이가 어긋난다(높이 통일).
+            submit_sel = (
+                f".st-key-onb_next_{step} button" if step < _TOTAL_INPUT_STEPS else ""
+            )
+            chips_sel = ".st-key-onb_keywords" if step == _TOTAL_INPUT_STEPS else ""
+            inject_focus_nav(
+                '[data-testid="stDialog"]',
+                nonce=f"onb-step-{step}",
+                submit_selector=submit_sel,
+                chips_selector=chips_sel,
+            )
 
 
 def _render_welcome() -> None:
