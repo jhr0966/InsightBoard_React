@@ -193,6 +193,8 @@ _FOCUS_NAV_JS = r"""
 /* focus-nav %(nonce)s */
 (function () {
   var SEL = %(sel)s;
+  var SUBMIT = %(submit)s;  /* 마지막 입력 Enter 시 클릭할 버튼 selector (null=비활성) */
+  var CHIPS = %(chips)s;    /* 콤마→Enter 변환할 태그 입력 scope selector (null=비활성) */
   /* st.html(unsafe_allow_javascript=True) → 메인 문서 realm 에서 실행.
      components.v1.html 폴백(iframe) → window.parent 로 같은 문서에 접근. */
   var doc, win;
@@ -226,20 +228,50 @@ _FOCUS_NAV_JS = r"""
     doc.removeEventListener("keydown", win.__newsFocusNav.fn, true);
   }
   function onKeydown(e) {
-    if (e.key !== "Enter" || e.isComposing) { return; }
-    if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) { return; }
+    if (e.isComposing) { return; }
     var nav = win.__newsFocusNav;
     var el = e.target;
-    if (!nav || !isPlainTextInput(el) || !el.closest(nav.sel)) { return; }
+    if (!nav || !el) { return; }
+
+    /* (c) 태그 입력(BaseWeb select + 새 옵션 허용)에서 콤마 → Enter 변환:
+       콤마를 누르면 입력 중인 키워드가 즉시 칩(버블)으로 등록되게 한다.
+       값이 비어있으면 그대로 두어 빈 칩 생성을 막는다. */
+    if (e.key === "," && nav.chips && el.tagName === "INPUT"
+        && el.closest(nav.chips) && el.closest('[data-baseweb="select"]')
+        && el.value && el.value.trim()) {
+      e.preventDefault();
+      e.stopPropagation();
+      el.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "Enter", code: "Enter", keyCode: 13, which: 13,
+        bubbles: true, cancelable: true,
+      }));
+      return;
+    }
+
+    if (e.key !== "Enter") { return; }
+    if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) { return; }
+    if (!isPlainTextInput(el) || !el.closest(nav.sel)) { return; }
     var list = inputsIn(nav.sel);
     var i = list.indexOf(el);
-    /* 마지막 입력(또는 미발견)이면 기본 동작 유지 — Streamlit 이 Enter 커밋 처리. */
-    if (i < 0 || i >= list.length - 1) { return; }
+    if (i < 0) { return; }
+    if (i >= list.length - 1) {
+      /* (d) 마지막 입력에서 Enter → blur 로 값 커밋 후 지정 버튼 클릭(=다음 단계).
+         클릭은 rerun 으로 DOM 이 교체될 수 있어 지연 후 재조회한다. */
+      if (!nav.submit) { return; } /* 미지정 시 기본 동작 유지(Streamlit Enter 커밋) */
+      e.preventDefault();
+      e.stopPropagation();
+      el.blur();
+      win.setTimeout(function () {
+        var btn = doc.querySelector(nav.submit);
+        if (btn) { btn.click(); }
+      }, 180);
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     list[i + 1].focus(); /* 현재 입력 blur → Streamlit 값 커밋 자연 발생 */
   }
-  win.__newsFocusNav = { sel: SEL, fn: onKeydown };
+  win.__newsFocusNav = { sel: SEL, submit: SUBMIT, chips: CHIPS, fn: onKeydown };
   doc.addEventListener("keydown", onKeydown, true);
 
   /* (a) scope 안 첫 입력 자동 포커스 — 모달/위젯 마운트가 늦을 수 있어 폴링.
@@ -265,7 +297,13 @@ _FOCUS_NAV_JS = r"""
 """
 
 
-def inject_focus_nav(scope_selector: str, *, nonce: str = "") -> None:
+def inject_focus_nav(
+    scope_selector: str,
+    *,
+    nonce: str = "",
+    submit_selector: str = "",
+    chips_selector: str = "",
+) -> None:
     """입력 폼 포커스 내비게이션 주입 — ① scope 첫 input 자동 포커스 ② Enter→다음 입력.
 
     Streamlit ≥1.58 에서는 `st.html(..., unsafe_allow_javascript=True)` 로 메인
@@ -279,12 +317,19 @@ def inject_focus_nav(scope_selector: str, *, nonce: str = "") -> None:
       마지막 입력에서는 브라우저/Streamlit 기본 동작 유지. Tab 은 기본 동작.
     - `nonce` 가 바뀌면 마크업이 바뀌어 스크립트가 재실행된다 — 온보딩 단계
       전환(rerun) 후 새 단계 첫 입력에 다시 포커스하기 위해 단계 번호를 넘긴다.
+    - `submit_selector`: 지정 시 **마지막** 텍스트 입력에서 Enter → blur(값 커밋)
+      후 해당 버튼을 클릭한다 — 온보딩 "이름 입력 후 Enter = 다음" UX.
+    - `chips_selector`: 지정 시 그 scope 안 태그 입력(multiselect
+      `accept_new_options`)에서 콤마 입력 → Enter 로 변환해 키워드를 즉시
+      칩(버블)으로 등록한다.
     - AppTest/헤드리스 등 미지원 환경에서도 본 렌더가 죽지 않게 가드.
     """
     import json as _json
 
     markup = _FOCUS_NAV_JS % {
         "sel": _json.dumps(scope_selector),
+        "submit": _json.dumps(submit_selector or None),
+        "chips": _json.dumps(chips_selector or None),
         "nonce": _html.escape(str(nonce)),
     }
     try:

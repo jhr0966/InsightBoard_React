@@ -73,7 +73,7 @@ st.session_state["persona"] = _persona
 chat_panel.consume_send_if_any(_persona)
 
 _is_persona = bool(st.session_state.get("show_persona_editor"))
-_area_key = "프로필 설정" if _is_persona else area
+_area_key = "페르소나 설정" if _is_persona else area
 
 # 모든 화면 통일: [좌 사이드바 │ 중앙 콘텐츠(main_col) │ 우 LLM 채팅(chat_col)].
 # 각 화면이 보여주는 데이터를 SOLA 컨텍스트로 packaging 해 두면 우측 채팅이 그 화면

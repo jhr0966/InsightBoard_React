@@ -24,7 +24,7 @@ _SCREENS = [
     ("ui.insights_v2", "🔎 인사이트 분석", "render", "chat_context_block"),
     ("ui.sola_workshop_v2", "🤖 SOLA 작업실", "render", "chat_context_block"),
     ("ui.archive_v2", "📦 산출물 보관함", "render", "chat_context_block"),
-    ("ui.persona_page", "프로필 설정", "render", "chat_context_block"),
+    ("ui.persona_page", "페르소나 설정", "render", "chat_context_block"),
 ]
 _SCREEN_IDS = [f"{m.split('.')[-1]}:{a}" for m, a, *_ in _SCREENS]
 
