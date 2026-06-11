@@ -18,6 +18,11 @@ on:
         description: "삭제할 브랜치 (공백 구분, 비우면 기본 목록)"
         required: false
         default: ""
+  # MCP 통합 토큰이 workflow_dispatch 를 403 거부 → 트리거 파일 변경(=PR 머지)으로도
+  # 실행되게 한다. 이 경로가 바뀐 push 에서만 동작하므로 평소 main push 와 무관.
+  push:
+    branches: [main]
+    paths: [".github/branch-cleanup-trigger"]
 
 permissions:
   contents: write
@@ -27,10 +32,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      INPUT_BRANCHES: ${{ inputs.branches }}
+      INPUT_BRANCHES: ${{ inputs.branches || '' }}
       DEFAULT_BRANCHES: >-
         chore-docs-and-final-tidyup
         chore-branch-cleanup-workflow
+        chore-branch-cleanup-trigger
         claude/charming-sagan-REsgM
         claude/dev-setup-testing-i4f082
         claude/happy-thompson-F5Tdr
