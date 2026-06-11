@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-11 — feat: 오늘의 보드 감사 — 시뮬레이션·브라우저 검증·개선 (`feat-board-audit`)
+
+**무엇을**: 보드 7개 섹션 집계 로직을 합성 데이터(41건/8주/4출처)로 시뮬레이션해 독립 계산과 대조 + Playwright 실측 검증, 발견된 결함 5건 수정, 채팅 추천 질문 클릭=즉시 전송.
+
+**어떻게**:
+1. 시뮬레이션: KPI(수집/매칭/기회)·브리핑 top3·스토리 10장·트렌드 주별 버킷/델타·매트릭스·키워드 관리 — 전부 기대값 일치.
+2. 실측 발견 → 수정: ① 매트릭스 동일 metric 셀 좌표 완전 겹침(클릭 불가) → 계단 오프셋 ② 스파크라인 svg 크기 미명시 → img 변환 후 거대 렌더 → width/height 명시 ③ KPI 기회 1d ↔ 섹션 14d 불일치 → 14d 정렬 ④ 브리핑 summary 보강 루프가 link 부재로 데드 → items 에 link ⑤ 수집 후 KPI 외 캐시 잔존 → `invalidate_board_caches`.
+3. 채팅: pill 클릭이 `_do_sola_send` 를 직접 세팅(form 과 동일 경로) — prefill 제거. 실측: pill 클릭→user 버블→assistant 응답(샌드박스는 LLM 호스트 차단이라 오류 폴백 메시지로 파이프라인 확인).
+
+**검증**: pytest **939 passed**(신규 4) · 금지패턴 0 · 스크린샷 `/tmp/sec-trend2.png`·`/tmp/sec-matrix2.png`·`/tmp/chat-pill.png`.
+
+**다음**: ① 브리핑 top3 다양화(같은 주제 편중 시 lv3 분산) ② KPI 어제 대비 델타 표시(스냅샷 비교) ③ 트렌드 Y축 라벨 균등화(nice_max 배수 보정).
+
+---
+
 ## 2026-06-11 — chore: 머지 브랜치 정리 워크플로 (`chore-branch-cleanup-workflow`)
 
 **무엇을**: 원격에 쌓인 브랜치 72개 중 머지 확정 67개(자기 자신 포함) 일괄 삭제. 원격 실행 환경 git 프록시가 삭제 push 를 403 차단 → Actions `branch_cleanup.yml`(workflow_dispatch + GITHUB_TOKEN contents:write) 로 서버 측 삭제.

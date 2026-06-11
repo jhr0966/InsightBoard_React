@@ -154,28 +154,6 @@ def test_suggestions_no_longer_full_reload_anchors():
     assert all(isinstance(s, str) and s for s in suggestions)
 
 
-def test_apply_pending_prefill_fills_input_and_pops_pending():
-    """pill 클릭 pending → 입력창 키에 주입 + pending 제거(재적용 방지)."""
-    from types import SimpleNamespace
-
-    ik = "_side_chat_input_board"
-    fake = SimpleNamespace(session_state={f"{ik}__prefill": "트렌드 요약해줘"})
-    with patch.object(chat_panel, "st", fake):
-        assert chat_panel._apply_pending_prefill(ik) is True
-    assert fake.session_state[ik] == "트렌드 요약해줘"
-    assert f"{ik}__prefill" not in fake.session_state
-
-
-def test_apply_pending_prefill_noop_when_no_pending():
-    from types import SimpleNamespace
-
-    ik = "_side_chat_input_board"
-    fake = SimpleNamespace(session_state={})
-    with patch.object(chat_panel, "st", fake):
-        assert chat_panel._apply_pending_prefill(ik) is False
-    assert fake.session_state == {}
-
-
 def test_consume_prefill_sets_input_value_and_clears_param():
     from types import SimpleNamespace
 
@@ -251,8 +229,9 @@ def test_fragment_body_consumes_send_before_rendering_messages():
 
 # ── rerun scope — 패널 내부 상호작용별 부분/전체 rerun 라우팅 ──
 
-def test_suggestion_pill_click_sets_prefill_and_fragment_rerun():
-    """추천 질문 pill 클릭 → __prefill pending + fragment 부분 rerun 만."""
+def test_suggestion_pill_click_sends_immediately_fragment_scope():
+    """추천 질문 pill 클릭 = 즉시 전송 — `_do_sola_send` pending + pill 해제 예약 +
+    fragment 부분 rerun (일반 area). 입력창 prefill 경로는 제거됨."""
     import streamlit as st
     ik = "_side_chat_input_testarea"
     try:
@@ -260,11 +239,28 @@ def test_suggestion_pill_click_sets_prefill_and_fragment_rerun():
              patch("streamlit.pills", return_value="오늘 KPI 요약"), \
              patch("streamlit.rerun") as rr:
             chat_panel._render_chat_suggestions("📊 오늘의 보드", ik)
-        assert st.session_state[f"{ik}__prefill"] == "오늘 KPI 요약"
+        assert st.session_state["_do_sola_send"] == "오늘 KPI 요약"
         assert st.session_state[f"{ik}__reset_pills"] is True
+        assert f"{ik}__prefill" not in st.session_state
         rr.assert_called_once_with(scope="fragment")
     finally:
-        for k in (f"{ik}__prefill", f"{ik}__reset_pills"):
+        for k in ("_do_sola_send", f"{ik}__reset_pills"):
+            st.session_state.pop(k, None)
+
+
+def test_suggestion_pill_click_in_sola_area_uses_app_scope():
+    """SOLA 작업실 pill 전송은 중앙 작업대가 답변을 봐야 하므로 scope='app'."""
+    import streamlit as st
+    ik = "_side_chat_input_sola"
+    try:
+        with patch("streamlit.container", MagicMock()), \
+             patch("streamlit.pills", return_value="이전 thread 들 요약"), \
+             patch("streamlit.rerun") as rr:
+            chat_panel._render_chat_suggestions("🤖 SOLA 작업실", ik)
+        assert st.session_state["_do_sola_send"] == "이전 thread 들 요약"
+        rr.assert_called_once_with(scope="app")
+    finally:
+        for k in ("_do_sola_send", f"{ik}__reset_pills"):
             st.session_state.pop(k, None)
 
 

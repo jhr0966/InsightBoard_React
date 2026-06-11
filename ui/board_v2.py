@@ -292,10 +292,7 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
                     f"✅ {kw_label}로 {n_articles}건 수집 "
                     f"({n_files}개 파일){f', 일부 오류 {n_err}건' if n_err else ''}.",
                 )
-            try:
-                _board_kpis.clear()
-            except Exception:
-                pass
+            invalidate_board_caches()
     except Exception as exc:
         st.session_state["_kw_action_toast"] = (
             "error", f"⚠️ 처리 실패: {type(exc).__name__}: {exc}",
@@ -547,6 +544,8 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
                         "title": str(r.get("news_title", "") or r.get("title", "") or "(제목 없음)"),
                         "source": str(r.get("source", "") or ""),
                         "when": str(r.get("collected_at", "") or ""),
+                        # link 포함 — 아래 summary 보강 루프가 원기사 summary 를 찾는 키
+                        "link": str(r.get("link", "") or ""),
                     })
         except Exception:  # noqa: BLE001 — 데이터-경로: silent 실패가 잘못된 폴백을 부르므로 로깅
             logger.warning("데일리 브리핑 매칭-뉴스 처리 실패", exc_info=True)
@@ -560,6 +559,7 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
                 "title": str(r.get("title", "") or "(제목 없음)"),
                 "source": str(r.get("source", "") or ""),
                 "when": str(r.get("collected_at", "") or ""),
+                "link": str(r.get("link", "") or ""),
             })
 
     if not items:
@@ -857,9 +857,12 @@ def _board_trend() -> dict[str, str]:
             num_cls = "db-flat"
             delta_str = f"+{delta}%" if delta >= 0 else f"{delta}%"
         spark_d = _sparkline_d(s["counts"])
+        # width/height 명시 필수 — prepare_screen_html 이 인라인 svg 를 <img> 로
+        # 변환할 때 크기 속성이 없으면 img 가 거대하게 늘어난다(브라우저 실측).
         spark_svg = (
             f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 18' "
-            f"preserveAspectRatio='none'><path d='{spark_d}' fill='none' "
+            f"width='60' height='18' preserveAspectRatio='none'>"
+            f"<path d='{spark_d}' fill='none' "
             f"stroke='{color}' stroke-width='1.4'/></svg>"
         )
         kw_parts.append(
@@ -949,6 +952,7 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
                 break
 
     bubbles = []
+    placed: list[tuple[float, float]] = []
     for i, (_, row) in enumerate(cells.iterrows()):
         roi_norm = int(row.get("matched_news", 0) or 0) / max_news
         ease_norm = int(row.get("matched_tasks", 0) or 0) / max_tasks
@@ -957,6 +961,20 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
         top_pct = 90 - roi_norm * 78
         left_pct = 10 + ease_norm * 80
         size_px = round(14 + score_norm * 18)
+
+        # 좌표 충돌 회피 — matched_news/tasks 가 같은 셀들은 동일 좌표에 완전히
+        # 겹쳐 아래 버블이 클릭 불가였다(브라우저 실측). 근접(<7%p)하면 점수
+        # 순서대로 좌하 방향 계단 오프셋.
+        for _ in range(len(placed) + 1):
+            collided = any(
+                abs(left_pct - pl) < 7 and abs(top_pct - pt) < 7
+                for pl, pt in placed
+            )
+            if not collided:
+                break
+            left_pct = max(6.0, left_pct - 11)
+            top_pct = min(90.0, top_pct + 11)
+        placed.append((left_pct, top_pct))
 
         label = str(row.get("lv3", "") or row.get("dept", "") or "—")
         dept_raw = str(row.get("dept", "") or "")
@@ -1433,7 +1451,8 @@ def _greet_summary_html(persona: Persona, kpis: dict[str, int]) -> str:
     if match > 0:
         parts.append(f'페르소나 기준으로 <b>{match}건</b>이 매칭됐어요.')
     if opp > 0:
-        parts.append(f'그중 <b>자동화 기회 {opp}건</b>이 두드러집니다.')
+        # opp 는 14일 윈도우(④⑥ 섹션과 동일) — '그중' 같은 오늘 종속 표현 금지.
+        parts.append(f'현재 <b>자동화 기회 {opp}건</b>이 열려 있어요.')
     return " ".join(parts)
 
 
@@ -1442,9 +1461,11 @@ def _board_kpis() -> dict[str, int]:
     """4 KPI 실데이터 계산 — 60초 캐시. 실패 시 0 폴백 (시각 화면은 항상 렌더).
 
     Returns:
-      collect: 오늘 수집된 뉴스 수
-      match:   강한 매칭 (score>0) 뉴스 수
-      opp:     자동화 기회 셀 수 (dept × lv3)
+      collect: 오늘 수집된 뉴스 수 (1d)
+      match:   강한 매칭 (score>0) 뉴스 수 (1d)
+      opp:     자동화 기회 셀 수 (dept × lv3, **14d**) — ④ 기회 카드·⑥ 매트릭스와
+               같은 윈도우. (직전엔 1d 라 수집 없는 날 KPI 0 인데 아래 섹션엔
+               카드가 떠 있는 불일치가 있었다)
       pending: 채택 대기 제안서 수
     """
     news_df = None
@@ -1457,7 +1478,6 @@ def _board_kpis() -> dict[str, int]:
     collect = int(len(news_df)) if news_df is not None else 0
 
     match_count = 0
-    opp_count = 0
     if (
         news_df is not None and not news_df.empty
         and tasks_df is not None and not tasks_df.empty
@@ -1468,9 +1488,13 @@ def _board_kpis() -> dict[str, int]:
                 match_count = int(matches[matches["score"] > 0]["link"].nunique())
         except Exception:
             pass
+
+    opp_count = 0
+    if tasks_df is not None and not tasks_df.empty:
         try:
-            cells = _score_cells(news_df, tasks_df)
-            opp_count = int(len(cells))
+            news_14 = _news_db.load_news_for_days(days=14)
+            if news_14 is not None and not news_14.empty:
+                opp_count = int(len(_score_cells(news_14, tasks_df)))
         except Exception:
             pass
 
@@ -1483,6 +1507,22 @@ def _board_kpis() -> dict[str, int]:
         "opp": opp_count,
         "pending": pending,
     }
+
+
+def invalidate_board_caches() -> None:
+    """보드 @st.cache_data 일괄 무효화 — 수집 직후 호출.
+
+    직전엔 수집 후 `_board_kpis` 만 비워 KPI 는 갱신되는데 브리핑/탑 스토리/
+    트렌드/기회 카드/매트릭스/키워드 관리가 TTL(60s) 동안 옛 데이터로 남았다.
+    데이터 관리의 수집 모달(`_invalidate_collect_caches`)과 보드 '지금 즉시 수집'
+    양쪽이 이 헬퍼를 쓴다.
+    """
+    for fn in (_board_kpis, _brief_html, _board_stories_html, _board_trend,
+               _board_matrix_html, _opp_cells_for_board, _board_kw_mgr_parts):
+        try:
+            fn.clear()
+        except Exception:  # noqa: BLE001 — 캐시 무효화 실패가 화면을 깨면 안 됨
+            pass
 
 
 def _archive_stats() -> dict[str, int]:

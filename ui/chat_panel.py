@@ -107,9 +107,8 @@ _AREA_INTROS: dict[str, dict[str, list[str] | str]] = {
 def _intro_card_html(area_key: str) -> str:
     """area 별 안내 카드 — 채팅 스크롤 최상단에 **항상** 노출(헤드라인 + 한 줄 안내).
 
-    추천 질문은 더 이상 전체 새로고침을 일으키는 `?sola_prefill=` 앵커가 아니라
-    안내 바로 밑의 `st.pills`(`_render_chat_suggestions`)로 렌더한다 → 칩을 누르면
-    하단 입력창에 텍스트만 채워진다(메시지 영역은 그 사이 스크롤).
+    추천 질문은 안내 바로 밑의 `st.pills`(`_render_chat_suggestions`)로 렌더한다
+    → 칩을 누르면 그 질문이 **바로 전송**되어 SOLA 답변까지 이어진다.
     """
     intro = _AREA_INTROS.get(area_key) or _AREA_INTROS["📊 오늘의 보드"]
     headline = _html.escape(str(intro["headline"]))
@@ -117,7 +116,7 @@ def _intro_card_html(area_key: str) -> str:
         '<div class="side-chat-intro">'
         f'<div class="side-chat-intro-h">{headline}</div>'
         '<div class="side-chat-intro-sub">'
-        '아래 입력창에 직접 적거나, 추천 질문을 눌러 시작하세요.'
+        '아래 입력창에 직접 적거나, 추천 질문을 누르면 바로 전송됩니다.'
         '</div>'
         '</div>'
     )
@@ -212,9 +211,9 @@ def _render_side_fragment(persona: Persona, area_key: str) -> None:
 
     이전 `app_shell.render_app_sola` 의 disabled 목업을 대체한다.
     - 활성 thread 의 최근 메시지(없으면 area 별 안내 카드).
-    - 레이아웃: 안내 카드(상단) → 추천 질문 칩(`_render_chat_suggestions`, 안내 바로 밑)
-      → 대화 스크롤(중단) → 입력 form(`_render_chat_input`, 컬럼 하단 고정). 칩과
-      입력창이 분리돼 칩은 위에, 입력+보내기는 항상 맨 아래 핀.
+    - 레이아웃: 안내 카드(상단) → 추천 질문 칩(`_render_chat_suggestions`, 안내 바로
+      밑 — 클릭 = 즉시 전송) → 대화 스크롤(중단) → 입력 form(`_render_chat_input`,
+      컬럼 하단 고정). 칩은 위에, 입력+보내기는 항상 맨 아래 핀.
     - `st.form`(text_area + submit) 송신 → `_do_sola_send` pending → fragment rerun
       최상단의 `consume_send_if_any(scope="fragment")` 가 LLM 호출 + append +
       chat_log 영구화 → 새 메시지가 **이 fragment rerun 안에서** 바로 그려진다.
@@ -259,10 +258,9 @@ def _render_side_fragment(persona: Persona, area_key: str) -> None:
     safe_area = quote(area_key, safe="")
     input_key = f"_side_chat_input_{safe_area}"
 
-    # 칩 클릭으로 세팅된 prefill 을 입력창(하단) 위젯 생성 전에 주입 + pill 선택 해제.
+    # 칩 클릭(즉시 전송) 후 pill 선택 해제 — 같은 칩 재클릭이 다시 발화하도록.
     if st.session_state.pop(f"{input_key}__reset_pills", False):
         st.session_state[f"{input_key}__pills"] = None
-    _apply_pending_prefill(input_key)   # {input_key}__prefill → session_state[input_key]
     _consume_prefill(input_key)         # 레거시 ?sola_prefill= 북마크 URL 호환
 
     # 안내 카드(상단)
@@ -276,12 +274,13 @@ def _render_side_fragment(persona: Persona, area_key: str) -> None:
 
 
 def _render_chat_suggestions(area_key: str, input_key: str) -> None:
-    """추천 질문 칩(안내 바로 밑, 상단). 칩 클릭은 하단 입력창에 텍스트만 채운다.
+    """추천 질문 칩(안내 바로 밑, 상단). 칩 클릭 = **즉시 전송**.
 
-    pills 와 입력창 모두 같은 `_render_side_fragment` 안이므로 fragment 부분 rerun
-    으로 충분 — 클릭 이벤트 자체가 fragment rerun 으로 도착하고, 그 안에서
-    pending(`__prefill`)을 세팅한 뒤 st.rerun(scope="fragment") → 같은 fragment 의
-    다음 rerun 에서 `_apply_pending_prefill` 이 입력창 값으로 주입(on_click 미사용)."""
+    직전엔 칩이 입력창에 텍스트만 채워 사용자가 [보내기]를 한 번 더 눌러야 했다
+    → 칩 클릭이 곧바로 `_do_sola_send` pending 을 세팅해 form 전송과 동일 경로
+    (`consume_send_if_any`)로 LLM 호출까지 수행한다(on_click 미사용).
+    rerun scope 는 form 전송과 동일 분기 — 일반 area 는 fragment(채팅 컬럼만),
+    SOLA 작업실은 app(중앙 작업대 캔버스가 같은 런에서 답변을 반영해야 함)."""
     sugg = _suggestions_for(area_key)
     if not sugg:
         return
@@ -292,9 +291,9 @@ def _render_chat_suggestions(area_key: str, input_key: str) -> None:
             key=pills_key, label_visibility="collapsed",
         )
     if picked:
-        st.session_state[f"{input_key}__prefill"] = picked
+        st.session_state["_do_sola_send"] = picked
         st.session_state[f"{input_key}__reset_pills"] = True
-        st.rerun(scope="fragment")
+        st.rerun(scope="app" if area_key == _SOLA_AREA else "fragment")
 
 
 def _render_chat_input(input_key: str, safe_area: str, area_key: str) -> None:
@@ -319,19 +318,6 @@ def _render_chat_input(input_key: str, safe_area: str, area_key: str) -> None:
     if sent and user_input and user_input.strip():
         st.session_state["_do_sola_send"] = user_input.strip()
         st.rerun(scope="app" if area_key == _SOLA_AREA else "fragment")
-
-
-def _apply_pending_prefill(input_key: str) -> bool:
-    """추천 질문 pill 클릭으로 세팅된 pending 값을 입력창 위젯 값으로 주입.
-
-    `st.text_area` 위젯 생성 **전에** 호출해야 초기값으로 반영된다(on_click 미사용).
-    pill 클릭은 query_param 을 건드리지 않으므로 전체가 아닌 fragment rerun 만 난다.
-    """
-    pend = st.session_state.pop(f"{input_key}__prefill", None)
-    if pend is None:
-        return False
-    st.session_state[input_key] = pend
-    return True
 
 
 def _consume_prefill(input_key: str) -> None:

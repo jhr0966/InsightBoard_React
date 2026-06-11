@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Changed (오늘의 보드 감사 — 집계 시뮬레이션·브라우저 검증 + 채팅 추천 질문 즉시 전송) — `feat-board-audit`
+- **추천 질문 칩 = 즉시 전송**(`ui/chat_panel.py` `_render_chat_suggestions`): 칩 클릭이 입력창에 텍스트만 채우던 것을 → `_do_sola_send` pending 으로 form 전송과 동일 경로(LLM 호출→append→영구화)를 바로 수행. scope 분기는 form 과 동일(일반 area=fragment, SOLA 작업실=app). prefill 헬퍼(`_apply_pending_prefill`)·`__prefill` 경로 제거, 안내 카피 "추천 질문을 누르면 바로 전송됩니다"로.
+- **매트릭스 버블 좌표 충돌 회피**(`ui/board_v2.py` `_board_matrix_html`): matched_news/tasks 가 같은 셀들이 동일 좌표에 완전히 겹쳐 아래 버블 클릭 불가(브라우저 실측 발견) → 근접(<7%p) 시 점수 순서대로 좌하 계단 오프셋. 실측: 3버블 좌표 분리 + 클릭 시 상세 패널 전환 확인.
+- **트렌드 스파크라인 거대 렌더 수정**(`_board_trend`): sparkline svg 에 width/height 미명시 → `prepare_screen_html` 의 svg→img 변환 후 img 가 거대하게 늘어나 키워드 행이 화면을 차지(실측 발견) → `width='60' height='18'` 명시.
+- **KPI '자동화 기회' 윈도우 정렬**(`_board_kpis`): 1d → **14d** — ④ 기회 카드·⑥ 매트릭스와 동일 윈도우(수집 없는 날 KPI 0 인데 아래 섹션엔 카드가 떠 있는 불일치 해소). 인사 문구도 "그중 …건이 두드러집니다"(오늘 종속) → "현재 자동화 기회 N건이 열려 있어요"로.
+- **② 브리핑 items 에 link 포함**(`_brief_html`): summary 보강 루프가 `item["link"]` 로 원기사를 찾는데 items 에 link 가 없어 항상 미스(데드 루프)였던 것 수정 — LLM 브리핑 입력에 기사 요약이 실제로 합류.
+- **보드 캐시 일괄 무효화**(`invalidate_board_caches` 신설): 수집 직후 `_board_kpis` 만 비워 브리핑/스토리/트렌드/기회/매트릭스/키워드가 TTL(60s) 동안 옛 데이터로 남던 것 → 보드 '지금 즉시 수집'(`consume_kw_action_if_any`)과 수집 모달(`data_management_v2._invalidate_collect_caches`) 양쪽이 전 섹션 캐시를 비운다.
+- **검증**: ① 41건 합성 뉴스(8주 분포·4출처·작업정의 연관 키워드) 시드 후 7개 섹션 집계를 독립 계산과 대조(KPI 수집8/매칭6/기회3 · 스토리 10장 · 트렌드 주별 버킷·델타 · 기회 top3 · 키워드 auto6/user) — 전부 일치. ② Playwright 실측: KPI/인사 문구·스토리 10장·트렌드 차트·매트릭스 버블 클릭→상세 전환·보류→토스트·키워드 ×→mute 토스트·**추천 질문 클릭→즉시 전송→assistant 메시지 수신**·직접 입력 전송 — 전부 통과(LLM 호스트는 샌드박스 차단이라 오류 메시지 폴백 경로로 확인). ③ pytest **939 passed**(신규 4: 버블 충돌/스파크라인 크기/KPI 14d/브리핑 link) · 금지패턴 0.
+
 ### Added (머지 브랜치 정리 워크플로) — `chore-branch-cleanup-workflow`
 - **`.github/workflows/branch_cleanup.yml` 신설**: workflow_dispatch 수동 트리거로 머지 확정 원격 브랜치(기본 목록 67개 — 머지 PR head + main ancestry + CHANGELOG/SESSIONS 머지 기록 교차 검증)를 `GITHUB_TOKEN`(contents:write)으로 서버 측 일괄 삭제. `branches` 입력으로 임의 목록 지정 가능, main/master 는 가드로 항상 보호, 이미 없는 브랜치는 skip. 원격 실행 환경의 git 프록시가 삭제 push 를 차단(403)해 Actions 경유로 우회.
 
