@@ -17,6 +17,15 @@
 **검증**: pytest 943(신규 6) · Playwright — 5카드·'기술 매체'·썸네일, 불용어 0, 채팅 6건 후 입력창 불변. 스크린샷 `/tmp/brief-new.png`·`/tmp/chat-sticky.png`·`/tmp/trend-new.png`.
 
 **다음**: ① 브리핑 카드 주제 편중 완화(같은 lv3 5건 → 분산) ② 트렌드 델타가 신규 키워드 일색일 때 '신규' 배지로 구분 ③ 썸네일 없는 카드 비율 높을 때 출처 이니셜 플레이스홀더.
+## 2026-06-11 — style: 페르소나 설정창 리디자인 (`style-onboarding-modal-polish`)
+
+**무엇을**: ① 텍스트 전반 확대 + 단계별 이모지 ② 버튼 모달 최하단 고정·높이 60px ③ Ctrl+Enter 로 다음/완료 진행 + 버튼 라벨 둘째 줄 단축키 표기 ④ 2단계 키보드 설명 문구 제거.
+
+**어떻게**: `inject_focus_nav` 에 `ctrl_submit_selector` 추가(어느 입력에서든 Ctrl/⌘+Enter→버튼 클릭). 모든 화면의 네비 버튼을 `onb_nav` 컨테이너로 분리해 `:has()`+`margin-top:auto` 하단 고정 — 직전 flex 셀렉터는 실제 DOM 과 안 맞아 미동작이었음(실측 발견). 단축키 표기는 라벨 두 번째 문단을 CSS 로 작고 옅게. **함정**: 단계 전환 시 위젯 GC → AppTest 직렬화 KeyError 가 onb_dept 로 재발 → `_snapshot_inputs` 가 일반 세션 값으로 재기록해 일반화 방어.
+
+**검증**: pytest 939 · Playwright — 전 단계 668px 동일, 버튼 하단 고정·60px, Ctrl+Enter 1/3/4단계 진행, 라벨 2줄.
+
+**다음**: ① 4단계 키워드 드롭다운이 칩 등록 후 열린 채 완료 버튼을 가리는 UX(자동 닫기) ② 수집 제안 모달에 수집 예정 키워드 칩 미리보기.
 
 ---
 
