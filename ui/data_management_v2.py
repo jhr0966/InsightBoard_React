@@ -1874,7 +1874,11 @@ def _dm_kw_body_html(persona: Persona | None) -> str:
     from urllib.parse import quote
     persona = persona or Persona()
     user_terms = [
-        t for t in (list(persona.interest_tasks or []) + list(persona.interest_lv3 or []))
+        t for t in (
+            list(persona.interest_keywords or [])
+            + list(persona.interest_tasks or [])
+            + list(persona.interest_lv3 or [])
+        )
         if t
     ]
     muted = [m for m in (persona.muted_keywords or []) if m]

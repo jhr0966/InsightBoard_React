@@ -202,7 +202,8 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
     소비하고, 없으면 레거시 `?kw_action=del_user|mute|collect&keyword=` 쿼리
     (북마크/딥링크 호환)를 소비한다.
 
-    - del_user: persona.interest_lv3 / interest_tasks 에서 keyword 제거 → save
+    - del_user: persona.interest_lv3 / interest_tasks / interest_keywords 에서
+                keyword 제거 → save
     - mute:    persona.muted_keywords 에 keyword 추가(중복 제거) → save
     - collect: persona 의 모든 키워드(자동 추출 제외) 로 collect_batch 실행
 
@@ -233,6 +234,11 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
                 removed = True
             if keyword in persona.interest_lv3:
                 persona.interest_lv3 = [k for k in persona.interest_lv3 if k != keyword]
+                removed = True
+            if keyword in (persona.interest_keywords or []):
+                persona.interest_keywords = [
+                    k for k in persona.interest_keywords if k != keyword
+                ]
                 removed = True
             persona_store.save(persona)
             st.session_state["persona"] = persona
@@ -305,8 +311,16 @@ def consume_kw_action_if_any() -> tuple[str, str] | None:
 
 
 def _collect_keywords_for_persona(persona: Persona) -> list[str]:
-    """수집 대상 키워드 — 페르소나 관심사(중복 제거, 빈 값 제거)."""
-    raw = list(persona.interest_tasks or []) + list(persona.interest_lv3 or [])
+    """수집 대상 키워드 — 페르소나 관심사(중복 제거, 빈 값 제거).
+
+    자유 입력 관심 키워드(interest_keywords)가 가장 명시적인 의도라 맨 앞,
+    이어서 관심 작업·관심 공정 순.
+    """
+    raw = (
+        list(persona.interest_keywords or [])
+        + list(persona.interest_tasks or [])
+        + list(persona.interest_lv3 or [])
+    )
     seen: set[str] = set()
     out: list[str] = []
     for kw in raw:
@@ -1107,11 +1121,15 @@ def _board_kw_mgr_parts(persona: Persona) -> dict[str, object]:
                 f'</span>'
             )
 
-    # Group 2 — persona 관심사
-    user_terms = list(persona.interest_tasks) + list(persona.interest_lv3)
+    # Group 2 — persona 관심사 (자유 입력 키워드 우선 + 작업 + 공정)
+    user_terms = (
+        list(persona.interest_keywords or [])
+        + list(persona.interest_tasks)
+        + list(persona.interest_lv3)
+    )
     # 중복 제거 유지순서
     seen = set()
-    user_terms = [t for t in user_terms if t and not (t in seen or seen.add(t))][:4]
+    user_terms = [t for t in user_terms if t and not (t in seen or seen.add(t))][:6]
 
     user_chips: list[str] = []
     if user_terms:
@@ -1609,8 +1627,12 @@ def chat_context_block(persona: Persona) -> str:
     except Exception:
         pass
 
-    # ⑦ 키워드 관리 — 페르소나 관심사
-    user_kw = list(persona.interest_lv3 or []) + list(persona.interest_tasks or [])
+    # ⑦ 키워드 관리 — 페르소나 관심사 (자유 입력 키워드 포함)
+    user_kw = (
+        list(persona.interest_keywords or [])
+        + list(persona.interest_lv3 or [])
+        + list(persona.interest_tasks or [])
+    )
     if user_kw:
         parts.append(f"⑦ 내가 추가한 키워드: {', '.join(user_kw[:6])}")
 

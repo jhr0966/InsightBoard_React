@@ -11,7 +11,10 @@
     1  이름
     2  부서 · 팀
     3  직무
-    4  관심 공정 (작업 정의 데이터 있으면 multiselect, 없으면 안내) + [완료]
+    4  관심 공정(작업 정의 있으면 multiselect) + 관심 키워드(자유 입력) + [완료]
+
+완료 시 `persona.derive.derive_and_store` 로 SOLA 관심사 분석(LLM, 미설정 시
+규칙 폴백)을 실행해 derived_interests / matched_processes 를 채운다.
 
 CLAUDE.md 규칙:
   - on_click 금지 → `if st.button(): pending flag → st.rerun()` 패턴
@@ -23,12 +26,13 @@ from __future__ import annotations
 
 import streamlit as st
 
+from persona import derive as persona_derive
 from persona import store as persona_store
-from persona.schema import Persona
+from persona.schema import Persona, parse_keywords_input
 from roadmap.query import load_latest as _load_tasks
 
 
-_TOTAL_INPUT_STEPS = 4  # 이름 / 부서·팀 / 직무 / 관심 공정
+_TOTAL_INPUT_STEPS = 4  # 이름 / 부서·팀 / 직무 / 관심 공정·키워드
 
 
 def should_show(persona: Persona) -> bool:
@@ -54,7 +58,7 @@ def _options(df, col: str) -> list[str]:
 
 # 마법사 입력 위젯 key — 단계 전환 시 unmount 되면 Streamlit 이 state 를 GC 하므로
 # (I-2 계열 함정) 매 전환마다 안정 저장소 `_onb_data` 로 스냅샷한다.
-_WIZARD_KEYS = ("onb_name", "onb_team", "onb_dept", "onb_job", "onb_lv3")
+_WIZARD_KEYS = ("onb_name", "onb_team", "onb_dept", "onb_job", "onb_lv3", "onb_keywords")
 
 
 def _onb_data() -> dict:
@@ -109,8 +113,11 @@ def _handle_pending() -> None:
             job=str(data.get("onb_job", "")).strip(),
             interest_lv3=list(data.get("onb_lv3", []) or []),
             interest_tasks=[],
+            interest_keywords=parse_keywords_input(str(data.get("onb_keywords", ""))),
         )
         persona_store.save(new)
+        # SOLA 관심사 분석 — LLM 미설정/오류 시 내부에서 규칙 폴백·no-op (저장은 이미 완료).
+        new = persona_derive.derive_and_store(new)
         persona_store.clear_onboarding_dismiss()
         st.session_state["persona"] = new
         st.session_state.pop("_onb_step", None)
@@ -278,17 +285,24 @@ def _render_step(step: int, persona: Persona) -> None:
                           placeholder="예: 도장 품질 검사관", label_visibility="collapsed")
 
         elif step == 4:
-            st.html('<div class="onb-q">관심 있는 공정을 골라주세요</div>'
-                    '<div class="onb-q-help">선택한 공정 중심으로 트렌드·자동화 기회가 정렬됩니다.</div>')
+            st.html('<div class="onb-q">관심 공정과 키워드를 알려주세요</div>'
+                    '<div class="onb-q-help">선택한 공정·키워드 중심으로 뉴스 수집과 트렌드·자동화 기회가 정렬됩니다.</div>')
             lv3_opts = _options(tasks, "lv3")
             if lv3_opts:
                 seed = data.get("onb_lv3", persona.interest_lv3)
                 default = [v for v in seed if v in lv3_opts]
                 st.multiselect("관심 공정", options=lv3_opts, default=default,
-                               key="onb_lv3", label_visibility="collapsed")
+                               key="onb_lv3")
             else:
                 st.caption("관심 공정 선택은 작업 정의 데이터 업로드 후 활성화됩니다. 지금은 건너뛰고 나중에 추가할 수 있어요.")
                 data["onb_lv3"] = list(persona.interest_lv3)
+            st.text_input(
+                "관심 키워드 (쉼표로 구분)",
+                value=str(data.get("onb_keywords", ", ".join(persona.interest_keywords))),
+                key="onb_keywords",
+                placeholder="예: 용접 로봇, 비전 검사, 디지털 트윈",
+                help="자유 입력 키워드는 뉴스 수집 검색어에 바로 합류합니다.",
+            )
 
         st.write("")
         # ── 네비게이션 버튼 ──
@@ -313,6 +327,5 @@ def _render_step(step: int, persona: Persona) -> None:
                     st.session_state["_do_onb_finish"] = True
                     st.rerun()
 
-        if st.button("다음에 하기", use_container_width=True, key=f"onb_skip_{step}"):
-            st.session_state["_do_onb_dismiss"] = True
-            st.rerun()
+        # "다음에 하기"는 환영 화면에만 둔다 — 입력 단계에서는 이전/다음만 노출해
+        # 모달을 단순하게 유지 (시작 후 이탈은 브라우저 새로고침으로도 가능).

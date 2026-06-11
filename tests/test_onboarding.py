@@ -70,9 +70,21 @@ def _click(at, kw: str) -> bool:
 
 @pytest.fixture
 def clean_persona(tmp_path, monkeypatch):
-    """격리된 페르소나 디렉토리 — 테스트가 실제 프로필을 건드리지 않도록."""
+    """격리된 페르소나 디렉토리 — 테스트가 실제 프로필을 건드리지 않도록.
+
+    완료 시 실행되는 SOLA 분석(persona.derive)은 실 LLM 호출 없이 폴백 경로를
+    타도록 `_call_llm` 을 차단한다 (.env 에 키가 있어도 네트워크 미발생).
+    """
     import persona.store as ps
+    import persona.derive as pd_mod
+    from sola.client import LLMNotConfigured
+
     monkeypatch.setattr(ps, "DATA_ROOT", tmp_path)
+
+    def _no_llm(_text: str) -> str:
+        raise LLMNotConfigured("test: llm blocked")
+
+    monkeypatch.setattr(pd_mod, "_call_llm", _no_llm)
     yield ps
 
 
@@ -91,6 +103,7 @@ def test_wizard_welcome_then_full_completion_saves_persona(clean_persona):
     assert _click(at, "다음"); at.run()
     at.text_input(key="onb_job").set_value("품질 검사관"); at.run()
     assert _click(at, "다음"); at.run()
+    at.text_input(key="onb_keywords").set_value("용접 로봇, 비전 검사"); at.run()
     assert _click(at, "완료"); at.run()
 
     saved = clean_persona.load()
@@ -98,6 +111,11 @@ def test_wizard_welcome_then_full_completion_saves_persona(clean_persona):
     assert saved.dept == "도장1팀"
     assert saved.job == "품질 검사관"
     assert saved.is_set()
+    # 관심 키워드 자유 입력(쉼표 구분) → 리스트로 파싱·저장
+    assert saved.interest_keywords == ["용접 로봇", "비전 검사"]
+    # 완료 시 SOLA 분석 실행 — LLM 차단 환경이라 규칙 폴백(입력 토큰 그대로)
+    assert saved.derived_source == "fallback"
+    assert "용접 로봇" in saved.derived_interests
     # 완료 후 마법사 사라지고 실제 화면 렌더
     htmls = "\n".join(h.proto.body for h in at.get("html"))
     assert "db-topbar" in htmls and "처음 오셨네요" not in htmls
@@ -114,6 +132,16 @@ def test_wizard_skip_persists_dismiss(clean_persona):
     at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
     assert "db-topbar" in htmls and "처음 오셨네요" not in htmls
+
+
+def test_wizard_input_steps_have_no_skip_button(clean_persona):
+    """단계 정돈 — '다음에 하기'는 환영 화면에만, 입력 단계에는 이전/다음만."""
+    at = _fresh_app()
+    at.run()
+    _click(at, "시작"); at.run()
+    labels = [b.label for b in at.button]
+    assert not any("다음에 하기" in lbl for lbl in labels)
+    assert any("다음" in lbl for lbl in labels)  # 다음 → 버튼은 존재
 
 
 def test_wizard_back_navigation_preserves_input(clean_persona):

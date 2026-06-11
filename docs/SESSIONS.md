@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-11 — feat: 페르소나 개편 — 관심 키워드 · SOLA 관심사 분석 · 온보딩/설정 정돈 (`feat-persona-overhaul`)
+
+**무엇을**: 페르소나 5종 개편 — ① 입력 항목 검토(유지 + interest_keywords 보강, 직급/연차는 매칭 신호 아님·미추가) ② 자유 입력 관심 키워드 → 수집·보드 합류 ③ LLM 관심사 추출 + 작업정의 매칭(`persona/derive.py`) ④ 온보딩 모달 세로 중앙 + 단계 정돈 ⑤ 설정 페이지에서 표시 설정 분리·카드 재구성.
+
+**어떻게**:
+1. `persona/schema.py`: `interest_keywords` + derived 4필드(`derived_interests`/`matched_processes`/`derived_at`/`derived_source`) + `parse_keywords_input`(쉼표/엔터, 중복 제거, max20). `from_dict` 하위호환.
+2. `persona/derive.py`(신규): LLM(`sola.client` 경유, `SYSTEM_PERSONA_INTERESTS`) 추출 → `store/cache` 캐시 → 실패 시 입력 토큰 폴백 → `task_defs_db.list_all` 토큰 매칭(공정별 점수·추천 작업) → persona 저장. 온보딩 완료/프로필 저장/[다시 분석] 에서 호출.
+3. 수집 반영: `board_v2._collect_keywords_for_persona`/`del_user`/⑦칩, `data_management_v2._dm_kw_body_html` 에 interest_keywords 합류.
+4. 온보딩: step4 = 관심 공정+키워드, 입력 단계 중복 skip 버튼 제거. **중앙 정렬 근본 원인** — 1.58 DialogContainer(자식 div)가 `alignItems:start` → `streamlit-overrides.css` 에 `[data-testid="stDialog"] > div { align-items:center }` 추가.
+5. `ui/persona_page.py`: 기본 정보/관심사/SOLA 분석 카드 3섹션 + 표시 설정 expander 분리. 저장 시 muted/derived 보존(기존 muted 유실 결함 수정) + derive 자동 실행. 분석 카드 전 문자열 escape, 재분석은 pending+rerun.
+6. 테스트: `test_persona_derive.py` 신규 11 + persona/kw_actions/onboarding 갱신(+8). 온보딩 fixture 가 `derive._call_llm` 차단 — 테스트 중 실 LLM/네트워크 0. pytest **918 passed** · 금지패턴 0.
+7. 브라우저 실측: 중앙 모달 `/tmp/persona-onboarding.png` · 설정 페이지 `/tmp/persona-page.png` · 분석 카드(규칙 폴백 라벨) `/tmp/persona-derived.png`.
+
+**상태**: 🔄 push — PR 은 오케스트레이터가 생성.
+
+---
+
 ## 2026-06-10 — feat: 수집 현황 모달 ↔ 런 이력 연동 — 마지막 수집 결과 재열람 (`feat-collect-history-link`)
 
 **무엇을**: 수집 현황 모달의 결과를 ⚙ 수집 설정의 런 이력과 연동 — [📡 마지막 수집 결과 보기] / 런별 [보기] 로 과거 수집 결과를 모달로 재열람(재수집 없음).

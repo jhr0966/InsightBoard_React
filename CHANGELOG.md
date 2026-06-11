@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### Added (페르소나 개편 — 관심 키워드·SOLA 관심사 분석·온보딩/설정 UI 정돈) — `feat-persona-overhaul`
+- **입력 항목 검토 결론**: 기존 항목(이름/팀/부서/직무/관심 공정 lv3/관심 작업)은 작업정의 매칭·개인화 목적에 적합해 유지. 직급/연차는 매칭 신호가 아니고 입력 부담만 늘려 **미추가**, '관심 기술영역'은 자유 입력 `interest_keywords` 로 흡수.
+- **관심 키워드 등록**(`persona/schema.py`): `Persona.interest_keywords: list[str]` 추가 + 쉼표/엔터/세미콜론/가운뎃점 구분 파서 `parse_keywords_input`(중복 제거, 최대 20개). `from_dict` 가 구버전 profile.json(키 없음)도 기본값으로 로드 — 저장/로드 하위호환.
+- **수집 합류**(`ui/board_v2.py`, `ui/data_management_v2.py`): `_collect_keywords_for_persona` 가 `interest_keywords` 를 **최우선**으로 합류(→ `_collect_keywords_with_default` 경유 '지금 뉴스 수집'·일일 수집 모달에 반영). 보드 ⑦ 키워드 관리 칩(내가 추가 그룹, 4→6개)·× 삭제(`del_user`)·수집 설정 키워드 탭에도 합류.
+- **SOLA 관심사 분석 + 작업정의 매칭**(신규 `persona/derive.py`): ① `extract_interests` — 프로필(부서·직무·관심 공정/작업/키워드)을 `sola.client` 경유 LLM 에 보내 관심사 키워드 5~10개 추출(`sola/prompts.py` `SYSTEM_PERSONA_INTERESTS` 신설), `store/cache` 로 캐시(같은 프로필 재호출 없음), `LLMNotConfigured`·네트워크 오류 시 **규칙 폴백 = 입력 토큰 그대로**. ② `match_task_defs` — 추출 키워드를 `task_defs_db.list_all()` 의 공정/작업/정의 텍스트와 토큰 매칭(부분 포함 허용, 키워드 커버리지 점수)해 연관 공정(상위 8)별 추천 작업(각 5) 생성. ③ `derive_and_store` — persona 의 `derived_interests`/`matched_processes`/`derived_at`/`derived_source` 갱신·영구 저장(실패해도 저장 흐름 안 깨짐). 온보딩 완료·프로필 저장 시 자동 실행.
+- **페르소나 컨텍스트 보강**(`persona/context.py`): SOLA 시스템 블록에 관심 키워드·SOLA 분석 관심사·연관 공정(top3) 추가 — 채팅/제안서가 분석 결과를 인지.
+- **온보딩 모달 정돈**(`ui/onboarding.py`, `assets/v2/streamlit-overrides.css`): Streamlit 1.58 에서 `stDialog` testid 는 Modal Root(딤 배경)이고 상단 고정은 자식 DialogContainer(`alignItems:start`+`paddingTop`) 였음 → `[data-testid="stDialog"] > div` 중앙 정렬 교정으로 **첫 접속 온보딩 모달이 화면 세로 중앙**에 뜬다(전 모달 공통). 단계 4를 '관심 공정 + 관심 키워드(자유 입력)'로 확장, 입력 단계의 중복 '다음에 하기' 버튼 제거(환영 화면에만 유지).
+- **프로필 설정 페이지 재구성**(`ui/persona_page.py`): ① 기본 정보 ② 관심사(공정 + 키워드 입력) ③ **'SOLA가 분석한 내 관심 공정/작업' 카드**(분석 출처 라벨 llm/캐시/폴백 + 키워드 칩 + 연관 공정·추천 작업 표 + [🔄 다시 분석] — `_do_persona_page_derive` pending+rerun, 전 문자열 escape) 섹션 카드화. **🎨 표시 설정(테마·글자 크기)은 페이지 하단 접힌 expander 로 분리**(프로필과 시스템 설정 혼재 해소). 저장 시 muted/derived 필드 보존(기존엔 저장 때 muted_keywords 가 유실되던 잠재 결함 수정) + 분석 자동 갱신.
+- 테스트: 신규 `tests/test_persona_derive.py`(11 — LLM/캐시/폴백/빈 프로필/force, 매칭 랭킹/빈 DB, derive_and_store 저장·예외 흡수) + `test_persona.py` +5(신규 필드 roundtrip·구 JSON 하위호환·파서·컨텍스트) + `test_kw_actions.py` +2(키워드 수집 합류·× 삭제) + `test_onboarding.py` 갱신(키워드 입력→저장·폴백 분석, 단계 skip 버튼 제거, fixture 가 `_call_llm` 차단 — 실 LLM 호출 없음).
+- 검증: pytest **918 passed** · 금지패턴 0 · 브라우저 실측(중앙 온보딩 모달 `/tmp/persona-onboarding.png`, 설정 페이지 `/tmp/persona-page.png`, 분석 카드(폴백) `/tmp/persona-derived.png`) OK.
+
 ### Added (수집 현황 모달 ↔ 런 이력 연동 — 마지막 수집 결과 재열람) — `feat-collect-history-link`
 - **런 로그 → 모달 결과 변환 헬퍼**(`ui/data_management_v2.py` `_run_log_to_modal_result`): `store/run_log` 엔트리를 수집 현황 모달 결과 dict 로 변환(순수 함수). 과거 로그 필드 누락 방어 — `ok` 누락 시 errors 유무로 유추, `n_keywords`=sources 키워드 합집합, `n_feeds`=naver/google/tech 외 소스 수, dict/문자열 혼재 errors 모두 수용. `from_log=True` 마커 포함.
 - **⚙ 수집 설정 이력 — [📡 마지막 수집 결과 보기] + 런별 [보기]**(`_render_run_history_view_buttons`): 이력 카드 아래에 최근 5개 런 행(시각·트리거·건수·정상/오류 caption) + [보기] 버튼. 클릭 시 `_open_run_result_modal` 이 변환 결과를 `_sc_collect_modal_result` 에 넣고 `_sc_collect_modal_pending` 세팅 + rerun → 기존 수집 현황 모달이 **재수집 없이** 결과 요약 모드로 열린다(결과 존재 시 collect 스킵 가드 활용). 런 기록 없으면 안내 caption.
