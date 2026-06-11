@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (오늘의 보드 — 아침 7분 재설계·트렌드 불용어·채팅 입력 고정) — `feat-board-brief-and-fixes`
+- **채팅 입력창·보내기 버튼 하단 고정**(`assets/v2/streamlit-overrides.css`): 메시지가 누적되면 입력 form 이 화면 밖으로 밀려 안 보이던 것 → `.side-chat-scroll` 의 부모 `stElementContainer` 를 `flex:1·min-height:0` 으로, 스크롤 영역 `height:100%`(고정 `max-height` 폐기). 메시지는 스크롤 영역 안에서만 쌓이고 입력+보내기는 항상 컬럼 하단 고정(실측: 6건 전송 후에도 입력창 위치 불변).
+- **트렌드·키워드 불용어 필터**(`store/trends.py` `_is_meaningful_keyword`/`_KEYWORD_STOPWORDS`): '것으로'·'등'·'관련'·'대한' 등 조사·문법 조각, 한 글자 한글, 순수 기호를 키워드 집계에서 제외 — 트렌드 차트(보드·인사이트)와 보드 ⑦ 키워드 관리가 공유하는 `_all_keyword_tokens` 한 곳에서 거른다(의미 없는 키워드로 그래프가 어지럽던 문제 해소).
+- **아침 7분(SOLA 브리핑) 재설계**(`ui/board_v2._brief_html` + `assets/v2/screens/board.css`): 3건 번호 목록 → **뉴스 카드 5건**(썸네일 + 제목 2줄 + 1줄 요약 + 출처·시각). 카드 클릭 = 원문 새 탭. 썸네일은 `image_url`(http→https 승격·no-referrer), 없으면 출처색 그라데이션 플레이스홀더.
+- **브리핑 출처 라벨·요약 정리**: 내부 소스 id('tech')를 사람이 읽는 라벨('기술 매체'/'네이버'/'Google 뉴스')로(`_source_label`) — 혼란스럽던 'tech · 06/11' cite 줄 제거(카드가 출처·시각 표시). 한 줄 헤드라인은 공백 정규화(`\s+`→` `)로 영문 용어가 끼어 띄어쓰기가 깨지던 문제 해소.
+- 검증: pytest **943 passed**(신규 6: 불용어 필터 2 · 브리핑 카드/출처 라벨 2 + 기존) · 금지패턴 0 · Playwright 실측 — 브리핑 5카드·'기술 매체' 라벨·썸네일 영역, 트렌드 키워드에서 불용어 제거, 채팅 6건 전송 후 입력창 위치 불변.
+
+
 ### Changed (오늘의 보드 감사 — 집계 시뮬레이션·브라우저 검증 + 채팅 추천 질문 즉시 전송) — `feat-board-audit`
 - **추천 질문 칩 = 즉시 전송**(`ui/chat_panel.py` `_render_chat_suggestions`): 칩 클릭이 입력창에 텍스트만 채우던 것을 → `_do_sola_send` pending 으로 form 전송과 동일 경로(LLM 호출→append→영구화)를 바로 수행. scope 분기는 form 과 동일(일반 area=fragment, SOLA 작업실=app). prefill 헬퍼(`_apply_pending_prefill`)·`__prefill` 경로 제거, 안내 카피 "추천 질문을 누르면 바로 전송됩니다"로.
 - **매트릭스 버블 좌표 충돌 회피**(`ui/board_v2.py` `_board_matrix_html`): matched_news/tasks 가 같은 셀들이 동일 좌표에 완전히 겹쳐 아래 버블 클릭 불가(브라우저 실측 발견) → 근접(<7%p) 시 점수 순서대로 좌하 계단 오프셋. 실측: 3버블 좌표 분리 + 클릭 시 상세 패널 전환 확인.

@@ -507,9 +507,35 @@ def _story_card_html(row: pd.Series) -> str:
     return article
 
 
+# 아침 7분 — 노출 뉴스 수
+_BRIEF_COUNT = 5
+
+# 내부 소스 ID → 사람이 읽는 라벨 (스크래퍼가 친화 이름을 못 채운 경우 폴백).
+_SOURCE_ID_LABELS = {
+    "tech": "기술 매체", "naver": "네이버", "google": "Google 뉴스",
+}
+
+
+def _source_label(src: str) -> str:
+    """뉴스 출처 표시 라벨 — 내부 ID('tech' 등)는 사람이 읽는 이름으로."""
+    s = (src or "").strip()
+    return _SOURCE_ID_LABELS.get(s, s) or "뉴스"
+
+
+def _brief_one_line(item: dict) -> str:
+    """브리핑 카드 1줄 요약 — summary_llm→summary→content, 공백 정규화 + 길이 컷."""
+    import re as _re2
+    for key in ("summary_llm", "summary", "content"):
+        val = str(item.get(key, "") or "").strip()
+        if val:
+            val = _re2.sub(r"\s+", " ", val)
+            return val[:90] + ("…" if len(val) > 90 else "")
+    return ""
+
+
 @st.cache_data(ttl=60)
 def _brief_html(persona_label: str = "") -> dict[str, str]:
-    """SOLA 오늘의 브리핑 — 페르소나 매칭 top 3 뉴스 + LLM 1~2문장 요약.
+    """SOLA 오늘의 브리핑 — 페르소나 매칭 top 5 뉴스 카드(썸네일+요약) + 한 줄 헤드라인.
 
     summary 텍스트는 `sola.board_brief.brief()` (디스크 캐시 + LLM 미설정
     시 룰 fallback) 가 생성. 그 외 list/cites/cta/tts_btn 은 score_matches
@@ -528,38 +554,45 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
         and tasks_df is not None and not tasks_df.empty
     ):
         try:
-            matches = _score_matches(news_df, tasks_df, top_k=3, semantic_weight=_SEM_W)
+            matches = _score_matches(news_df, tasks_df, top_k=_BRIEF_COUNT, semantic_weight=_SEM_W)
             if not matches.empty and "score" in matches.columns:
                 top = (
                     matches[matches["score"] > 0]
                     .sort_values("score", ascending=False)
                     .drop_duplicates("link")
-                    .head(3)
+                    .head(_BRIEF_COUNT)
                 )
-                # join with news_df for collected_at
-                merged = top.merge(news_df[["link", "source", "collected_at"]], on="link", how="left", suffixes=("", "_n"))
-                # fallback source if missing
+                # 원기사 메타(출처·시각·썸네일·요약)를 link 로 join — 카드 렌더용.
+                meta_cols = [c for c in ("link", "source", "collected_at", "published_at",
+                                         "image_url", "summary", "summary_llm")
+                             if c in news_df.columns]
+                merged = top.merge(news_df[meta_cols], on="link", how="left", suffixes=("", "_n"))
                 for _, r in merged.iterrows():
                     items.append({
                         "title": str(r.get("news_title", "") or r.get("title", "") or "(제목 없음)"),
                         "source": str(r.get("source", "") or ""),
-                        "when": str(r.get("collected_at", "") or ""),
-                        # link 포함 — 아래 summary 보강 루프가 원기사 summary 를 찾는 키
+                        "when": str(r.get("collected_at", "") or r.get("published_at", "") or ""),
                         "link": str(r.get("link", "") or ""),
+                        "image_url": str(r.get("image_url", "") or ""),
+                        "summary": str(r.get("summary", "") or ""),
+                        "summary_llm": str(r.get("summary_llm", "") or ""),
                     })
         except Exception:  # noqa: BLE001 — 데이터-경로: silent 실패가 잘못된 폴백을 부르므로 로깅
             logger.warning("데일리 브리핑 매칭-뉴스 처리 실패", exc_info=True)
 
-    # fallback: 매칭 없을 때 그냥 최근 3건
+    # fallback: 매칭 없을 때 그냥 최근 N건
     if not items and news_df is not None and not news_df.empty:
         if "collected_at" in news_df.columns:
             news_df = news_df.sort_values("collected_at", ascending=False)
-        for _, r in news_df.head(3).iterrows():
+        for _, r in news_df.head(_BRIEF_COUNT).iterrows():
             items.append({
                 "title": str(r.get("title", "") or "(제목 없음)"),
                 "source": str(r.get("source", "") or ""),
-                "when": str(r.get("collected_at", "") or ""),
+                "when": str(r.get("collected_at", "") or r.get("published_at", "") or ""),
                 "link": str(r.get("link", "") or ""),
+                "image_url": str(r.get("image_url", "") or ""),
+                "summary": str(r.get("summary", "") or ""),
+                "summary_llm": str(r.get("summary_llm", "") or ""),
             })
 
     if not items:
@@ -600,47 +633,62 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
             if len(items) > 0 else "오늘 매칭된 뉴스가 없습니다."
         )
 
-    # LLM 응답의 **굵은 키워드** 마크다운만 <b> 로 변환 (그 외는 escape)
+    # 한 줄 헤드라인 — 공백 정규화(영문 용어가 끼어 띄어쓰기 깨지던 문제 해소),
+    # **굵은 키워드** 마크다운만 <b> 로 안전 변환.
+    import re as _re3
+    summary_text = _re3.sub(r"\s+", " ", summary_text).strip()
     summary_html_inner = _md_bold_to_html(summary_text)
     summary_html = (
         '<div class="db-brief-greet">'
-        '<span class="db-brief-greet-tag">요약</span>'
+        '<span class="db-brief-greet-tag">한눈 요약</span>'
         f'{summary_html_inner}'
         '</div>'
     )
 
-    # 3 numbered items
-    list_parts = ['<ol class="db-brief-list">']
-    for i, item in enumerate(items, start=1):
-        title = _html.escape(item["title"][:120])
-        list_parts.append(
-            f'<li><span class="db-brief-num">{i}</span>'
-            f'<div><b>{title}</b><sup class="db-cite">{i}</sup></div></li>'
+    # 뉴스 카드 N건 — 썸네일 + 제목 + 1줄 요약 + 출처·시각. 카드 클릭 = 원문 새 탭.
+    card_parts = ['<div class="db-brief-cards">']
+    for item in items:
+        title = _html.escape(item["title"][:110])
+        one = _html.escape(_brief_one_line(item))
+        source = str(item.get("source", "") or "")
+        gradient = _SOURCE_GRADIENTS.get(source, _DEFAULT_GRADIENT)
+        src_label = _html.escape(_source_label(source))
+        age = _html.escape(_story_age(item.get("when", "")))
+        img = _https_img(str(item.get("image_url", "") or ""))
+        if img[:4].lower() == "http":
+            thumb = (
+                f'<div class="db-brief-card-img" style="background:{gradient};">'
+                f'<img src="{_html.escape(img, quote=True)}" loading="lazy" '
+                'referrerpolicy="no-referrer" alt=""></div>'
+            )
+        else:
+            thumb = f'<div class="db-brief-card-img db-brief-card-img-ph" style="background:{gradient};"></div>'
+        meta = f'<span class="db-src-mark" style="background:{gradient};"></span>{src_label}'
+        if age:
+            meta += f' · {age}'
+        body_html = f'<div class="db-brief-card-p">{one}</div>' if one else ''
+        inner = (
+            f'{thumb}<div class="db-brief-card-tx">'
+            f'<div class="db-brief-card-h">{title}</div>'
+            f'{body_html}'
+            f'<div class="db-brief-card-meta">{meta}</div>'
+            f'</div>'
         )
-    list_parts.append('</ol>')
-    list_html = "".join(list_parts)
+        link = str(item.get("link", "") or "").strip()
+        if link:
+            card_parts.append(
+                f'<a class="db-brief-card" href="{_html.escape(link)}" '
+                f'target="_blank" rel="noopener">{inner}</a>'
+            )
+        else:
+            card_parts.append(f'<div class="db-brief-card">{inner}</div>')
+    card_parts.append('</div>')
+    list_html = "".join(card_parts)
 
-    # Cite pills
-    cite_parts = ['<div class="db-brief-cites">']
-    for i, item in enumerate(items, start=1):
-        src = _html.escape(item["source"] or "—")
-        date_str = ""
-        when = item["when"]
-        if when:
-            try:
-                from datetime import datetime as _dt
-                dt = _dt.fromisoformat(when.replace("Z", "+00:00"))
-                date_str = f" · {dt.month:02d}/{dt.day:02d}"
-            except Exception:
-                pass
-        cite_parts.append(
-            f'<span class="db-cite-pill"><span class="db-cite-num">{i}</span>'
-            f'{src}{_html.escape(date_str)}</span>'
-        )
-    cite_parts.append('</div>')
-    cites_html = "".join(cite_parts)
+    # 출처 cite 줄은 카드가 출처·시각을 이미 표시하므로 제거(중복·혼란 'tech · 06/11' 해소).
+    cites_html = ""
 
-    # CTA — SOLA 작업실로 이 3건 인계
+    # CTA — SOLA 작업실로 이 N건 인계
     cta_href = _sola_handoff_href("brief")
     cta_html = (
         f'<a class="db-act db-act-primary" href="{cta_href}" target="_self">'

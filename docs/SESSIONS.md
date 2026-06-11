@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-11 — feat: 오늘의 보드 — 아침 7분 재설계·트렌드 불용어·채팅 입력 고정 (`feat-board-brief-and-fixes`)
+
+**무엇을**: ① 채팅 입력창/보내기 메시지 누적 시 밀려 사라지던 것 → 하단 고정 ② 트렌드·키워드에서 '것으로' 류 불용어 제거 ③ 아침 7분을 3건 목록 → 5건 뉴스 카드(썸네일+요약)로 재설계 + 'tech · 06/11' cite 혼란 제거 + 요약 띄어쓰기 정규화.
+
+**어떻게**:
+1. `streamlit-overrides.css`: `.side-chat-scroll` 부모 stElementContainer 를 flex:1·min-height:0, 스크롤 height:100% (고정 max-height 폐기) → 입력 form 항상 하단.
+2. `store/trends.py`: `_is_meaningful_keyword`(+`_KEYWORD_STOPWORDS`)로 `_all_keyword_tokens` 에서 조사/문법조각/한글자/기호 제외 — 트렌드·키워드 관리 공통.
+3. `board_v2._brief_html`: top_k 3→5, 원기사 image_url/summary join, `.db-brief-cards` 카드 리스트(board.css 신규 스타일), `_source_label` 친화 라벨, cite 제거, 헤드라인 공백 정규화.
+
+**검증**: pytest 943(신규 6) · Playwright — 5카드·'기술 매체'·썸네일, 불용어 0, 채팅 6건 후 입력창 불변. 스크린샷 `/tmp/brief-new.png`·`/tmp/chat-sticky.png`·`/tmp/trend-new.png`.
+
+**다음**: ① 브리핑 카드 주제 편중 완화(같은 lv3 5건 → 분산) ② 트렌드 델타가 신규 키워드 일색일 때 '신규' 배지로 구분 ③ 썸네일 없는 카드 비율 높을 때 출처 이니셜 플레이스홀더.
+
+---
+
 ## 2026-06-11 — feat: 오늘의 보드 감사 — 시뮬레이션·브라우저 검증·개선 (`feat-board-audit`)
 
 **무엇을**: 보드 7개 섹션 집계 로직을 합성 데이터(41건/8주/4출처)로 시뮬레이션해 독립 계산과 대조 + Playwright 실측 검증, 발견된 결함 5건 수정, 채팅 추천 질문 클릭=즉시 전송.

@@ -52,13 +52,43 @@ def top_keywords(df: pd.DataFrame, top_n: int = 20) -> pd.DataFrame:
 
 # ── 다중 일자 트렌드 ──────────────────────────────────────────
 
+# 키워드로서 의미 없는 한국어 조사·문법 조각·일반 동사/부사 — 트렌드·키워드 관리에서
+# 제외(예: '것으로', '등', '관련'). LLM/룰 추출이 가끔 본문 문법 토큰을 키워드로
+# 올리는데('것으로 전망', '대한 우려' 등) 트렌드 차트를 의미 없게 만든다.
+_KEYWORD_STOPWORDS: frozenset[str] = frozenset({
+    "것으로", "것이다", "것", "등", "및", "이번", "관련", "대한", "위한", "위해",
+    "통해", "오늘", "지난", "이날", "우리", "한다", "했다", "된다", "되다", "하는",
+    "그리고", "하지만", "또한", "이런", "저런", "그런", "더", "수", "때", "중",
+    "전망", "계획", "예정", "밝혔다", "전했다", "말했다", "대해", "통한", "따라",
+    "이라고", "라고", "에서", "으로", "에게", "부터", "까지", "보다", "처럼",
+    "기자", "사진", "제공", "무단", "전재", "배포", "금지", "저작권",
+})
+
+
+def _is_meaningful_keyword(tok: str) -> bool:
+    """키워드로 셀 가치가 있는 토큰인지 — 불용어/한 글자 한글/순수 기호 제외."""
+    t = tok.strip()
+    if not t or t in _KEYWORD_STOPWORDS:
+        return False
+    # 한 글자 한글(조사·접속사 잔재)은 제외 — 영문/숫자 한 글자는 드물어도 유지.
+    if len(t) == 1 and "가" <= t <= "힣":
+        return False
+    # 순수 기호/구두점만 → 제외.
+    if not any(c.isalnum() for c in t):
+        return False
+    return True
+
+
 def _all_keyword_tokens(df: pd.DataFrame) -> list[str]:
-    """LLM 키워드 우선, 없으면 룰 키워드. 둘 다 합쳐서 중복 제거."""
+    """LLM 키워드 우선, 없으면 룰 키워드. 불용어·무의미 토큰은 제외."""
     tokens: list[str] = []
     for col in ("keywords_llm", "keywords"):
         if col in df.columns:
             for cell in df[col].fillna("").astype(str):
-                tokens.extend(t.strip() for t in cell.split(",") if t.strip())
+                tokens.extend(
+                    t.strip() for t in cell.split(",")
+                    if _is_meaningful_keyword(t)
+                )
     return tokens
 
 
