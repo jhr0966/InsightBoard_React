@@ -38,6 +38,9 @@ jobs:
         chore-branch-cleanup-workflow
         chore-branch-cleanup-trigger
         chore-cleanup-run2
+        chore-cleanup-run3
+        style-onboarding-modal-polish
+        feat-board-brief-and-fixes
         style-onboarding-fixed-height
         feat-board-audit
         claude/charming-sagan-REsgM
