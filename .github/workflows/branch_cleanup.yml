@@ -37,6 +37,9 @@ jobs:
         chore-docs-and-final-tidyup
         chore-branch-cleanup-workflow
         chore-branch-cleanup-trigger
+        chore-cleanup-run2
+        style-onboarding-fixed-height
+        feat-board-audit
         claude/charming-sagan-REsgM
         claude/dev-setup-testing-i4f082
         claude/happy-thompson-F5Tdr
