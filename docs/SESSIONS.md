@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-11 — feat: 페르소나 입력 키보드 UX — 자동 포커스 + Enter→다음 입력 (`feat-persona-focus-nav`)
+
+**무엇을**: 온보딩 모달·프로필 설정 페이지에서 ① 창이 뜨면 첫 입력(이름)에 커서 자동 포커스 ② Enter 로 다음 입력창 이동(마지막 입력 Enter·Tab 은 기본 동작 유지).
+
+**어떻게**:
+1. `ui/components.py` `inject_focus_nav(scope_selector, nonce=)` 신설: `st.html(unsafe_allow_javascript=True)` 로 정적 JS 주입(1.58 — `components.v1.html` 은 deprecated 라 `TypeError` 폴백만). 자동 포커스는 폴링 + "이미 입력에 포커스 있으면 미개입" 가드, Enter 는 capture keydown 으로 다음 visible input focus(blur 커밋 자연 발생), BaseWeb select 콤보는 제외. 리스너는 window 마커로 제거 후 재부착(중복 방지).
+2. `ui/onboarding.py`: `_dialog_body` 에서 scope `[data-testid="stDialog"]` + `nonce=onb-step-{step}` — 단계 전환 rerun 후 새 단계 첫 입력 재포커스.
+3. `ui/persona_page.py`: scope `[class*="st-key-px_"]` 로 px_* 폼만 — 우측 채팅 입력 Enter 미개입.
+4. **디버깅 노트**: iframe(components.v1) 방식은 단계 전환 시 옛 iframe realm 파괴로 keydown 리스너가 죽는 문제 발견(브라우저 실측으로 검출) → 메인 문서 실행(st.html JS) + 주입마다 리스너 재부착으로 해결.
+5. 검증: pytest **918 passed** · 금지패턴 0 · Playwright `document.activeElement` 단언 10/10 + roadmap 데이터(selectbox 단계) 시나리오 3/3 · 스크린샷 `/tmp/persona-focus.png`.
+
+**상태**: 🔄 push — PR 은 오케스트레이터가 생성.
+
+---
+
 ## 2026-06-11 — feat: 페르소나 개편 — 관심 키워드 · SOLA 관심사 분석 · 온보딩/설정 정돈 (`feat-persona-overhaul`)
 
 **무엇을**: 페르소나 5종 개편 — ① 입력 항목 검토(유지 + interest_keywords 보강, 직급/연차는 매칭 신호 아님·미추가) ② 자유 입력 관심 키워드 → 수집·보드 합류 ③ LLM 관심사 추출 + 작업정의 매칭(`persona/derive.py`) ④ 온보딩 모달 세로 중앙 + 단계 정돈 ⑤ 설정 페이지에서 표시 설정 분리·카드 재구성.
