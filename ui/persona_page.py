@@ -24,6 +24,7 @@ from persona import store as persona_store
 from persona.schema import Persona, parse_keywords_input
 from roadmap.query import load_latest as load_tasks
 from ui import app_shell
+from ui.components import inject_focus_nav
 from ui.styles import inject_screen_css
 
 
@@ -385,3 +386,8 @@ def render() -> None:
     # ── ④ 표시 설정 (프로필과 분리 — 접힌 expander) ───────────
     _section_label("시스템")
     _render_display_settings()
+
+    # 키보드 UX — 진입 시 이름 입력 자동 포커스 + Enter→다음 입력 이동.
+    # scope 를 `px_*` 위젯 컨테이너(`st-key-px_*` 클래스)로 한정해 우측 채팅
+    # 입력 등 폼 밖 Enter 동작은 건드리지 않는다.
+    inject_focus_nav('[class*="st-key-px_"]', nonce="persona-page")

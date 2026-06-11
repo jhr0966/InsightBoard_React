@@ -184,3 +184,115 @@ def step_item(number: str | int, title: str, body: str, *, active: bool = False)
 def step_guide(items: Iterable[str]) -> str:
     """Wrap prebuilt step items in the standard horizontal guide."""
     return '<div class="step-guide">' + "".join(items) + "</div>"
+
+
+# ── 포커스 내비게이션 (자동 포커스 + Enter→다음 입력) ─────────────
+
+_FOCUS_NAV_JS = r"""
+<script>
+/* focus-nav %(nonce)s */
+(function () {
+  var SEL = %(sel)s;
+  /* st.html(unsafe_allow_javascript=True) → 메인 문서 realm 에서 실행.
+     components.v1.html 폴백(iframe) → window.parent 로 같은 문서에 접근. */
+  var doc, win;
+  try {
+    win = window.frameElement ? window.parent : window;
+    doc = win.document;
+  } catch (err) {
+    return; /* cross-origin 등 접근 불가 시 무해하게 종료 */
+  }
+
+  function visible(el) {
+    return !el.disabled && el.getClientRects().length > 0;
+  }
+  function inputsIn(sel) {
+    var nodes = doc.querySelectorAll(sel + " input, " + sel + " textarea");
+    return Array.prototype.filter.call(nodes, visible);
+  }
+  function isPlainTextInput(el) {
+    /* selectbox/multiselect(BaseWeb combobox)는 Enter 가 옵션 선택이므로 제외. */
+    if (!el || el.tagName !== "INPUT") { return false; }
+    if (el.closest('[data-baseweb="select"]')) { return false; }
+    var t = (el.getAttribute("type") || "text").toLowerCase();
+    return ["text", "search", "number", "email", "password", "url", "tel"].indexOf(t) >= 0;
+  }
+
+  /* (b) Enter → scope 안 다음 visible 입력으로 이동 (capture-phase keydown).
+     주입(rerun·단계 전환)마다 이전 핸들러를 제거하고 재부착한다 — window 마커
+     `__newsFocusNav` 가 중복 부착을 막고, iframe 폴백에서 옛 realm 이 파괴돼
+     리스너가 죽는 문제도 함께 해결한다. Tab 은 브라우저 기본 동작 그대로. */
+  if (win.__newsFocusNav && win.__newsFocusNav.fn) {
+    doc.removeEventListener("keydown", win.__newsFocusNav.fn, true);
+  }
+  function onKeydown(e) {
+    if (e.key !== "Enter" || e.isComposing) { return; }
+    if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) { return; }
+    var nav = win.__newsFocusNav;
+    var el = e.target;
+    if (!nav || !isPlainTextInput(el) || !el.closest(nav.sel)) { return; }
+    var list = inputsIn(nav.sel);
+    var i = list.indexOf(el);
+    /* 마지막 입력(또는 미발견)이면 기본 동작 유지 — Streamlit 이 Enter 커밋 처리. */
+    if (i < 0 || i >= list.length - 1) { return; }
+    e.preventDefault();
+    e.stopPropagation();
+    list[i + 1].focus(); /* 현재 입력 blur → Streamlit 값 커밋 자연 발생 */
+  }
+  win.__newsFocusNav = { sel: SEL, fn: onKeydown };
+  doc.addEventListener("keydown", onKeydown, true);
+
+  /* (a) scope 안 첫 입력 자동 포커스 — 모달/위젯 마운트가 늦을 수 있어 폴링.
+     이미 다른 input/textarea 에 포커스가 있으면 건드리지 않는다(타이핑 보호). */
+  var tries = 0;
+  var timer = setInterval(function () {
+    tries += 1;
+    var act = doc.activeElement;
+    if (act && (act.tagName === "INPUT" || act.tagName === "TEXTAREA")) {
+      clearInterval(timer);
+      return;
+    }
+    var list = inputsIn(SEL);
+    if (list.length) {
+      clearInterval(timer);
+      list[0].focus();
+      return;
+    }
+    if (tries > 30) { clearInterval(timer); }
+  }, 100);
+})();
+</script>
+"""
+
+
+def inject_focus_nav(scope_selector: str, *, nonce: str = "") -> None:
+    """입력 폼 포커스 내비게이션 주입 — ① scope 첫 input 자동 포커스 ② Enter→다음 입력.
+
+    Streamlit ≥1.58 에서는 `st.html(..., unsafe_allow_javascript=True)` 로 메인
+    문서에서 스크립트를 실행하고, 그 이전 버전에서는 `components.v1.html`(iframe,
+    height=0) 폴백으로 `window.parent.document` 에 접근한다(same-origin 이라 가능).
+    스크립트는 정적 문자열 + 코드 내 상수 selector/nonce 만 포함 — 사용자/외부
+    데이터 미포함이라 XSS 무관 (CLAUDE.md #5).
+
+    - 자동 포커스: 이미 다른 입력에 포커스가 있으면 건드리지 않음 (rerun 안전).
+    - Enter: 텍스트 입력에서 다음 visible input/textarea 로 이동, blur 로 값 커밋.
+      마지막 입력에서는 브라우저/Streamlit 기본 동작 유지. Tab 은 기본 동작.
+    - `nonce` 가 바뀌면 마크업이 바뀌어 스크립트가 재실행된다 — 온보딩 단계
+      전환(rerun) 후 새 단계 첫 입력에 다시 포커스하기 위해 단계 번호를 넘긴다.
+    - AppTest/헤드리스 등 미지원 환경에서도 본 렌더가 죽지 않게 가드.
+    """
+    import json as _json
+
+    markup = _FOCUS_NAV_JS % {
+        "sel": _json.dumps(scope_selector),
+        "nonce": _html.escape(str(nonce)),
+    }
+    try:
+        try:
+            st.html(markup, unsafe_allow_javascript=True)
+        except TypeError:  # Streamlit <1.58 — st.html 에 JS 플래그 없음
+            import streamlit.components.v1 as _stc
+
+            _stc.html(markup, height=0)
+    except Exception:
+        pass  # 포커스 보조는 best-effort — 실패해도 화면 기능에 영향 없음

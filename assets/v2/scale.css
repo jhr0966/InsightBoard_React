@@ -265,11 +265,8 @@ body:has(.db-greet) .db-greet {
   align-items: center !important;
 }
 
-/* B2 — 보드 탑 스토리: lead 1.4fr vs sidebar 1fr → 우측 너무 좁아 보임
-   1.2fr / 1fr 로 완화. 시안의 신문 레이아웃 의도는 유지하되 균형 개선 */
-body:has(.db-stories) .db-stories {
-  grid-template-columns: 1.2fr 1fr !important;
-}
+/* B2 — (삭제) 보드 탑 스토리 lead/side 비율 보정 — 카드 2컬럼 그리드로
+   전환되어 board.css `.db-stories` (repeat(2,…)) 가 단일 진실. */
 
 /* D1 — 데이터 관리 jobs vs news 컬럼 비율 1:1.69 → 1:1.35
    jobs 380px 고정 → 1fr (가변, news 와 비슷한 폭)
@@ -352,9 +349,10 @@ body:has(.db-topbar) .app-sola-comp-tips  { font-size: 12px !important; }
    11) Phase C-2 — 보드 심플 세로 스크롤
    2-컬럼 셸로 좁아진 main_col 에서 섹션 내부 2단 그리드를 세로 스택해
    부담 없이 위→아래로 읽히게 한다. 모든 콘텐츠/기능은 보존(레이아웃만).
+   (탑 스토리 `.db-stories` 는 제외 — 뉴스 카드 2컬럼 그리드를 좁은 폭에서도
+    유지한다. 컴팩트 보정은 board.css @media 가 담당.)
    ════════════════════════════════════════════════════════════ */
 body:has(.db-greet) .db-greet,
-body:has(.db-stories) .db-stories,
 body:has(.db-trend) .db-trend {
   grid-template-columns: 1fr !important;
   gap: 18px !important;
