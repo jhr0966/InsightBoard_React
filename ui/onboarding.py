@@ -173,68 +173,76 @@ def _inject_css() -> None:
         <style>
           /* 온보딩 중앙 카드 — v2 Azure 토큰 (가독성 강화: 본문/입력/버튼 확대) */
           .onb-hero {
-            max-width: 600px; margin: 14px auto 20px; text-align: center;
+            max-width: 620px; margin: 0 auto; text-align: center;
           }
           .onb-badge {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 7px 15px; border-radius: 999px;
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 9px 18px; border-radius: 999px;
             background: rgba(37,99,235,0.10); color: #2563EB;
-            font-size: 14px; font-weight: 700; letter-spacing: 0.02em;
-            margin-bottom: 16px;
+            font-size: 15px; font-weight: 700; letter-spacing: 0.02em;
+            margin-bottom: 22px;
           }
           .onb-title {
-            font-size: 28px; font-weight: 800; color: #0F172A;
-            letter-spacing: -0.02em; margin: 0 0 10px;
+            font-size: 30px; font-weight: 800; color: #0F172A;
+            letter-spacing: -0.02em; margin: 0 0 12px;
           }
           .onb-sub {
-            font-size: 16.5px; color: #475569; line-height: 1.7; margin: 0;
+            font-size: 18px; color: #475569; line-height: 1.75; margin: 0;
           }
           .onb-steps {
-            display: flex; gap: 8px; justify-content: center; margin: 20px auto 8px;
+            display: flex; gap: 8px; justify-content: center; margin: 4px auto 0;
           }
           .onb-dot {
-            width: 40px; height: 5px; border-radius: 3px; background: #E2E8F0;
+            width: 44px; height: 5px; border-radius: 3px; background: #E2E8F0;
           }
           .onb-dot-on { background: #2563EB; }
           .onb-dot-done { background: #93C5FD; }
           .onb-step-label {
-            text-align: center; font-size: 13.5px; color: #94A3B8;
-            font-weight: 700; margin-bottom: 2px; letter-spacing: 0.04em;
+            text-align: center; font-size: 14px; color: #94A3B8;
+            font-weight: 700; margin-bottom: 4px; letter-spacing: 0.04em;
           }
-          /* 단계 질문 — 이모지 + 큰 타이틀 + 여유 있는 보조 문구 */
+          /* 단계 질문 — 큰 이모지 + 타이틀 + 여유 있는 보조 문구 */
           .onb-q-emoji {
-            text-align: center; font-size: 42px; line-height: 1; margin: 20px 0 12px;
+            text-align: center; font-size: 56px; line-height: 1; margin: 0 0 16px;
           }
           .onb-q {
-            text-align: center; font-size: 24px; font-weight: 800;
-            color: #0F172A; margin: 0 auto 8px; letter-spacing: -0.01em;
+            text-align: center; font-size: 27px; font-weight: 800;
+            color: #0F172A; margin: 0 auto 10px; letter-spacing: -0.01em;
           }
           .onb-q-help {
-            text-align: center; font-size: 15px; color: #64748B;
-            margin: 0 auto 16px; line-height: 1.6;
+            text-align: center; font-size: 16px; color: #64748B;
+            margin: 0 auto 22px; line-height: 1.6; max-width: 520px;
           }
           /* 모달 제목(반갑습니다/페르소나 설정) 확대 — st.dialog 헤더 */
           div[data-testid="stDialog"] [role="dialog"] h1,
           div[data-testid="stDialog"] [role="dialog"] h2,
           div[data-testid="stDialog"] [role="dialog"] > div:first-child span {
-            font-size: 24px !important; font-weight: 800 !important;
+            font-size: 25px !important; font-weight: 800 !important;
             letter-spacing: -0.02em;
           }
-          /* 단계마다 모달 높이가 출렁이지 않게 본문 높이 통일 —
-             st.container(key=) 는 stVerticalBlock 자체에 st-key-* 클래스가 붙고,
-             네비 버튼은 별도 onb_nav 컨테이너 → margin-top:auto 로 **항상 하단 고정**. */
-          .st-key-onb_body { min-height: 560px; }
-          .st-key-onb_body > div:has([class*="st-key-onb_nav"]) { margin-top: auto; }
+          /* 단계마다 모달 높이가 출렁이지 않게 본문 높이 통일.
+             onb_body = [진행바] [onb_content(중앙 정렬·남은 공간 채움)] [onb_nav(하단)].
+             콘텐츠를 세로 중앙에 두어 ① 환영 화면 중간 여백 제거 ② 입력창이 단계마다
+             비슷한 위치(중앙 밴드)에 오도록 한다. */
+          .st-key-onb_body { min-height: 540px; }
+          /* onb_content 의 **래퍼**(키 컨테이너 wrapper)가 남은 공간을 채우게 하고,
+             그 안에서 콘텐츠를 세로 중앙 정렬 → nav 는 자연히 모달 하단에 고정된다.
+             (st.container(key=) 는 wrapper > .st-key-* 2겹이라 wrapper 를 grow 시켜야 함) */
+          .st-key-onb_body > div:has(> .st-key-onb_content) { flex-grow: 1; }
+          .st-key-onb_content {
+            height: 100%; justify-content: center; gap: 0 !important;
+          }
           /* 입력 위젯 확대 — 텍스트/셀렉트/멀티셀렉트 공통 */
           .st-key-onb_body [data-testid="stTextInput"] input {
-            font-size: 16.5px; padding: 14px 16px;
+            font-size: 18px; padding: 16px 18px;
           }
+          .st-key-onb_body [data-baseweb="select"] { min-height: 54px; }
           .st-key-onb_body [data-baseweb="select"],
           .st-key-onb_body [data-baseweb="select"] input {
-            font-size: 16px;
+            font-size: 17px;
           }
-          .st-key-onb_body [data-testid="stWidgetLabel"] p { font-size: 15px; }
-          .st-key-onb_body [data-testid="stCaptionContainer"] p { font-size: 13.5px; }
+          .st-key-onb_body [data-testid="stWidgetLabel"] p { font-size: 15.5px; }
+          .st-key-onb_body [data-testid="stCaptionContainer"] p { font-size: 14px; }
           /* 네비 버튼 — 높고 시원하게, 단축키 두 줄 라벨 대응 */
           [class*="st-key-onb_nav"] button {
             min-height: 60px; border-radius: 12px;
@@ -332,18 +340,22 @@ def _dialog_body(persona: Persona) -> None:
 
 
 def _render_welcome() -> None:
-    st.html(
-        """
-        <div class="onb-hero">
-          <span class="onb-badge">✨ 처음 오셨네요</span>
-          <p class="onb-sub">
-            부서·직무·관심 공정을 알려주시면 <b>오늘의 보드</b>와 <b>SOLA</b>가
-            당신의 작업에 맞춘 인사이트로 채워집니다.<br>
-            1분이면 끝나요 — 지금 설정할까요?
-          </p>
-        </div>
-        """
-    )
+    # onb_content = 환영 문구를 진행 영역 없이 모달 세로 중앙에 배치(중간 여백 제거).
+    with st.container(key="onb_content"):
+        st.html(
+            """
+            <div class="onb-hero">
+              <span class="onb-badge">✨ 처음 오셨네요</span>
+              <div class="onb-q-emoji">🚀</div>
+              <h2 class="onb-title">맞춤 인사이트, 1분이면 준비 완료</h2>
+              <p class="onb-sub">
+                부서·직무·관심 공정을 알려주시면 <b>오늘의 보드</b>와 <b>SOLA</b>가
+                당신의 작업에 맞춘 인사이트로 채워집니다.<br>
+                지금 설정할까요?
+              </p>
+            </div>
+            """
+        )
     with st.container(key="onb_nav"):
         if st.button("페르소나 설정 시작하기", type="primary", use_container_width=True, key="onb_start_btn"):
             st.session_state["_do_onb_start"] = True
@@ -359,7 +371,9 @@ def _render_step(step: int, persona: Persona) -> None:
     data = _onb_data()
     st.html(_progress_html(step))
 
-    with st.container():  # dialog 폭이 이미 좁아 별도 중앙 컬럼 불필요
+    # onb_content = 진행바와 네비 버튼 사이 공간을 채우며 콘텐츠를 세로 중앙 정렬
+    # → 입력창이 단계마다 비슷한 위치(중앙)에 오고 입력창 밑 빈 공간이 사라진다.
+    with st.container(key="onb_content"):
         if step == 1:
             st.html('<div class="onb-q-emoji">👤</div>'
                     '<div class="onb-q">이름을 알려주세요</div>'
@@ -463,17 +477,20 @@ def _render_step(step: int, persona: Persona) -> None:
 
 def _render_collect_offer() -> None:
     """5단계 — 페르소나 저장 완료, 지금 바로 뉴스 수집을 실행할지 제안."""
-    st.html(
-        """
-        <div class="onb-hero">
-          <span class="onb-badge">🎉 설정 완료</span>
-          <p class="onb-sub">
-            페르소나가 저장됐어요. 등록한 관심 키워드로<br>
-            <b>지금 바로 뉴스를 수집</b>할까요? 1~2분 정도 걸려요.
-          </p>
-        </div>
-        """
-    )
+    with st.container(key="onb_content"):
+        st.html(
+            """
+            <div class="onb-hero">
+              <span class="onb-badge">🎉 설정 완료</span>
+              <div class="onb-q-emoji">📡</div>
+              <h2 class="onb-title">지금 바로 뉴스를 수집할까요?</h2>
+              <p class="onb-sub">
+                페르소나가 저장됐어요. 등록한 관심 키워드로<br>
+                첫 수집을 돌리면 보드가 바로 채워집니다. 1~2분 정도 걸려요.
+              </p>
+            </div>
+            """
+        )
     with st.container(key="onb_nav"):
         clater, cgo = st.columns(2)
         with clater:
