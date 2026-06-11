@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (앱 내 기사 URL 진단 — thebell 류 미수집 원인 확정 도구)
+- **`scraping/diagnose.py` 신설**: `scripts/diagnose_article.py` 의 단계 로직을 구조화 dict 반환 함수로 추출 — 요청 3단계(기본/워밍업/TLS 위장) 상태코드·응답 길이, curl_cffi 설치 여부, 메타/본문 이미지 후보(+junk 판정), 본문 셀렉터 매칭, 구조화 데이터(ld+json/Fusion) 길이, 최종 fetch_article 결과. **200 위장 차단 감지** 휴리스틱(200인데 셀렉터 0+본문 빈약+차단 문구) 포함. 스크립트는 래퍼로 축소.
+- **⚙ 수집 설정에 '🔬 기사 URL 진단' 카드**(`ui/data_management_v2.py`): URL 입력 + [진단 실행](pending+rerun) → 단계별 결과를 화면에 표시 — 배포 환경에서 CLI 없이 미수집 원인(403/IP 차단/위장 차단/파싱)을 바로 확인. curl_cffi 미설치 시 'TLS 위장 폴백 비활성' 경고 배너.
+- `scraping/enrich.py`: fetch 차단/예외 경로 logger.warning 보강(URL·상태코드).
+- 검증: pytest **928 passed**(신규 test_diagnose.py — 403→위장 성공/200 위장 차단/정상 케이스) · 금지패턴 0.
+
+
 ### Added (페르소나 개편 — 관심 키워드·SOLA 관심사 분석·온보딩/설정 UI 정돈) — `feat-persona-overhaul`
 - **입력 항목 검토 결론**: 기존 항목(이름/팀/부서/직무/관심 공정 lv3/관심 작업)은 작업정의 매칭·개인화 목적에 적합해 유지. 직급/연차는 매칭 신호가 아니고 입력 부담만 늘려 **미추가**, '관심 기술영역'은 자유 입력 `interest_keywords` 로 흡수.
 - **관심 키워드 등록**(`persona/schema.py`): `Persona.interest_keywords: list[str]` 추가 + 쉼표/엔터/세미콜론/가운뎃점 구분 파서 `parse_keywords_input`(중복 제거, 최대 20개). `from_dict` 가 구버전 profile.json(키 없음)도 기본값으로 로드 — 저장/로드 하위호환.
