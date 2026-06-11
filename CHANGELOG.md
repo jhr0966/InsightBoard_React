@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (보드 탑 스토리 — 뉴스 카드 2컬럼 그리드, 최소 10장) — `feat-board-stories-grid`
+- **탑 스토리 재구성**(`ui/board_v2.py`): lead 1 + side 4 구조(`_lead_story_html`/`_side_story_html`)를 단일 카드 빌더 `_story_card_html` 로 대체 — 카드 = 썸네일(있으면 `image_url`, http→https 승격 `_https_img` + `referrerpolicy=no-referrer` + http(s) 스킴만 허용, 없으면 출처색 그라데이션 플레이스홀더) + 출처/시간 + 제목(2줄 clamp) + 요약 1줄(summary_llm→summary→content 우선). 카드 클릭 = 원문 새 탭 앵커(`target=_blank rel=noopener`, href escape) 유지. 제목/요약/출처 전부 `html.escape`.
+- **표시 개수 ≥10**(`_board_stories_html`): `_STORY_COUNT=10` — 최근 3일 뉴스가 10건 미만이면 14일 윈도우로 보충(일자 메모 캐시 공유 → 디스크 재읽기 없음), 그래도 부족하면 있는 만큼 + `.db-stories-note` 빈약 안내("뉴스 수집을 돌리면 카드가 더 채워집니다").
+- **2컬럼 그리드 CSS**(`assets/v2/screens/board.css`): `.db-stories` 를 `repeat(2, minmax(0,1fr))` 그리드로, 새 카드 스타일(`.db-story{,-link,-img,-img-ph,-body,-meta,-h,-p}`) 작성. 데드 lead/side CSS(`.db-lead*`/`.db-side-stories`/`.db-img-stripe`/`.db-img-label`/`.db-tag*`/`.db-pill-chip`/`.db-lead-cta`) 제거. 좁은 폭(≤1280px)에서도 2컬럼 유지 — @media 로 썸네일/폰트만 컴팩트.
+- **1컬럼 강제 오버라이드 제거**(`assets/v2/scale.css`, `assets/v2/card.css`): B2(lead/side 비율 보정)·Phase C-2 세로 스택·@container(≤880px) 스택 목록에서 `.db-stories` 제외 — `!important 1fr` 가 새 2컬럼 그리드를 덮어쓰던 문제 해소(브라우저 실측으로 발견).
+- 테스트(`tests/test_board_cleanup.py`): 카드 클릭/escape/썸네일 https·no-referrer/`javascript:` 이미지 차단/10장 렌더/10장 미만 안내 노트/board.css 2컬럼+데드 CSS 제거/scale·card.css 의 `.db-stories` 셀렉터 잔존 0 — 12개로 재작성.
+- 검증: pytest **924 passed** · 금지패턴 0 · 브라우저 실측(8502, 뉴스 16건 시드 — 2컬럼×5행 10장, computed `grid-template-columns: 411.5px 411.5px`, `/tmp/board-stories-grid.png`) OK.
 ### Added (페르소나 입력 키보드 UX — 자동 포커스 + Enter→다음 입력 이동) — `feat-persona-focus-nav`
 - **공용 헬퍼 `ui/components.inject_focus_nav(scope_selector, nonce=)`**: `st.html(..., unsafe_allow_javascript=True)` (Streamlit 1.58, `components.v1.html` deprecated 대체 — `TypeError` 시 iframe 폴백 유지)로 정적 스크립트를 주입해 ① scope 안 첫 visible input 자동 포커스(이미 다른 input/textarea 에 포커스가 있으면 미개입 — rerun 안전) ② capture-phase keydown 으로 텍스트 입력에서 **Enter → scope 안 다음 visible input/textarea 로 포커스 이동**(blur 로 Streamlit 값 커밋 자연 발생). 마지막 입력의 Enter 와 Tab 은 브라우저/Streamlit 기본 동작 유지. selectbox/multiselect(BaseWeb combobox)는 Enter 가 옵션 선택이므로 제외. 리스너는 window 마커로 주입마다 제거 후 재부착(중복 방지 + iframe 폴백에서 옛 realm 파괴로 리스너가 죽는 문제 해소). 스크립트는 사용자 데이터 미포함 정적 문자열 — XSS 무관.
 - **온보딩 모달 적용**(`ui/onboarding.py` `_dialog_body`): scope `[data-testid="stDialog"]`, `nonce=onb-step-{step}` — 단계 전환(rerun) 후에도 새 단계 첫 입력(이름→부서→직무…)에 자동 재포커스.

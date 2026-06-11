@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-06-11 — feat: 보드 탑 스토리 — 뉴스 카드 2컬럼 그리드·최소 10장 (`feat-board-stories-grid`)
+
+**무엇을**: 오늘의 보드 탑 스토리를 lead 1 + side 4(5장) 구조에서 **뉴스 카드 2컬럼 세로 그리드(최소 10장)** 로 재구성.
+
+**어떻게**:
+1. `ui/board_v2.py`: `_lead_story_html`/`_side_story_html` → 단일 `_story_card_html`(썸네일 `_https_img`(http→https)+no-referrer+http(s) 스킴만, 출처/시간, 제목 2줄 clamp, 요약 1줄 summary_llm→summary→content). 원문 새 탭 앵커 유지, 전 문자열 escape.
+2. `_board_stories_html`: `_STORY_COUNT=10` — 3일 윈도우 부족 시 14일 보충(일자 메모 캐시), 그래도 <10 이면 `.db-stories-note` 안내.
+3. `assets/v2/screens/board.css`: `.db-stories` = `repeat(2, minmax(0,1fr))`, 새 `.db-story*` 카드 스타일, 데드 lead/side/tag CSS 제거, ≤1280px 컴팩트 @media(2컬럼 유지).
+4. **함정**: `scale.css` B2·Phase C-2, `card.css` @container 가 `.db-stories` 를 `1fr !important` 로 강제 — 브라우저 실측에서 1컬럼으로 무너지는 걸 발견, 세 곳 모두 목록에서 제외.
+5. 테스트: `test_board_cleanup.py` 12개 재작성(10장 렌더·<10 노트·escape·썸네일 https·javascript: 차단·2컬럼 CSS·오버라이드 잔존 0). pytest **924 passed** · 금지패턴 0.
+6. 브라우저 실측: 8502, 뉴스 16건 시드 → 2컬럼×5행, computed cols `411.5px 411.5px`, `/tmp/board-stories-grid.png`.
+
+**다음**: ① 카드에 매칭 강도 배지 재도입(`score_matches` 상위 N 하이라이트 — `_story_card_html`+`_brief_html` 데이터 공유) ② 탑 스토리 정렬을 '페르소나 매칭 강한 순' 섹션 타이틀과 일치시키기(현재 collected_at 최신순 — `store/match.py` 점수 join) ③ 썸네일 없는 카드 비율 높을 때 플레이스홀더에 출처 이니셜 라벨.
 ## 2026-06-11 — feat: 페르소나 입력 키보드 UX — 자동 포커스 + Enter→다음 입력 (`feat-persona-focus-nav`)
 
 **무엇을**: 온보딩 모달·프로필 설정 페이지에서 ① 창이 뜨면 첫 입력(이름)에 커서 자동 포커스 ② Enter 로 다음 입력창 이동(마지막 입력 Enter·Tab 은 기본 동작 유지).
