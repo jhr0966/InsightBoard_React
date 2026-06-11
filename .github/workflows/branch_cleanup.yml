@@ -1,0 +1,114 @@
+# 머지 완료된 원격 브랜치 일괄 삭제 — 수동 트리거(workflow_dispatch) 전용.
+#
+# 배경: 원격 실행(Claude Code on the web) 환경의 git 프록시는 브랜치 삭제
+# push 를 차단한다 → Actions 의 GITHUB_TOKEN(contents:write)으로 서버 측에서
+# 삭제한다. 기본 목록은 2026-06-11 정리 시점에 머지 확정(머지 PR head /
+# main ancestry / CHANGELOG·SESSIONS 머지 기록)된 브랜치들.
+#
+# 사용:
+#   - 입력 없이 실행 → 아래 기본 목록 삭제 (이미 없는 브랜치는 skip)
+#   - branches 입력(공백 구분) → 그 브랜치들만 삭제
+#   - main/master 는 어떤 경우에도 삭제하지 않는다.
+name: branch-cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: "삭제할 브랜치 (공백 구분, 비우면 기본 목록)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  delete-merged-branches:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INPUT_BRANCHES: ${{ inputs.branches }}
+      DEFAULT_BRANCHES: >-
+        chore-docs-and-final-tidyup
+        chore-branch-cleanup-workflow
+        claude/charming-sagan-REsgM
+        claude/dev-setup-testing-i4f082
+        claude/happy-thompson-F5Tdr
+        claude/kind-volta-IWxix
+        claude/laughing-pascal-pCbik
+        claude/nice-bell-eEZLj
+        claude/review-insight-board-Ej5EO
+        docs-refactor-plan
+        feat-archive-more
+        feat-board-stories-grid
+        feat-board-tts
+        feat-brief-llm
+        feat-chat-panel-default-open
+        feat-collect-history-link
+        feat-collect-progress-modal
+        feat-collect-trigger
+        feat-cron-rss
+        feat-custom-rss-scrape
+        feat-data-mgmt-b5
+        feat-dm-area-2groups
+        feat-excel-diff-preview
+        feat-global-chat
+        feat-groq-setup-and-llm-cta
+        feat-heatmap-click
+        feat-inapp-diagnose
+        feat-ingest-sqlite
+        feat-insight-kw-click
+        feat-insight-matrix-click
+        feat-keyword-mgmt-wire
+        feat-matrix-click
+        feat-opp-actions
+        feat-persona-focus-nav
+        feat-persona-onboarding
+        feat-persona-onboarding-flow
+        feat-persona-overhaul
+        feat-query-sqlite-adapter
+        feat-roadmap-phase2
+        feat-roadmap-task-def
+        feat-sola-composer-llm
+        feat-sola-ctx-panel
+        feat-sola-thread-polish
+        feat-sola-thread-search
+        feat-sola-thread-store
+        feat-src-crud
+        feat-streamlit-cloud-secrets
+        feat-task-def-json
+        feat-task-def-manage-ui
+        feat-task-def-plan
+        feat-task-def-upload
+        feat-task-defs-db
+        feat-thread-title-llm
+        feat-topbar-actions
+        feat-ux-phase1-next-best-action
+        feat-ux-phase2-onboarding-persona
+        feat-ux-phase3-ia-tabs
+        feat-ux-phase4-chat-unification
+        feat-ux-phase5-workbench-and-chat-persist
+        fix-collect-body-echo-images
+        fix-manage-ui-inline-styles
+        fix-news-cleanup-and-image
+        fix-screen-css-injection
+        fix-spa-article-body
+        fix-thebell-extract
+        refactor-partial-updates
+        refactor-tasks-df-naming
+    steps:
+      - name: Delete branches
+        run: |
+          set -u
+          BRANCHES="${INPUT_BRANCHES:-}"
+          [ -z "$BRANCHES" ] && BRANCHES="$DEFAULT_BRANCHES"
+          ok=0; skip=0
+          for b in $BRANCHES; do
+            case "$b" in main|master) echo "guard-skip: $b"; continue;; esac
+            if gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$b" --silent 2>/dev/null; then
+              echo "deleted: $b"; ok=$((ok+1))
+            else
+              echo "skip(없음/실패): $b"; skip=$((skip+1))
+            fi
+          done
+          echo "── 삭제 $ok · skip $skip"

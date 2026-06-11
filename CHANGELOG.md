@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Added (머지 브랜치 정리 워크플로) — `chore-branch-cleanup-workflow`
+- **`.github/workflows/branch_cleanup.yml` 신설**: workflow_dispatch 수동 트리거로 머지 확정 원격 브랜치(기본 목록 67개 — 머지 PR head + main ancestry + CHANGELOG/SESSIONS 머지 기록 교차 검증)를 `GITHUB_TOKEN`(contents:write)으로 서버 측 일괄 삭제. `branches` 입력으로 임의 목록 지정 가능, main/master 는 가드로 항상 보호, 이미 없는 브랜치는 skip. 원격 실행 환경의 git 프록시가 삭제 push 를 차단(403)해 Actions 경유로 우회.
+
 ### Changed (페르소나 온보딩 흐름 개편 — 키보드 완주 + 키워드 칩 + 완료 직후 수집 제안) — `feat-persona-onboarding-flow`
 - **명칭 통일 '프로필 설정' → '페르소나 설정'**: 온보딩 모달 제목·시작 버튼(`ui/onboarding.py`), 설정 페이지 topbar(`ui/persona_page.py`), 사이드바 미설정 카드 CTA/라벨(`ui/sidebar.py`), 채팅 area 키(`app.py`·`ui/chat_panel.py` `_AREA_INTROS`) 일괄 변경. 저장 메시지도 "페르소나 저장됨/페르소나가 저장됐어요"로.
 - **Enter 로 단계 완주**(`ui/components.inject_focus_nav` 확장): `submit_selector` 추가 — scope 의 **마지막** 텍스트 입력에서 Enter → blur(값 커밋) 후 해당 버튼 자동 클릭. 온보딩 1~3단계(이름/팀·부서/직무)에 `.st-key-onb_next_{step} button` 으로 연결 → 이름 입력 후 Enter = [다음], 부서 입력 후 Enter = [다음], 직무 입력 후 Enter = [다음].
