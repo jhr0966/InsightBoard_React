@@ -94,6 +94,11 @@ def _snapshot_inputs() -> None:
     for k in _WIZARD_KEYS:
         if k in st.session_state:
             data[k] = st.session_state[k]
+            # 단계 전환으로 위젯이 unmount 되면 Streamlit 이 위젯 상태를 GC 하는데,
+            # AppTest 가 직전 트리를 직렬화할 때 그 상태를 다시 읽어 KeyError 가
+            # 난다 → pending 핸들러(위젯 인스턴스화 전)에서 일반 세션 값으로
+            # 재기록해 유지 (finish 의 onb_keywords 방어와 동일 원리).
+            st.session_state[k] = data[k]
 
 
 # ── pending 핸들러 (run 최상단) ──────────────────────────────
@@ -166,62 +171,90 @@ def _inject_css() -> None:
     st.html(
         """
         <style>
-          /* 온보딩 중앙 카드 — v2 Azure 토큰 */
+          /* 온보딩 중앙 카드 — v2 Azure 토큰 (가독성 강화: 본문/입력/버튼 확대) */
           .onb-hero {
-            max-width: 560px; margin: 8px auto 18px; text-align: center;
+            max-width: 620px; margin: 0 auto; text-align: center;
           }
           .onb-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 5px 12px; border-radius: 999px;
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 9px 18px; border-radius: 999px;
             background: rgba(37,99,235,0.10); color: #2563EB;
-            font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em;
-            margin-bottom: 14px;
+            font-size: 15px; font-weight: 700; letter-spacing: 0.02em;
+            margin-bottom: 22px;
           }
           .onb-title {
-            font-size: 26px; font-weight: 800; color: #0F172A;
-            letter-spacing: -0.02em; margin: 0 0 10px;
+            font-size: 30px; font-weight: 800; color: #0F172A;
+            letter-spacing: -0.02em; margin: 0 0 12px;
           }
           .onb-sub {
-            font-size: 15px; color: #475569; line-height: 1.6; margin: 0;
+            font-size: 18px; color: #475569; line-height: 1.75; margin: 0;
           }
           .onb-steps {
-            display: flex; gap: 6px; justify-content: center; margin: 18px auto 4px;
+            display: flex; gap: 8px; justify-content: center; margin: 4px auto 0;
           }
           .onb-dot {
-            width: 28px; height: 4px; border-radius: 2px; background: #E2E8F0;
+            width: 44px; height: 5px; border-radius: 3px; background: #E2E8F0;
           }
           .onb-dot-on { background: #2563EB; }
           .onb-dot-done { background: #93C5FD; }
           .onb-step-label {
-            text-align: center; font-size: 12.5px; color: #94A3B8;
-            font-weight: 700; margin-bottom: 2px;
+            text-align: center; font-size: 14px; color: #94A3B8;
+            font-weight: 700; margin-bottom: 4px; letter-spacing: 0.04em;
+          }
+          /* 단계 질문 — 큰 이모지 + 타이틀 + 여유 있는 보조 문구 */
+          .onb-q-emoji {
+            text-align: center; font-size: 56px; line-height: 1; margin: 0 0 16px;
           }
           .onb-q {
-            text-align: center; font-size: 19px; font-weight: 800;
-            color: #0F172A; margin: 6px auto 2px; letter-spacing: -0.01em;
+            text-align: center; font-size: 27px; font-weight: 800;
+            color: #0F172A; margin: 0 auto 10px; letter-spacing: -0.01em;
           }
           .onb-q-help {
-            text-align: center; font-size: 13.5px; color: #64748B;
-            margin: 0 auto 6px; line-height: 1.5;
+            text-align: center; font-size: 16px; color: #64748B;
+            margin: 0 auto 22px; line-height: 1.6; max-width: 520px;
           }
-          /* 단계마다 모달 높이가 출렁이지 않게 본문 높이 통일 —
-             가장 긴 입력 단계(2/4) 기준 min-height, 더 길면 자연 확장.
-             st.container(key=) 는 stVerticalBlock 자체에 st-key-* 클래스가 붙는다. */
-          .st-key-onb_body { min-height: 470px; }
-          /* 입력 단계 — 본문 바로 아래(1뎁스) 내부 컨테이너만 남은 높이를 차지하고,
-             그 마지막 요소(네비 버튼 행)를 하단 고정해 빈 공간이 본문 중간에 생기게.
-             (컬럼 내부의 중첩 VerticalBlock 은 건드리지 않는다) */
-          .st-key-onb_body > div[data-testid="stVerticalBlock"],
-          .st-key-onb_body > div > div[data-testid="stVerticalBlock"] {
-            flex-grow: 1;
+          /* 모달 제목(반갑습니다/페르소나 설정) 확대 — st.dialog 헤더 */
+          div[data-testid="stDialog"] [role="dialog"] h1,
+          div[data-testid="stDialog"] [role="dialog"] h2,
+          div[data-testid="stDialog"] [role="dialog"] > div:first-child span {
+            font-size: 25px !important; font-weight: 800 !important;
+            letter-spacing: -0.02em;
           }
-          .st-key-onb_body > div[data-testid="stVerticalBlock"] > div:last-child,
-          .st-key-onb_body > div > div[data-testid="stVerticalBlock"] > div:last-child {
-            margin-top: auto;
+          /* 단계마다 모달 높이가 출렁이지 않게 본문 높이 통일.
+             onb_body = [진행바] [onb_content(중앙 정렬·남은 공간 채움)] [onb_nav(하단)].
+             콘텐츠를 세로 중앙에 두어 ① 환영 화면 중간 여백 제거 ② 입력창이 단계마다
+             비슷한 위치(중앙 밴드)에 오도록 한다. */
+          .st-key-onb_body { min-height: 540px; }
+          /* onb_content 의 **래퍼**(키 컨테이너 wrapper)가 남은 공간을 채우게 하고,
+             그 안에서 콘텐츠를 세로 중앙 정렬 → nav 는 자연히 모달 하단에 고정된다.
+             (st.container(key=) 는 wrapper > .st-key-* 2겹이라 wrapper 를 grow 시켜야 함) */
+          .st-key-onb_body > div:has(> .st-key-onb_content) { flex-grow: 1; }
+          .st-key-onb_content {
+            height: 100%; justify-content: center; gap: 0 !important;
           }
-          /* 환영 화면 — 시작 버튼부터 아래(버튼 2 + 캡션)를 하단 고정. */
-          .st-key-onb_body > div:has([class*="st-key-onb_start_btn"]) {
-            margin-top: auto; flex-grow: 0 !important;
+          /* 입력 위젯 확대 — 텍스트/셀렉트/멀티셀렉트 공통 */
+          .st-key-onb_body [data-testid="stTextInput"] input {
+            font-size: 18px; padding: 16px 18px;
+          }
+          .st-key-onb_body [data-baseweb="select"] { min-height: 54px; }
+          .st-key-onb_body [data-baseweb="select"],
+          .st-key-onb_body [data-baseweb="select"] input {
+            font-size: 17px;
+          }
+          .st-key-onb_body [data-testid="stWidgetLabel"] p { font-size: 15.5px; }
+          .st-key-onb_body [data-testid="stCaptionContainer"] p { font-size: 14px; }
+          /* 네비 버튼 — 높고 시원하게, 단축키 두 줄 라벨 대응 */
+          [class*="st-key-onb_nav"] button {
+            min-height: 60px; border-radius: 12px;
+          }
+          [class*="st-key-onb_nav"] button p {
+            margin: 0; font-size: 16.5px; font-weight: 700; line-height: 1.35;
+          }
+          [class*="st-key-onb_nav"] button p + p {
+            font-size: 12px; font-weight: 600; color: #94A3B8;
+          }
+          [class*="st-key-onb_nav"] button[kind="primary"] p + p {
+            color: rgba(255,255,255,0.75);
           }
         </style>
         """
@@ -294,35 +327,43 @@ def _dialog_body(persona: Persona) -> None:
             submit_sel = (
                 f".st-key-onb_next_{step} button" if step < _TOTAL_INPUT_STEPS else ""
             )
+            # Ctrl/⌘+Enter = 어느 입력에서든 단계 진행 (4단계는 [완료]).
+            ctrl_sel = submit_sel or ".st-key-onb_finish_btn button"
             chips_sel = ".st-key-onb_keywords" if step == _TOTAL_INPUT_STEPS else ""
             inject_focus_nav(
                 '[data-testid="stDialog"]',
                 nonce=f"onb-step-{step}",
                 submit_selector=submit_sel,
+                ctrl_submit_selector=ctrl_sel,
                 chips_selector=chips_sel,
             )
 
 
 def _render_welcome() -> None:
-    st.html(
-        """
-        <div class="onb-hero">
-          <span class="onb-badge">✨ 처음 오셨네요</span>
-          <p class="onb-sub">
-            부서·직무·관심 공정을 알려주시면 <b>오늘의 보드</b>와 <b>SOLA</b>가
-            당신의 작업에 맞춘 인사이트로 채워집니다.<br>
-            1분이면 끝나요 — 지금 설정할까요?
-          </p>
-        </div>
-        """
-    )
-    if st.button("페르소나 설정 시작하기", type="primary", use_container_width=True, key="onb_start_btn"):
-        st.session_state["_do_onb_start"] = True
-        st.rerun()
-    if st.button("나중에 하기", use_container_width=True, key="onb_skip_btn"):
-        st.session_state["_do_onb_dismiss"] = True
-        st.rerun()
-    st.caption("나중에 사이드바 페르소나 카드에서 언제든 설정할 수 있어요.")
+    # onb_content = 환영 문구를 진행 영역 없이 모달 세로 중앙에 배치(중간 여백 제거).
+    with st.container(key="onb_content"):
+        st.html(
+            """
+            <div class="onb-hero">
+              <span class="onb-badge">✨ 처음 오셨네요</span>
+              <div class="onb-q-emoji">🚀</div>
+              <h2 class="onb-title">맞춤 인사이트, 1분이면 준비 완료</h2>
+              <p class="onb-sub">
+                부서·직무·관심 공정을 알려주시면 <b>오늘의 보드</b>와 <b>SOLA</b>가
+                당신의 작업에 맞춘 인사이트로 채워집니다.<br>
+                지금 설정할까요?
+              </p>
+            </div>
+            """
+        )
+    with st.container(key="onb_nav"):
+        if st.button("페르소나 설정 시작하기", type="primary", use_container_width=True, key="onb_start_btn"):
+            st.session_state["_do_onb_start"] = True
+            st.rerun()
+        if st.button("나중에 하기", use_container_width=True, key="onb_skip_btn"):
+            st.session_state["_do_onb_dismiss"] = True
+            st.rerun()
+        st.caption("나중에 사이드바 페르소나 카드에서 언제든 설정할 수 있어요.")
 
 
 def _render_step(step: int, persona: Persona) -> None:
@@ -330,17 +371,20 @@ def _render_step(step: int, persona: Persona) -> None:
     data = _onb_data()
     st.html(_progress_html(step))
 
-    with st.container():  # dialog 폭이 이미 좁아 별도 중앙 컬럼 불필요
+    # onb_content = 진행바와 네비 버튼 사이 공간을 채우며 콘텐츠를 세로 중앙 정렬
+    # → 입력창이 단계마다 비슷한 위치(중앙)에 오고 입력창 밑 빈 공간이 사라진다.
+    with st.container(key="onb_content"):
         if step == 1:
-            st.html('<div class="onb-q">이름을 알려주세요</div>'
+            st.html('<div class="onb-q-emoji">👤</div>'
+                    '<div class="onb-q">이름을 알려주세요</div>'
                     '<div class="onb-q-help">보고서·제안서에 표시될 이름이에요.</div>')
             st.text_input("이름", value=data.get("onb_name", persona.name), key="onb_name",
                           placeholder="예: 홍길동", label_visibility="collapsed")
 
         elif step == 2:
-            st.html('<div class="onb-q">어느 팀·부서에서 일하시나요?</div>'
-                    '<div class="onb-q-help">매칭·자동화 기회가 이 부서 기준으로 정렬됩니다. '
-                    '팀 입력 후 Enter/Tab → 부서, 부서 입력 후 Enter → 다음.</div>')
+            st.html('<div class="onb-q-emoji">🏢</div>'
+                    '<div class="onb-q">어느 팀·부서에서 일하시나요?</div>'
+                    '<div class="onb-q-help">매칭·자동화 기회가 이 부서 기준으로 정렬됩니다.</div>')
             dept_opts = _options(tasks, "dept")
             team_opts = _options(tasks, "team")
             cur_dept = data.get("onb_dept", persona.dept)
@@ -366,13 +410,15 @@ def _render_step(step: int, persona: Persona) -> None:
                 st.caption("🗂 작업 정의 데이터를 아직 안 올려서 자유 입력이에요. 올린 뒤엔 추천 목록으로 바뀝니다.")
 
         elif step == 3:
-            st.html('<div class="onb-q">맡고 계신 직무는요?</div>'
+            st.html('<div class="onb-q-emoji">🛠️</div>'
+                    '<div class="onb-q">맡고 계신 직무는요?</div>'
                     '<div class="onb-q-help">예: 용접 담당 · 자동화 엔지니어 · 품질 검사관</div>')
             st.text_input("직무", value=data.get("onb_job", persona.job), key="onb_job",
                           placeholder="예: 도장 품질 검사관", label_visibility="collapsed")
 
         elif step == 4:
-            st.html('<div class="onb-q">관심 공정과 키워드를 알려주세요</div>'
+            st.html('<div class="onb-q-emoji">🎯</div>'
+                    '<div class="onb-q">관심 공정과 키워드를 알려주세요</div>'
                     '<div class="onb-q-help">선택한 공정·키워드 중심으로 뉴스 수집과 트렌드·자동화 기회가 정렬됩니다.</div>')
             lv3_opts = _options(tasks, "lv3")
             if lv3_opts:
@@ -395,13 +441,14 @@ def _render_step(step: int, persona: Persona) -> None:
                 help="등록한 키워드는 뉴스 수집 검색어에 바로 합류합니다.",
             )
 
-        st.write("")
-        # ── 네비게이션 버튼 ──
+    # ── 네비게이션 버튼 — onb_nav 컨테이너 (CSS margin-top:auto 로 모달 하단 고정).
+    # [나중에 하기]는 환영 화면 + 1단계(이름)에만 — 2단계부터는 이전/다음만.
+    # primary 버튼 라벨 둘째 줄 = Ctrl+Enter 단축키 안내(작고 옅게 — onb_nav CSS).
+    with st.container(key="onb_nav"):
         if step < _TOTAL_INPUT_STEPS:
             cprev, cnext = st.columns(2)
             with cprev:
                 if step == 1:
-                    # 첫 입력 단계 — 왼쪽은 [나중에 하기] (환영 화면과 동일 dismiss).
                     if st.button("나중에 하기", use_container_width=True, key="onb_later_1"):
                         st.session_state["_do_onb_dismiss"] = True
                         st.rerun()
@@ -409,7 +456,8 @@ def _render_step(step: int, persona: Persona) -> None:
                     st.session_state["_do_onb_prev"] = True
                     st.rerun()
             with cnext:
-                if st.button("다음 →", type="primary", use_container_width=True, key=f"onb_next_{step}"):
+                if st.button("다음 →\n\nCtrl + Enter", type="primary",
+                             use_container_width=True, key=f"onb_next_{step}"):
                     st.session_state["_do_onb_next"] = True
                     st.rerun()
         else:
@@ -419,40 +467,42 @@ def _render_step(step: int, persona: Persona) -> None:
                     st.session_state["_do_onb_prev"] = True
                     st.rerun()
             with cdone:
-                if st.button("✓ 완료", type="primary", use_container_width=True, key="onb_finish_btn"):
+                if st.button("✓ 완료\n\nCtrl + Enter", type="primary",
+                             use_container_width=True, key="onb_finish_btn"):
                     st.session_state["_do_onb_finish"] = True
                     st.rerun()
-
-        # [나중에 하기]는 환영 화면 + 1단계(이름)에만 — 2단계부터는 이전/다음만
-        # 노출해 모달을 단순하게 유지 (시작 후 이탈은 브라우저 새로고침으로도 가능).
 
 
 # ── 완료 후 — 뉴스 수집 제안·실행 ───────────────────────────
 
 def _render_collect_offer() -> None:
     """5단계 — 페르소나 저장 완료, 지금 바로 뉴스 수집을 실행할지 제안."""
-    st.html(
-        """
-        <div class="onb-hero">
-          <span class="onb-badge">🎉 설정 완료</span>
-          <p class="onb-sub">
-            페르소나가 저장됐어요. 등록한 관심 키워드로<br>
-            <b>지금 바로 뉴스를 수집</b>할까요? 1~2분 정도 걸려요.
-          </p>
-        </div>
-        """
-    )
-    clater, cgo = st.columns(2)
-    with clater:
-        if st.button("나중에 하기", use_container_width=True, key="onb_collect_later"):
-            st.session_state["_do_onb_close"] = True
-            st.rerun()
-    with cgo:
-        if st.button("📡 지금 수집 실행", type="primary", use_container_width=True,
-                     key="onb_collect_now"):
-            st.session_state["_do_onb_collect_now"] = True
-            st.rerun()
-    st.caption("나중에 🗞 뉴스 수집 화면의 [🔄 지금 뉴스 수집]으로 언제든 실행할 수 있어요.")
+    with st.container(key="onb_content"):
+        st.html(
+            """
+            <div class="onb-hero">
+              <span class="onb-badge">🎉 설정 완료</span>
+              <div class="onb-q-emoji">📡</div>
+              <h2 class="onb-title">지금 바로 뉴스를 수집할까요?</h2>
+              <p class="onb-sub">
+                페르소나가 저장됐어요. 등록한 관심 키워드로<br>
+                첫 수집을 돌리면 보드가 바로 채워집니다. 1~2분 정도 걸려요.
+              </p>
+            </div>
+            """
+        )
+    with st.container(key="onb_nav"):
+        clater, cgo = st.columns(2)
+        with clater:
+            if st.button("나중에 하기", use_container_width=True, key="onb_collect_later"):
+                st.session_state["_do_onb_close"] = True
+                st.rerun()
+        with cgo:
+            if st.button("📡 지금 수집 실행", type="primary", use_container_width=True,
+                         key="onb_collect_now"):
+                st.session_state["_do_onb_collect_now"] = True
+                st.rerun()
+        st.caption("나중에 🗞 뉴스 수집 화면의 [🔄 지금 뉴스 수집]으로 언제든 실행할 수 있어요.")
 
 
 def _render_collect_run() -> None:
@@ -484,7 +534,8 @@ def _render_collect_run() -> None:
     st.html(_components.prepare_screen_html(
         _dm._collect_result_summary_html(result)
     ))
-    if st.button("✓ 시작하기", type="primary", use_container_width=True,
-                 key="onb_collect_done"):
-        st.session_state["_do_onb_close"] = True
-        st.rerun()
+    with st.container(key="onb_nav"):
+        if st.button("✓ 시작하기", type="primary", use_container_width=True,
+                     key="onb_collect_done"):
+            st.session_state["_do_onb_close"] = True
+            st.rerun()
