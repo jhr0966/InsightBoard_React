@@ -1,7 +1,7 @@
 """오늘의 보드 — v2 디자인 적용.
 
 핸드오프 `dashboard-full v2.html` 의 main 컬럼 + 4 KPI 카드 + 탑 스토리 섹션
-(lead + side stories) 실데이터 바인딩. SOLA 브리핑/트렌드/매트릭스/키워드는
+(2컬럼 뉴스 카드 그리드) 실데이터 바인딩. SOLA 브리핑/트렌드/매트릭스/키워드는
 별도 PR (각각 chart SVG, LLM summary 등 추가 작업 필요).
 
 CLAUDE.md 규칙:
@@ -37,9 +37,8 @@ from ui.styles import inject_screen_css
 logger = logging.getLogger(__name__)
 
 
-# 탑 스토리: lead 1 + side 4 = 5
-_LEAD_STORY_COUNT = 1
-_SIDE_STORY_COUNT = 4
+# 탑 스토리: 2컬럼 그리드 뉴스 카드 — 최소 10장 표시
+_STORY_COUNT = 10
 
 
 # 부서 색상 팔레트 — 보드 매트릭스 + 인사이트 매트릭스 공유 (단일 진실).
@@ -456,12 +455,21 @@ def _story_age(when: str) -> str:
         return ""
 
 
-def _lead_story_html(row: pd.Series) -> str:
-    """탑 스토리 lead — 큰 카드."""
+def _https_img(url: str) -> str:
+    """렌더용 이미지 URL — http:// 는 https 로 승격(https 앱 혼합콘텐츠 차단 방지)."""
+    u = (url or "").strip()
+    return "https://" + u[7:] if u[:7].lower() == "http://" else u
+
+
+def _story_card_html(row: pd.Series) -> str:
+    """탑 스토리 카드 — 썸네일(있으면) + 출처/시간 + 제목 + 요약 1줄."""
     title = _html.escape(str(row.get("title", "") or "(제목 없음)"))
-    body_raw = str(row.get("content", "") or "").strip()[:240]
-    if len(str(row.get("content", "") or "")) > 240:
-        body_raw += "…"
+    body_raw = ""
+    for key in ("summary_llm", "summary", "content"):
+        val = str(row.get(key, "") or "").strip()
+        if val:
+            body_raw = val[:110] + ("…" if len(val) > 110 else "")
+            break
     body = _html.escape(body_raw)
     source = str(row.get("source", "") or "")
     source_safe = _html.escape(source)
@@ -469,58 +477,35 @@ def _lead_story_html(row: pd.Series) -> str:
     when = str(row.get("collected_at", "") or row.get("published_at", "") or "")
     age = _html.escape(_story_age(when))
 
-    article = f"""<article class="db-lead">
-      <div class="db-lead-img">
-        <span class="db-img-stripe"></span>
-        <span class="db-img-label">{source_safe}</span>
-      </div>
-      <div class="db-lead-body">
-        <div class="db-lead-tags">
-          <span class="db-tag db-tag-strong">★ 강한 매칭</span>
+    # 썸네일: http(s) 스킴만 허용(data:/javascript: 방어), 없으면 출처색 플레이스홀더.
+    img = _https_img(str(row.get("image_url", "") or ""))
+    if img[:4].lower() == "http":
+        img_block = (
+            f'<div class="db-story-img" style="background:{gradient};">'
+            f'<img src="{_html.escape(img, quote=True)}" loading="lazy" '
+            'referrerpolicy="no-referrer" alt=""></div>'
+        )
+    else:
+        img_block = (
+            f'<div class="db-story-img db-story-img-ph" style="background:{gradient};"></div>'
+        )
+
+    article = f"""<article class="db-story">
+      {img_block}
+      <div class="db-story-body">
+        <div class="db-story-meta">
           <span class="db-src"><span class="db-src-mark" style="background:{gradient};"></span>{source_safe}</span>
           <span class="db-time">{age}</span>
         </div>
-        <h3 class="db-lead-h">{title}</h3>
-        {f'<p class="db-lead-p">{body}</p>' if body else ''}
+        <h4 class="db-story-h">{title}</h4>
+        {f'<p class="db-story-p">{body}</p>' if body else ''}
       </div>
     </article>"""
     link = str(row.get("link", "") or "").strip()
     if link:
         return (
-            f'<a href="{_html.escape(link)}" target="_blank" rel="noopener" '
-            'style="text-decoration:none; color:inherit; display:block;">'
-            f'{article}</a>'
-        )
-    return article
-
-
-def _side_story_html(row: pd.Series) -> str:
-    """탑 스토리 사이드 — 작은 카드."""
-    title = _html.escape(str(row.get("title", "") or "(제목 없음)"))
-    body_raw = str(row.get("content", "") or "").strip()[:120]
-    if len(str(row.get("content", "") or "")) > 120:
-        body_raw += "…"
-    body = _html.escape(body_raw)
-    source = str(row.get("source", "") or "")
-    source_safe = _html.escape(source)
-    gradient = _SOURCE_GRADIENTS.get(source, _DEFAULT_GRADIENT)
-    when = str(row.get("collected_at", "") or row.get("published_at", "") or "")
-    age = _html.escape(_story_age(when))
-
-    article = f"""<article class="db-story">
-      <div class="db-story-meta">
-        <span class="db-src"><span class="db-src-mark" style="background:{gradient};"></span>{source_safe}</span>
-        <span class="db-time">{age}</span>
-      </div>
-      <h4 class="db-story-h">{title}</h4>
-      {f'<p class="db-story-p">{body}</p>' if body else ''}
-    </article>"""
-    link = str(row.get("link", "") or "").strip()
-    if link:
-        return (
-            f'<a href="{_html.escape(link)}" target="_blank" rel="noopener" '
-            'style="text-decoration:none; color:inherit; display:block;">'
-            f'{article}</a>'
+            f'<a class="db-story-link" href="{_html.escape(link)}" '
+            f'target="_blank" rel="noopener">{article}</a>'
         )
     return article
 
@@ -1341,9 +1326,15 @@ def _opp_card_html(row: pd.Series) -> str:
 
 @st.cache_data(ttl=60)
 def _board_stories_html() -> str:
-    """탑 스토리 섹션 (lead + 4 side) HTML 빌드."""
+    """탑 스토리 — 2컬럼 그리드 뉴스 카드, 최소 10장.
+
+    최근 3일 뉴스가 10건 미만이면 14일 윈도우로 보충(일자 메모 캐시 공유).
+    그래도 10건 미만이면 있는 만큼 + 빈약 안내 노트.
+    """
     try:
         news = _news_db.load_news_for_days(days=3)
+        if news is None or len(news) < _STORY_COUNT:
+            news = _news_db.load_news_for_days(days=14)
     except Exception:
         news = None
 
@@ -1362,18 +1353,15 @@ def _board_stories_html() -> str:
     elif "published_at" in news.columns:
         news = news.sort_values("published_at", ascending=False)
 
-    rows = news.head(_LEAD_STORY_COUNT + _SIDE_STORY_COUNT)
-    lead_row = rows.iloc[0]
-    side_rows = rows.iloc[1:]
-
-    side_html = "".join(_side_story_html(r) for _, r in side_rows.iterrows())
-
-    return f"""
-    {_lead_story_html(lead_row)}
-    <div class="db-side-stories">
-      {side_html}
-    </div>
-    """
+    rows = news.head(_STORY_COUNT)
+    cards = "".join(_story_card_html(r) for _, r in rows.iterrows())
+    note = ""
+    if len(rows) < _STORY_COUNT:
+        note = (
+            f'<div class="db-stories-note">최근 14일 뉴스가 {len(rows)}건뿐이에요 — '
+            "뉴스 수집을 돌리면 카드가 더 채워집니다.</div>"
+        )
+    return cards + note
 
 
 _BOARD_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "board_main.html"

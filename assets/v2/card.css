@@ -508,14 +508,14 @@ body.app-side-collapsed .app-with-sidebar { padding-left: 60px !important; }
    Operates on the shell's content-box width. Triggers when sidebar + SOLA
    together squeeze the main column below 880px. */
 @container (max-width: 880px) {
-  /* Top-level 2-col splits across all screens → stack vertically */
+  /* Top-level 2-col splits across all screens → stack vertically
+     (.db-stories 제외 — 탑 스토리 뉴스 카드는 좁은 폭에서도 2컬럼 유지) */
   .dm-split,
   .ia-trend-grid,
   .ia-mtx-wrap,
   .oa-detail-grid,
   .kw-grid,
   .db-greet,
-  .db-stories,
   .db-trend {
     grid-template-columns: 1fr !important;
   }
