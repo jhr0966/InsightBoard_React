@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-11 — chore: 머지 브랜치 정리 워크플로 (`chore-branch-cleanup-workflow`)
+
+**무엇을**: 원격에 쌓인 브랜치 72개 중 머지 확정 67개(자기 자신 포함) 일괄 삭제. 원격 실행 환경 git 프록시가 삭제 push 를 403 차단 → Actions `branch_cleanup.yml`(workflow_dispatch + GITHUB_TOKEN contents:write) 로 서버 측 삭제.
+
+**검증 기준**: ① 머지 PR(#124~153) head ② main ancestry ③ 스쿼시 머지 분은 CHANGELOG/SESSIONS 머지 기록 + 산출물 main 존재 교차 확인. 미머지 6개(claude/insight-board-ui-design-f5uyh, codex/check-current-status×5)는 보존.
+
+**상태**: ✅ merged + 워크플로 실행으로 브랜치 정리 완료.
+
 ## 2026-06-11 — feat: 페르소나 온보딩 흐름 개편 (`feat-persona-onboarding-flow`)
 
 **무엇을**: ① '프로필 설정'→'페르소나 설정' 명칭 통일 ② 온보딩 1~3단계 Enter 로 완주(마지막 입력 Enter=[다음] 클릭) ③ 1단계에 [나중에 하기] ④ 2단계 팀이 부서보다 위(팀 Enter/Tab→부서, 부서 Enter→다음) ⑤ 관심 키워드 콤마/Enter 칩 입력(온보딩+설정 페이지) ⑥ 완료 직후 "지금 뉴스 수집할까요?" 제안 → 진행 표시 → 결과 요약 → [✓ 시작하기]로 전체 새로고침.
