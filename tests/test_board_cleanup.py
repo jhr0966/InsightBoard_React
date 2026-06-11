@@ -235,3 +235,36 @@ def test_brief_items_include_link_for_summary_enrichment(monkeypatch):
     items = st.session_state.get("_board_brief_items") or []
     assert items and all("link" in it and it["link"] for it in items)
     st.session_state.pop("_board_brief_items", None)
+
+
+# ── 아침 7분 브리핑 재설계(2026-06-11): 5건 카드·출처 라벨·요약 ──
+
+def test_brief_html_renders_five_cards_with_friendly_source(monkeypatch):
+    """아침 7분 = 뉴스 카드 5건, 내부 소스 id('tech')는 친화 라벨, cite 줄 제거."""
+    news = pd.DataFrame({
+        "title": [f"기사 {i}" for i in range(6)],
+        "link": [f"l{i}" for i in range(6)],
+        "source": ["tech"] * 6,
+        "collected_at": ["2026-06-11T00:00:00+00:00"] * 6,
+        "image_url": ["https://example.com/a.jpg"] * 6,
+        "summary": ["조선소 자동화 본문 요약입니다." for _ in range(6)],
+        "summary_llm": [""] * 6,
+        "keywords": ["자동화"] * 6,
+    })
+    monkeypatch.setattr(board_v2._news_db, "load_news_for_days", lambda days=3: news)
+    monkeypatch.setattr(board_v2, "_load_tasks", lambda: pd.DataFrame())  # 매칭 없음 → 최근순 폴백
+    board_v2._brief_html.clear()
+    out = board_v2._brief_html(persona_label="t")
+    assert out["list"].count('class="db-brief-card"') == 5      # 5건 카드
+    assert "기술 매체" in out["list"] and "tech" not in out["list"]  # 친화 라벨
+    assert out["cites"] == ""                                    # 'tech · 06/11' cite 제거
+    assert "db-brief-card-img" in out["list"]                    # 썸네일 영역
+    assert "db-brief-card-p" in out["list"]                      # 1줄 요약
+    assert "이 5건으로 제안서" in out["cta"]
+
+
+def test_source_label_maps_internal_ids():
+    assert board_v2._source_label("tech") == "기술 매체"
+    assert board_v2._source_label("naver") == "네이버"
+    assert board_v2._source_label("AI Times") == "AI Times"      # 이미 친화명이면 그대로
+    assert board_v2._source_label("") == "뉴스"

@@ -143,14 +143,41 @@ body:has(.db-topbar) [data-testid="stHorizontalBlock"]:has(.side-chat-marker)
   border-color: var(--accent-primary, #2563EB) !important;
 }
 
-/* 채팅 스크롤 영역 — 안내+추천+대화가 한 컨테이너에서 스크롤(위로 올리면 안내가
-   최상단에 남음). 입력 form 위 공간을 채우고 넘치면 자체 스크롤. */
+/* 채팅 스크롤 영역 = 남은 공간을 **모두** 차지(flex:1)하고 넘치면 자체 스크롤 →
+   입력 form + 보내기 버튼은 항상 컬럼 하단에 고정(메시지가 늘어도 안 밀린다).
+   직전엔 max-height: calc(100vh-300px) 고정값이라, 안내+추천칩이 길어지면 상단이
+   300px 를 넘어 입력창이 overflow:hidden 컬럼 밖으로 밀려 안 보였다(메시지 누적 시).
+   핵심 3가지 (실측 디버깅):
+   ① 컨테이너(stElementContainer)가 flex:1 로 줄어도 내용(stHtml)이 **클리핑 없이**
+      입력창 위로 흘러 겹쳤다 → overflow:hidden + 최소 높이 보장.
+   ② height:100% 체인이 stHtml 에서 끊겨 스크롤 div 가 내용 높이만큼 자랐다
+      → stHtml 까지 height:100% 연결.
+   ③ 추천 칩 영역이 공간을 다 먹으면 메시지 영역이 0 이 됐다 → 칩 영역은 공간 부족 시
+      자체 스크롤로 줄어들게(flex-shrink). */
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
+    [data-testid="stElementContainer"]:has(.side-chat-scroll) {
+  flex: 1 1 0;
+  min-height: 140px;
+  overflow: hidden;
+}
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
+    [data-testid="stElementContainer"]:has(.side-chat-scroll) > [data-testid="stHtml"] {
+  height: 100%;
+}
+body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
+    [data-testid="stLayoutWrapper"]:has([class*="st-key-side_chat_suggest"]) {
+  flex: 0 1 auto;
+  min-height: 44px;
+  overflow-y: auto;
+}
 .side-chat-scroll {
   display: flex;
-  flex-direction: column;
+  /* column-reverse + 역순 DOM = 시간순 표시 + 초기 스크롤이 항상 최신(하단) 메시지 */
+  flex-direction: column-reverse;
+  justify-content: flex-start;
   gap: 2px;
   overflow-y: auto;
-  max-height: calc(100vh - 300px);
+  height: 100%;
   padding-right: 2px;
 }
 .side-chat-intro {

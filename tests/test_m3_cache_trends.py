@@ -75,3 +75,33 @@ def test_chat_log_save_load_roundtrip():
 def test_chat_log_load_handles_missing_file():
     chat_log.reset()
     assert chat_log.load_history() == []
+
+
+# ── 키워드 불용어 필터 (2026-06-11) ──────────────────────────
+
+def test_top_keywords_drops_korean_stopwords():
+    """'것으로'·'등'·'관련' 같은 문법 조각/불용어는 키워드 집계에서 제외."""
+    import pandas as pd
+    from store import trends
+    df = pd.DataFrame({
+        "keywords": [
+            "용접 로봇, 것으로, 자동화",
+            "비전 검사, 등, 관련, 자동화",
+            "것으로, 가, 용접 로봇",
+        ],
+    })
+    top = trends.top_keywords(df, top_n=10)
+    kws = top["keyword"].tolist()
+    assert "용접 로봇" in kws and "자동화" in kws and "비전 검사" in kws
+    for junk in ("것으로", "등", "관련", "가"):
+        assert junk not in kws, f"불용어 {junk} 가 키워드에 남음"
+
+
+def test_is_meaningful_keyword_rules():
+    from store import trends
+    assert trends._is_meaningful_keyword("용접 로봇")
+    assert trends._is_meaningful_keyword("AI")
+    assert not trends._is_meaningful_keyword("것으로")
+    assert not trends._is_meaningful_keyword("가")          # 한 글자 한글
+    assert not trends._is_meaningful_keyword("···")         # 순수 기호
+    assert not trends._is_meaningful_keyword("")

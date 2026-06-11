@@ -165,11 +165,14 @@ def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
     """최근 cap 개 메시지를 버블 마크업으로. 스크롤은 바깥 `.side-chat-scroll` 가 담당.
 
     색은 토큰(다크 추종), 버블 폭은 좁은 채팅 컬럼에 맞춰 92% 까지 넓힌다.
+    DOM 은 **최신 메시지부터**(역순) 내보낸다 — `.side-chat-scroll` 이
+    `flex-direction: column-reverse` 라 화면에는 시간순으로 보이면서, 스크롤
+    초기 위치(scrollTop=0)가 곧 **맨 아래(최신)** 가 되는 채팅 표준 패턴.
     """
     if not messages:
         return ""
     parts = []
-    for m in messages[-cap:]:
+    for m in reversed(messages[-cap:]):
         role = m.get("role", "")
         content = _html.escape((m.get("content", "") or "")[:600])
         content = content.replace("\n", "<br>")
