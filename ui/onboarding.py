@@ -30,6 +30,7 @@ from persona import derive as persona_derive
 from persona import store as persona_store
 from persona.schema import Persona, parse_keywords_input
 from roadmap.query import load_latest as _load_tasks
+from ui.components import inject_focus_nav
 
 
 _TOTAL_INPUT_STEPS = 4  # 이름 / 부서·팀 / 직무 / 관심 공정·키워드
@@ -216,6 +217,9 @@ def _dialog_body(persona: Persona) -> None:
         _render_welcome()
     else:
         _render_step(step, persona)
+        # 키보드 UX — 모달 첫 입력 자동 포커스 + Enter→다음 입력 이동.
+        # nonce=step: 단계 전환(rerun) 시 스크립트 재실행 → 새 단계 첫 입력 재포커스.
+        inject_focus_nav('[data-testid="stDialog"]', nonce=f"onb-step-{step}")
 
 
 def _render_welcome() -> None:

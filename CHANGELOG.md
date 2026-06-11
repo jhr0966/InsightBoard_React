@@ -12,6 +12,11 @@
 - **1컬럼 강제 오버라이드 제거**(`assets/v2/scale.css`, `assets/v2/card.css`): B2(lead/side 비율 보정)·Phase C-2 세로 스택·@container(≤880px) 스택 목록에서 `.db-stories` 제외 — `!important 1fr` 가 새 2컬럼 그리드를 덮어쓰던 문제 해소(브라우저 실측으로 발견).
 - 테스트(`tests/test_board_cleanup.py`): 카드 클릭/escape/썸네일 https·no-referrer/`javascript:` 이미지 차단/10장 렌더/10장 미만 안내 노트/board.css 2컬럼+데드 CSS 제거/scale·card.css 의 `.db-stories` 셀렉터 잔존 0 — 12개로 재작성.
 - 검증: pytest **924 passed** · 금지패턴 0 · 브라우저 실측(8502, 뉴스 16건 시드 — 2컬럼×5행 10장, computed `grid-template-columns: 411.5px 411.5px`, `/tmp/board-stories-grid.png`) OK.
+### Added (페르소나 입력 키보드 UX — 자동 포커스 + Enter→다음 입력 이동) — `feat-persona-focus-nav`
+- **공용 헬퍼 `ui/components.inject_focus_nav(scope_selector, nonce=)`**: `st.html(..., unsafe_allow_javascript=True)` (Streamlit 1.58, `components.v1.html` deprecated 대체 — `TypeError` 시 iframe 폴백 유지)로 정적 스크립트를 주입해 ① scope 안 첫 visible input 자동 포커스(이미 다른 input/textarea 에 포커스가 있으면 미개입 — rerun 안전) ② capture-phase keydown 으로 텍스트 입력에서 **Enter → scope 안 다음 visible input/textarea 로 포커스 이동**(blur 로 Streamlit 값 커밋 자연 발생). 마지막 입력의 Enter 와 Tab 은 브라우저/Streamlit 기본 동작 유지. selectbox/multiselect(BaseWeb combobox)는 Enter 가 옵션 선택이므로 제외. 리스너는 window 마커로 주입마다 제거 후 재부착(중복 방지 + iframe 폴백에서 옛 realm 파괴로 리스너가 죽는 문제 해소). 스크립트는 사용자 데이터 미포함 정적 문자열 — XSS 무관.
+- **온보딩 모달 적용**(`ui/onboarding.py` `_dialog_body`): scope `[data-testid="stDialog"]`, `nonce=onb-step-{step}` — 단계 전환(rerun) 후에도 새 단계 첫 입력(이름→부서→직무…)에 자동 재포커스.
+- **프로필 설정 페이지 적용**(`ui/persona_page.py` `render`): scope 를 `px_*` 위젯 컨테이너(`[class*="st-key-px_"]`)로 한정해 우측 채팅 입력 등 폼 밖 Enter 동작은 미개입. 진입 시 이름 입력 자동 포커스 + Enter→다음 입력.
+- 검증: pytest **918 passed** · 금지패턴 0 · 브라우저 실측(Playwright `document.activeElement` 단언 10/10 + selectbox 시나리오 3/3 — 자동 포커스/단계 전환 재포커스/Enter 이동/blur 커밋/Tab·콤보박스 기본 동작, `/tmp/persona-focus.png`) OK.
 
 ### Added (페르소나 개편 — 관심 키워드·SOLA 관심사 분석·온보딩/설정 UI 정돈) — `feat-persona-overhaul`
 - **입력 항목 검토 결론**: 기존 항목(이름/팀/부서/직무/관심 공정 lv3/관심 작업)은 작업정의 매칭·개인화 목적에 적합해 유지. 직급/연차는 매칭 신호가 아니고 입력 부담만 늘려 **미추가**, '관심 기술영역'은 자유 입력 `interest_keywords` 로 흡수.
