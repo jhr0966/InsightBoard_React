@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Changed (온보딩 모달 높이 통일) — `style-onboarding-fixed-height`
+- **`ui/onboarding.py`**: 모달 본문 전체를 `onb_body` 컨테이너로 감싸고 `min-height: 430px`(가장 긴 4단계 기준) + 마지막 요소(네비 버튼/캡션) `margin-top:auto` 하단 고정 — 단계 전환 때마다 창 높이가 출렁이던 것을 통일, 콘텐츠가 더 길면(수집 결과 요약 등) 자연 확장.
+
 ### Added (머지 브랜치 정리 워크플로) — `chore-branch-cleanup-workflow`
 - **`.github/workflows/branch_cleanup.yml` 신설**: workflow_dispatch 수동 트리거로 머지 확정 원격 브랜치(기본 목록 67개 — 머지 PR head + main ancestry + CHANGELOG/SESSIONS 머지 기록 교차 검증)를 `GITHUB_TOKEN`(contents:write)으로 서버 측 일괄 삭제. `branches` 입력으로 임의 목록 지정 가능, main/master 는 가드로 항상 보호, 이미 없는 브랜치는 skip. 원격 실행 환경의 git 프록시가 삭제 push 를 차단(403)해 Actions 경유로 우회.
 
