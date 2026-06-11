@@ -882,9 +882,18 @@ def _board_trend() -> dict[str, str]:
     deltas.sort(key=lambda x: x[1], reverse=True)
     top_name, top_delta = deltas[0]
     anno_name = f"{_html.escape(top_name)} {'↑' if top_delta > 0 else ('↓' if top_delta < 0 else '·')}"
-    anno_sub = (f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 산업 분기점 가능성"
-                if abs(top_delta) >= 20
-                else f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 추세 관찰 중")
+    # 수집 누적이 1주 이하면 모든 키워드가 금주에만 몰려 전부 +100% 스파이크로
+    # 보인다(수학적으론 맞지만 추세가 아님) → 과장 해석 대신 짧은 누적 안내.
+    weeks_with_data = sum(
+        1 for w in range(len(labels))
+        if any(s["counts"][w] > 0 for s in chart_series)
+    )
+    if weeks_with_data <= 1:
+        anno_sub = "수집 누적이 아직 짧아요 — 2주 이상 쌓이면 추세가 정확해집니다"
+    elif abs(top_delta) >= 20:
+        anno_sub = f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 산업 분기점 가능성"
+    else:
+        anno_sub = f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 추세 관찰 중"
 
     # Y labels — 4 ticks
     y_4 = str(nice_max)
