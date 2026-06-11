@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (앱 내 기사 URL 진단 — thebell 류 미수집 원인 확정 도구)
+- **`scraping/diagnose.py` 신설**: `scripts/diagnose_article.py` 의 단계 로직을 구조화 dict 반환 함수로 추출 — 요청 3단계(기본/워밍업/TLS 위장) 상태코드·응답 길이, curl_cffi 설치 여부, 메타/본문 이미지 후보(+junk 판정), 본문 셀렉터 매칭, 구조화 데이터(ld+json/Fusion) 길이, 최종 fetch_article 결과. **200 위장 차단 감지** 휴리스틱(200인데 셀렉터 0+본문 빈약+차단 문구) 포함. 스크립트는 래퍼로 축소.
+- **⚙ 수집 설정에 '🔬 기사 URL 진단' 카드**(`ui/data_management_v2.py`): URL 입력 + [진단 실행](pending+rerun) → 단계별 결과를 화면에 표시 — 배포 환경에서 CLI 없이 미수집 원인(403/IP 차단/위장 차단/파싱)을 바로 확인. curl_cffi 미설치 시 'TLS 위장 폴백 비활성' 경고 배너.
+- `scraping/enrich.py`: fetch 차단/예외 경로 logger.warning 보강(URL·상태코드).
+- 검증: pytest **928 passed**(신규 test_diagnose.py — 403→위장 성공/200 위장 차단/정상 케이스) · 금지패턴 0.
+
 ### Changed (보드 탑 스토리 — 뉴스 카드 2컬럼 그리드, 최소 10장) — `feat-board-stories-grid`
 - **탑 스토리 재구성**(`ui/board_v2.py`): lead 1 + side 4 구조(`_lead_story_html`/`_side_story_html`)를 단일 카드 빌더 `_story_card_html` 로 대체 — 카드 = 썸네일(있으면 `image_url`, http→https 승격 `_https_img` + `referrerpolicy=no-referrer` + http(s) 스킴만 허용, 없으면 출처색 그라데이션 플레이스홀더) + 출처/시간 + 제목(2줄 clamp) + 요약 1줄(summary_llm→summary→content 우선). 카드 클릭 = 원문 새 탭 앵커(`target=_blank rel=noopener`, href escape) 유지. 제목/요약/출처 전부 `html.escape`.
 - **표시 개수 ≥10**(`_board_stories_html`): `_STORY_COUNT=10` — 최근 3일 뉴스가 10건 미만이면 14일 윈도우로 보충(일자 메모 캐시 공유 → 디스크 재읽기 없음), 그래도 부족하면 있는 만큼 + `.db-stories-note` 빈약 안내("뉴스 수집을 돌리면 카드가 더 채워집니다").

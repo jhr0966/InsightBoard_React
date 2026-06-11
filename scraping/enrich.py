@@ -379,11 +379,18 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
     try:
         time.sleep(random.uniform(0.2, 0.5))
         resp = _get_article_response(sess, url)
+        if resp.status_code >= 400:
+            # 워밍업·TLS 위장 폴백까지 거친 최종 응답이 여전히 차단 — 배포 로그에서
+            # '어느 기사가 어떤 코드로 막혔는지' 보이도록 warning 으로 남긴다.
+            logger.warning("기사 fetch 차단: %s (HTTP %s)", url, resp.status_code)
         resp.raise_for_status()
         if resp.encoding is None or resp.encoding.lower() == "iso-8859-1":
             # curl_cffi 응답엔 apparent_encoding 이 없다 → getattr 폴백(utf-8).
             resp.encoding = getattr(resp, "apparent_encoding", None) or "utf-8"
-    except requests.RequestException:
+    except requests.RequestException as e:
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        logger.warning("기사 fetch 실패: %s (HTTP %s · %s)", url, status or "-",
+                       type(e).__name__)
         return {"content": "", "image_url": ""}
 
     # HTML 파싱 단계는 외부 입력이라 bs4 내부 예외(AttributeError 등) 가능 → batch 전체를 망치지 않도록 흡수.

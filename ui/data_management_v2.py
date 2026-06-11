@@ -925,12 +925,14 @@ def _sc_history_html() -> str:
 
 
 def _render_collect_settings(dm_stats: dict[str, str | int], persona) -> None:
-    """⚙ 수집 설정 서브뷰 — 키워드 + 포탈(출처) + 수집 실행·이력."""
+    """⚙ 수집 설정 서브뷰 — 키워드 + 포탈(출처) + 수집 실행·이력 + 기사 URL 진단."""
     _render_dm_header(dm_stats)
     with st.container(key="sc_settings_back"):
         if st.button("← 뉴스 목록", key="_sc_back_btn"):
             st.session_state["sc_collect_view"] = "cards"
             st.rerun()
+    # TLS 위장 폴백(curl_cffi) 미설치 경고 — thebell 류 WAF 사이트 수집 막힘 안내
+    _render_curl_cffi_banner()
     # 키워드 설정(현황 요약 + 페르소나 진입)
     st.html(_components.prepare_screen_html(_dm_kw_body_html(persona)))
     # 포탈/출처 설정 — 기본 토글 + 커스텀 RSS 추가
@@ -940,6 +942,135 @@ def _render_collect_settings(dm_stats: dict[str, str | int], persona) -> None:
     _render_collect_button()
     st.html(_components.prepare_screen_html(_sc_history_html()))
     _render_run_history_view_buttons()
+    # 🔬 기사 URL 진단 — 본문/사진 미수집 원인(차단 단계)을 앱 안에서 확인
+    _render_diagnose_card()
+
+
+# ── 🔬 기사 URL 진단 (수집 설정 서브뷰) ───────────────────────
+
+def _render_curl_cffi_banner() -> None:
+    """수집 설정 상단 안내 1줄 — curl_cffi(TLS 위장 폴백) 미설치 시에만 표시."""
+    from scraping.diagnose import curl_cffi_available
+    if not curl_cffi_available():
+        st.warning("⚠ TLS 위장 폴백 비활성 — `curl_cffi` 미설치. thebell 등 WAF 차단 "
+                   "사이트의 본문·사진 수집이 막힐 수 있습니다. requirements 재설치 필요.")
+
+
+def _consume_diag_pending_if_any() -> bool:
+    """`_sc_diag_pending` 1회 소비 → diagnose() 실행(실 네트워크 호출) →
+    결과를 `sc_diag_result` 세션에 저장(rerun 에도 유지). 소비했으면 True."""
+    if not st.session_state.pop("_sc_diag_pending", None):
+        return False
+    target = str(st.session_state.get("sc_diag_url") or "").strip()
+    if not target.startswith("http"):
+        st.session_state["sc_diag_result"] = {
+            "error": "http(s):// 로 시작하는 기사 URL 을 입력하세요."}
+        return True
+    from scraping.diagnose import diagnose as _diagnose
+    try:
+        st.session_state["sc_diag_result"] = _diagnose(target)
+    except Exception as e:  # noqa: BLE001 — 진단 실패도 카드에 그대로 보여준다
+        st.session_state["sc_diag_result"] = {"error": f"{type(e).__name__}: {e}"}
+    return True
+
+
+def _diag_step_md(step: dict) -> str:
+    """진단 단계 1줄 markdown — 성공 초록 / 차단·실패 빨강 / 생략 회색."""
+    label = _html.escape(str(step.get("label", "")))
+    if step.get("skipped"):
+        return f"- {label} — :gray[생략 (이전 단계 성공)]"
+    if step.get("error"):
+        return f"- {label} — :red[**실패**] · {_html.escape(str(step['error']))}"
+    status = step.get("status")
+    if status is None:
+        return f"- {label} — :gray[미실행]"
+    color = "green" if step.get("ok") else "red"
+    return (f"- {label} — :{color}[**HTTP {int(status)}**] · "
+            f"{int(step.get('length') or 0):,}자")
+
+
+def _diag_image_md(cand: dict, kind: str) -> str:
+    """이미지 후보 1줄 markdown — junk 판정 + 출처(셀렉터/속성) + URL(escape)."""
+    badge = ":orange[JUNK]" if cand.get("junk") else ":green[OK]"
+    src = _html.escape(str(cand.get("selector") or cand.get("attr") or kind))
+    url = _html.escape(str(cand.get("url") or "")[:90])
+    return f"- {badge} `{src}` — {url}"
+
+
+def _render_diag_result(rep: dict) -> None:
+    """diagnose() 결과 dict → 단계별 표시. 실패 단계는 빨강으로 강조."""
+    st.markdown("**요청 단계**")
+    for step in rep.get("steps", []):
+        st.markdown(_diag_step_md(step))
+    if not rep.get("curl_cffi_available"):
+        st.warning("⚠ TLS 위장 폴백 비활성 — requirements 재설치 필요 "
+                   "(`pip install curl_cffi`)")
+    if rep.get("all_blocked"):
+        st.error("모든 요청 단계가 차단/실패 — IP 대역 차단 또는 서버 망 차단 가능성. "
+                 "다른 회선/배포 환경에서 재시도가 필요합니다.")
+        return
+    if rep.get("soft_block_suspect"):
+        st.error("⚠ 200 위장 차단 의심 — "
+                 + " / ".join(_html.escape(str(r)) for r in rep.get("soft_block_reasons", [])))
+
+    sel = rep.get("content_selector")
+    if sel:
+        st.markdown(f"**본문 셀렉터** — :green[`{_html.escape(str(sel['selector']))}`] · "
+                    f"{int(sel['length']):,}자")
+        st.code(str(sel.get("preview") or ""), language=None)
+    else:
+        st.markdown("**본문 셀렉터** — :red[미매칭] (문단/최대블록 폴백 경로 사용)")
+
+    structured = rep.get("structured") or {}
+    st.markdown(f"**구조화 데이터** — ld+json {int(structured.get('ldjson_len') or 0):,}자 · "
+                f"Fusion {int(structured.get('fusion_len') or 0):,}자")
+
+    st.markdown("**메타 이미지 후보**")
+    for cand in rep.get("meta_images") or []:
+        st.markdown(_diag_image_md(cand, "meta"))
+    if not rep.get("meta_images"):
+        st.markdown("- :gray[없음 — og:image 계열 메타 자체가 없음]")
+    st.markdown("**본문 img 후보 (상위 5)**")
+    for cand in rep.get("body_images") or []:
+        st.markdown(_diag_image_md(cand, "img"))
+    if not rep.get("body_images"):
+        st.markdown("- :gray[img 태그에서 src/lazy 속성을 찾지 못함]")
+
+    final = rep.get("final") or {}
+    content_len = int(final.get("content_len") or 0)
+    color = "green" if content_len else "red"
+    img = _html.escape(str(final.get("image_url") or "(없음)")[:90])
+    st.markdown(f"**최종 fetch_article** — :{color}[본문 {content_len:,}자] · 이미지: {img}")
+    if final.get("content_preview"):
+        st.code(str(final["content_preview"]), language=None)
+
+
+def _render_diagnose_card() -> None:
+    """🔬 기사 URL 진단 카드 — 실 네트워크 호출이므로 [진단 실행] 버튼으로만 트리거.
+
+    버튼은 `_sc_diag_pending` 플래그 + `st.rerun()` (on_click 금지), 다음 run 에서
+    `_consume_diag_pending_if_any` 가 diagnose() 를 실행해 결과를 세션에 보관한다.
+    """
+    with st.container(key="sc_diag_card"):
+        st.markdown("#### 🔬 기사 URL 진단")
+        st.caption("본문·사진이 안 긁히는 기사 URL 을 넣으면 요청 3단계(기본 → 워밍업 → "
+                   "TLS 위장)와 이미지·본문 셀렉터·최종 파이프라인 결과를 단계별로 보여줍니다. "
+                   "실제 네트워크 요청을 보내므로 버튼을 눌렀을 때만 실행됩니다.")
+        st.text_input(
+            "기사 URL", key="sc_diag_url",
+            placeholder="https://www.thebell.co.kr/free/content/ArticleView.asp?key=...")
+        if st.button("🔬 진단 실행", key="_sc_diag_btn"):
+            st.session_state["_sc_diag_pending"] = True
+            st.rerun()
+        if st.session_state.get("_sc_diag_pending"):
+            with st.spinner("진단 중 — 대상 사이트에 실제 요청을 보냅니다..."):
+                _consume_diag_pending_if_any()
+        rep = st.session_state.get("sc_diag_result")
+        if rep:
+            if rep.get("error"):
+                st.error(_html.escape(str(rep["error"])))
+            else:
+                _render_diag_result(rep)
 
 
 # ── 기사 모달 (카드 클릭 → ?news=<link> → st.dialog) ──────────
