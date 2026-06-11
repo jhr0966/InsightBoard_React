@@ -101,7 +101,7 @@ def test_run_collect_passes_on_step_and_updates_progress():
     assert prog.progress.call_count == 2
     # 진행 텍스트에 소스·키워드·건수
     _, kwargs = prog.progress.call_args_list[0]
-    assert "naver" in kwargs.get("text", "") and "2건" in kwargs.get("text", "")
+    assert "네이버 뉴스" in kwargs.get("text", "") and "2건" in kwargs.get("text", "")
 
 
 def test_run_collect_partial_errors_in_message():
@@ -118,7 +118,7 @@ def test_run_collect_partial_errors_in_message():
         result = dm._run_collect_for_modal()
     assert result["ok"] is True
     assert "일부 오류 1건" in result["message"]
-    assert result["errors"] == ["google · X: rate"]
+    assert result["errors"] == ["구글 뉴스 · X: rate"]
 
 
 def test_run_collect_error_result_when_all_failed():
@@ -258,8 +258,8 @@ def test_run_collect_result_includes_per_source_rows():
          patch("scraping.run_daily.collect_batch", return_value=fake):
         result = dm._run_collect_for_modal()
     assert result["sources"] == [
-        {"source": "naver", "count": 3, "ok": True},
-        {"source": "google", "count": 0, "ok": False},
+        {"source": "네이버 뉴스", "count": 3, "ok": True},
+        {"source": "구글 뉴스", "count": 0, "ok": False},
     ]
 
 
@@ -361,10 +361,10 @@ def test_run_log_to_modal_result_includes_sources():
                errors=[{"source": "tech", "keyword": "", "error": "timeout"}])
     result = dm._run_log_to_modal_result(run)
     assert result["sources"] == [
-        {"source": "naver", "count": 4, "ok": True},
-        {"source": "google", "count": 2, "ok": True},
+        {"source": "네이버 뉴스", "count": 4, "ok": True},
+        {"source": "구글 뉴스", "count": 2, "ok": True},
         {"source": "myrss", "count": 1, "ok": True},
-        {"source": "tech", "count": 0, "ok": False},   # 오류만 난 소스 → 0건 행
+        {"source": "뉴스 포탈", "count": 0, "ok": False},   # 오류만 난 소스 → 0건 행
     ]
     # 필드 누락 로그도 빈 리스트로 방어
     assert dm._run_log_to_modal_result({})["sources"] == []
@@ -377,7 +377,7 @@ def test_run_log_to_modal_result_errors_formatted():
                errors=[{"source": "google", "keyword": "X", "error": "rate"}])
     result = dm._run_log_to_modal_result(run)
     assert result["ok"] is False
-    assert result["errors"] == ["google · X: rate"]
+    assert result["errors"] == ["구글 뉴스 · X: rate"]
     assert "오류 1건" in result["message"]
 
 

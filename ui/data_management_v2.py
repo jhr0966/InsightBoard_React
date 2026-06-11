@@ -21,11 +21,8 @@ from ui import components as _components
 from ui._safe import guard
 from ui.styles import inject_screen_css
 # 순수 프레젠테이션 헬퍼(부작용 없음)는 data_management_render 로 분리.
-from ui.data_management_render import (  # noqa: F401 — re-export
-    _SOURCE_GRADIENTS,
-    _DEFAULT_GRADIENT,
-    _news_age_label,
-)
+from ui.data_management_render import _news_age_label  # noqa: F401 — re-export
+from ui import news_sources as _news_sources
 
 
 _DM_TEMPLATE = ASSETS_DIR / "v2" / "screens" / "data_management_main.html"
@@ -91,6 +88,28 @@ def _dm_stats() -> dict[str, str | int]:
     }
 
 
+def _run_error_source_labels(run: dict) -> list[str]:
+    """런 로그의 오류 소스 → 표시 라벨 리스트 (중복 제거·순서 유지).
+
+    errors 원본이 있으면 tech 오류를 사이트명(AI Times 등)으로 환산하고,
+    없으면(아주 옛 로그) error_sources 의 ID 를 라벨로만 바꾼다.
+    """
+    labels: list[str] = []
+    for e in (run.get("errors") or []):
+        if isinstance(e, dict) and e.get("source"):
+            lab = _collect_error_label(e).split(" · ")[0]
+            if lab not in labels:
+                labels.append(lab)
+    if labels:
+        return labels
+    for s in (run.get("error_sources") or []):
+        lab = (_news_sources.PORTAL_FALLBACK_LABEL if str(s) == "tech"
+               else _news_sources.source_label(str(s)))
+        if s and lab not in labels:
+            labels.append(lab)
+    return labels
+
+
 def _collect_health_li() -> str:
     """최근 수집 런 헬스 — `run_log.latest_run()` 요약 1행 (dm-job li). 런 없으면 빈 문자열.
 
@@ -116,7 +135,7 @@ def _collect_health_li() -> str:
     files = int(run.get("total_files", 0) or 0)
     dur = run.get("duration_s")
     dur_txt = f" · {float(dur):.1f}s" if isinstance(dur, (int, float)) else ""
-    err_srcs = [str(s) for s in (run.get("error_sources") or []) if s]
+    err_srcs = _run_error_source_labels(run)
     err_html = (
         f'<div class="dm-job-sub" style="color:#B45309;">⚠ 오류 소스: '
         f'{_html.escape(", ".join(err_srcs))}</div>'
@@ -171,7 +190,7 @@ def _collect_alert_html() -> str:
         return ""  # 정상 + 최근 → 경고 없음
 
     if not ok:
-        errs = [str(s) for s in (run.get("error_sources") or []) if s]
+        errs = _run_error_source_labels(run)
         body = ("최근 수집에 오류가 있었습니다"
                 + (f" — 오류 소스: {_html.escape(', '.join(errs))}" if errs else ""))
         color, bg, icon = "var(--semantic-danger)", "rgba(185,28,28,0.10)", "⛔"
@@ -280,16 +299,25 @@ def _ingest_jobs_html() -> str:
     if "source" not in today_df.columns:
         return health
 
-    grouped = today_df.groupby("source").size().reset_index(name="count")
+    # 표시 라벨 기준 집계 — 내부 ID('tech') 대신 네이버 뉴스/구글 뉴스/AI Times/
+    # 오토메이션월드로 나눠 보인다 (tech 는 press 로 사이트 분해).
+    press_col = (today_df["press"].astype(str) if "press" in today_df.columns
+                 else [""] * len(today_df))
+    today_df = today_df.assign(_src_label=[
+        _news_sources.source_label(s, p)
+        for s, p in zip(today_df["source"].astype(str), press_col)
+    ])
+    grouped = today_df.groupby("_src_label").size().reset_index(name="count")
     grouped = grouped.sort_values("count", ascending=False).head(5)
 
     parts = []
     for _, row in grouped.iterrows():
-        src = str(row["source"])
+        src = str(row["_src_label"])
         cnt = int(row["count"])
-        gradient = _SOURCE_GRADIENTS.get(src, _DEFAULT_GRADIENT)
+        gradient = _news_sources.SOURCE_GRADIENTS.get(
+            src, _news_sources.DEFAULT_GRADIENT)
         # 마지막 시각
-        src_today = today_df[today_df["source"] == src]
+        src_today = today_df[today_df["_src_label"] == src]
         last_time = ""
         for col in ("collected_at", "published_at"):
             if col in src_today.columns:
@@ -510,11 +538,18 @@ def _chat_context_collect_cached() -> str:
     except Exception:
         pass
 
-    # 출처별 분포 (수집잡 5행)
+    # 출처별 분포 (수집잡 5행) — 표시 라벨 기준(내부 ID 'tech' 미노출)
     try:
         week = _news_db.load_news_for_days(days=7)
         if not week.empty and "source" in week.columns:
-            top_src = week["source"].value_counts().head(5)
+            press_col = (week["press"].astype(str) if "press" in week.columns
+                         else [""] * len(week))
+            labels = [
+                _news_sources.source_label(s, p)
+                for s, p in zip(week["source"].astype(str), press_col)
+            ]
+            import pandas as _pd2
+            top_src = _pd2.Series(labels).value_counts().head(5)
             parts.append("출처별 7일 수집량 top 5:")
             for src, cnt in top_src.items():
                 parts.append(f"  - {src}: {int(cnt)}건")
@@ -585,11 +620,11 @@ def chat_context_block_taskdef(persona: Persona) -> str:
 # 설정(서브뷰): 키워드 관리 + 포탈(출처) 관리 + 수집 실행·이력 상세.
 # (구 뉴스 라이브러리 필터 폼·3탭 레이아웃은 #133 재설계로 제거됨 — 상단 검색이 대체.)
 
-# 대분류 — 키워드(검색 기반: naver/google) vs 포탈(사이트 피드: tech + 커스텀 RSS)
-_SC_KEYWORD_SOURCES: frozenset[str] = frozenset({"naver", "google"})
-_SC_SOURCE_LABEL: dict[str, str] = {"naver": "네이버", "google": "구글"}
+# 대분류 — 키워드(검색 기반: naver/google) vs 포탈(사이트 피드: tech + 커스텀 RSS).
+# 분류·라벨·그라데이션 환산은 ui.news_sources 가 단일 진입점.
+_SC_KEYWORD_SOURCES = _news_sources.KEYWORD_SOURCE_IDS
 _SC_CATS: tuple[str, ...] = ("keyword", "portal")
-_SC_CAT_LABEL: dict[str, str] = {"keyword": "🔑 키워드 뉴스", "portal": "🏛 포탈 뉴스"}
+_SC_CAT_LABEL: dict[str, str] = {"keyword": "🔑 키워드 뉴스", "portal": "🏛 뉴스 포탈"}
 _SC_BROWSE_DAYS = 30      # 카드 브라우저가 훑는 기간
 _SC_MAX_CARDS = 24        # 카테고리/채널당 최대 카드 수(카드별 위젯이라 과도 방지)
 _SC_ALL_CHANNEL = "전체"
@@ -597,16 +632,12 @@ _SC_ALL_CHANNEL = "전체"
 
 def _news_category_of(source: str) -> str:
     """source 값 → 대분류('keyword'|'portal'). naver/google=키워드, 그 외=포탈."""
-    return "keyword" if str(source or "").strip() in _SC_KEYWORD_SOURCES else "portal"
+    return _news_sources.category_of(source)
 
 
 def _news_channel_of(source: str, press: str = "") -> str:
-    """출처칩 라벨 — 키워드는 네이버/구글, 포탈은 매체명(press) 또는 source(커스텀)."""
-    s = str(source or "").strip()
-    if s in _SC_SOURCE_LABEL:
-        return _SC_SOURCE_LABEL[s]
-    p = str(press or "").strip()
-    return p or s or "기타"
+    """출처칩 라벨 — 키워드는 네이버 뉴스/구글 뉴스, 포탈은 매체명(press)·등록명."""
+    return _news_sources.source_label(source, press)
 
 
 @st.cache_data(ttl=60)
@@ -692,7 +723,7 @@ def _sc_card_visual_html(row: dict) -> str:
                if body_src else "")
     source = str(row.get("source", "") or "")
     chan = _html.escape(_news_channel_of(source, row.get("press", "")))
-    grad = _SOURCE_GRADIENTS.get(source, _DEFAULT_GRADIENT)
+    grad = _news_sources.source_gradient(source, row.get("press", ""))
     when = str(row.get("collected_at") or row.get("published_at") or "")
     age = _html.escape(_news_age_label(when))
     # 이미지: http(s) 스킴만 허용(XSS/data: 방어), 없으면 그라데이션 플레이스홀더.
@@ -1393,34 +1424,70 @@ def _invalidate_collect_caches() -> None:
     _bv2.invalidate_board_caches()
 
 
+def _collect_error_label(e: dict) -> str:
+    """오류 1건의 소스 표시 — tech 오류는 keyword 가 사이트명이므로 그것을 라벨로."""
+    src = str(e.get("source", "") or "?")
+    kw = str(e.get("keyword", "") or "")
+    if src == "tech":
+        return kw or _news_sources.PORTAL_FALLBACK_LABEL
+    label = _news_sources.source_label(src)
+    return label + (f" · {kw}" if kw else "")
+
+
 def _collect_source_rows(saved: list, errors: list) -> list[dict]:
     """소스별 수집 건수 행 — saved(소스·건수) + 오류 소스 병합 (순수 변환).
 
-    반환: `[{"source", "count", "ok"}, ...]` — saved 순서 유지, 오류만 나고
-    저장이 없는 소스는 뒤에 0건·ok=False 로 추가(0건/오류 소스도 표에 보이게).
-    saved 에 있어도 같은 소스에 오류가 있으면 ok=False (부분 오류 표시).
-    라이브 수집(`CollectionReport.saved/errors`)과 런 로그(`sources/errors`)
-    양쪽 스키마를 모두 수용한다 (둘 다 source/count 키 동형).
+    반환: `[{"source", "count", "ok"}, ...]` — `source` 는 **표시 라벨**
+    (네이버 뉴스/구글 뉴스/AI Times/오토메이션월드/커스텀 등록명, 내부 ID 미노출).
+    tech 묶음은 saved 의 `sites`(사이트별 건수)가 있으면 행을 나누고, 없으면
+    (legacy 로그) '뉴스 포탈' 1행. saved 순서 유지, 오류만 나고 저장이 없는
+    소스는 뒤에 0건·ok=False 로 추가, saved 에 있어도 같은 소스에 오류가 있으면
+    ok=False (부분 오류 표시). 라이브 수집(`CollectionReport.saved/errors`)과
+    런 로그(`sources/errors`) 양쪽 스키마를 모두 수용한다.
     """
-    err_sources = {
-        str(e.get("source", ""))
+    err_labels = {
+        _collect_error_label(e)
         for e in errors
         if isinstance(e, dict) and e.get("source")
     }
+    # keyword 없는 tech 오류(전체 실패)는 모든 tech 행에 부분 오류로 반영.
+    tech_wide_err = any(
+        isinstance(e, dict) and str(e.get("source", "")) == "tech"
+        and not e.get("keyword")
+        for e in errors
+    )
     rows: list[dict] = []
     seen: set[str] = set()
     for s in saved:
         if not isinstance(s, dict):
             continue
-        name = str(s.get("source", "") or "?")
+        src = str(s.get("source", "") or "?")
+        sites = s.get("sites") if isinstance(s.get("sites"), dict) else None
+        if src == "tech" and sites:
+            for site, cnt in sites.items():
+                site = str(site)
+                rows.append({
+                    "source": site,
+                    "count": int(cnt or 0),
+                    "ok": site not in err_labels and not tech_wide_err,
+                })
+                seen.add(site)
+            continue
+        label = (_news_sources.PORTAL_FALLBACK_LABEL if src == "tech"
+                 else _news_sources.source_label(src))
         rows.append({
-            "source": name,
+            "source": label,
             "count": int(s.get("count", 0) or 0),
-            "ok": name not in err_sources,
+            "ok": label not in err_labels and not (src == "tech" and tech_wide_err),
         })
-        seen.add(name)
-    for name in sorted(err_sources - seen):
-        rows.append({"source": name, "count": 0, "ok": False})
+        seen.add(label)
+    for label in sorted(err_labels - seen):
+        # 'X · 키워드' 형태(키워드 검색 부분 실패)는 소스 행으로 중복 추가하지 않음.
+        base = label.split(" · ")[0]
+        if base in seen:
+            continue
+        rows.append({"source": base, "count": 0, "ok": False})
+        seen.add(base)
     return rows
 
 
@@ -1448,7 +1515,8 @@ def _run_collect_for_modal(progress=None) -> dict:
             done["n"] += 1
             if progress is None:
                 return
-            label = str(source) + (f" · {keyword}" if keyword else "") + f" — {found}건"
+            src_label = _news_sources.source_label(source)
+            label = src_label + (f" · {keyword}" if keyword else "") + f" — {found}건"
             try:
                 progress.progress(min(done["n"] / max(total_steps, 1), 1.0), text=label)
             except Exception:  # noqa: BLE001 — 진행 표시 실패가 수집을 깨면 안 됨
@@ -1470,9 +1538,7 @@ def _run_collect_for_modal(progress=None) -> dict:
         n_files = report.total_files
         n_err = len(report.errors)
         errors = [
-            str(e.get("source", "?"))
-            + (f" · {e.get('keyword')}" if e.get("keyword") else "")
-            + f": {e.get('error', '')}"
+            f"{_collect_error_label(e)}: {e.get('error', '')}"
             for e in report.errors
         ]
         if n_err and n_articles == 0:
@@ -1544,11 +1610,7 @@ def _run_log_to_modal_result(run: dict) -> dict:
     errors: list[str] = []
     for e in (run.get("errors") or []):
         if isinstance(e, dict):
-            errors.append(
-                str(e.get("source", "?"))
-                + (f" · {e.get('keyword')}" if e.get("keyword") else "")
-                + f": {e.get('error', '')}"
-            )
+            errors.append(f"{_collect_error_label(e)}: {e.get('error', '')}")
         elif e:
             errors.append(str(e))
 
@@ -2127,10 +2189,10 @@ def _dm_task_body_html() -> str:
 #   - source: 그 표시명으로 인정할 저장 source 값들(수집 ID + legacy 표시명 직접 저장 호환).
 #   - tech_press: source="tech"(AI Times·오토메이션월드 공용) 일 때 press 로 구분할 site 명.
 _DEFAULT_SOURCE_MATCH: dict[str, dict[str, tuple[str, ...]]] = {
+    "네이버 뉴스":    {"source": ("naver", "네이버 기술", "네이버 뉴스")},
+    "구글 뉴스":     {"source": ("google", "Google RSS", "구글 뉴스")},
     "AI Times":     {"source": ("AI Times", "aitimes"),               "tech_press": ("AI Times",)},
     "오토메이션월드":  {"source": ("오토메이션월드", "automationworld"),   "tech_press": ("오토메이션월드",)},
-    "Google RSS":   {"source": ("google", "Google RSS")},
-    "네이버 기술":    {"source": ("naver", "네이버 기술")},
 }
 
 
@@ -2195,7 +2257,7 @@ def _src_row_pill_html(name: str, cnt: int, last_iso: str, *,
     토글/제거 액션은 `_render_src_row` 가 옆 칸 st.button 으로 그린다(앵커 제거).
     행 테두리/배경은 컨테이너(.st-key-_src_row_*)가, 내부 셀 격자는 .dm-src-rowp 가 담당.
     """
-    grad = _SOURCE_GRADIENTS.get(name, _DEFAULT_GRADIENT)
+    grad = _news_sources.SOURCE_GRADIENTS.get(name, _news_sources.DEFAULT_GRADIENT)
     name_html = _html.escape(name)
     if url:
         name_html += f'<span class="dm-src-url-mini">{_html.escape(url[:60])}</span>'
@@ -2273,8 +2335,27 @@ def _render_src_table(dm_stats: dict[str, str | int]) -> None:
     n_active = len([s for s in src_store.DEFAULT_SOURCES if s not in disabled]) + len(customs)
     st.html(_components.prepare_screen_html(_src_header_html(n_active)))
 
+    def _group_caption(text: str) -> None:
+        st.html(
+            f'<div class="dm-src-group" style="margin:10px 0 4px; font-size:12.5px; '
+            f'font-weight:800; letter-spacing:0.04em; color:var(--text-muted);">'
+            f'{_html.escape(text)}</div>'
+        )
+
+    # 기본 출처 — 키워드 뉴스(네이버/구글) vs 뉴스 포탈(AI Times/오토메이션월드) 그룹.
+    keyword_defaults = [s for s in src_store.DEFAULT_SOURCES
+                        if s in ("네이버 뉴스", "구글 뉴스")]
+    portal_defaults = [s for s in src_store.DEFAULT_SOURCES
+                       if s not in keyword_defaults]
     idx = 0
-    for src in src_store.DEFAULT_SOURCES:  # 기본 — 토글
+    _group_caption("🔑 키워드 뉴스")
+    for src in keyword_defaults:  # 기본 — 토글
+        cnt, last_iso = cnt_map.get(src, (0, ""))
+        _render_src_row(idx, src, cnt, last_iso,
+                        is_enabled=src not in disabled, kind="default")
+        idx += 1
+    _group_caption("🏛 뉴스 포탈")
+    for src in portal_defaults:  # 기본 — 토글
         cnt, last_iso = cnt_map.get(src, (0, ""))
         _render_src_row(idx, src, cnt, last_iso,
                         is_enabled=src not in disabled, kind="default")

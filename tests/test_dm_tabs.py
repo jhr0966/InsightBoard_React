@@ -64,13 +64,13 @@ def test_src_count_map_and_pill_show_per_source_counts():
         cnt_map = dm._src_count_map()
     # 수집기 저장 source(naver/google)가 출처 탭 표시명으로 환산된다(구: 표시명 직접 group →
     # 전부 무수집 버그). 원시 source 키는 남지 않는다.
-    assert cnt_map["네이버 기술"][0] == 2
-    assert cnt_map["Google RSS"][0] == 1
+    assert cnt_map["네이버 뉴스"][0] == 2
+    assert cnt_map["구글 뉴스"][0] == 1
     assert "naver" not in cnt_map and "google" not in cnt_map
     # pill 이 이름·카운트를 표시
-    pill = dm._src_row_pill_html("네이버 기술", cnt_map["네이버 기술"][0], cnt_map["네이버 기술"][1],
+    pill = dm._src_row_pill_html("네이버 뉴스", cnt_map["네이버 뉴스"][0], cnt_map["네이버 뉴스"][1],
                                  is_enabled=True, kind="default")
-    assert "네이버 기술" in pill and "2건/7일" in pill
+    assert "네이버 뉴스" in pill and "2건/7일" in pill
     # 0건 기본 출처 → '7일 무수집'
     zero = dm._src_row_pill_html("AI Times", 0, "", is_enabled=True, kind="default")
     assert "AI Times" in zero and "7일 무수집" in zero
@@ -80,7 +80,7 @@ def test_default_sources_all_render_as_pills_when_empty():
     from ui import data_management_v2 as dm
     from store import sources as src_store
     names = set(src_store.DEFAULT_SOURCES)
-    assert {"AI Times", "Google RSS", "네이버 기술", "오토메이션월드"} <= names
+    assert {"AI Times", "구글 뉴스", "네이버 뉴스", "오토메이션월드"} <= names
     # 빈 수집 → 4개 기본 출처 모두 pill 로 '7일 무수집'
     for name in names:
         pill = dm._src_row_pill_html(name, 0, "", is_enabled=True, kind="default")

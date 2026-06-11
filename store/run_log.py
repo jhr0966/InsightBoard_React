@@ -11,7 +11,8 @@
     ok            bool — 오류 0건이면 True
     total_articles, total_files  int
     duration_s    float | None
-    sources       [{"source", "count", "keywords", "ok": True}, ...]  (saved 기준)
+    sources       [{"source", "count", "keywords", "ok": True, ("sites")}, ...]  (saved 기준,
+                  sites 는 tech 의 사이트별 건수 {"AI Times": n, ...} — 있을 때만)
     error_sources [source, ...]  (오류 난 소스 — 중복 제거·정렬)
     errors        [{"source", "keyword", "error"}, ...]  (원본 보존)
 """
@@ -66,15 +67,18 @@ def entry_from_report(
     errors = _field(report, "errors")
     now = datetime.now(timezone.utc)
 
-    sources = [
-        {
+    sources = []
+    for r in saved:
+        row = {
             "source": str(r.get("source", "")),
             "count": int(r.get("count", 0) or 0),
             "keywords": list(r.get("keywords") or []),
             "ok": True,
         }
-        for r in saved
-    ]
+        # tech 의 사이트별 분해(AI Times/오토메이션월드) — 재열람 표가 나눠 표시.
+        if isinstance(r.get("sites"), dict) and r["sites"]:
+            row["sites"] = {str(k): int(v) for k, v in r["sites"].items()}
+        sources.append(row)
     error_sources = sorted({str(e.get("source", "")) for e in errors if e.get("source")})
 
     return {

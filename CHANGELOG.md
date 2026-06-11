@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (소스 표기 단일화 — 'tech' 등 내부 ID 전면 제거) — `feat-source-labels`
+- **`ui/news_sources.py` 신설(단일 진입점)**: 기사 `source`(naver/google/tech/커스텀명)+`press` → 표시 라벨/분류/그라데이션 환산. 키워드 뉴스 = **네이버 뉴스 · 구글 뉴스**, 뉴스 포탈 = **AI Times · 오토메이션월드**(press 분해, 무 press legacy 는 '뉴스 포탈'). 저장 스키마는 불변(표시만 환산).
+- **수집 화면**(`ui/data_management_v2.py`): 대분류 탭 '포탈 뉴스'→'**뉴스 포탈**', 출처칩 '네이버/구글'→'네이버 뉴스/구글 뉴스'. **수집잡·소스별 수집 건수 표·진행률·오류 소스/목록**이 전부 라벨 표기 — 사용자가 본 'tech' 행은 sites(사이트별 건수)로 **AI Times/오토메이션월드 행으로 분해**(legacy 로그는 '뉴스 포탈' 1행). 채팅 컨텍스트 출처 분포도 라벨.
+- **출처 설정**: 기본 출처 표시명 '네이버 기술/Google RSS' → '**네이버 뉴스/구글 뉴스**'(`store/sources.py`, disabled 영구설정은 legacy 이름 자동 환산), 목록을 '🔑 키워드 뉴스 / 🏛 뉴스 포탈' 그룹 캡션으로 분리, 매칭 표(`_DEFAULT_SOURCE_MATCH`)도 신 표시명 키.
+- **수집 파이프라인**(`scraping/run_daily.py`, `store/run_log.py`): tech saved 엔트리에 `sites`(press 기준 사이트별 건수) 기록·영속화 → 결과 표/재열람이 사이트 단위 행·오류 표시.
+- **보드/브리핑/인사이트**(`ui/board_v2.py`, `sola/board_brief.py`, `ui/insights_v2.py`): 탑 스토리·아침 7분 카드 출처가 press 기반 라벨('기술 매체' 폴백 폐기), LLM 프롬프트에도 라벨 전달(내부 ID 유출 방지), 히트맵 상세 뉴스 출처 라벨. 그라데이션은 라벨 키 + legacy 별칭으로 일원화(`data_management_render` 중복 맵 제거).
+- 검증: pytest **950 passed**(신규 7) · Playwright — 수집/설정/보드 전 화면 본문에서 'tech'·'포탈 뉴스'·'네이버 기술'·'Google RSS' 0건, 신 라벨 노출 확인.
+
 ### Changed (오늘의 보드 — 아침 7분 재설계·트렌드 불용어·채팅 입력 고정) — `feat-board-brief-and-fixes`
 - **채팅 입력창·보내기 버튼 하단 고정 + 메시지 겹침 해소**(`assets/v2/streamlit-overrides.css`, `ui/chat_panel.py`): 메시지가 누적되면 ① 입력 form 이 밀려 사라지고 ② 버블이 입력창 위로 겹치던 것 → 스크롤 컨테이너를 flex:1·min-height:140px·**overflow:hidden**, height:100% 체인을 stHtml 까지 연결(끊겨서 버블이 컨테이너 밖으로 흘렀음 — 실측 223px 침범 → 0px), 추천 칩 영역은 공간 부족 시 자체 스크롤로 축소. 메시지 DOM 을 역순 + `.side-chat-scroll` `column-reverse` 로 바꿔 **초기 스크롤이 항상 최신 메시지(하단)** 를 보여준다(채팅 표준 패턴). 실측: 6건 전송 후에도 입력창·보내기 위치 불변, 침범 0px, 최신 메시지 노출.
 - **트렌드·키워드 불용어 필터**(`store/trends.py` `_is_meaningful_keyword`/`_KEYWORD_STOPWORDS`): '것으로'·'등'·'관련'·'대한' 등 조사·문법 조각, 한 글자 한글, 순수 기호를 키워드 집계에서 제외 — 트렌드 차트(보드·인사이트)와 보드 ⑦ 키워드 관리가 공유하는 `_all_keyword_tokens` 한 곳에서 거른다(의미 없는 키워드로 그래프가 어지럽던 문제 해소).

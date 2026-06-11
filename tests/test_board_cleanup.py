@@ -256,7 +256,7 @@ def test_brief_html_renders_five_cards_with_friendly_source(monkeypatch):
     board_v2._brief_html.clear()
     out = board_v2._brief_html(persona_label="t")
     assert out["list"].count('class="db-brief-card"') == 5      # 5건 카드
-    assert "기술 매체" in out["list"] and "tech" not in out["list"]  # 친화 라벨
+    assert "뉴스 포탈" in out["list"] and "tech" not in out["list"]  # 친화 라벨
     assert out["cites"] == ""                                    # 'tech · 06/11' cite 제거
     assert "db-brief-card-img" in out["list"]                    # 썸네일 영역
     assert "db-brief-card-p" in out["list"]                      # 1줄 요약
@@ -264,7 +264,9 @@ def test_brief_html_renders_five_cards_with_friendly_source(monkeypatch):
 
 
 def test_source_label_maps_internal_ids():
-    assert board_v2._source_label("tech") == "기술 매체"
-    assert board_v2._source_label("naver") == "네이버"
+    assert board_v2._source_label("tech") == "뉴스 포탈"            # legacy(무 press) 폴백
+    assert board_v2._source_label("tech", "AI Times") == "AI Times"  # press = 사이트명
+    assert board_v2._source_label("naver") == "네이버 뉴스"
+    assert board_v2._source_label("google") == "구글 뉴스"
     assert board_v2._source_label("AI Times") == "AI Times"      # 이미 친화명이면 그대로
-    assert board_v2._source_label("") == "뉴스"
+    assert board_v2._source_label("") == "기타"

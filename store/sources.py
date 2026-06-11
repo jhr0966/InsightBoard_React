@@ -23,12 +23,19 @@ from config import DATA_ROOT, ensure_data_dirs
 
 
 # 기본(빌트인) 출처 — 사용자가 비활성화는 가능, 제거는 불가.
+# 키워드 뉴스(네이버/구글) 먼저, 뉴스 포탈(AI Times/오토메이션월드) 다음.
 DEFAULT_SOURCES: tuple[str, ...] = (
+    "네이버 뉴스",
+    "구글 뉴스",
     "AI Times",
     "오토메이션월드",
-    "Google RSS",
-    "네이버 기술",
 )
+
+# 과거 표시명 → 현 표시명 (disabled 목록 등 영구 설정 호환)
+_LEGACY_NAMES: dict[str, str] = {
+    "네이버 기술": "네이버 뉴스",
+    "Google RSS": "구글 뉴스",
+}
 
 
 @dataclass
@@ -76,10 +83,12 @@ def _save_raw(data: dict) -> None:
 
 
 def disabled_set() -> frozenset[str]:
-    """비활성화된 출처 이름 집합 (기본은 빈 집합)."""
+    """비활성화된 출처 이름 집합 (기본은 빈 집합). 과거 표시명은 현 이름으로 환산."""
     raw = _load_raw()
     items = raw.get("disabled") or []
-    return frozenset(str(x) for x in items if isinstance(x, str))
+    return frozenset(
+        _LEGACY_NAMES.get(str(x), str(x)) for x in items if isinstance(x, str)
+    )
 
 
 def is_enabled(name: str) -> bool:
@@ -97,7 +106,13 @@ def toggle_disabled(name: str) -> bool:
     if name not in DEFAULT_SOURCES:
         return False
     raw = _load_raw()
-    disabled = set(raw.get("disabled") or [])
+    # 과거 표시명을 현 이름으로 정규화 후 토글 — legacy 항목과 현 항목이 공존하며
+    # 토글이 무력화되는 것을 방지.
+    disabled = {
+        _LEGACY_NAMES.get(str(x), str(x))
+        for x in (raw.get("disabled") or [])
+        if isinstance(x, str)
+    }
     if name in disabled:
         disabled.discard(name)
         enabled_after = True

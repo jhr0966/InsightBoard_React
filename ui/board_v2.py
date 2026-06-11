@@ -31,6 +31,8 @@ from store.match import DEFAULT_SEMANTIC_WEIGHT as _SEM_W, score_matches as _sco
 from sola.opportunity import score_cells as _score_cells
 from ui import app_shell
 from ui import components as _components
+# 출처 라벨·그라데이션은 ui.news_sources 단일화 (내부 ID 'tech' 등 미노출).
+from ui import news_sources as _news_sources
 from ui._safe import guard
 from ui.styles import inject_screen_css
 
@@ -419,15 +421,6 @@ def _tts_disabled_html(label: str = "음성으로 듣기") -> str:
         f'</svg>" width="11" height="11" alt="" />{_html.escape(label)}</button>'
     )
 
-_SOURCE_GRADIENTS = {
-    "AI Times": "linear-gradient(135deg,#DC2626,#F87171)",
-    "오토메이션월드": "linear-gradient(135deg,#D97706,#F59E0B)",
-    "Google RSS": "linear-gradient(135deg,#047857,#14B8A6)",
-    "네이버 기술": "linear-gradient(135deg,#6D28D9,#A78BFA)",
-}
-_DEFAULT_GRADIENT = "linear-gradient(135deg,#475569,#94A3B8)"
-
-
 def _story_age(when: str) -> str:
     if not when:
         return ""
@@ -469,8 +462,9 @@ def _story_card_html(row: pd.Series) -> str:
             break
     body = _html.escape(body_raw)
     source = str(row.get("source", "") or "")
-    source_safe = _html.escape(source)
-    gradient = _SOURCE_GRADIENTS.get(source, _DEFAULT_GRADIENT)
+    press = str(row.get("press", "") or "")
+    source_safe = _html.escape(_news_sources.source_label(source, press))
+    gradient = _news_sources.source_gradient(source, press)
     when = str(row.get("collected_at", "") or row.get("published_at", "") or "")
     age = _html.escape(_story_age(when))
 
@@ -510,16 +504,13 @@ def _story_card_html(row: pd.Series) -> str:
 # 아침 7분 — 노출 뉴스 수
 _BRIEF_COUNT = 5
 
-# 내부 소스 ID → 사람이 읽는 라벨 (스크래퍼가 친화 이름을 못 채운 경우 폴백).
-_SOURCE_ID_LABELS = {
-    "tech": "기술 매체", "naver": "네이버", "google": "Google 뉴스",
-}
+def _source_label(src: str, press: str = "") -> str:
+    """뉴스 출처 표시 라벨 — 내부 ID('tech' 등)는 사람이 읽는 이름으로.
 
-
-def _source_label(src: str) -> str:
-    """뉴스 출처 표시 라벨 — 내부 ID('tech' 등)는 사람이 읽는 이름으로."""
-    s = (src or "").strip()
-    return _SOURCE_ID_LABELS.get(s, s) or "뉴스"
+    naver/google → 네이버 뉴스/구글 뉴스, tech → press(AI Times/오토메이션월드,
+    없으면 '뉴스 포탈'). `ui.news_sources.source_label` 위임.
+    """
+    return _news_sources.source_label(src, press)
 
 
 def _brief_one_line(item: dict) -> str:
@@ -563,14 +554,18 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
                     .head(_BRIEF_COUNT)
                 )
                 # 원기사 메타(출처·시각·썸네일·요약)를 link 로 join — 카드 렌더용.
-                meta_cols = [c for c in ("link", "source", "collected_at", "published_at",
-                                         "image_url", "summary", "summary_llm")
+                meta_cols = [c for c in ("link", "source", "press", "collected_at",
+                                         "published_at", "image_url", "summary",
+                                         "summary_llm")
                              if c in news_df.columns]
                 merged = top.merge(news_df[meta_cols], on="link", how="left", suffixes=("", "_n"))
                 for _, r in merged.iterrows():
                     items.append({
                         "title": str(r.get("news_title", "") or r.get("title", "") or "(제목 없음)"),
                         "source": str(r.get("source", "") or ""),
+                        "press": str(r.get("press", "") or ""),
+                        "source_label": _source_label(
+                            str(r.get("source", "") or ""), str(r.get("press", "") or "")),
                         "when": str(r.get("collected_at", "") or r.get("published_at", "") or ""),
                         "link": str(r.get("link", "") or ""),
                         "image_url": str(r.get("image_url", "") or ""),
@@ -588,6 +583,9 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
             items.append({
                 "title": str(r.get("title", "") or "(제목 없음)"),
                 "source": str(r.get("source", "") or ""),
+                "press": str(r.get("press", "") or ""),
+                "source_label": _source_label(
+                    str(r.get("source", "") or ""), str(r.get("press", "") or "")),
                 "when": str(r.get("collected_at", "") or r.get("published_at", "") or ""),
                 "link": str(r.get("link", "") or ""),
                 "image_url": str(r.get("image_url", "") or ""),
@@ -651,8 +649,9 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
         title = _html.escape(item["title"][:110])
         one = _html.escape(_brief_one_line(item))
         source = str(item.get("source", "") or "")
-        gradient = _SOURCE_GRADIENTS.get(source, _DEFAULT_GRADIENT)
-        src_label = _html.escape(_source_label(source))
+        press = str(item.get("press", "") or "")
+        gradient = _news_sources.source_gradient(source, press)
+        src_label = _html.escape(_source_label(source, press))
         age = _html.escape(_story_age(item.get("when", "")))
         img = _https_img(str(item.get("image_url", "") or ""))
         if img[:4].lower() == "http":
