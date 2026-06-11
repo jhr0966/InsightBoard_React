@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-11 — style: 온보딩 모달 높이 통일 (`style-onboarding-fixed-height`)
+
+**무엇을**: 최초 접속 페르소나 마법사가 단계마다 창 높이가 변하던 것 → 전 단계 동일 높이.
+
+**어떻게**: `_dialog_body` 본문을 `st.container(key="onb_body")` 로 감싸고 CSS `min-height:430px` + 마지막 요소 `margin-top:auto`(버튼 하단 고정). 더 긴 콘텐츠(수집 결과)는 자연 확장. pytest 936 · 브라우저 실측으로 단계별 높이 동일 확인.
+
+**상태**: 🔄 PR.
+
 ## 2026-06-11 — chore: 머지 브랜치 정리 워크플로 (`chore-branch-cleanup-workflow`)
 
 **무엇을**: 원격에 쌓인 브랜치 72개 중 머지 확정 67개(자기 자신 포함) 일괄 삭제. 원격 실행 환경 git 프록시가 삭제 push 를 403 차단 → Actions `branch_cleanup.yml`(workflow_dispatch + GITHUB_TOKEN contents:write) 로 서버 측 삭제.
