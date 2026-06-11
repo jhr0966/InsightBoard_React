@@ -1380,16 +1380,17 @@ def _consume_refresh_if_any() -> bool:
 def _invalidate_collect_caches() -> None:
     """수집 직후 dm 관련 캐시 일괄 무효화.
 
-    `_archive_stats_dm` 는 `board_v2._archive_stats()` 위임이므로 그 내부의
-    `_board_kpis` 60초 캐시도 함께 비워야 좌측 nav 카운트가 즉시 새 수집 결과로
-    갱신된다 (Phase 2 dedup 회귀 방지).
+    `_archive_stats_dm` 는 `board_v2._archive_stats()` 위임이므로 보드 캐시도
+    함께 비워야 좌측 nav 카운트와 보드 전 섹션(브리핑/스토리/트렌드/기회/매트릭스/
+    키워드)이 즉시 새 수집 결과로 갱신된다 (`board_v2.invalidate_board_caches`).
     """
     from ui import board_v2 as _bv2  # lazy
 
     for fn in (_dm_stats, _ingest_jobs_html, _hist_html, _sc_browse_records,
-               _archive_stats_dm, _bv2._board_kpis):
+               _archive_stats_dm):
         if hasattr(fn, "clear"):
             fn.clear()
+    _bv2.invalidate_board_caches()
 
 
 def _collect_source_rows(saved: list, errors: list) -> list[dict]:

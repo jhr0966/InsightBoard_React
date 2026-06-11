@@ -145,3 +145,93 @@ def test_global_css_no_longer_stacks_stories_to_one_column():
             selector = chunk.rsplit("}", 1)[-1]
             if ".db-stories" in selector:
                 raise AssertionError(f"{name}: .db-stories 셀렉터 잔존 — {selector.strip()!r}")
+
+
+# ── 보드 감사(2026-06-11): 매트릭스 버블 충돌 회피 · 스파크라인 크기 · KPI 14d ──
+
+def _fake_cells(n: int = 3) -> pd.DataFrame:
+    """matched_news/tasks 가 모두 같은 셀 n개 — 좌표 충돌 시나리오."""
+    return pd.DataFrame([
+        {"dept": "도장1팀", "lv3": f"작업{i}", "cell_score": 100 - i,
+         "matched_news": 5, "matched_tasks": 1, "sample_tasks": ""}
+        for i in range(n)
+    ])
+
+
+def test_matrix_bubbles_declash_when_cells_have_identical_metrics(monkeypatch):
+    """동일 metric 셀들이 같은 좌표에 겹쳐 아래 버블이 클릭 불가였던 회귀 방지."""
+    import re
+
+    monkeypatch.setattr(board_v2, "_score_cells", lambda n, t: _fake_cells(3))
+    monkeypatch.setattr(
+        board_v2._news_db, "load_news_for_days",
+        lambda days=14: pd.DataFrame({"title": ["x"], "link": ["l"]}),
+    )
+    monkeypatch.setattr(
+        board_v2, "_load_tasks", lambda: pd.DataFrame({"dept": ["도장1팀"]})
+    )
+    board_v2._board_matrix_html.clear()
+    html = board_v2._board_matrix_html(selected_key=None)
+    coords = re.findall(r"left:(\d+)%; top:(\d+)%", html)
+    assert len(coords) == 3
+    assert len(set(coords)) == 3  # 세 버블 모두 서로 다른 좌표
+
+
+def test_trend_sparkline_svg_has_explicit_size(monkeypatch):
+    """sparkline svg 에 width/height 명시 — svg→img 변환 시 거대 렌더 회귀 방지."""
+    series = [{"name": f"kw{i}", "counts": [1, 2, 3, 4, 5, 6, 7, 8]} for i in range(4)]
+    monkeypatch.setattr(
+        board_v2, "_weekly_keyword_series", lambda weeks=8: (["W1"] * 8, series)
+    )
+    board_v2._board_trend.clear()
+    t = board_v2._board_trend()
+    assert "width='60' height='18'" in t["kw_list"]
+
+
+def test_board_kpis_opp_counts_cells_from_14d_window(monkeypatch):
+    """KPI '자동화 기회'는 ④ 카드·⑥ 매트릭스와 같은 14d 윈도우를 센다."""
+    def _fake_news(days=7, **_kw):
+        n = 2 if days == 1 else 9  # 1d=2건, 14d=9건
+        return pd.DataFrame({"title": [f"t{i}" for i in range(n)],
+                             "link": [f"l{i}" for i in range(n)]})
+
+    monkeypatch.setattr(board_v2._news_db, "load_news_for_days", _fake_news)
+    monkeypatch.setattr(
+        board_v2, "_load_tasks", lambda: pd.DataFrame({"dept": ["도장1팀"]})
+    )
+    # cells 수 = 입력 뉴스 행 수 (1d=2, 14d=9 구분용)
+    monkeypatch.setattr(
+        board_v2, "_score_cells",
+        lambda news, tasks: pd.DataFrame({"dept": ["d"] * len(news)}),
+    )
+    monkeypatch.setattr(
+        board_v2, "_score_matches",
+        lambda *a, **k: pd.DataFrame(),
+    )
+    monkeypatch.setattr(
+        board_v2.bookmarks_store, "summary_counts",
+        lambda: {"proposal_status": {"pending": 0}},
+    )
+    board_v2._board_kpis.clear()
+    kpis = board_v2._board_kpis()
+    assert kpis["collect"] == 2          # 오늘(1d)
+    assert kpis["opp"] == 9              # 14d 윈도우 셀 수
+
+
+def test_brief_items_include_link_for_summary_enrichment(monkeypatch):
+    """② 브리핑 items 에 link 포함 — summary 보강 루프가 원기사를 찾는 키."""
+    news = pd.DataFrame({
+        "title": ["A", "B", "C"],
+        "link": ["l1", "l2", "l3"],
+        "source": ["s"] * 3,
+        "collected_at": ["2026-06-11T00:00:00+00:00"] * 3,
+        "summary": ["요약A", "요약B", "요약C"],
+    })
+    monkeypatch.setattr(board_v2._news_db, "load_news_for_days", lambda days=3: news)
+    monkeypatch.setattr(board_v2, "_load_tasks", lambda: pd.DataFrame())
+    import streamlit as st
+    board_v2._brief_html.clear()
+    board_v2._brief_html(persona_label="t")
+    items = st.session_state.get("_board_brief_items") or []
+    assert items and all("link" in it and it["link"] for it in items)
+    st.session_state.pop("_board_brief_items", None)
