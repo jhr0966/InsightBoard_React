@@ -103,7 +103,7 @@ def test_wizard_welcome_then_full_completion_saves_persona(clean_persona):
     assert _click(at, "다음"); at.run()
     at.text_input(key="onb_job").set_value("품질 검사관"); at.run()
     assert _click(at, "다음"); at.run()
-    at.text_input(key="onb_keywords").set_value("용접 로봇, 비전 검사"); at.run()
+    at.multiselect(key="onb_keywords").set_value(["용접 로봇", "비전 검사"]); at.run()
     assert _click(at, "완료"); at.run()
 
     saved = clean_persona.load()
@@ -111,20 +111,26 @@ def test_wizard_welcome_then_full_completion_saves_persona(clean_persona):
     assert saved.dept == "도장1팀"
     assert saved.job == "품질 검사관"
     assert saved.is_set()
-    # 관심 키워드 자유 입력(쉼표 구분) → 리스트로 파싱·저장
+    # 관심 키워드 칩(multiselect accept_new_options) → 리스트로 저장
     assert saved.interest_keywords == ["용접 로봇", "비전 검사"]
     # 완료 시 SOLA 분석 실행 — LLM 차단 환경이라 규칙 폴백(입력 토큰 그대로)
     assert saved.derived_source == "fallback"
     assert "용접 로봇" in saved.derived_interests
-    # 완료 후 마법사 사라지고 실제 화면 렌더
+    # 완료 후 → 수집 제안 단계 (모달 유지, "지금 바로 뉴스를 수집할까요?")
+    htmls = "\n".join(h.proto.body for h in at.get("html"))
+    assert "지금 바로 뉴스를 수집" in htmls
+    # [나중에 하기] → 마법사 종료, 실제 화면만 렌더
+    assert _click(at, "나중에 하기"); at.run()
+    at.run()  # pending 연쇄 rerun 정착 (skip 테스트와 동일 사유)
     htmls = "\n".join(h.proto.body for h in at.get("html"))
     assert "db-topbar" in htmls and "처음 오셨네요" not in htmls
+    assert "지금 바로 뉴스를 수집" not in htmls
 
 
 def test_wizard_skip_persists_dismiss(clean_persona):
     at = _fresh_app()
     at.run()
-    assert _click(at, "다음에 하기"); at.run()
+    assert _click(at, "나중에 하기"); at.run()
     # dismiss 마커는 즉시 기록됨
     assert clean_persona.is_onboarding_dismissed() is True
     # AppTest 는 _handle_pending 연쇄 rerun 을 1 run 에 완전 정착 못 시킴
@@ -134,14 +140,68 @@ def test_wizard_skip_persists_dismiss(clean_persona):
     assert "db-topbar" in htmls and "처음 오셨네요" not in htmls
 
 
-def test_wizard_input_steps_have_no_skip_button(clean_persona):
-    """단계 정돈 — '다음에 하기'는 환영 화면에만, 입력 단계에는 이전/다음만."""
+def test_wizard_step1_has_later_button_but_step2_not(clean_persona):
+    """단계 정돈 — [나중에 하기]는 환영 화면 + 1단계(이름)에만, 2단계부터는 이전/다음만."""
     at = _fresh_app()
     at.run()
     _click(at, "시작"); at.run()
     labels = [b.label for b in at.button]
-    assert not any("다음에 하기" in lbl for lbl in labels)
-    assert any("다음" in lbl for lbl in labels)  # 다음 → 버튼은 존재
+    assert any("나중에 하기" in lbl for lbl in labels)  # 1단계 왼쪽 = 나중에 하기
+    assert any("다음" in lbl for lbl in labels)          # 다음 → 버튼은 존재
+    _click(at, "다음"); at.run()                          # → 2단계 (팀·부서)
+    labels = [b.label for b in at.button]
+    assert not any("나중에 하기" in lbl for lbl in labels)
+    assert any("이전" in lbl for lbl in labels)
+
+
+def test_wizard_step2_team_above_dept(clean_persona):
+    """2단계 — 팀 입력이 부서보다 위(먼저) 렌더된다 (Enter/Tab 이동 순서 = DOM 순서)."""
+    at = _fresh_app()
+    at.run()
+    _click(at, "시작"); at.run()
+    _click(at, "다음"); at.run()  # → 2단계
+    labels = [ti.label for ti in at.text_input]
+    assert labels.index("팀") < labels.index("부서")
+
+
+def test_wizard_collect_now_runs_and_closes(clean_persona, monkeypatch):
+    """완료 → [📡 지금 수집 실행] → 수집 1회 실행 + 결과 요약 → [✓ 시작하기]로 종료."""
+    import ui.data_management_v2 as dm
+
+    calls = {"n": 0}
+
+    def _fake_collect(progress=None):
+        calls["n"] += 1
+        return {
+            "ok": True, "message": "✓ 테스트 수집 3건",
+            "total_articles": 3, "total_files": 1, "n_keywords": 1,
+            "used_default": False, "n_feeds": 0, "errors": [],
+            "sources": [{"source": "naver", "count": 3, "ok": True}],
+        }
+
+    monkeypatch.setattr(dm, "_run_collect_for_modal", _fake_collect)
+
+    at = _fresh_app()
+    at.run()
+    _click(at, "시작"); at.run()
+    at.text_input(key="onb_name").set_value("홍길동"); at.run()
+    _click(at, "다음"); at.run()
+    at.text_input(key="onb_dept").set_value("도장1팀"); at.run()
+    _click(at, "다음"); at.run()
+    at.text_input(key="onb_job").set_value("검사관"); at.run()
+    _click(at, "다음"); at.run()
+    _click(at, "완료"); at.run()
+
+    assert _click(at, "지금 수집 실행"); at.run()
+    assert calls["n"] == 1  # 수집 1회 실행 (결과 세션 가드로 재수집 없음)
+    htmls = "\n".join(h.proto.body for h in at.get("html"))
+    assert "테스트 수집 3건" in htmls  # 결과 요약 노출
+
+    assert _click(at, "시작하기"); at.run()
+    at.run()  # pending 연쇄 rerun 정착
+    htmls = "\n".join(h.proto.body for h in at.get("html"))
+    assert "테스트 수집 3건" not in htmls and "처음 오셨네요" not in htmls
+    assert not at.exception
 
 
 def test_wizard_back_navigation_preserves_input(clean_persona):
@@ -155,10 +215,10 @@ def test_wizard_back_navigation_preserves_input(clean_persona):
 
 
 def test_persona_editor_open_suppresses_wizard(clean_persona):
-    """명시적 프로필 편집 중에는 마법사가 끼어들지 않는다."""
+    """명시적 페르소나 편집 중에는 마법사가 끼어들지 않는다."""
     at = _fresh_app()
     at.session_state["show_persona_editor"] = True
     at.run()
     htmls = "\n".join(h.proto.body for h in at.get("html"))
     assert "처음 오셨네요" not in htmls   # welcome 모달 미노출
-    assert "사용자 프로필 설정" in htmls or "프로필" in htmls
+    assert "페르소나 설정" in htmls or "페르소나" in htmls

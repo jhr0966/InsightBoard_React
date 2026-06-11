@@ -32,9 +32,9 @@ def test_persona_profile_card_unset_shows_setup_cta_and_is_clickable():
     # 미설정 카드도 전체가 ?persona_editor=1 링크 → 이모지·이름·안내·CTA 어디든 클릭 가능
     assert 'href="?persona_editor=1"' in html
     assert "persona-profile-card-empty" in html
-    assert "프로필 미설정" in html
+    assert "페르소나 미설정" in html
     assert "👤" in html                            # 프로필 이모지 아이콘
-    assert "프로필 설정하기" in html                 # CTA
+    assert "페르소나 설정하기" in html               # CTA
     # 값이 없으니 팀/관심 세부 행은 노출하지 않음 (깔끔한 미설정 카드)
     assert "persona-profile-details" not in html
 

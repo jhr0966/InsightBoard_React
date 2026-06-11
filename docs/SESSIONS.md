@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-06-11 — feat: 페르소나 온보딩 흐름 개편 (`feat-persona-onboarding-flow`)
+
+**무엇을**: ① '프로필 설정'→'페르소나 설정' 명칭 통일 ② 온보딩 1~3단계 Enter 로 완주(마지막 입력 Enter=[다음] 클릭) ③ 1단계에 [나중에 하기] ④ 2단계 팀이 부서보다 위(팀 Enter/Tab→부서, 부서 Enter→다음) ⑤ 관심 키워드 콤마/Enter 칩 입력(온보딩+설정 페이지) ⑥ 완료 직후 "지금 뉴스 수집할까요?" 제안 → 진행 표시 → 결과 요약 → [✓ 시작하기]로 전체 새로고침.
+
+**어떻게**:
+1. `ui/components.inject_focus_nav` 에 `submit_selector`(마지막 입력 Enter→blur 커밋→버튼 클릭, 180ms 지연 재조회)·`chips_selector`(BaseWeb 태그 입력에서 콤마→Enter 변환, 빈 값 가드) 추가.
+2. `ui/onboarding.py`: 단계 5(수집 제안)/6(수집 실행) 신설 — `_run_collect_for_modal`/`_collect_result_summary_html` 재사용, `should_show` 가 step≥5 면 저장 후에도 모달 유지, `_do_onb_close` 로 일괄 정리+rerun. 키워드는 `st.multiselect(accept_new_options=True)`.
+3. **함정**: 5단계 진입 시 키워드 multiselect 가 unmount 되며 위젯 상태 GC → AppTest 직전 트리 직렬화에서 KeyError — finish 핸들러가 `onb_keywords` 를 일반 세션 값으로 유지해 해소.
+4. 명칭 변경: `ui/persona_page.py`(topbar)·`ui/sidebar.py`(미설정 카드)·`app.py`+`ui/chat_panel.py`(area 키 "페르소나 설정").
+
+**검증**: pytest **936 passed** · 금지패턴 0.
+
+**다음**: ① 수집 제안 모달에 예상 키워드 미리보기(페르소나 interest_keywords 칩 노출) ② 페르소나 설정 페이지 기본 정보도 팀→부서 순서 통일 검토.
+
 ## 2026-06-11 — feat: 앱 내 기사 URL 진단 카드 (`feat-inapp-diagnose`)
 
 **무엇을**: thebell 본문·사진이 배포 환경에서 여전히 미수집 — 파싱은 테스트로 보장돼 fetch 단계 원인 확정이 필요하나 사용자가 CLI 실행 불가 → 앱 내 진단 도구 내장.

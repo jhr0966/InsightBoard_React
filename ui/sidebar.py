@@ -104,7 +104,7 @@ def _persona_card_html(persona: Persona) -> str:
         )
         return f"""
         <a class="persona-profile-link" href="?persona_editor=1" target="_self"
-           aria-label="프로필 편집 열기">
+           aria-label="페르소나 설정 열기">
           <div class="persona-profile-card">
             <div class="persona-profile-row">
               <div class="persona-profile-head">{avatar}</div>
@@ -123,19 +123,19 @@ def _persona_card_html(persona: Persona) -> str:
         """
     return """
     <a class="persona-profile-link" href="?persona_editor=1" target="_self"
-       aria-label="프로필 설정 시작">
+       aria-label="페르소나 설정 시작">
       <div class="persona-profile-card persona-profile-card-empty">
         <div class="persona-profile-row">
           <div class="persona-profile-head persona-profile-head-empty" aria-hidden="true">👤</div>
           <div class="persona-profile-id">
-            <div class="persona-profile-name">프로필 미설정</div>
+            <div class="persona-profile-name">페르소나 미설정</div>
             <div class="persona-profile-role">눌러서 설정을 시작하세요</div>
           </div>
         </div>
         <div class="persona-profile-empty-hint">
           부서·직무·관심 공정을 설정하면 오늘의 보드와 SOLA 가 나에게 맞춰집니다.
         </div>
-        <div class="persona-profile-cta">＋ 프로필 설정하기</div>
+        <div class="persona-profile-cta">＋ 페르소나 설정하기</div>
       </div>
     </a>
     """

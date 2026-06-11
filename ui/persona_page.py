@@ -78,6 +78,13 @@ def _lv3_options(df) -> list[str]:
     return sorted(df["lv3"].dropna().astype(str).unique().tolist())
 
 
+def _keywords_from(raw) -> list[str]:
+    """키워드 입력값 정규화 — multiselect 칩(list) 또는 구버전 문자열 둘 다 수용."""
+    if isinstance(raw, str):
+        return parse_keywords_input(raw)
+    return parse_keywords_input(", ".join(str(k) for k in (raw or [])))
+
+
 def _save_from_state(persona: Persona) -> None:
     new = Persona(
         name=st.session_state.get("px_name", "").strip(),
@@ -86,9 +93,7 @@ def _save_from_state(persona: Persona) -> None:
         job=st.session_state.get("px_job", "").strip(),
         interest_lv3=list(st.session_state.get("px_lv3", []) or []),
         interest_tasks=persona.interest_tasks,
-        interest_keywords=parse_keywords_input(
-            str(st.session_state.get("px_keywords", ""))
-        ),
+        interest_keywords=_keywords_from(st.session_state.get("px_keywords", [])),
         # 숨김 키워드·기존 분석 결과는 편집 폼에 없으므로 보존.
         muted_keywords=list(persona.muted_keywords or []),
         derived_interests=list(persona.derived_interests or []),
@@ -100,7 +105,7 @@ def _save_from_state(persona: Persona) -> None:
     # 프로필이 바뀌면 SOLA 분석도 갱신 (캐시 히트 시 LLM 재호출 없음, 실패 무해).
     new = persona_derive.derive_and_store(new)
     st.session_state["persona"] = new
-    st.session_state["persona_page_msg"] = ("ok", f"프로필 저장됨: {new.label()}")
+    st.session_state["persona_page_msg"] = ("ok", f"페르소나 저장됨: {new.label()}")
 
 
 def _handle_pending(persona: Persona) -> None:
@@ -258,8 +263,8 @@ def render() -> None:
     # ── v2 글로벌 셸 — 다른 화면과 동일한 topbar + 좌측 네비 ──
     inject_screen_css("board")  # 공통 토큰만 필요 (.db-* 미사용이나 안전)
     app_shell.render_topbar(
-        page_title="프로필 설정",
-        eyebrow_current="프로필 / 페르소나",
+        page_title="페르소나 설정",
+        eyebrow_current="페르소나 설정",
         refresh_label=app_shell.refresh_label_now(),
         fresh_kind="",
     )
@@ -357,12 +362,15 @@ def render() -> None:
             # 입력 누락 시에도 _save_from_state 에서 빈 리스트가 들어가지 않도록 기존 값 유지.
             st.session_state["px_lv3"] = list(persona.interest_lv3)
 
-        st.text_input(
-            "관심 키워드 (쉼표/엔터로 구분)",
-            value=", ".join(persona.interest_keywords),
+        # 키워드 — 콤마/Enter 로 하나씩 칩(버블) 등록 (온보딩 4단계와 동일 UX).
+        st.multiselect(
+            "관심 키워드 (콤마/Enter로 하나씩 등록)",
+            options=list(persona.interest_keywords),
+            default=list(persona.interest_keywords),
             key="px_keywords",
-            placeholder="예: 용접 로봇, 비전 검사, 디지털 트윈",
-            help="자유 입력 키워드는 뉴스 수집 검색어와 보드 키워드 관리에 바로 합류합니다.",
+            accept_new_options=True,
+            placeholder="예: 용접 로봇 ← 입력 후 콤마(,) 또는 Enter",
+            help="등록한 키워드는 뉴스 수집 검색어와 보드 키워드 관리에 바로 합류합니다.",
         )
 
     # ── ③ SOLA 분석 카드 ─────────────────────────────────────
@@ -389,5 +397,9 @@ def render() -> None:
 
     # 키보드 UX — 진입 시 이름 입력 자동 포커스 + Enter→다음 입력 이동.
     # scope 를 `px_*` 위젯 컨테이너(`st-key-px_*` 클래스)로 한정해 우측 채팅
-    # 입력 등 폼 밖 Enter 동작은 건드리지 않는다.
-    inject_focus_nav('[class*="st-key-px_"]', nonce="persona-page")
+    # 입력 등 폼 밖 Enter 동작은 건드리지 않는다. chips: 키워드 콤마→칩 등록.
+    inject_focus_nav(
+        '[class*="st-key-px_"]',
+        nonce="persona-page",
+        chips_selector=".st-key-px_keywords",
+    )

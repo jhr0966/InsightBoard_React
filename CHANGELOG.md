@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Changed (페르소나 온보딩 흐름 개편 — 키보드 완주 + 키워드 칩 + 완료 직후 수집 제안) — `feat-persona-onboarding-flow`
+- **명칭 통일 '프로필 설정' → '페르소나 설정'**: 온보딩 모달 제목·시작 버튼(`ui/onboarding.py`), 설정 페이지 topbar(`ui/persona_page.py`), 사이드바 미설정 카드 CTA/라벨(`ui/sidebar.py`), 채팅 area 키(`app.py`·`ui/chat_panel.py` `_AREA_INTROS`) 일괄 변경. 저장 메시지도 "페르소나 저장됨/페르소나가 저장됐어요"로.
+- **Enter 로 단계 완주**(`ui/components.inject_focus_nav` 확장): `submit_selector` 추가 — scope 의 **마지막** 텍스트 입력에서 Enter → blur(값 커밋) 후 해당 버튼 자동 클릭. 온보딩 1~3단계(이름/팀·부서/직무)에 `.st-key-onb_next_{step} button` 으로 연결 → 이름 입력 후 Enter = [다음], 부서 입력 후 Enter = [다음], 직무 입력 후 Enter = [다음].
+- **2단계 팀·부서 순서 교정**(`ui/onboarding.py`): 팀 입력이 부서보다 **위** — Enter/Tab 으로 팀→부서 이동(포커스 내비는 DOM 순서를 따름), 질문 카피도 "어느 팀·부서에서…"로.
+- **1단계 [나중에 하기] 버튼**: 이름 단계 왼쪽에 dismiss 버튼 추가(환영 화면과 동일 `_do_onb_dismiss`) — 시작 직후에도 이탈 가능. 환영 화면 버튼 라벨도 '다음에 하기'→'나중에 하기' 통일.
+- **관심 키워드 = 콤마/Enter 칩(버블) 입력**: 온보딩 4단계(`onb_keywords`)·페르소나 설정 페이지(`px_keywords`)의 키워드 text_input 을 `st.multiselect(accept_new_options=True)` 로 교체 — 입력 후 Enter 로 칩 등록, `inject_focus_nav` 의 새 `chips_selector` 가 **콤마(,) 입력을 Enter 로 변환**해 콤마로도 하나씩 칩 등록. 저장 경로는 `_keywords_from` 으로 list/구버전 문자열 모두 수용(`parse_keywords_input` 재사용 — 중복 제거·상한 유지).
+- **완료 직후 뉴스 수집 제안 → 실행 → 전체 새로고침**(`ui/onboarding.py` 5·6단계 신설): [✓ 완료] 시 페르소나 저장 후 모달이 닫히지 않고 "지금 바로 뉴스를 수집할까요?" 제안([📡 지금 수집 실행]/[나중에 하기]). 실행 시 수집 현황 모달과 동일 경로(`data_management_v2._run_collect_for_modal` — 진행률 progress + 결과 요약 `_collect_result_summary_html` + 캐시 일괄 무효화) 재사용, 결과는 `_onb_collect_result` 세션 가드로 재수집 방지. [✓ 시작하기] 가 온보딩 상태를 비우고 rerun → 무효화된 캐시 위에서 전체 화면이 새 수집 데이터로 다시 그려진다. `should_show` 가 step≥5 면 persona 저장 후에도 모달 유지.
+- 테스트(`tests/test_onboarding.py` 12개): 완료→수집 제안→[나중에 하기] 종료, [지금 수집 실행] 1회 실행+결과 요약+[✓ 시작하기] 종료(수집 함수 mock), 2단계 팀>부서 순서, 1단계 [나중에 하기] 존재/2단계 부재, 키워드 multiselect 칩 저장. + 명칭 변경 반영(`test_sidebar_profile`/`test_chat_panel`/`test_screen_smoke`).
+- 검증: pytest **936 passed** · 금지패턴 0.
+
 ### Added (앱 내 기사 URL 진단 — thebell 류 미수집 원인 확정 도구)
 - **`scraping/diagnose.py` 신설**: `scripts/diagnose_article.py` 의 단계 로직을 구조화 dict 반환 함수로 추출 — 요청 3단계(기본/워밍업/TLS 위장) 상태코드·응답 길이, curl_cffi 설치 여부, 메타/본문 이미지 후보(+junk 판정), 본문 셀렉터 매칭, 구조화 데이터(ld+json/Fusion) 길이, 최종 fetch_article 결과. **200 위장 차단 감지** 휴리스틱(200인데 셀렉터 0+본문 빈약+차단 문구) 포함. 스크립트는 래퍼로 축소.
 - **⚙ 수집 설정에 '🔬 기사 URL 진단' 카드**(`ui/data_management_v2.py`): URL 입력 + [진단 실행](pending+rerun) → 단계별 결과를 화면에 표시 — 배포 환경에서 CLI 없이 미수집 원인(403/IP 차단/위장 차단/파싱)을 바로 확인. curl_cffi 미설치 시 'TLS 위장 폴백 비활성' 경고 배너.
