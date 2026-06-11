@@ -107,6 +107,28 @@ def test_consume_kw_action_del_user_no_match_noop(isolated_persona):
     assert toast and toast[0] == "ok"
 
 
+def test_consume_kw_action_del_user_removes_interest_keyword(isolated_persona):
+    """자유 입력 관심 키워드(interest_keywords)도 × 삭제 대상."""
+    from ui import board_v2
+    from persona.schema import Persona
+    import streamlit as st
+
+    p = Persona(dept="도장", interest_keywords=["용접 로봇", "비전 검사"])
+    st.session_state["persona"] = p
+    isolated_persona.save(p)
+
+    st.query_params.clear()
+    st.query_params["kw_action"] = "del_user"
+    st.query_params["keyword"] = "용접 로봇"
+    board_v2.consume_kw_action_if_any()
+
+    saved = isolated_persona.load()
+    assert "용접 로봇" not in saved.interest_keywords
+    assert "비전 검사" in saved.interest_keywords
+    toast = st.session_state.get("_kw_action_toast")
+    assert toast and toast[0] == "ok" and "제거" in toast[1]
+
+
 # ── consume_kw_action_if_any — mute ─────────────────────────
 
 def test_consume_kw_action_mute_adds_to_muted_keywords(isolated_persona):
@@ -177,6 +199,32 @@ def test_consume_kw_action_collect_calls_batch_with_persona_keywords(isolated_pe
 
     toast = st.session_state.get("_kw_action_toast")
     assert toast and toast[0] == "ok" and "수집" in toast[1]
+
+
+def test_consume_kw_action_collect_includes_interest_keywords(isolated_persona):
+    """자유 입력 관심 키워드가 수집 검색어에 최우선으로 합류한다."""
+    from ui import board_v2
+    from persona.schema import Persona
+    from scraping.run_daily import CollectionReport
+    import streamlit as st
+
+    p = Persona(dept="도장", interest_tasks=["비전 검사"],
+                interest_keywords=["용접 로봇", "비전 검사"])
+    st.session_state["persona"] = p
+    isolated_persona.save(p)
+
+    st.query_params.clear()
+    st.query_params["kw_action"] = "collect"
+    fake_report = CollectionReport(
+        saved=[{"source": "naver", "keywords": ["용접 로봇"], "count": 1, "path": "x"}],
+        errors=[],
+    )
+    with patch("scraping.run_daily.collect_batch", return_value=fake_report) as mock_cb:
+        board_v2.consume_kw_action_if_any()
+
+    kws = mock_cb.call_args.args[0]
+    assert kws[0] == "용접 로봇"          # interest_keywords 우선
+    assert kws.count("비전 검사") == 1    # 중복 제거
 
 
 def test_consume_kw_action_collect_falls_back_to_default(isolated_persona):
