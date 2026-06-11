@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Changed (페르소나 설정창 리디자인 — 가독성·하단 고정 버튼·Ctrl+Enter) — `style-onboarding-modal-polish`
+- **텍스트 전반 확대**(`ui/onboarding.py` `_inject_css`): 단계 질문 19→24px + 단계별 이모지(👤🏢🛠️🎯) 추가, 보조 문구 13.5→15px, 환영 문구 15→16.5px, 입력 위젯 16.5px·패딩 확대, 위젯 라벨 15px, 진행 도트 확대(40px), 모달 제목 24px.
+- **네비 버튼 하단 고정 + 확대**: 모든 화면(환영/1~4단계/수집 제안/결과)의 버튼을 `onb_nav` 컨테이너로 분리하고 `margin-top:auto` 로 **모달 최하단 고정**(직전 flex 셀렉터가 실제 DOM 과 안 맞아 미동작이던 것 교정), 버튼 min-height 60px·라벨 16.5px.
+- **Ctrl+Enter = 단계 진행**(`ui/components.inject_focus_nav` `ctrl_submit_selector` 추가): scope 안 **어느 입력에서든** Ctrl/⌘+Enter → blur(값 커밋) 후 [다음]/[완료] 클릭. [다음 →]/[✓ 완료] 라벨 둘째 줄에 `Ctrl + Enter` 단축키를 작고 옅은 색으로 표기(`button p + p` CSS).
+- **2단계 도움말 정리**: "팀 입력 후 Enter/Tab → 부서…" 키보드 설명 문장 제거.
+- **AppTest 위젯 GC 방어 일반화**(`_snapshot_inputs`): 단계 전환 시 위젯 값을 일반 세션 값으로 재기록 — 직전 트리 직렬화 KeyError(onb_dept)를 onb_keywords 와 동일 원리로 방어.
+- 검증: pytest **939 passed** · 금지패턴 0 · Playwright 실측 — 전 단계 높이 668px 동일, [다음] 버튼 60px·모달 하단 고정, 라벨 2줄(`다음 →`/`Ctrl + Enter`), 1·3단계 텍스트 입력과 4단계 칩 입력에서 Ctrl+Enter 진행, 2단계 도움말에 키보드 설명 없음.
+
+
 ### Changed (오늘의 보드 감사 — 집계 시뮬레이션·브라우저 검증 + 채팅 추천 질문 즉시 전송) — `feat-board-audit`
 - **추천 질문 칩 = 즉시 전송**(`ui/chat_panel.py` `_render_chat_suggestions`): 칩 클릭이 입력창에 텍스트만 채우던 것을 → `_do_sola_send` pending 으로 form 전송과 동일 경로(LLM 호출→append→영구화)를 바로 수행. scope 분기는 form 과 동일(일반 area=fragment, SOLA 작업실=app). prefill 헬퍼(`_apply_pending_prefill`)·`__prefill` 경로 제거, 안내 카피 "추천 질문을 누르면 바로 전송됩니다"로.
 - **매트릭스 버블 좌표 충돌 회피**(`ui/board_v2.py` `_board_matrix_html`): matched_news/tasks 가 같은 셀들이 동일 좌표에 완전히 겹쳐 아래 버블 클릭 불가(브라우저 실측 발견) → 근접(<7%p) 시 점수 순서대로 좌하 계단 오프셋. 실측: 3버블 좌표 분리 + 클릭 시 상세 패널 전환 확인.
