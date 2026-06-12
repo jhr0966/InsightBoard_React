@@ -257,6 +257,25 @@ _FOCUS_NAV_JS = r"""
     var el = e.target;
     if (!nav || !el) { return; }
 
+    /* (f) Tab/Shift+Tab → scope 안 **입력끼리만** 순환 — 기본 Tab 은 사이의
+       버튼·링크·도움말 등 다른 focusable 에 들러 "탭 한 번에 다음 입력" 이
+       안 됐다(사용자 보고: 이름→팀→부서→직무). selectbox 의 combobox input
+       도 입력으로 취급해 팀/부서 드롭다운에도 멈춘다. 마지막/첫 입력의
+       경계에서는 기본 동작 유지(폼 밖으로 자연 이탈). */
+    if (e.key === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA") { return; }
+      if (!el.closest || !el.closest(nav.sel)) { return; }
+      var tlist = inputsIn(nav.sel);
+      var ti = tlist.indexOf(el);
+      if (ti < 0) { return; }
+      var tj = e.shiftKey ? ti - 1 : ti + 1;
+      if (tj < 0 || tj >= tlist.length) { return; }
+      e.preventDefault();
+      e.stopPropagation();
+      tlist[tj].focus(); /* blur → Streamlit 값 커밋 자연 발생 */
+      return;
+    }
+
     if (e.key !== "Enter") { return; }
 
     /* (e) Ctrl/⌘+Enter → 단계 진행 버튼 클릭 (값 커밋 후).
@@ -336,7 +355,9 @@ def inject_focus_nav(
 
     - 자동 포커스: 이미 다른 입력에 포커스가 있으면 건드리지 않음 (rerun 안전).
     - Enter: 텍스트 입력에서 다음 visible input/textarea 로 이동, blur 로 값 커밋.
-      마지막 입력에서는 브라우저/Streamlit 기본 동작 유지. Tab 은 기본 동작.
+      마지막 입력에서는 브라우저/Streamlit 기본 동작 유지.
+    - Tab/Shift+Tab: scope 안 입력(selectbox combobox 포함)끼리만 이동 — 사이의
+      버튼·도움말 등 다른 focusable 을 건너뛴다. 경계(첫/마지막)에선 기본 동작.
     - `nonce` 가 바뀌면 마크업이 바뀌어 스크립트가 재실행된다 — 온보딩 단계
       전환(rerun) 후 새 단계 첫 입력에 다시 포커스하기 위해 단계 번호를 넘긴다.
     - `submit_selector`: 지정 시 **마지막** 텍스트 입력에서 Enter → blur(값 커밋)
