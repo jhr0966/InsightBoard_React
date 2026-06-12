@@ -44,8 +44,8 @@ def test_src_count_map_rolls_scraper_sources_into_display_names():
     })
     with patch.object(dm._news_db, "load_news_for_days", return_value=df):
         m = dm._src_count_map()
-    assert m["네이버 기술"][0] == 1
-    assert m["Google RSS"][0] == 1
+    assert m["네이버 뉴스"][0] == 1
+    assert m["구글 뉴스"][0] == 1
     assert m["AI Times"][0] == 1
     assert m["오토메이션월드"][0] == 1
     assert m["조선해양 e뉴스"][0] == 1          # 커스텀/기타는 원시 source 값 그대로
@@ -65,8 +65,8 @@ def test_src_count_map_recognizes_legacy_direct_source_names():
     with patch.object(dm._news_db, "load_news_for_days", return_value=df):
         m = dm._src_count_map()
     assert m["AI Times"][0] == 1
-    assert m["Google RSS"][0] == 1
-    assert m["네이버 기술"][0] == 1
+    assert m["구글 뉴스"][0] == 1
+    assert m["네이버 뉴스"][0] == 1
     assert set(m) == set(dm._DEFAULT_SOURCE_MATCH)   # 기타 누출 없음(rest 비어 있음)
 
 

@@ -37,7 +37,7 @@ def test_health_li_flags_error_sources():
     )
     out = dm._collect_health_li()
     assert "오류" in out
-    assert "google" in out  # 오류 소스 노출 → 조용한 실패 가시화
+    assert "구글 뉴스" in out  # 오류 소스 노출(표시 라벨) → 조용한 실패 가시화
 
 
 # ── 최근 수집 런 타임라인 (run_log 기반 고도화) ──────────────
@@ -125,7 +125,7 @@ def test_collect_alert_danger_on_failed_run():
              errors=[{"source": "google", "error": "blocked"}]),
         trigger="cron", run_id="er", ts=datetime.now(timezone.utc).isoformat())
     out = dm._collect_alert_html()
-    assert "var(--semantic-danger)" in out and "google" in out
+    assert "var(--semantic-danger)" in out and "구글 뉴스" in out
 
 
 def test_collect_alert_warning_on_stale_run():

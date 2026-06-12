@@ -248,7 +248,7 @@ def test_e2e_s5_data_mgmt_category_browser(monkeypatch):
     at2 = AppTest.from_file("app.py", default_timeout=120)
     at2.session_state["app_area"] = "🗞 뉴스 수집"
     at2.session_state["sc_news_cat"] = "keyword"
-    at2.session_state["sc_chan_keyword"] = "구글"
+    at2.session_state["sc_chan_keyword"] = "구글 뉴스"
     at2.run()
     assert not at2.exception
     combined2 = "\n".join(h.proto.body for h in at2.get("html"))

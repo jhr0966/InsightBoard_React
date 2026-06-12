@@ -140,12 +140,20 @@ def collect_batch(
                 if do_enrich:
                     _enrich.enrich_parallel(articles, with_llm=False)
                 path = save_articles(articles, source="tech")
+                # 사이트별 건수 — UI 가 'tech' 묶음 대신 AI Times/오토메이션월드로
+                # 나눠 표시할 수 있게 press(사이트명) 기준 분해를 함께 기록.
+                sites: dict[str, int] = {}
+                for art in articles:
+                    site = str(art.get("press", "") or "").strip()
+                    if site:
+                        sites[site] = sites.get(site, 0) + 1
                 report.saved.append(
                     {
                         "source": "tech",
                         "keywords": [],
                         "count": len(articles),
                         "path": str(path) if path else "",
+                        "sites": sites,
                     }
                 )
                 if on_step:

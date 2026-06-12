@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (소스 표기 단일화 — 'tech' 등 내부 ID 전면 제거) — `feat-source-labels`
+- **`ui/news_sources.py` 신설(단일 진입점)**: 기사 `source`(naver/google/tech/커스텀명)+`press` → 표시 라벨/분류/그라데이션 환산. 키워드 뉴스 = **네이버 뉴스 · 구글 뉴스**, 뉴스 포탈 = **AI Times · 오토메이션월드**(press 분해, 무 press legacy 는 '뉴스 포탈'). 저장 스키마는 불변(표시만 환산).
+- **수집 화면**(`ui/data_management_v2.py`): 대분류 탭 '포탈 뉴스'→'**뉴스 포탈**', 출처칩 '네이버/구글'→'네이버 뉴스/구글 뉴스'. **수집잡·소스별 수집 건수 표·진행률·오류 소스/목록**이 전부 라벨 표기 — 사용자가 본 'tech' 행은 sites(사이트별 건수)로 **AI Times/오토메이션월드 행으로 분해**(legacy 로그는 '뉴스 포탈' 1행). 채팅 컨텍스트 출처 분포도 라벨.
+- **출처 설정**: 기본 출처 표시명 '네이버 기술/Google RSS' → '**네이버 뉴스/구글 뉴스**'(`store/sources.py`, disabled 영구설정은 legacy 이름 자동 환산), 목록을 '🔑 키워드 뉴스 / 🏛 뉴스 포탈' 그룹 캡션으로 분리, 매칭 표(`_DEFAULT_SOURCE_MATCH`)도 신 표시명 키.
+- **수집 파이프라인**(`scraping/run_daily.py`, `store/run_log.py`): tech saved 엔트리에 `sites`(press 기준 사이트별 건수) 기록·영속화 → 결과 표/재열람이 사이트 단위 행·오류 표시.
+- **보드/브리핑/인사이트**(`ui/board_v2.py`, `sola/board_brief.py`, `ui/insights_v2.py`): 탑 스토리·아침 7분 카드 출처가 press 기반 라벨('기술 매체' 폴백 폐기), LLM 프롬프트에도 라벨 전달(내부 ID 유출 방지), 히트맵 상세 뉴스 출처 라벨. 그라데이션은 라벨 키 + legacy 별칭으로 일원화(`data_management_render` 중복 맵 제거).
+- 검증: pytest **950 passed**(신규 7) · Playwright — 수집/설정/보드 전 화면 본문에서 'tech'·'포탈 뉴스'·'네이버 기술'·'Google RSS' 0건, 신 라벨 노출 확인.
 ### Fixed (온보딩 자동 포커스·Ctrl+Enter 실환경 레이스 해소) — `fix-onboarding-focus-nav`
 - **자동 포커스 재포커스 가드**(`ui/components.py` focus-nav): 포커스 성공 시 폴링을 즉시 멈추던 것 → 같은 step 의 추가 rerun(보드 브리프 등)이 모달 DOM 을 교체해 포커스가 body 로 날아가도(마크업 동일 → 스크립트 재실행 없음) **5초 동안 "입력에 포커스 없으면 첫 입력 재포커스"** 가드 유지. [시작하기] 직후 이름 입력 커서 활성화가 실환경에서도 안정 동작.
 - **Ctrl/⌘+Enter 전역화**: 핸들러가 `e.target` 이 모달 안 요소일 때만 동작 → 포커스가 body 로 날아간 직후엔 단축키가 죽었음 → **모달이 떠 있으면 포커스 위치 무관**하게 동작(입력이면 blur 로 값 커밋 후 진행).

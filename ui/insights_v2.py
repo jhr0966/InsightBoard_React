@@ -626,6 +626,7 @@ def _hm_top_news(news_df, process: str, tech: str, limit: int = 3) -> list[dict]
         out.append({
             "title": str(r.get("title", "") or "(제목 없음)"),
             "source": str(r.get("source", "") or ""),
+            "press": str(r.get("press", "") or ""),
             "link": str(r.get("link", "") or ""),
         })
     return out
@@ -733,8 +734,10 @@ def _ia_heatmap_html(selected_key: str | None = None) -> str:
             sola_href = _sh("hm_cell", dept="", lv3=proc) + "&tech=" + quote(tech)
             clear_href = _hm_select_href("", "")
             news_items = []
+            from ui import news_sources as _news_sources
             for n in top_news:
-                src = _html.escape(n["source"] or "—")
+                src = _html.escape(
+                    _news_sources.source_label(n["source"], n.get("press", "")) or "—")
                 title = _html.escape(n["title"][:120])
                 link = n["link"]
                 if link:

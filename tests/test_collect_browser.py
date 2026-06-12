@@ -40,8 +40,8 @@ def test_category_of():
 
 
 def test_channel_of():
-    assert dm._news_channel_of("naver") == "네이버"
-    assert dm._news_channel_of("google") == "구글"
+    assert dm._news_channel_of("naver") == "네이버 뉴스"
+    assert dm._news_channel_of("google") == "구글 뉴스"
     assert dm._news_channel_of("tech", "AI Times") == "AI Times"
     assert dm._news_channel_of("tech", "오토메이션월드") == "오토메이션월드"
     assert dm._news_channel_of("조선해양e뉴스", "") == "조선해양e뉴스"
@@ -59,7 +59,7 @@ def test_browse_records_annotates_and_sorts():
     assert cats["네이버 용접 기사"] == "keyword"
     assert cats["AI Times 비전 기사"] == "portal"
     chans = {r["title"]: r["_chan"] for r in recs}
-    assert chans["네이버 용접 기사"] == "네이버"
+    assert chans["네이버 용접 기사"] == "네이버 뉴스"
     assert chans["AI Times 비전 기사"] == "AI Times"
     assert chans["커스텀 RSS 기사"] == "조선해양e뉴스"
 
@@ -69,7 +69,7 @@ def test_channels_per_category():
     with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()):
         kw = dm._sc_channels("keyword")
         pt = dm._sc_channels("portal")
-    assert kw == ["네이버", "구글"]
+    assert kw == ["네이버 뉴스", "구글 뉴스"]
     assert set(pt) == {"AI Times", "조선해양e뉴스"}
 
 
@@ -101,7 +101,7 @@ def test_filtered_records_category_and_channel():
     dm._sc_browse_records.clear()
     with patch.object(dm._news_db, "load_news_for_days", return_value=_news_df()):
         kw_all = dm._sc_filtered_records("keyword", dm._SC_ALL_CHANNEL, "")
-        kw_naver = dm._sc_filtered_records("keyword", "네이버", "")
+        kw_naver = dm._sc_filtered_records("keyword", "네이버 뉴스", "")
         portal = dm._sc_filtered_records("portal", dm._SC_ALL_CHANNEL, "")
     titles_all = {r["title"] for r in kw_all}
     assert {"네이버 용접 기사", "구글 도장 기사"} <= titles_all

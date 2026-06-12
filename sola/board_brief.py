@@ -28,7 +28,8 @@ def _format_items(items: Sequence[dict]) -> str:
     lines: list[str] = []
     for i, it in enumerate(items, start=1):
         title = str(it.get("title", "")).replace("\n", " ").strip()[:140]
-        src = str(it.get("source", "") or "").strip()
+        # source_label(표시 라벨) 우선 — 내부 ID('tech')가 프롬프트/문장에 새지 않게.
+        src = str(it.get("source_label", "") or it.get("source", "") or "").strip()
         summary = str(it.get("summary", "") or "").replace("\n", " ").strip()[:200]
         head = f"[{i}] {title}"
         if src:
