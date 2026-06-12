@@ -39,6 +39,10 @@ jobs:
         chore-branch-cleanup-trigger
         chore-cleanup-run2
         chore-cleanup-run3
+        chore-cleanup-run4
+        fix-onboarding-focus-nav
+        feat-source-labels
+        feat-board-trend-keywords
         style-onboarding-modal-polish
         feat-board-brief-and-fixes
         style-onboarding-fixed-height
