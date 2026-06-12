@@ -221,6 +221,30 @@ _FOCUS_NAV_JS = r"""
     return ["text", "search", "number", "email", "password", "url", "tel"].indexOf(t) >= 0;
   }
 
+  /* blur 로 값 커밋하면 rerun 이 시작돼 DOM 이 통째로 교체된다 — 고정 지연 후
+     1회 클릭은 rerun 도중이면 분리된(detached) 옛 버튼을 눌러 무효가 된다.
+     → 앱이 idle(상단 Running 위젯 없음)이고 버튼이 존재할 때까지 기다렸다가
+     정확히 1번만 클릭. 연타로 중복 진행되지 않게 전역 in-flight 플래그 가드. */
+  function clickWhenIdle(sel) {
+    if (!sel || win.__newsFocusNavClicking) { return; }
+    win.__newsFocusNavClicking = true;
+    var waited = 0;
+    win.setTimeout(function () {       /* blur 커밋이 서버로 떠날 틈 */
+      var t = setInterval(function () {
+        waited += 120;
+        var running = doc.querySelector('[data-testid="stStatusWidget"]');
+        var btn = doc.querySelector(sel);
+        if (!running && btn) {
+          clearInterval(t);
+          win.__newsFocusNavClicking = false;
+          btn.click();
+          return;
+        }
+        if (waited > 6000) { clearInterval(t); win.__newsFocusNavClicking = false; }
+      }, 120);
+    }, 250);
+  }
+
   /* (b) Enter → scope 안 다음 visible 입력으로 이동 (capture-phase keydown).
      주입(rerun·단계 전환)마다 이전 핸들러를 제거하고 재부착한다 — window 마커
      `__newsFocusNav` 가 중복 부착을 막고, iframe 폴백에서 옛 realm 이 파괴돼
@@ -251,16 +275,17 @@ _FOCUS_NAV_JS = r"""
 
     if (e.key !== "Enter") { return; }
 
-    /* (e) Ctrl/⌘+Enter → 어느 입력에서든 단계 진행 버튼 클릭 (값 커밋 후). */
+    /* (e) Ctrl/⌘+Enter → 단계 진행 버튼 클릭 (값 커밋 후).
+       scope(모달) 가 떠 있으면 포커스가 body/버튼 등 어디에 있어도 동작 —
+       rerun 으로 포커스가 날아간 직후에도 단축키가 죽지 않게 한다. */
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && nav.ctrl) {
-      if (!el.closest || !el.closest(nav.sel)) { return; }
+      if (!doc.querySelector(nav.sel)) { return; }
       e.preventDefault();
       e.stopPropagation();
-      if (el.blur) { el.blur(); }
-      win.setTimeout(function () {
-        var btn = doc.querySelector(nav.ctrl);
-        if (btn) { btn.click(); }
-      }, 180);
+      if (el.blur && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
+        el.blur(); /* 입력 중이던 값 커밋 */
+      }
+      clickWhenIdle(nav.ctrl);
       return;
     }
 
@@ -276,10 +301,7 @@ _FOCUS_NAV_JS = r"""
       e.preventDefault();
       e.stopPropagation();
       el.blur();
-      win.setTimeout(function () {
-        var btn = doc.querySelector(nav.submit);
-        if (btn) { btn.click(); }
-      }, 180);
+      clickWhenIdle(nav.submit);
       return;
     }
     e.preventDefault();
@@ -290,22 +312,23 @@ _FOCUS_NAV_JS = r"""
   doc.addEventListener("keydown", onKeydown, true);
 
   /* (a) scope 안 첫 입력 자동 포커스 — 모달/위젯 마운트가 늦을 수 있어 폴링.
-     이미 다른 input/textarea 에 포커스가 있으면 건드리지 않는다(타이핑 보호). */
+     같은 step 의 추가 rerun(보드 브리프 등)이 모달 DOM 을 교체하면 포커스가
+     body 로 날아가는데, 마크업이 같아 스크립트가 재실행되지 않는다 → 성공해도
+     폴링을 즉시 멈추지 않고 5초 동안 "입력에 포커스 없음 → 첫 입력 재포커스"
+     가드를 유지한다. 사용자가 다른 입력에 타이핑 중이면 건드리지 않는다. */
+  if (win.__newsFocusNavTimer) { clearInterval(win.__newsFocusNavTimer); }
   var tries = 0;
-  var timer = setInterval(function () {
+  win.__newsFocusNavTimer = setInterval(function () {
     tries += 1;
     var act = doc.activeElement;
-    if (act && (act.tagName === "INPUT" || act.tagName === "TEXTAREA")) {
-      clearInterval(timer);
-      return;
+    if (!(act && (act.tagName === "INPUT" || act.tagName === "TEXTAREA"))) {
+      var list = inputsIn(SEL);
+      if (list.length) { list[0].focus(); }
     }
-    var list = inputsIn(SEL);
-    if (list.length) {
-      clearInterval(timer);
-      list[0].focus();
-      return;
+    if (tries > 50) {
+      clearInterval(win.__newsFocusNavTimer);
+      win.__newsFocusNavTimer = null;
     }
-    if (tries > 30) { clearInterval(timer); }
   }, 100);
 })();
 </script>
