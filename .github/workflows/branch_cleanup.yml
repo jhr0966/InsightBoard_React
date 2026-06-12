@@ -43,6 +43,8 @@ jobs:
         chore-cleanup-run5
         chore-cleanup-run6
         chore-cleanup-run7
+        chore-cleanup-run8
+        fix-persona-tab-nav
         feat-ux-polish-batch
         fix-chat-suggest-scroll
         fix-chat-panel-layout-context
