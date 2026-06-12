@@ -131,19 +131,17 @@ def test_format_recent_messages_escapes_html():
     assert "&lt;script&gt;" in out
 
 
-def test_format_recent_messages_role_styling_and_reverse_dom_order():
-    """assistant 는 SOLA 라벨, user 는 라벨 없음. DOM 은 최신 메시지부터(역순) —
-    `.side-chat-scroll` 의 column-reverse 와 짝을 이뤄 초기 스크롤이 최신을 보인다."""
+def test_format_recent_messages_role_styling_and_chronological_order():
+    """assistant 는 SOLA 라벨, user 는 라벨 없음. DOM 은 **시간순**(오래된→최신) —
+    스크롤 래퍼(`side_chat_scrollwrap`)가 안내·추천 칩까지 함께 일반 흐름으로 스크롤."""
     msgs = [
         {"role": "user", "content": "Q"},
         {"role": "assistant", "content": "A"},
     ]
     out = chat_panel._format_recent_messages(msgs)
     assert "🤖 SOLA" in out  # assistant prefix
-    # 역순 DOM: 최신(assistant) 가 먼저, user 는 그 뒤
-    assistant_part = out[:out.index("🤖 SOLA") + 20]
-    assert "Q" not in assistant_part
-    assert "Q" in out[out.index("🤖 SOLA"):]
+    # 시간순 DOM: user(Q) 가 먼저, assistant(SOLA) 가 그 뒤
+    assert out.index("Q") < out.index("🤖 SOLA")
 
 
 # ── 추천 질문은 pills(fragment) — 전체 리로드 앵커 아님 ─────

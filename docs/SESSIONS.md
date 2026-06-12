@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-12 — fix: 채팅 추천 질문을 메시지와 함께 스크롤 (`fix-chat-suggest-scroll`)
+
+**무엇을**: 추천 질문(프롬프트 샘플)이 상단 고정이라 메시지가 쌓여도 자리 차지 → 사용자 요청대로 메시지와 함께 스크롤되어 올라가게(고정 해제).
+
+**어떻게**: 안내+추천+대화를 `side_chat_scrollwrap` st.container 로 묶어 통째 스크롤(헤더·입력창만 고정). 함정: st.container 가 stLayoutWrapper(중간)>stVerticalBlock(st-key) 2겹인데 중간 래퍼 flex:0 1 auto 가 grow 못 해 높이 0 collapse → 중간 래퍼 flex:1·min-height:0 + 안쪽 height:100% 두 겹 다 잡음. form margin-top:auto 가 flex 자유공간 선점해 스크롤 0 만들던 것 제거. 메시지 column-reverse→시간순.
+
+**검증**: pytest 962 · Playwright — 추천 칩 스크롤 시 314px 상승·영역 밖 사라짐, 입력창 하단 고정(clientHeight 618).
+
+**다음**: ① 대화 누적 시 최신 메시지 자동 하단 스크롤(JS, 현재는 수동) ② 컨텍스트 미리보기 egress 차단 환경 노출 ③ 인사이트 히트맵 선택 셀 컨텍스트 보강.
+
 ## 2026-06-12 — fix: SOLA 채팅 패널 레이아웃·컨텍스트 전수 보강 (`fix-chat-panel-layout-context`)
 
 **무엇을**: 사용자 지적 3건 ① 패널 상단 비정상 빈 공간 — 제목·예시 위로 ② 추천 예시 한 줄에 하나씩 ③ 입력창 상단 마진 줄여 메시지가 경계까지 ④ 화면에 보이는 수집 내용이 컨텍스트에 누락 → 전수 점검.

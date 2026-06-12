@@ -162,17 +162,16 @@ def _render_quick_action_chips(area_key: str) -> None:
 
 
 def _format_recent_messages(messages: list[dict], cap: int = 6) -> str:
-    """최근 cap 개 메시지를 버블 마크업으로. 스크롤은 바깥 `.side-chat-scroll` 가 담당.
+    """최근 cap 개 메시지를 버블 마크업으로 (시간순, 최신이 아래).
 
     색은 토큰(다크 추종), 버블 폭은 좁은 채팅 컬럼에 맞춰 92% 까지 넓힌다.
-    DOM 은 **최신 메시지부터**(역순) 내보낸다 — `.side-chat-scroll` 이
-    `flex-direction: column-reverse` 라 화면에는 시간순으로 보이면서, 스크롤
-    초기 위치(scrollTop=0)가 곧 **맨 아래(최신)** 가 되는 채팅 표준 패턴.
+    스크롤은 바깥 `.st-key-side_chat_scrollwrap`(안내·추천 칩까지 함께 스크롤)이
+    담당한다 — 추천 질문이 메시지와 함께 위로 밀려 올라가도록(사용자 요청).
     """
     if not messages:
         return ""
     parts = []
-    for m in reversed(messages[-cap:]):
+    for m in messages[-cap:]:
         role = m.get("role", "")
         content = _html.escape((m.get("content", "") or "")[:600])
         content = content.replace("\n", "<br>")
@@ -266,12 +265,15 @@ def _render_side_fragment(persona: Persona, area_key: str) -> None:
         st.session_state[f"{input_key}__pills"] = None
     _consume_prefill(input_key)         # 레거시 ?sola_prefill= 북마크 URL 호환
 
-    # 안내 카드(상단)
-    st.html('<div class="side-chat-top">' + _intro_card_html(area_key) + '</div>')
-    # 추천 질문 칩 — 안내 바로 밑(상단). 클릭 시 하단 입력창에 텍스트만 채움.
-    _render_chat_suggestions(area_key, input_key)
-    # 대화 스크롤(중단) — 메시지만
-    st.html('<div class="side-chat-scroll">' + _format_recent_messages(messages) + '</div>')
+    # 스크롤 래퍼 — 안내 카드 + 추천 질문 칩 + 대화를 **함께** 스크롤(헤더·입력창만 고정).
+    # 직전엔 안내·추천 칩이 상단 고정 flex item 이라 메시지가 쌓여도 자리를 차지했다 →
+    # 사용자 요청대로 추천 질문이 메시지와 함께 위로 밀려 스크롤되도록 한 컨테이너로 묶는다.
+    with st.container(key="side_chat_scrollwrap"):
+        st.html('<div class="side-chat-top">' + _intro_card_html(area_key) + '</div>')
+        # 추천 질문 칩 — 안내 바로 밑. 클릭 시 즉시 전송.
+        _render_chat_suggestions(area_key, input_key)
+        # 대화 — 메시지(시간순, 최신이 아래). 스크롤은 바깥 래퍼가 담당.
+        st.html('<div class="side-chat-scroll">' + _format_recent_messages(messages) + '</div>')
     # 입력창 + 보내기 — 하단 고정(CSS margin-top:auto)
     _render_chat_input(input_key, safe_area, area_key)
 
