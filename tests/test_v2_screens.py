@@ -36,10 +36,10 @@ def test_board_empty_state_helpers_dont_raise():
             if hasattr(fn, "clear"):
                 fn.clear()
 
-        assert "기회" in board_v2._opportunities_html() or "data" in board_v2._opportunities_html().lower()
+        assert "제안" in board_v2._opportunities_html() or "data" in board_v2._opportunities_html().lower()
         assert "뉴스" in board_v2._board_stories_html()
         brief = board_v2._brief_html()
-        assert set(brief.keys()) == {"summary", "list", "cites", "cta", "tts_btn"}
+        assert set(brief.keys()) == {"summary", "list", "cites", "cta"}
         assert brief["cta"] == ""  # 빈 데이터에선 CTA 도 비어있음
         trend = board_v2._board_trend()
         assert trend["empty"] and not trend["svg_paths"]
@@ -297,7 +297,7 @@ def test_sola_composer_prefill_from_opp():
     try:
         prefill, placeholder, pins = sola_workshop_v2._composer_prefill()
         assert "도장1팀 · 비전 검사" in prefill
-        assert "자동화 기회" in prefill
+        assert "자동화 제안" in prefill
         assert "🎯" in pins
         assert "도장1팀" in pins
     finally:

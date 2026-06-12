@@ -60,7 +60,7 @@ def test_board_chat_context_includes_opportunities_and_matrix_top():
          patch.object(board_v2, "_board_kpis", return_value={"collect": 0, "match": 0, "opp": 0, "pending": 0}):
         ctx = board_v2.chat_context_block(Persona())
 
-    assert "자동화 기회 top 4" in ctx
+    assert "자동화 제안 top 4" in ctx
     assert "도장 · 비전 검사" in ctx
     assert "점수 95" in ctx
     assert "AI 도막 검사" in ctx

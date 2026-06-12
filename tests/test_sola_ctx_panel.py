@@ -28,7 +28,7 @@ def test_ctx_archive_summary_empty_returns_zero_and_friendly_card(isolated_bookm
     cnt, html = sw._ctx_archive_summary()
     assert cnt == 0
     assert "아직 제안서가 없어요" in html
-    assert "보드의 자동화 기회 카드" in html  # 진입 경로 안내
+    assert "보드의 자동화 제안 카드" in html  # 진입 경로 안내
 
 
 def test_ctx_archive_summary_with_pending_shows_count_and_preview(isolated_bookmarks):

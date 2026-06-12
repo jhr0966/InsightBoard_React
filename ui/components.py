@@ -195,7 +195,6 @@ _FOCUS_NAV_JS = r"""
   var SEL = %(sel)s;
   var SUBMIT = %(submit)s;  /* 마지막 입력 Enter 시 클릭할 버튼 selector (null=비활성) */
   var CTRL = %(ctrl)s;      /* Ctrl/⌘+Enter 시 클릭할 버튼 selector (null=비활성) */
-  var CHIPS = %(chips)s;    /* 콤마→Enter 변환할 태그 입력 scope selector (null=비활성) */
   /* st.html(unsafe_allow_javascript=True) → 메인 문서 realm 에서 실행.
      components.v1.html 폴백(iframe) → window.parent 로 같은 문서에 접근. */
   var doc, win;
@@ -258,21 +257,6 @@ _FOCUS_NAV_JS = r"""
     var el = e.target;
     if (!nav || !el) { return; }
 
-    /* (c) 태그 입력(BaseWeb select + 새 옵션 허용)에서 콤마 → Enter 변환:
-       콤마를 누르면 입력 중인 키워드가 즉시 칩(버블)으로 등록되게 한다.
-       값이 비어있으면 그대로 두어 빈 칩 생성을 막는다. */
-    if (e.key === "," && nav.chips && el.tagName === "INPUT"
-        && el.closest(nav.chips) && el.closest('[data-baseweb="select"]')
-        && el.value && el.value.trim()) {
-      e.preventDefault();
-      e.stopPropagation();
-      el.dispatchEvent(new KeyboardEvent("keydown", {
-        key: "Enter", code: "Enter", keyCode: 13, which: 13,
-        bubbles: true, cancelable: true,
-      }));
-      return;
-    }
-
     if (e.key !== "Enter") { return; }
 
     /* (e) Ctrl/⌘+Enter → 단계 진행 버튼 클릭 (값 커밋 후).
@@ -308,7 +292,7 @@ _FOCUS_NAV_JS = r"""
     e.stopPropagation();
     list[i + 1].focus(); /* 현재 입력 blur → Streamlit 값 커밋 자연 발생 */
   }
-  win.__newsFocusNav = { sel: SEL, submit: SUBMIT, ctrl: CTRL, chips: CHIPS, fn: onKeydown };
+  win.__newsFocusNav = { sel: SEL, submit: SUBMIT, ctrl: CTRL, fn: onKeydown };
   doc.addEventListener("keydown", onKeydown, true);
 
   /* (a) scope 안 첫 입력 자동 포커스 — 모달/위젯 마운트가 늦을 수 있어 폴링.
@@ -341,7 +325,6 @@ def inject_focus_nav(
     nonce: str = "",
     submit_selector: str = "",
     ctrl_submit_selector: str = "",
-    chips_selector: str = "",
 ) -> None:
     """입력 폼 포커스 내비게이션 주입 — ① scope 첫 input 자동 포커스 ② Enter→다음 입력.
 
@@ -360,9 +343,6 @@ def inject_focus_nav(
       후 해당 버튼을 클릭한다 — 온보딩 "이름 입력 후 Enter = 다음" UX.
     - `ctrl_submit_selector`: 지정 시 scope 안 **어느 입력에서든** Ctrl/⌘+Enter →
       blur(값 커밋) 후 해당 버튼 클릭 — 온보딩 "Ctrl+Enter = 다음/완료" UX.
-    - `chips_selector`: 지정 시 그 scope 안 태그 입력(multiselect
-      `accept_new_options`)에서 콤마 입력 → Enter 로 변환해 키워드를 즉시
-      칩(버블)으로 등록한다.
     - AppTest/헤드리스 등 미지원 환경에서도 본 렌더가 죽지 않게 가드.
     """
     import json as _json
@@ -371,7 +351,6 @@ def inject_focus_nav(
         "sel": _json.dumps(scope_selector),
         "submit": _json.dumps(submit_selector or None),
         "ctrl": _json.dumps(ctrl_submit_selector or None),
-        "chips": _json.dumps(chips_selector or None),
         "nonce": _html.escape(str(nonce)),
     }
     try:

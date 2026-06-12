@@ -72,7 +72,7 @@ def _ctx_archive_summary() -> tuple[int, str]:
             '<div style="padding: 14px 12px; font-size: 12.5px; color: var(--text-muted);'
             ' line-height: 1.5;">'
             '아직 제안서가 없어요.<br>'
-            '<span style="font-size:11.5px;">보드의 자동화 기회 카드에서 SOLA 와 검토 → 채택하면 여기 모입니다.</span>'
+            '<span style="font-size:11.5px;">보드의 자동화 제안 카드에서 SOLA 와 검토 → 채택하면 여기 모입니다.</span>'
             '</div>'
         )
         return 0, body
@@ -183,7 +183,7 @@ def chat_context_block(persona: Persona) -> str:
 
 _HANDOFF_LABELS: dict[str, tuple[str, str]] = {
     "brief": ("📊 보드 브리핑에서 인계됨", "3건의 뉴스를 컨텍스트로 사용"),
-    "opp": ("🎯 자동화 기회 카드에서 인계됨", "이 부서·공정으로 제안서 초안 시작"),
+    "opp": ("🎯 자동화 제안 카드에서 인계됨", "이 부서·공정으로 제안서 초안 시작"),
     "matrix": ("🧭 기회 매트릭스 1위에서 인계됨", "이 부서·공정으로 제안서 초안 시작"),
     "ia_map": ("🔎 인사이트 공정 매핑 카드에서 인계됨", "이 공정 상세 — 매칭 뉴스·작업 컨텍스트"),
     "edit": ("📦 산출물 보관함에서 인계됨", "기존 제안서를 이어서 수정"),
@@ -333,7 +333,7 @@ def _composer_prefill() -> tuple[str, str, str]:
             return prefill, "추가로 조정할 점이 있다면 알려주세요 — 일정·예산·KPI 등", pins
 
     if from_kind in ("opp", "matrix") and target:
-        verb = "자동화 기회" if from_kind == "opp" else "매트릭스 1위"
+        verb = "자동화 제안" if from_kind == "opp" else "매트릭스 1위"
         prefill = (
             f"{target} {verb}에 대한 제안서 초안을 만들어줘.\n"
             f"우리 페르소나 컨텍스트로 ROI · 일정 · 위험요인 포함."
@@ -341,7 +341,7 @@ def _composer_prefill() -> tuple[str, str, str]:
         pins = (
             '<span class="ws-cmp-pin">📎 컨텍스트 첨부됨</span>'
             f'<span class="ws-cmp-pin-list">'
-            f'<span class="ws-pin-mini">{"🎯 자동화 기회" if from_kind == "opp" else "🧭 매트릭스"}</span>'
+            f'<span class="ws-pin-mini">{"🎯 자동화 제안" if from_kind == "opp" else "🧭 매트릭스"}</span>'
             f'<span class="ws-pin-mini">{_html.escape(target)[:30]}</span>'
             f'<span class="ws-pin-mini">페르소나</span>'
             f'</span>'
@@ -1007,7 +1007,7 @@ def _consume_prefill_ask_if_any() -> None:
         from_kind = st.query_params.get("from", "")
         seed_title = {
             "brief": "보드 브리핑 검토",
-            "opp": "자동화 기회 검토",
+            "opp": "자동화 제안 검토",
             "matrix": "매트릭스 후보 검토",
             "ia_map": "공정 매핑 분석",
             "edit": "제안서 이어서 수정",

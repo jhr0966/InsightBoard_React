@@ -35,70 +35,72 @@ _SOLA_AREA = "🤖 SOLA 작업실"
 
 # ── area 별 안내 & 추천 질문 ─────────────────────────────────
 
+# 추천 질문 = "이 화면에서 SOLA 를 이렇게 쓰는 겁니다" 시연 — 화면 데이터를 실제로
+# 읽어야 답할 수 있는 구체적 행동(요약·비교·보고서 초안·다음 단계)으로 구성한다.
 _AREA_INTROS: dict[str, dict[str, list[str] | str]] = {
     "📊 오늘의 보드": {
         "headline": "📊 오늘의 보드 — SOLA 가 이 화면 데이터를 알고 있어요",
         "suggestions": [
-            "오늘 KPI 중 가장 눈에 띄는 변화는?",
-            "자동화 기회 top 4 중 우선 PoC 할 만한 1건은?",
-            "트렌드 키워드에서 우리 부서 관련 인사이트는?",
-            "탑 스토리 3건 요약해줘",
-            "매트릭스 1위 후보의 위험요인은?",
+            "오늘 브리핑 5건 중 우리 팀이 가장 먼저 봐야 할 1건과 그 이유는?",
+            "자동화 제안 1위를 PoC 로 시작한다면 다음 주 할 일 3가지 뽑아줘",
+            "트렌드에서 '신규' 표시된 키워드만 골라 왜 떴는지 설명해줘",
+            "오늘 화면 내용으로 팀장 보고용 3줄 요약 써줘",
+            "매트릭스 우상단 후보의 기대 효과와 리스크를 표로 비교해줘",
         ],
     },
     "🗞 뉴스 수집": {
-        "headline": "🗞 뉴스 수집 — 수집 상태·뉴스 라이브러리를 알고 있어요",
+        "headline": "🗞 뉴스 수집 — 지금 보이는 기사·수집 상태를 알고 있어요",
         "suggestions": [
-            "최근 14일 수집 추이 분석",
-            "출처별 분포에서 비정상 신호 있어?",
-            "오늘 수집된 뉴스 중 우리 부서 관련만 3건 추천",
-            "활성 출처가 줄어든 이유는?",
-            "키워드 보강 추천",
+            "지금 화면에 보이는 기사들 핵심만 3줄로 요약해줘",
+            "오늘 수집분에서 우리 부서가 참고할 기사 3건 골라 이유와 함께",
+            "출처별 7일 수집량을 보고 수집이 줄어든 출처와 원인 추정해줘",
+            "지금 키워드에 추가하면 좋을 검색어 3개를 근거와 함께 추천해줘",
+            "이번 주 수집 현황을 주간 리포트 초안으로 정리해줘",
         ],
     },
     "📋 작업 정의": {
         "headline": "📋 작업 정의 — 등록된 작업 정의·부서 분포를 알고 있어요",
         "suggestions": [
-            "등록된 작업 정의 부서별 분포 요약",
-            "우리 부서 작업 정의 중 자동화 후보는?",
-            "작업 정의가 비어 있는 공정 찾아줘",
-            "엑셀 업로드 시 필요한 컬럼 알려줘",
-            "최근 추가된 작업 정의 요약",
+            "부서별 작업 정의 분포에서 빈 곳(미등록 공정)을 찾아줘",
+            "등록된 작업 중 자동화 효과가 클 것 같은 3건과 이유는?",
+            "최근 추가된 작업 정의를 한 줄씩 요약해줘",
+            "작업 정의를 더 채우려면 어떤 항목부터 보강해야 할까?",
+            "엑셀 업로드 형식(필수 컬럼)을 알려줘",
         ],
     },
     "🔎 인사이트 분석": {
         "headline": "🔎 인사이트 분석 — 트렌드·매트릭스·공정 매핑을 알고 있어요",
         "suggestions": [
-            "트렌드 top 6 키워드의 8주 추이 해석",
-            "신규 등장 키워드가 우리 작업에 의미하는 바",
-            "매트릭스 top 3 PoC 후보 비교",
-            "공정 매핑 카드 1위의 다음 단계",
-            "관심 키워드와 트렌드의 교집합",
+            "트렌드 top 키워드의 추이를 해석하고 우리 작업과 연결해줘",
+            "신규 등장 키워드가 어떤 공정에 영향을 줄지 짚어줘",
+            "매트릭스 top 3 후보를 효과·난이도·근거 뉴스로 비교해줘",
+            "히트맵에서 가장 뜨거운 공정×기술 조합의 다음 단계는?",
+            "이 화면 내용으로 월간 기술 동향 보고 초안 써줘",
         ],
     },
     "🤖 SOLA 작업실": {
         "headline": "🤖 SOLA 작업실 — 이전 대화 thread 모두 컨텍스트에 있어요",
         "suggestions": [
-            "이전 thread 들 요약",
-            "어떤 주제로 다시 시작할까?",
-            "이번 주 한 SOLA 작업 정리",
+            "지금 작업 중인 산출물의 약한 부분을 지적하고 보강안 줘",
+            "이 제안서를 임원 보고용 1장으로 압축해줘",
+            "이전 thread 에서 결정된 사항만 모아 정리해줘",
         ],
     },
     "📦 산출물 보관함": {
         "headline": "📦 산출물 보관함 — 채택·대기·기각 카드를 알고 있어요",
         "suggestions": [
-            "채택된 제안서들의 공통 성공 요인",
-            "대기 중 어떤 걸 먼저 검토해야 해?",
-            "기각된 사유 패턴 분석",
-            "채택률 개선 방법",
+            "대기 중인 제안서를 검토 우선순위 순으로 정렬하고 이유 알려줘",
+            "채택된 제안서들의 공통 성공 요인을 뽑아줘",
+            "기각 사유 패턴을 분석해서 다음 제안서에 반영할 점 알려줘",
+            "이번 달 채택/기각 현황을 한 문단으로 보고해줘",
         ],
     },
     "페르소나 설정": {
         "headline": "👤 페르소나 설정 — 더 좋은 컨텍스트 설정을 도와드려요",
         "suggestions": [
-            "내 부서·직무에 맞는 관심 공정 추천",
-            "어떤 키워드를 추가하면 좋을까?",
-            "유사 페르소나의 활용 사례",
+            "내 부서·직무 기준으로 관심 공정을 추천해줘",
+            "지금 설정에서 비어 있는 항목과 채우면 좋아지는 점은?",
+            "뉴스가 더 잘 잡히도록 관심 키워드 5개 제안해줘",
         ],
     },
 }
@@ -274,8 +276,57 @@ def _render_side_fragment(persona: Persona, area_key: str) -> None:
         _render_chat_suggestions(area_key, input_key)
         # 대화 — 메시지(시간순, 최신이 아래). 스크롤은 바깥 래퍼가 담당.
         st.html('<div class="side-chat-scroll">' + _format_recent_messages(messages) + '</div>')
+    # 새 메시지 도착 시 스크롤 래퍼를 최하단으로 — 시그니처(개수+마지막 내용)가
+    # 바뀔 때만 스크립트가 재실행되어, 사용자가 위로 올려 읽는 중에는 건드리지 않는다.
+    _inject_autoscroll(messages)
     # 입력창 + 보내기 — 하단 고정(CSS margin-top:auto)
     _render_chat_input(input_key, safe_area, area_key)
+
+
+def _inject_autoscroll(messages: list[dict]) -> None:
+    """채팅에 새 내용이 추가되면 스크롤 래퍼를 **자동으로 최하단**으로 내린다.
+
+    - nonce = 메시지 개수 + 마지막 내용 해시 → 메시지가 바뀐 rerun 에서만 마크업이
+      달라져 스크립트가 재실행된다(같은 내용 재렌더에선 스크롤 위치 보존).
+    - DOM 교체 직후엔 래퍼가 아직 안 자랐을 수 있어 짧게 폴링(80ms × 10회).
+    - `components.inject_focus_nav` 와 동일 실행 경로: st.html(unsafe_allow_javascript)
+      → 구버전 Streamlit 은 iframe 폴백(window.parent). 실패는 무해(베스트에포트).
+      스크립트는 정적 문자열 + 코드 내 nonce 만 포함 — 사용자/외부 데이터 미포함(XSS 무관).
+    """
+    if not messages:
+        return
+    last_sig = hash(str(messages[-1].get("content", ""))[:80]) & 0xFFFF
+    nonce = f"{len(messages)}-{last_sig:x}"
+    markup = (
+        "<script>\n"
+        f"/* chat-autoscroll {nonce} */\n"
+        "(function () {\n"
+        "  var doc;\n"
+        "  try { doc = (window.frameElement ? window.parent : window).document; }\n"
+        "  catch (err) { return; }\n"
+        "  var tries = 0;\n"
+        "  var t = setInterval(function () {\n"
+        "    tries += 1;\n"
+        "    var w = doc.querySelector('[class*=\"st-key-side_chat_scrollwrap\"]');\n"
+        "    if (w && w.scrollHeight > w.clientHeight) {\n"
+        "      w.scrollTop = w.scrollHeight;\n"
+        "      clearInterval(t);\n"
+        "      return;\n"
+        "    }\n"
+        "    if (tries > 10) { clearInterval(t); }\n"
+        "  }, 80);\n"
+        "})();\n"
+        "</script>"
+    )
+    try:
+        try:
+            st.html(markup, unsafe_allow_javascript=True)
+        except TypeError:  # Streamlit <1.58 — st.html 에 JS 플래그 없음
+            import streamlit.components.v1 as _stc
+
+            _stc.html(markup, height=0)
+    except Exception:  # noqa: BLE001 — 스크롤 보조 실패가 채팅을 깨면 안 됨
+        pass
 
 
 def _render_chat_suggestions(area_key: str, input_key: str) -> None:
