@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (온보딩 자동 포커스·Ctrl+Enter 실환경 레이스 해소) — `fix-onboarding-focus-nav`
+- **자동 포커스 재포커스 가드**(`ui/components.py` focus-nav): 포커스 성공 시 폴링을 즉시 멈추던 것 → 같은 step 의 추가 rerun(보드 브리프 등)이 모달 DOM 을 교체해 포커스가 body 로 날아가도(마크업 동일 → 스크립트 재실행 없음) **5초 동안 "입력에 포커스 없으면 첫 입력 재포커스"** 가드 유지. [시작하기] 직후 이름 입력 커서 활성화가 실환경에서도 안정 동작.
+- **Ctrl/⌘+Enter 전역화**: 핸들러가 `e.target` 이 모달 안 요소일 때만 동작 → 포커스가 body 로 날아간 직후엔 단축키가 죽었음 → **모달이 떠 있으면 포커스 위치 무관**하게 동작(입력이면 blur 로 값 커밋 후 진행).
+- **클릭 레이스 해소(`clickWhenIdle`)**: blur 커밋 rerun 도중 고정 180ms 후 1회 클릭 → detached 옛 버튼을 눌러 무효되던 것 → 앱 idle(`stStatusWidget` 없음)+버튼 존재까지 대기 후 정확히 1회 클릭(연타 중복 진행은 in-flight 플래그로 차단, 최대 6초). Enter→다음 도 동일 경로.
+- 검증: pytest 943 · Playwright 8/8 — 시작하기 직후 포커스, 강탈 후 재포커스, body 포커스 Ctrl+Enter 진행, 입력 포커스 Ctrl+Enter, Enter 진행, 4단계 Ctrl+Enter=완료.
+
 ### Changed (오늘의 보드 — 아침 7분 재설계·트렌드 불용어·채팅 입력 고정) — `feat-board-brief-and-fixes`
 - **채팅 입력창·보내기 버튼 하단 고정 + 메시지 겹침 해소**(`assets/v2/streamlit-overrides.css`, `ui/chat_panel.py`): 메시지가 누적되면 ① 입력 form 이 밀려 사라지고 ② 버블이 입력창 위로 겹치던 것 → 스크롤 컨테이너를 flex:1·min-height:140px·**overflow:hidden**, height:100% 체인을 stHtml 까지 연결(끊겨서 버블이 컨테이너 밖으로 흘렀음 — 실측 223px 침범 → 0px), 추천 칩 영역은 공간 부족 시 자체 스크롤로 축소. 메시지 DOM 을 역순 + `.side-chat-scroll` `column-reverse` 로 바꿔 **초기 스크롤이 항상 최신 메시지(하단)** 를 보여준다(채팅 표준 패턴). 실측: 6건 전송 후에도 입력창·보내기 위치 불변, 침범 0px, 최신 메시지 노출.
 - **트렌드·키워드 불용어 필터**(`store/trends.py` `_is_meaningful_keyword`/`_KEYWORD_STOPWORDS`): '것으로'·'등'·'관련'·'대한' 등 조사·문법 조각, 한 글자 한글, 순수 기호를 키워드 집계에서 제외 — 트렌드 차트(보드·인사이트)와 보드 ⑦ 키워드 관리가 공유하는 `_all_keyword_tokens` 한 곳에서 거른다(의미 없는 키워드로 그래프가 어지럽던 문제 해소).
