@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-12 — fix: SOLA 채팅 패널 레이아웃·컨텍스트 전수 보강 (`fix-chat-panel-layout-context`)
+
+**무엇을**: 사용자 지적 3건 ① 패널 상단 비정상 빈 공간 — 제목·예시 위로 ② 추천 예시 한 줄에 하나씩 ③ 입력창 상단 마진 줄여 메시지가 경계까지 ④ 화면에 보이는 수집 내용이 컨텍스트에 누락 → 전수 점검.
+
+**어떻게**: ① fragment 래퍼(stLayoutWrapper)에 form-하단고정 룰의 margin-top:auto(157px)가 새던 것을 `:has(.side-chat-marker)`로 분리해 height:100%+flex-column 강제, form 룰은 `:not(:has(marker))` ② pills radiogroup column+버튼 100% ③ form margin-top:0·gap 축소 ④ `_collect_live_view_context`(캐시 밖)로 카드뷰 필터+보이는 카드 8건 첨부, 출처 라벨화, board/insights 트렌드 _delta_info.
+
+**검증**: pytest 962(신규 1) · Playwright — 빈공간 157→13px, 추천 세로 1열, 뉴스수집 동일. LLM E2E 는 egress 차단(groq)으로 응답 불가 — 컨텍스트 생성·첨부는 단위로 보장.
+
+**다음**: ① 작업정의·인사이트 화면도 '현재 보이는 선택' 컨텍스트 보강(히트맵 선택 셀 등) ② 채팅 preview 모드를 egress 차단 환경에서도 노출(현재 일반 Exception 이라 컨텍스트 미리보기 안 뜸) ③ 매트릭스 빈 상태 행동 유도.
+
 ## 2026-06-12 — feat: 보드 재설계 — 적응형 트렌드·키워드 설정 모달·한눈요약 (`feat-board-trend-keywords`)
 
 **무엇을**: 사용자 지적 3건 ① 트렌드 전부 +100% — 쓰임새 재검토 ② 칩+별도 × 버블·추가 버튼 이상 → 설정 버튼/창으로 ③ 한눈요약이 무슨 말인지 모르겠음(문장 조각·세로 흩어짐).

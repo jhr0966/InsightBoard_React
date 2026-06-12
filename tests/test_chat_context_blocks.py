@@ -144,6 +144,43 @@ def test_data_mgmt_chat_context_includes_news_library_and_sources():
     assert "AI Times" in ctx
 
 
+def test_data_mgmt_chat_context_includes_live_cardview_filter_and_cards():
+    """사용자가 보고 있는 카드뷰 필터(대분류·출처칩·검색어)와 그 카드들이 컨텍스트에 포함."""
+    from ui import data_management_v2 as dm
+    import streamlit as st
+
+    dm._chat_context_collect_cached.clear()
+    dm._sc_browse_records.clear()
+    browse = pd.DataFrame([
+        {"title": "네이버 용접 로봇 기사", "source": "naver", "press": "",
+         "summary": "용접 자동화 본문", "link": "n1",
+         "collected_at": "2026-05-29T08:00:00+00:00"},
+        {"title": "AI Times 비전 검사", "source": "tech", "press": "AI Times",
+         "summary": "비전 검사 본문", "link": "t1",
+         "collected_at": "2026-05-29T07:00:00+00:00"},
+    ])
+    # 사용자가 '키워드 뉴스 > 네이버 뉴스' 탭을 보고 있는 상태
+    st.session_state["sc_browse_mode"] = "cards"
+    st.session_state["sc_news_cat"] = "keyword"
+    st.session_state["sc_chan_keyword"] = "네이버 뉴스"
+    st.session_state[dm._NEWS_SEARCH_KEY] = ""
+    try:
+        with patch.object(dm, "_dm_stats", return_value={
+            "active_sources": "—", "today_count": "—", "total_chunks": "—", "last_update": "—"}), \
+             patch.object(dm._news_db, "load_news_for_days", return_value=browse), \
+             patch.object(dm._news_db, "load_all_today", return_value=browse):
+            ctx = dm.chat_context_block_collect(Persona())
+    finally:
+        for k in ("sc_browse_mode", "sc_news_cat", "sc_chan_keyword", dm._NEWS_SEARCH_KEY):
+            st.session_state.pop(k, None)
+    assert "지금 화면에 보이는 뉴스" in ctx
+    # live 섹션만 분리 — 필터 무관 '뉴스 라이브러리'(최근 6건)와 섞이지 않게 검증
+    live = ctx.split("--- 지금 화면에 보이는 뉴스(현재 필터) ---", 1)[1]
+    assert "네이버 뉴스" in live             # 선택된 출처칩
+    assert "네이버 용접 로봇 기사" in live    # 그 필터로 보이는 카드
+    assert "AI Times 비전 검사" not in live   # 포탈 카드는 키워드 탭에서 제외
+
+
 # ── 인사이트 분석 ────────────────────────────────────────────
 
 def test_insights_chat_context_includes_screen_marker_and_top_keywords():
