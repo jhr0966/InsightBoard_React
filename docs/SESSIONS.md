@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-12 — fix: 페르소나 설정 Tab 내비 + 'No results' 팝업 숨김 (`fix-persona-tab-nav`)
+
+**무엇을**: ① 이름 입력 후 Tab 한 번에 팀→부서→직무 순서로 이동 ② 키워드 입력 클릭 시 뜨는 'No results' 드롭다운 제거.
+
+**어떻게**: ① st.columns DOM 이 컬럼 우선이라 (이름,부서|팀,직무)에서 Tab 이 이름→부서였음 → 행 단위 columns 재배치 + focus-nav JS 에 Tab/Shift+Tab 입력 간 점프 핸들러(중간 focusable 건너뜀, selectbox combobox 포함, 경계 기본 동작) ② 숨김 CSS 의 :has([role=listbox]) 한정 탓에 listbox 없는 빈 패널이 샜음 → popover 전체 숨김.
+
+**검증**: pytest 953 · Playwright 6/6 (Tab 시퀀스 실측 px_name→px_team→px_dept→px_job, popover 0, Enter 칩 등록 유지).
+
+**다음**: ① 채팅 LLM 차단 환경 컨텍스트 미리보기 ② 매트릭스 빈 상태 행동 유도 ③ 히트맵 선택 셀 컨텍스트.
+
 ## 2026-06-12 — feat: UX 일괄 개선 — 페르소나 키워드·채팅 자동스크롤·보드 정리 (`feat-ux-polish-batch`)
 
 **무엇을**: ① 온보딩 키워드 콤마 미동작 → Enter 안내 + 'Add' 드롭다운 숨김 + 단계 포커스 재검증 ② 채팅 새 메시지 자동 최하단 + 추천 프롬프트 시연형 교체 ③ 보드 TTS 제거 · '자동화 기회'→'자동화 제안' 전면 · 트렌드 섹션을 매트릭스 아래로 · 전 섹션 타이틀 밑 설명.

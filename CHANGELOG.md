@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (페르소나 설정 — Tab 한 번에 다음 입력 + 'No results' 팝업 숨김) — `fix-persona-tab-nav`
+- **Tab 순서 이름→팀→부서→직무**(`ui/persona_page.py`, `ui/components.py`): ① 기본 정보 2컬럼이 DOM 컬럼 우선(이름,부서|팀,직무)이라 Tab 이 이름→부서로 건너뛰던 것 → 행 단위 columns(이름|팀 / 부서|직무)로 재배치(시각 동일, DOM 순서 교정) ② focus-nav JS 에 **Tab/Shift+Tab 핸들러** 추가 — scope 안 입력(selectbox combobox 포함)끼리만 이동해 사이의 버튼·도움말 등 다른 focusable 을 건너뛴다(경계에선 기본 동작). 온보딩 모달에도 동일 적용.
+- **키워드 입력 'No results' 팝업 숨김**(`streamlit-overrides.css`): 직전 숨김 CSS 가 `:has([role="listbox"])` 한정이라 옵션이 없을 때 뜨는 **빈 'No results' 패널**(listbox 없음)이 새어 나왔다 → 키워드 입력 포커스 동안 popover 전체 숨김으로 확대. Enter 칩 등록은 그대로 동작(실측).
+- 검증: pytest **953 passed** · Playwright 6/6 — Tab 시퀀스 px_name→px_team→px_dept→px_job · Shift+Tab 역방향 · 클릭/타이핑 중 popover 0 · Enter 칩 등록.
+
 ### Changed (UX 일괄 개선 — 페르소나 키워드·채팅 자동스크롤·보드 정리) — `feat-ux-polish-batch`
 - **[페르소나] 키워드 입력 정리**(`ui/onboarding.py`, `ui/persona_page.py`, `ui/components.py`, `streamlit-overrides.css`): ① 동작하지 않던 콤마→칩 변환 기능·안내를 제거하고 라벨/placeholder/help 를 "입력 후 Enter로 하나씩 등록" 으로 통일 ② 타이핑마다 뜨던 BaseWeb 'Add …' 드롭다운을 해당 입력 포커스 동안 숨김(온보딩 onb_keywords·페르소나 px_keywords·키워드 설정 kw_set_user — Enter 등록은 가상 포커스로 그대로 동작, 실측) ③ 단계별 자동 포커스 재검증(1·2·3단계 Playwright 통과).
 - **[SOLA 채팅] 새 메시지 자동 최하단 스크롤**(`ui/chat_panel.py` `_inject_autoscroll`): 메시지 개수+마지막 내용 시그니처가 바뀐 rerun 에서만 스크립트가 재실행되어 스크롤 래퍼를 최하단으로 — 읽는 중 재렌더에는 위치 보존. 실측 scrollTop=max.

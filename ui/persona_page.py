@@ -300,27 +300,16 @@ def render() -> None:
         )
 
     # ── ① 기본 정보 ──────────────────────────────────────────
+    # 필드를 **행 단위**(이름|팀 / 부서|직무)로 배치 — st.columns 는 DOM 이 컬럼
+    # 우선이라 (이름, 부서 | 팀, 직무) 로 두면 Tab 이 이름→부서로 건너뛴다(사용자
+    # 보고). 행마다 columns 를 새로 열면 시각은 같고 DOM·Tab 순서가
+    # 이름→팀→부서→직무 가 된다.
     _section_label("기본 정보")
     with st.container(border=True):
-        c1, c2 = st.columns(2)
-        with c1:
+        r1c1, r1c2 = st.columns(2)
+        with r1c1:
             st.text_input("이름", value=persona.name, key="px_name", placeholder="예: 홍길동")
-            if _has_roadmap_options(dept_opts):
-                st.selectbox(
-                    "부서",
-                    dept_opts,
-                    index=dept_opts.index(persona.dept) if persona.dept in dept_opts else 0,
-                    key="px_dept",
-                )
-            else:
-                st.text_input(
-                    "부서",
-                    value=persona.dept,
-                    key="px_dept",
-                    placeholder="예: 생산기술팀, 자동화기술팀",
-                    help="작업 정의 데이터를 업로드하면 이 자리에 부서 추천 목록이 나타납니다.",
-                )
-        with c2:
+        with r1c2:
             if _has_roadmap_options(team_opts):
                 st.selectbox(
                     "팀",
@@ -336,6 +325,24 @@ def render() -> None:
                     placeholder="예: 자동화 1팀",
                     help="작업 정의 데이터를 업로드하면 이 자리에 팀 추천 목록이 나타납니다.",
                 )
+        r2c1, r2c2 = st.columns(2)
+        with r2c1:
+            if _has_roadmap_options(dept_opts):
+                st.selectbox(
+                    "부서",
+                    dept_opts,
+                    index=dept_opts.index(persona.dept) if persona.dept in dept_opts else 0,
+                    key="px_dept",
+                )
+            else:
+                st.text_input(
+                    "부서",
+                    value=persona.dept,
+                    key="px_dept",
+                    placeholder="예: 생산기술팀, 자동화기술팀",
+                    help="작업 정의 데이터를 업로드하면 이 자리에 부서 추천 목록이 나타납니다.",
+                )
+        with r2c2:
             st.text_input(
                 "직무",
                 value=persona.job,
