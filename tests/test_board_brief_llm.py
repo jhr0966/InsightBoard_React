@@ -31,9 +31,10 @@ def test_brief_falls_back_when_llm_not_configured():
     items = [{"title": "AI 비전 검사", "source": "naver"}]
     with patch("sola.board_brief.chat", side_effect=LLMNotConfigured("no key")):
         out = brief(items, persona_label="도장1팀")
-    # 룰 fallback — "N건 두드러집니다"
+    # 룰 fallback — 헤드라인("뉴스 N건") + 상위 기사 불릿
     assert "1건" in out
-    assert "두드러집니다" in out
+    assert "도장1팀" in out
+    assert "- AI 비전 검사" in out
 
 
 def test_brief_falls_back_on_exception():
@@ -42,7 +43,7 @@ def test_brief_falls_back_on_exception():
     with patch("sola.board_brief.chat", side_effect=RuntimeError("net")):
         out = brief(items, persona_label="L")
     # 일반 예외도 fallback
-    assert "두드러집니다" in out
+    assert "1건" in out and "- X" in out
 
 
 def test_brief_uses_llm_response_when_available():
@@ -93,7 +94,7 @@ def test_brief_empty_llm_response_falls_back():
     items = [{"title": "T", "source": "S"}]
     with patch("sola.board_brief.chat", return_value="   "):
         out = brief(items, persona_label="L")
-    assert "두드러집니다" in out
+    assert "1건" in out and "- T" in out
 
 
 # ── _md_bold_to_html (마크다운 **굵게** → <b>) ─────────────
