@@ -599,7 +599,8 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
         return {
             "summary": '<div class="db-brief-greet">'
                        '<span class="db-brief-greet-tag">요약</span>'
-                       '아직 수집된 뉴스가 없어요. 뉴스 수집에서 수집을 시작하세요.'
+                       '<span class="db-brief-greet-tx">아직 수집된 뉴스가 없어요. '
+                       '뉴스 수집에서 수집을 시작하세요.</span>'
                        '</div>',
             "list": "",
             "cites": "",
@@ -631,17 +632,29 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
             if len(items) > 0 else "오늘 매칭된 뉴스가 없습니다."
         )
 
-    # 한 줄 헤드라인 — 공백 정규화(영문 용어가 끼어 띄어쓰기 깨지던 문제 해소),
-    # **굵은 키워드** 마크다운만 <b> 로 안전 변환.
+    # 한눈 요약 — '첫 줄 헤드라인 + "- " 불릿' 멀티라인을 구조화 렌더.
+    # 텍스트는 반드시 단일 래퍼 span 안에 — .db-brief-greet 가 flex 라 텍스트/
+    # <b> 노드가 직접 자식이면 각각 flex item 이 되어 문장이 조각·세로로 흩어졌다
+    # (스크린샷 보고된 깨짐의 원인). 공백 정규화로 영문 용어 띄어쓰기 깨짐도 방어.
     import re as _re3
-    summary_text = _re3.sub(r"\s+", " ", summary_text).strip()
-    summary_html_inner = _md_bold_to_html(summary_text)
+    raw_lines = [ln.strip() for ln in summary_text.splitlines() if ln.strip()]
+    headline = _re3.sub(r"\s+", " ", raw_lines[0]).strip() if raw_lines else ""
+    bullets = [
+        _re3.sub(r"\s+", " ", ln.lstrip("-•").strip())
+        for ln in raw_lines[1:]
+        if ln.lstrip().startswith(("-", "•"))
+    ][:3]
     summary_html = (
         '<div class="db-brief-greet">'
         '<span class="db-brief-greet-tag">한눈 요약</span>'
-        f'{summary_html_inner}'
+        f'<span class="db-brief-greet-tx">{_md_bold_to_html(headline)}</span>'
         '</div>'
     )
+    if bullets:
+        points = "".join(
+            f'<li>{_md_bold_to_html(b)}</li>' for b in bullets if b
+        )
+        summary_html += f'<ul class="db-brief-points">{points}</ul>'
 
     # 뉴스 카드 N건 — 썸네일 + 제목 + 1줄 요약 + 출처·시각. 카드 클릭 = 원문 새 탭.
     card_parts = ['<div class="db-brief-cards">']
@@ -711,14 +724,16 @@ _TREND_COLORS = ["#2563EB", "#14B8A6", "#F59E0B", "#6366F1"]
 _TREND_KW_COLORS = _TREND_COLORS + ["#0EA5E9", "#64748B"]
 
 
-def _weekly_keyword_series(weeks: int = 8) -> tuple[list[str], list[dict]]:
-    """top-6 키워드의 주별 출현 빈도. weeks 개 버킷.
+def _bucketed_keyword_series(
+    buckets: int, unit_days: int
+) -> tuple[list[str], list[dict]]:
+    """top-6 키워드의 버킷별 출현 빈도 — unit_days=7 주별, 1 일별.
 
-    Returns: (week_labels, [{name, counts:list[int]} ...]) — week_labels 는
-    'W14'~'금주' 형식, counts 는 weeks 길이.
+    Returns: (labels, [{name, counts:list[int]} ...]) — counts 는 buckets 길이.
+    라벨: 주별 'W14'~'금주', 일별 '6/3'~'오늘'.
     """
     try:
-        news = _news_db.load_news_for_days(days=weeks * 7)
+        news = _news_db.load_news_for_days(days=buckets * unit_days)
     except Exception:
         return [], []
     if news is None or news.empty:
@@ -736,14 +751,13 @@ def _weekly_keyword_series(weeks: int = 8) -> tuple[list[str], list[dict]]:
         return [], []
 
     now = datetime.now(timezone.utc)
-    # 주차 인덱스: 0 = 가장 오래된 주, weeks-1 = 금주
-    def _week_idx(t: pd.Timestamp) -> int:
+    # 버킷 인덱스: 0 = 가장 오래된 버킷, buckets-1 = 현재
+    def _bucket_idx(t: pd.Timestamp) -> int:
         days_ago = (now - t.to_pydatetime()).days
-        idx = (weeks - 1) - (days_ago // 7)
-        return int(idx)
+        return int((buckets - 1) - (days_ago // unit_days))
 
-    news = news.assign(_w=news["_dt"].apply(_week_idx))
-    news = news[(news["_w"] >= 0) & (news["_w"] < weeks)]
+    news = news.assign(_w=news["_dt"].apply(_bucket_idx))
+    news = news[(news["_w"] >= 0) & (news["_w"] < buckets)]
     if news.empty:
         return [], []
 
@@ -757,7 +771,7 @@ def _weekly_keyword_series(weeks: int = 8) -> tuple[list[str], list[dict]]:
 
     series: list[dict] = []
     for kw in top_df["keyword"].astype(str).tolist():
-        counts = [0] * weeks
+        counts = [0] * buckets
         for _w, sub in news.groupby("_w"):
             mask = pd.Series(False, index=sub.index)
             for col in ("keywords_llm", "keywords"):
@@ -768,15 +782,26 @@ def _weekly_keyword_series(weeks: int = 8) -> tuple[list[str], list[dict]]:
             counts[int(_w)] = int(mask.sum())
         series.append({"name": kw, "counts": counts})
 
-    # 주차 라벨: ISO week 의 마지막 2자리, 마지막은 '금주'
     labels: list[str] = []
-    for i in range(weeks):
-        wk_dt = now - timedelta(days=(weeks - 1 - i) * 7)
-        if i == weeks - 1:
-            labels.append("금주")
+    for i in range(buckets):
+        b_dt = now - timedelta(days=(buckets - 1 - i) * unit_days)
+        if i == buckets - 1:
+            labels.append("금주" if unit_days >= 7 else "오늘")
+        elif unit_days >= 7:
+            labels.append(f"W{b_dt.isocalendar().week:02d}")
         else:
-            labels.append(f"W{wk_dt.isocalendar().week:02d}")
+            labels.append(f"{b_dt.month}/{b_dt.day}")
     return labels, series
+
+
+def _weekly_keyword_series(weeks: int = 8) -> tuple[list[str], list[dict]]:
+    """top-6 키워드의 주별 출현 빈도 (`_bucketed_keyword_series` 주별 래퍼)."""
+    return _bucketed_keyword_series(buckets=weeks, unit_days=7)
+
+
+def _daily_keyword_series(days: int = 14) -> tuple[list[str], list[dict]]:
+    """top-6 키워드의 일별 출현 빈도 — 수집 누적이 짧을 때의 트렌드 모드."""
+    return _bucketed_keyword_series(buckets=days, unit_days=1)
 
 
 def _path_d(counts: list[int], y_max: int) -> str:
@@ -813,28 +838,70 @@ def _sparkline_d(counts: list[int]) -> str:
     return "M " + " L ".join(points)
 
 
-def _delta_pct(counts: list[int]) -> int:
-    """첫 1/3 평균 → 마지막 1/3 평균 변화율 (%)."""
-    if not counts or len(counts) < 3:
-        return 0
-    n = len(counts)
+def _delta_info(counts: list[int]) -> tuple[int, bool]:
+    """첫 1/3 평균 → 마지막 1/3 평균 변화율.
+
+    Returns (pct, is_new) — is_new=True 는 비교할 과거 기준이 없는 **첫 등장**.
+    이때 %는 수학적으로 '+100%' 지만 추세가 아니므로 표시는 '신규' 배지를 쓴다
+    (전부 +100% 로 보이던 무의미 그래프 문제).
+
+    수집 시작이 윈도(8주)보다 늦으면 앞쪽 버킷이 전부 0 이라 모든 키워드가
+    신규/+100% 로 뭉개진다 → **선행 무데이터 버킷은 잘라내고** 실제 데이터
+    구간에서만 비교한다.
+    """
+    trimmed = list(counts or [])
+    while trimmed and trimmed[0] == 0:
+        trimmed.pop(0)
+    if not trimmed:
+        return 0, False
+    if len(trimmed) < 3:
+        return (100, True) if sum(trimmed) > 0 else (0, False)
+    n = len(trimmed)
     third = max(n // 3, 1)
-    head = sum(counts[:third]) / third
-    tail = sum(counts[-third:]) / third
+    head = sum(trimmed[:third]) / third
+    tail = sum(trimmed[-third:]) / third
     if head == 0:
-        return 100 if tail > 0 else 0
-    return round((tail - head) / head * 100)
+        return (100, True) if tail > 0 else (0, False)
+    return round((tail - head) / head * 100), False
+
+
+def _delta_pct(counts: list[int]) -> int:
+    """첫 1/3 평균 → 마지막 1/3 평균 변화율 (%) — `_delta_info` 의 % 부분."""
+    return _delta_info(counts)[0]
 
 
 @st.cache_data(ttl=60)
 def _board_trend() -> dict[str, str]:
-    """⑤ 트렌드 섹션 — 동적 SVG + 키워드 리스트.
+    """⑤ 트렌드 섹션 — 동적 SVG + 키워드 리스트 (적응형 granularity).
+
+    수집 누적이 짧으면(데이터가 최근 1~2주에만 존재) 주별 8칸은 '0 → 금주
+    스파이크' 한 모양만 나와 전부 +100% 로 보인다 → 그 경우 **일별 14칸**으로
+    전환해 실제 일 단위 추이를 보여주고, 비교 기준이 0 인 키워드는 % 대신
+    **'신규' 배지**로 표기한다. 누적이 3주+ 쌓이면 자동으로 주별 모드.
 
     Returns dict with placeholders:
       svg_paths, xticks, anno_name, anno_sub,
       y_4..y_1 (Y-axis 라벨), kw_list (6 li rows)
     """
     labels, series = _weekly_keyword_series(weeks=8)
+    # 주별 데이터가 있는 주가 2주 이하 → 일별 14칸 모드로 전환
+    daily_mode = False
+    if series:
+        weeks_with_data = sum(
+            1 for w in range(len(labels))
+            if any(s["counts"][w] > 0 for s in series)
+        )
+        if weeks_with_data <= 2:
+            d_labels, d_series = _daily_keyword_series(days=14)
+            if d_series:
+                labels, series = d_labels, d_series
+                daily_mode = True
+                # 일별 라벨 14개는 빽빽 → 짝수 칸만 표기(마지막 '오늘' 은 항상).
+                last = len(labels) - 1
+                labels = [
+                    l if (i == last or (last - i) % 2 == 0) else ""
+                    for i, l in enumerate(labels)
+                ]
     if not series:
         empty = ('<div style="grid-column:1/-1; padding:32px 18px; text-align:center;'
                  ' color:var(--text-muted); font-size:14px; border:1px dashed'
@@ -876,19 +943,21 @@ def _board_trend() -> dict[str, str]:
     # X-axis ticks
     xticks = "".join(f"<span>{_html.escape(l)}</span>" for l in labels)
 
-    # 어노테이션 — 가장 큰 delta 키워드
-    deltas = [(s["name"], _delta_pct(s["counts"])) for s in chart_series]
-    deltas.sort(key=lambda x: x[1], reverse=True)
-    top_name, top_delta = deltas[0]
-    anno_name = f"{_html.escape(top_name)} {'↑' if top_delta > 0 else ('↓' if top_delta < 0 else '·')}"
-    # 수집 누적이 1주 이하면 모든 키워드가 금주에만 몰려 전부 +100% 스파이크로
-    # 보인다(수학적으론 맞지만 추세가 아님) → 과장 해석 대신 짧은 누적 안내.
-    weeks_with_data = sum(
-        1 for w in range(len(labels))
-        if any(s["counts"][w] > 0 for s in chart_series)
-    )
-    if weeks_with_data <= 1:
-        anno_sub = "수집 누적이 아직 짧아요 — 2주 이상 쌓이면 추세가 정확해집니다"
+    # 어노테이션 — 출현 빈도 1위 키워드 (delta 가 아닌 총량 기준: 짧은 누적에서
+    # delta 는 전부 '신규' 라 순위 변별력이 없음)
+    top_s = max(chart_series, key=lambda s: sum(s["counts"]))
+    top_name = top_s["name"]
+    top_total = sum(top_s["counts"])
+    top_delta, top_new = _delta_info(top_s["counts"])
+    arrow = "↑" if (top_new or top_delta > 0) else ("↓" if top_delta < 0 else "·")
+    anno_name = f"{_html.escape(top_name)} {arrow}"
+    if daily_mode:
+        anno_sub = (
+            f"최근 14일 {top_total}건 — 수집 초기라 일별 추이를 보여드려요. "
+            "3주 이상 쌓이면 주별 추세로 전환됩니다"
+        )
+    elif top_new:
+        anno_sub = f"8주 내 첫 등장 — 최근 {top_total}건, 다음 주부터 추세가 계산됩니다"
     elif abs(top_delta) >= 20:
         anno_sub = f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 산업 분기점 가능성"
     else:
@@ -900,12 +969,14 @@ def _board_trend() -> dict[str, str]:
     y_2 = str(round(nice_max * 0.5))
     y_1 = str(round(nice_max * 0.25))
 
-    # 키워드 리스트 (6개)
+    # 키워드 리스트 (6개) — 비교 기준 0(첫 등장)은 % 대신 '신규 N건'
     kw_parts = []
     for i, s in enumerate(series[:6]):
         color = _TREND_KW_COLORS[i]
-        delta = _delta_pct(s["counts"])
-        if delta >= 20:
+        delta, is_new = _delta_info(s["counts"])
+        if is_new:
+            num_cls, delta_str = "db-good", f"신규 {sum(s['counts'])}건"
+        elif delta >= 20:
             num_cls, delta_str = "db-good", f"+{delta}%"
         elif delta <= -20:
             num_cls, delta_str = "db-bad", f"{delta}%"
@@ -1210,12 +1281,6 @@ def _board_kw_mgr_parts(persona: Persona) -> dict[str, object]:
                 f'</span>'
             )
 
-    add_inline = (
-        '<span class="db-kw-add-inline">'
-        '+ 키워드 추가 + 즉시 수집'
-        '</span>'
-    )
-
     # Summary
     total_kw = len(auto_chips) + len(user_chips)
     daily_avg = round(len(news_30) / 30) if len(news_30) > 0 else 0
@@ -1239,11 +1304,10 @@ def _board_kw_mgr_parts(persona: Persona) -> dict[str, object]:
         f'<span class="db-kwg-meta">페르소나 관심사 기반 · 우선 가중치</span>'
         f'</div>'
     )
-    g2_chips_inner = "".join(user_chips) + add_inline
+    g2_chips_inner = "".join(user_chips)
     if not user_chips:
         g2_chips_inner = (
-            '<span class="db-kwg-meta">페르소나에서 관심 작업을 선택하면 여기에 표시됩니다.</span>'
-            + add_inline
+            '<span class="db-kwg-meta">아래 [⚙ 키워드 설정]에서 키워드를 추가하면 여기에 표시됩니다.</span>'
         )
 
     summary = (
@@ -1737,7 +1801,10 @@ def render() -> None:
         except Exception:
             pass
 
-    # ── 0.5) ⑦ 키워드 관리 액션(× 삭제 / mute / collect) 1회 소비 ──
+    # ── 0.45) ⑦ 키워드 설정 모달 [저장] 1회 소비 (위젯 인스턴스화 이전) ──
+    consume_kw_settings_save_if_any()
+
+    # ── 0.5) ⑦ 키워드 관리 액션(즉시 수집 / legacy 쿼리) 1회 소비 ──
     if consume_kw_action_if_any():
         try:
             _board_kpis.clear()
@@ -1898,12 +1965,12 @@ def _kw_sec_head_html() -> str:
 
 
 def _render_kw_mgr_zone(persona: Persona) -> None:
-    """⑦ 내 키워드 관리 존 — 칩 그룹(시각 HTML) + ×/즉시 수집 네이티브 버튼.
+    """⑦ 내 키워드 관리 존 — 칩 그룹(시각 HTML, 읽기 전용) + 하단 버튼 2개.
 
-    직전엔 칩의 × 와 '지금 즉시 수집 실행' CTA 가 `?kw_action=` 앵커라 클릭마다
-    **문서 전체 reload(흰 깜빡임)** 였다 → `if st.button(): pending; st.rerun()`
-    패턴으로 전환(on_click 미사용). 다음 run 의 `consume_kw_action_if_any` 가
-    `_kw_action_pending` 을 소비해 persona save / collect_batch 를 실행한다.
+    칩 옆 × 삭제/＋ 추가가 칩과 별도 버블로 한 번 더 그려져 어지럽다는 피드백
+    (#보드 정리) → 칩은 **표시 전용**으로 두고, 편집은 [⚙ 키워드 설정] 모달
+    (`_kw_settings_body`) 한 곳으로 모았다. 버튼은 `if st.button(): pending →
+    st.rerun()` 패턴 (on_click 미사용).
     """
     parts = _board_kw_mgr_parts(persona)
     with st.container(key="board_kw_zone"):
@@ -1913,45 +1980,114 @@ def _render_kw_mgr_zone(persona: Persona) -> None:
                 st.html(_components.prepare_screen_html(str(parts["empty"])))
             else:
                 st.html(_components.prepare_screen_html(str(parts["g1_html"])))
-                _render_kw_x_buttons(
-                    list(parts["auto_kws"]), action="mute", key_prefix="kw_mute",
-                    help_text="자동 추출에서 숨기기",
-                )
                 st.html(_components.prepare_screen_html(str(parts["g2_html"])))
-                _render_kw_x_buttons(
-                    list(parts["user_kws"]), action="del_user", key_prefix="kw_del",
-                    help_text="관심사에서 제거",
-                )
                 st.html(_components.prepare_screen_html(str(parts["summary_html"])))
             with st.container(key="kw_collect_cta"):
-                if st.button(
-                    "지금 즉시 수집 실행", key="_kw_collect_btn", type="primary",
-                    help="페르소나 키워드(없으면 자동화·AI)로 지금 수집을 실행하고 보드를 새로 그립니다.",
-                ):
-                    st.session_state["_kw_action_pending"] = {
-                        "action": "collect", "keyword": "",
-                    }
-                    st.rerun()
+                c_set, c_run = st.columns(2)
+                with c_set:
+                    if st.button(
+                        "⚙ 키워드 설정", key="_kw_settings_btn",
+                        use_container_width=True,
+                        help="내 키워드 추가/제거와 자동 추출 키워드 숨김을 한 곳에서 관리합니다.",
+                    ):
+                        st.session_state["_kw_settings_open"] = True
+                        st.rerun()
+                with c_run:
+                    if st.button(
+                        "지금 즉시 수집 실행", key="_kw_collect_btn", type="primary",
+                        use_container_width=True,
+                        help="페르소나 키워드(없으면 자동화·AI)로 지금 수집을 실행하고 보드를 새로 그립니다.",
+                    ):
+                        st.session_state["_kw_action_pending"] = {
+                            "action": "collect", "keyword": "",
+                        }
+                        st.rerun()
+    if st.session_state.get("_kw_settings_open"):
+        dlg = st.dialog("⚙ 키워드 설정", width="large")
+        dlg(_kw_settings_body)(persona, list(parts["auto_kws"]))
 
 
-def _render_kw_x_buttons(keywords: list[str], *, action: str, key_prefix: str,
-                         help_text: str) -> None:
-    """칩 그룹 바로 아래 × 제거 버튼 행 — 키워드당 작은 pill 버튼 1개.
+def _kw_settings_body(persona: Persona, auto_kws: list[str]) -> None:
+    """키워드 설정 모달 본문 — 내 키워드 + 자동 추출 숨김을 한 화면에서 편집.
 
-    클릭 시 `_kw_action_pending` 세팅 후 st.rerun() (on_click 미사용).
+    [저장] 은 `_do_kw_settings_save` pending 만 세팅하고 rerun — 실제 persona
+    저장은 다음 run 최상단 `consume_kw_settings_save_if_any` 가 위젯 세션 값
+    (`kw_set_user`/`kw_set_muted`)을 읽어 수행한다 (CLAUDE.md #3 패턴).
     """
-    if not keywords:
-        return
-    with st.container(key=f"{key_prefix}_row"):
-        for i, kw in enumerate(keywords):
-            if st.button(
-                f"× {kw}", key=f"{key_prefix}_{i}",
-                help=f"'{kw}' — {help_text}",
-            ):
-                st.session_state["_kw_action_pending"] = {
-                    "action": action, "keyword": str(kw),
-                }
-                st.rerun()
+    st.caption("매일 새벽 06:00 자동 수집과 보드 매칭에 쓰일 키워드를 관리합니다.")
+    user_terms = _collect_keywords_for_persona(persona)
+    st.multiselect(
+        "내 키워드 — 입력 후 Enter 로 추가, × 로 제거",
+        options=user_terms, default=user_terms,
+        key="kw_set_user", accept_new_options=True,
+        placeholder="예: 용접 로봇",
+        help="여기 키워드가 '◉ 내가 추가' 칩과 수집 검색어에 반영됩니다.",
+    )
+    muted = [str(m).strip() for m in (persona.muted_keywords or []) if str(m).strip()]
+    mute_opts = list(dict.fromkeys(muted + [k for k in auto_kws if k])) or muted
+    st.multiselect(
+        "숨길 자동 추출 키워드",
+        options=mute_opts, default=muted,
+        key="kw_set_muted",
+        help="선택한 키워드는 '★ SOLA 자동 추출' 목록에서 숨겨집니다. 선택 해제하면 다시 보여요.",
+    )
+    c_close, c_save = st.columns(2)
+    with c_close:
+        if st.button("닫기", key="_kw_set_close", use_container_width=True):
+            st.session_state.pop("_kw_settings_open", None)
+            st.rerun()
+    with c_save:
+        if st.button("✓ 저장", key="_kw_set_save", type="primary",
+                     use_container_width=True):
+            st.session_state["_do_kw_settings_save"] = True
+            st.rerun()
+
+
+def consume_kw_settings_save_if_any() -> bool:
+    """키워드 설정 모달 [저장] 1회 소비 (run 최상단, 위젯 인스턴스화 이전).
+
+    - 내 키워드: 선택 유지된 항목만 interest_tasks/lv3/keywords 에 남기고,
+      어느 리스트에도 없던 신규 항목은 interest_keywords 에 추가.
+    - 숨김: 선택값을 muted_keywords 로 교체.
+    """
+    if not st.session_state.pop("_do_kw_settings_save", False):
+        return False
+    try:
+        from persona import store as persona_store
+        persona = app_shell.get_persona()
+        selected = [
+            str(k).strip() for k in (st.session_state.get("kw_set_user") or [])
+            if str(k).strip()
+        ]
+        sel = set(selected)
+        known = (set(persona.interest_tasks or []) | set(persona.interest_lv3 or [])
+                 | set(persona.interest_keywords or []))
+        persona.interest_tasks = [k for k in (persona.interest_tasks or []) if k in sel]
+        persona.interest_lv3 = [k for k in (persona.interest_lv3 or []) if k in sel]
+        kept = [k for k in (persona.interest_keywords or []) if k in sel]
+        new_terms = [k for k in selected if k not in known]
+        persona.interest_keywords = kept + new_terms
+        persona.muted_keywords = [
+            str(k).strip() for k in (st.session_state.get("kw_set_muted") or [])
+            if str(k).strip()
+        ]
+        persona_store.save(persona)
+        st.session_state["persona"] = persona
+        st.session_state["_kw_action_toast"] = (
+            "ok",
+            f"✅ 키워드 설정을 저장했어요 — 내 키워드 {len(sel)}개 · "
+            f"숨김 {len(persona.muted_keywords)}개.",
+        )
+        invalidate_board_caches()
+    except Exception as exc:  # noqa: BLE001
+        st.session_state["_kw_action_toast"] = (
+            "error", f"⚠️ 키워드 설정 저장 실패: {type(exc).__name__}: {exc}",
+        )
+    # 모달 닫기 + 다음 오픈 시 최신값으로 다시 시드되게 위젯 상태 제거
+    st.session_state.pop("_kw_settings_open", None)
+    for k in ("kw_set_user", "kw_set_muted"):
+        st.session_state.pop(k, None)
+    return True
 
 
 def _board_trend_block_html() -> str:
