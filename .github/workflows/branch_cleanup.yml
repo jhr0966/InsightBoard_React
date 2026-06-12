@@ -42,6 +42,8 @@ jobs:
         chore-cleanup-run4
         chore-cleanup-run5
         chore-cleanup-run6
+        chore-cleanup-run7
+        feat-ux-polish-batch
         fix-chat-suggest-scroll
         fix-chat-panel-layout-context
         fix-onboarding-focus-nav
