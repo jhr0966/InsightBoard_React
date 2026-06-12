@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (채팅 추천 질문을 메시지와 함께 스크롤) — `fix-chat-suggest-scroll`
+- **추천 질문 칩 고정 해제**(`ui/chat_panel.py`, `assets/v2/streamlit-overrides.css`): 안내 카드·추천 질문이 상단 고정 flex item 이라 메시지가 쌓여도 자리를 차지했다 → 안내+추천+대화를 `side_chat_scrollwrap` 한 컨테이너로 묶어 **함께 스크롤**(헤더·입력창만 패널 고정). 추천 질문이 메시지와 함께 위로 밀려 올라간다(사용자 요청).
+- **스크롤 높이 체인 수정**: st.container 가 만든 중간 stLayoutWrapper(flex:0 1 auto)가 grow 못 해 높이 0 으로 collapse 하던 것 → 중간 래퍼를 flex 셀(flex:1·min-height:0), 안쪽 st-key 블록을 height:100% 스크롤 컨테이너로(실측 clientHeight 0→618). form 의 margin-top:auto 가 flex 자유공간을 먼저 흡수해 스크롤 영역을 0 으로 만들던 것도 제거(스크롤 래퍼 grow 가 form 을 하단으로 밀어냄).
+- **메시지 시간순 정렬**: column-reverse(역순 DOM) 패턴을 일반 흐름(시간순)으로 — 래퍼 통째 스크롤과 맞춤. 초기엔 안내·추천이 보이고, 대화가 쌓이면 위로 스크롤되어 사라진다.
+- 검증: pytest **962 passed** · 금지패턴 0 · Playwright — 추천 칩이 스크롤 시 314px 위로 올라가 영역 밖으로 사라짐, 입력창 하단 고정 유지(clientHeight 618·scrollable).
+
 ### Changed (SOLA 채팅 패널 레이아웃·컨텍스트 전수 보강) — `fix-chat-panel-layout-context`
 - **채팅 패널 상단 빈 공간 제거**(`assets/v2/streamlit-overrides.css`): @st.fragment 래퍼(stLayoutWrapper)가 패널 콘텐츠 전체를 감싸는데, `:has([data-testid="stForm"])` form-하단고정 룰이 이 래퍼에도 매칭돼 `margin-top:auto`(실측 157px)가 통째로 걸려 제목·안내가 패널 중앙으로 내려가 있었다 → `.side-chat-marker` 를 후손으로 갖는 fragment 래퍼만 골라 `height:100% + flex-column + margin-top:0` 강제, form 룰은 `:not(:has(.side-chat-marker))` 로 직계 form 래퍼에만 적용. 빈 공간 157→13px.
 - **추천 질문 세로 1열**: 가로 wrap 으로 들쭉날쭉하던 pills 를 `radiogroup{flex-direction:column}` + 버튼 `width:100%` 풀폭 스택으로(한 줄에 하나씩).

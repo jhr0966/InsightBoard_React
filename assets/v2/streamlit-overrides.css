@@ -112,12 +112,13 @@ body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
   flex-direction: column;
   margin-top: 0 !important;   /* form 룰의 margin-top:auto 가 이 래퍼에 새는 것 차단 */
 }
-/* 입력 form 래퍼 — 추천 칩이 이제 별도 상단 요소라 입력 form 만 남는다. 메시지 스크롤
-   (flex:1)이 위를 다 채우므로 form 은 자연히 하단에 오지만, 짧은 대화에서도 확실히
-   바닥에 핀하도록 margin-top:auto 유지. marker 없는 직계 form 래퍼에만 적용. */
+/* 입력 form 래퍼 — 스크롤 래퍼(flex:1)가 남은 높이를 모두 받으므로 form 은 자연히
+   하단에 온다. margin-top:auto 를 쓰면 flex 자유공간을 margin 이 먼저 흡수해 스크롤
+   래퍼의 grow(높이)가 0 이 되므로(실측 clientHeight:0) 절대 쓰지 않는다. */
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
     [data-testid="stLayoutWrapper"]:has([data-testid="stForm"]):not(:has(.side-chat-marker)) {
-  margin-top: auto;
+  margin-top: 0;
+  flex: 0 0 auto;
   width: 100%;
 }
 
@@ -158,42 +159,33 @@ body:has(.db-topbar) [data-testid="stHorizontalBlock"]:has(.side-chat-marker)
   border-color: var(--accent-primary, #2563EB) !important;
 }
 
-/* 채팅 스크롤 영역 = 남은 공간을 **모두** 차지(flex:1)하고 넘치면 자체 스크롤 →
-   입력 form + 보내기 버튼은 항상 컬럼 하단에 고정(메시지가 늘어도 안 밀린다).
-   직전엔 max-height: calc(100vh-300px) 고정값이라, 안내+추천칩이 길어지면 상단이
-   300px 를 넘어 입력창이 overflow:hidden 컬럼 밖으로 밀려 안 보였다(메시지 누적 시).
-   핵심 3가지 (실측 디버깅):
-   ① 컨테이너(stElementContainer)가 flex:1 로 줄어도 내용(stHtml)이 **클리핑 없이**
-      입력창 위로 흘러 겹쳤다 → overflow:hidden + 최소 높이 보장.
-   ② height:100% 체인이 stHtml 에서 끊겨 스크롤 div 가 내용 높이만큼 자랐다
-      → stHtml 까지 height:100% 연결.
-   ③ 추천 칩 영역이 공간을 다 먹으면 메시지 영역이 0 이 됐다 → 칩 영역은 공간 부족 시
-      자체 스크롤로 줄어들게(flex-shrink). */
+/* 스크롤 래퍼 = 안내 카드 + 추천 질문 칩 + 대화를 **함께** 담아 남은 공간(flex:1)을
+   모두 차지하고 넘치면 통째로 스크롤 → 추천 질문이 메시지와 함께 위로 밀려 올라간다
+   (사용자 요청: 추천 샘플 고정 해제). 헤더(위)·입력 form(아래)만 패널에 고정.
+   `.st-key-side_chat_scrollwrap`(stVerticalBlockBorderWrapper)이 flex 셀, 그 안
+   stVerticalBlock 이 실제 스크롤 컨테이너. */
+/* st.container 는 stLayoutWrapper(중간 래퍼) > stVerticalBlock(st-key 가 붙는 실제
+   블록) 2겹이다. 중간 래퍼가 flex:0 1 auto 라 grow 하지 못해 높이가 0 으로 collapse
+   되면(실측) 안쪽 스크롤 블록도 0 이 된다 → 중간 래퍼를 flex 셀(grow)로, 안쪽 블록을
+   height:100% 스크롤 컨테이너로 두 겹 모두 잡는다. */
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
-    [data-testid="stElementContainer"]:has(.side-chat-scroll) {
+    [data-testid="stLayoutWrapper"]:has(> [class*="st-key-side_chat_scrollwrap"]) {
   flex: 1 1 0;
-  min-height: 140px;
+  min-height: 0;
   overflow: hidden;
 }
 body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
-    [data-testid="stElementContainer"]:has(.side-chat-scroll) > [data-testid="stHtml"] {
+    [class*="st-key-side_chat_scrollwrap"] {
   height: 100%;
-}
-body:has(.db-topbar) [data-testid="stColumn"]:has(.side-chat-marker)
-    [data-testid="stLayoutWrapper"]:has([class*="st-key-side_chat_suggest"]) {
-  flex: 0 1 auto;
-  min-height: 44px;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
 }
 .side-chat-scroll {
   display: flex;
-  /* column-reverse + 역순 DOM = 시간순 표시 + 초기 스크롤이 항상 최신(하단) 메시지 */
-  flex-direction: column-reverse;
+  flex-direction: column;    /* 시간순 — 최신 메시지가 아래 */
   justify-content: flex-start;
   gap: 2px;
-  overflow-y: auto;
-  height: 100%;
-  padding-right: 2px;
 }
 /* 입력 form 박스 상단 마진 최소화 — 메시지 스크롤 하단이 입력창 테두리 경계까지 닿게
    (직전엔 stForm 기본 상단 여백 + 컨테이너 gap 으로 메시지와 입력창 사이가 떠 마지막
