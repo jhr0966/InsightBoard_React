@@ -362,14 +362,14 @@ def render() -> None:
             # 입력 누락 시에도 _save_from_state 에서 빈 리스트가 들어가지 않도록 기존 값 유지.
             st.session_state["px_lv3"] = list(persona.interest_lv3)
 
-        # 키워드 — 콤마/Enter 로 하나씩 칩(버블) 등록 (온보딩 4단계와 동일 UX).
+        # 키워드 — Enter 로 하나씩 칩(버블) 등록 (온보딩 4단계와 동일 UX).
         st.multiselect(
-            "관심 키워드 (콤마/Enter로 하나씩 등록)",
+            "관심 키워드 (입력 후 Enter로 하나씩 등록)",
             options=list(persona.interest_keywords),
             default=list(persona.interest_keywords),
             key="px_keywords",
             accept_new_options=True,
-            placeholder="예: 용접 로봇 ← 입력 후 콤마(,) 또는 Enter",
+            placeholder="예: 용접 로봇 — 입력 후 Enter",
             help="등록한 키워드는 뉴스 수집 검색어와 보드 키워드 관리에 바로 합류합니다.",
         )
 
@@ -397,9 +397,8 @@ def render() -> None:
 
     # 키보드 UX — 진입 시 이름 입력 자동 포커스 + Enter→다음 입력 이동.
     # scope 를 `px_*` 위젯 컨테이너(`st-key-px_*` 클래스)로 한정해 우측 채팅
-    # 입력 등 폼 밖 Enter 동작은 건드리지 않는다. chips: 키워드 콤마→칩 등록.
+    # 입력 등 폼 밖 Enter 동작은 건드리지 않는다.
     inject_focus_nav(
         '[class*="st-key-px_"]',
         nonce="persona-page",
-        chips_selector=".st-key-px_keywords",
     )

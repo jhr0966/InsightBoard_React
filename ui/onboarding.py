@@ -11,7 +11,7 @@
     1  이름 (+[나중에 하기])
     2  팀 · 부서 (팀 먼저 — Enter/Tab 으로 팀→부서 이동)
     3  직무
-    4  관심 공정(작업 정의 있으면 multiselect) + 관심 키워드(콤마/Enter→칩) + [완료]
+    4  관심 공정(작업 정의 있으면 multiselect) + 관심 키워드(Enter→칩) + [완료]
     5  완료 — "지금 바로 뉴스 수집을 실행할까요?" + [지금 수집 실행] / [나중에 하기]
     6  수집 실행 — 진행 표시 + 결과 요약 + [✓ 시작하기] (닫으면 전체 새로고침)
 
@@ -20,7 +20,7 @@
 
 키보드 UX (`ui.components.inject_focus_nav`):
     각 입력 단계의 마지막 텍스트 입력에서 Enter → [다음] 버튼 자동 클릭,
-    그 외 입력 Enter → 다음 입력 포커스. 키워드 입력은 콤마 → 칩 등록.
+    그 외 입력 Enter → 다음 입력 포커스. 키워드 입력은 Enter → 칩 등록.
 
 CLAUDE.md 규칙:
   - on_click 금지 → `if st.button(): pending flag → st.rerun()` 패턴
@@ -321,7 +321,6 @@ def _dialog_body(persona: Persona) -> None:
             # 키보드 UX — 모달 첫 입력 자동 포커스 + Enter→다음 입력 이동.
             # nonce=step: 단계 전환(rerun) 시 스크립트 재실행 → 새 단계 첫 입력 재포커스.
             # submit: 마지막 텍스트 입력 Enter = [다음] 클릭 (4단계는 키워드 Enter=칩 등록이라 제외).
-            # chips: 키워드 multiselect 에서 콤마 입력 → 칩(버블) 즉시 등록.
             # 주입 위치는 onb_body 컨테이너 **안** — 밖에 두면 단계 화면만 요소+gap
             # 16px 이 더 생겨 환영/제안 화면과 모달 높이가 어긋난다(높이 통일).
             submit_sel = (
@@ -329,13 +328,11 @@ def _dialog_body(persona: Persona) -> None:
             )
             # Ctrl/⌘+Enter = 어느 입력에서든 단계 진행 (4단계는 [완료]).
             ctrl_sel = submit_sel or ".st-key-onb_finish_btn button"
-            chips_sel = ".st-key-onb_keywords" if step == _TOTAL_INPUT_STEPS else ""
             inject_focus_nav(
                 '[data-testid="stDialog"]',
                 nonce=f"onb-step-{step}",
                 submit_selector=submit_sel,
                 ctrl_submit_selector=ctrl_sel,
-                chips_selector=chips_sel,
             )
 
 
@@ -429,16 +426,16 @@ def _render_step(step: int, persona: Persona) -> None:
             else:
                 st.caption("관심 공정 선택은 작업 정의 데이터 업로드 후 활성화됩니다. 지금은 건너뛰고 나중에 추가할 수 있어요.")
                 data["onb_lv3"] = list(persona.interest_lv3)
-            # 키워드 — 콤마/Enter 로 하나씩 칩(버블) 등록 (accept_new_options).
+            # 키워드 — Enter 로 하나씩 칩(버블) 등록 (accept_new_options).
             seed_kws = _keywords_from(data.get("onb_keywords", persona.interest_keywords))
             st.multiselect(
-                "관심 키워드 (콤마/Enter로 하나씩 등록)",
+                "관심 키워드 (입력 후 Enter로 하나씩 등록)",
                 options=seed_kws,
                 default=seed_kws,
                 key="onb_keywords",
                 accept_new_options=True,
-                placeholder="예: 용접 로봇 ← 입력 후 콤마(,) 또는 Enter",
-                help="등록한 키워드는 뉴스 수집 검색어에 바로 합류합니다.",
+                placeholder="예: 용접 로봇 — 입력 후 Enter",
+                help="입력 후 Enter 를 누르면 칩으로 등록됩니다. 등록한 키워드는 뉴스 수집 검색어에 바로 합류합니다.",
             )
 
     # ── 네비게이션 버튼 — onb_nav 컨테이너 (CSS margin-top:auto 로 모달 하단 고정).

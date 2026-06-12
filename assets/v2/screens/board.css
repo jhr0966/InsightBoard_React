@@ -426,6 +426,14 @@ a.db-hdr-btn:hover { color: var(--text-primary); text-decoration: none; }
   color: var(--text-primary);
   line-height: 1.25;
 }
+/* 섹션 타이틀 아랫줄 설명 — 이 컨텐츠가 무엇인지 한 줄 안내 */
+.db-sec-desc {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted, #64748B);
+  max-width: 720px;
+}
 .db-sec-meta {
   display: flex;
   align-items: center;

@@ -284,7 +284,7 @@ def test_ask_prefill_creates_new_thread_and_sets_send_payload(clean_chat_log):
         active_id = st.session_state["_sola_thread_id"]
         assert sola_threads.get(active_id) is not None
         # 인계 종류 기반 시드 제목
-        assert sola_threads.get(active_id).title == "자동화 기회 검토"
+        assert sola_threads.get(active_id).title == "자동화 제안 검토"
         # composer_prefill 의 opp 텍스트가 송신 페이로드에
         sent = st.session_state.get("_do_sola_send", "")
         assert "도장" in sent and "비전 검사" in sent

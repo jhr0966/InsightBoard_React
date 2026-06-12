@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-12 — feat: UX 일괄 개선 — 페르소나 키워드·채팅 자동스크롤·보드 정리 (`feat-ux-polish-batch`)
+
+**무엇을**: ① 온보딩 키워드 콤마 미동작 → Enter 안내 + 'Add' 드롭다운 숨김 + 단계 포커스 재검증 ② 채팅 새 메시지 자동 최하단 + 추천 프롬프트 시연형 교체 ③ 보드 TTS 제거 · '자동화 기회'→'자동화 제안' 전면 · 트렌드 섹션을 매트릭스 아래로 · 전 섹션 타이틀 밑 설명.
+
+**어떻게**: 드롭다운 숨김은 `body:has(.st-key-X input:focus) [data-baseweb="popover"]:has([role=listbox]){display:none}` — Enter 등록은 가상 포커스로 유지(실측). 자동스크롤은 `_inject_autoscroll`(nonce=개수+내용해시, 80ms 폴링, focus-nav 와 동일 st.html JS 경로). 콤마 변환 JS·chips 파라미터 제거. TTS 헬퍼·테스트 파일 삭제. 라벨 통일은 board/sidebar/insights/sola_workshop/템플릿.
+
+**검증**: pytest 953 · Playwright 15항목(온보딩 4단계 포커스·칩 등록·popover 0·보드 라벨/순서/설명·autoscroll top=max).
+
+**다음**: ① 채팅 LLM 미설정/차단 환경에서 컨텍스트 미리보기 노출 ② 히트맵 선택 셀 컨텍스트 ③ 매트릭스 빈 상태 행동 유도.
+
 ## 2026-06-12 — fix: 채팅 추천 질문을 메시지와 함께 스크롤 (`fix-chat-suggest-scroll`)
 
 **무엇을**: 추천 질문(프롬프트 샘플)이 상단 고정이라 메시지가 쌓여도 자리 차지 → 사용자 요청대로 메시지와 함께 스크롤되어 올라가게(고정 해제).

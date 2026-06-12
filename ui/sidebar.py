@@ -209,7 +209,7 @@ def _side_stats_html(stats: dict) -> str:
     """
     cells = (
         ("오늘 매칭", int(stats.get("match_today", 0))),
-        ("자동화 기회", int(stats.get("opportunities", 0))),
+        ("자동화 제안", int(stats.get("opportunities", 0))),
         ("채택 대기", int(stats.get("pending_adopt", 0))),
     )
     inner = "".join(

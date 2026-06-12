@@ -542,7 +542,7 @@ def _ia_mtx_rank_empty() -> str:
             '</div>'
             '<div style="padding:18px 14px; color:var(--text-muted); font-size:13px; '
             'border:1px dashed var(--surface-divider); border-radius:10px; text-align:center;">'
-            '아직 매칭된 자동화 기회가 없어요.</div>')
+            '아직 매칭된 자동화 제안이 없어요.</div>')
 
 
 # ── SECTION C 히트맵 (공정 × 자동화 기술) ─────────────────────
@@ -784,7 +784,7 @@ def _ia_matrix_empty() -> str:
     return ('<div style="padding:80px 18px; text-align:center; color:var(--text-muted);'
             ' font-size:14px; border:1px dashed var(--surface-divider); border-radius:12px;'
             ' min-height:380px; display:flex; flex-direction:column; justify-content:center;">'
-            '아직 매트릭스에 그릴 자동화 기회가 없어요.<br>'
+            '아직 매트릭스에 그릴 자동화 제안이 없어요.<br>'
             '<span style="font-size:12.5px;">뉴스 + 작업 정의 매칭 후 자동으로 채워집니다.</span>'
             '</div>')
 

@@ -132,7 +132,7 @@ def test_consume_opp_action_default_title_when_missing(isolated_bookmarks):
     board_v2.consume_opp_action_if_any()
     items = isolated_bookmarks.list_all(type_="proposal")
     assert len(items) == 1
-    assert items[0].title == "도장 · 비전 자동화 기회"
+    assert items[0].title == "도장 · 비전 자동화 제안"
 
 
 # ── pending 플래그 경로 (st.button → _opp_action_pending → 소비) ──
@@ -175,7 +175,7 @@ def test_consume_opp_action_pending_hold_creates_pending_bookmark(isolated_bookm
     items = isolated_bookmarks.list_all(type_="proposal")
     assert len(items) == 1
     assert items[0].status == "pending"
-    assert items[0].title == "용접 · 비드 검사 자동화 기회"  # title 자동 채움
+    assert items[0].title == "용접 · 비드 검사 자동화 제안"  # title 자동 채움
     toast = st.session_state.get("_opp_action_toast")
     assert toast and toast[0] == "ok" and "보류" in toast[1]
     assert "_opp_action_pending" not in st.session_state

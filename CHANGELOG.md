@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Changed (UX 일괄 개선 — 페르소나 키워드·채팅 자동스크롤·보드 정리) — `feat-ux-polish-batch`
+- **[페르소나] 키워드 입력 정리**(`ui/onboarding.py`, `ui/persona_page.py`, `ui/components.py`, `streamlit-overrides.css`): ① 동작하지 않던 콤마→칩 변환 기능·안내를 제거하고 라벨/placeholder/help 를 "입력 후 Enter로 하나씩 등록" 으로 통일 ② 타이핑마다 뜨던 BaseWeb 'Add …' 드롭다운을 해당 입력 포커스 동안 숨김(온보딩 onb_keywords·페르소나 px_keywords·키워드 설정 kw_set_user — Enter 등록은 가상 포커스로 그대로 동작, 실측) ③ 단계별 자동 포커스 재검증(1·2·3단계 Playwright 통과).
+- **[SOLA 채팅] 새 메시지 자동 최하단 스크롤**(`ui/chat_panel.py` `_inject_autoscroll`): 메시지 개수+마지막 내용 시그니처가 바뀐 rerun 에서만 스크립트가 재실행되어 스크롤 래퍼를 최하단으로 — 읽는 중 재렌더에는 위치 보존. 실측 scrollTop=max.
+- **[SOLA 채팅] 추천 프롬프트 전면 교체**: "이렇게 쓰는 겁니다" 시연형 — 화면 데이터를 실제로 읽어야 답하는 구체 행동(보고용 3줄 요약·PoC 다음 주 할 일·검토 우선순위 정렬·주간 리포트 초안 등)으로 7개 area 전부 재작성.
+- **[보드] 음성으로 듣기 제거**: 브리핑 TTS 버튼 + 매트릭스 '듣기' 버튼·헬퍼(`_tts_button_html`/`_tts_disabled_html`)·`{{BRIEF_TTS_BTN}}` 플레이스홀더 삭제(tests/test_board_tts.py 제거).
+- **[보드] '자동화 기회' → '자동화 제안'**: KPI·섹션 머리·카드 제목·빈 상태·인사말·채팅 컨텍스트 + 사이드바 카운트·인사이트(타이틀/매트릭스/빈 상태)·SOLA 작업실 인계 문구·북마크 기본 제목까지 사용자 노출 라벨 전부 통일.
+- **[보드] 트렌드 섹션 이동 + 섹션 설명**: '관심 공정 키워드 출현 빈도' 를 매트릭스 아래(키워드 관리 위)로 이동, 모든 섹션 타이틀 아래 `.db-sec-desc` 한 줄 설명 추가(브리핑/탑스토리/자동화 제안/매트릭스/트렌드/키워드 관리 — 실측 6개 노출).
+- 검증: pytest **953 passed** · 금지패턴 0 · Playwright 15항목 중 14 통과 + 사이드바 라벨 후속 수정(온보딩 1~4단계 포커스·Enter 칩 등록·드롭다운 0개·자동 스크롤·트렌드 위치·설명 노출).
+
 ### Changed (채팅 추천 질문을 메시지와 함께 스크롤) — `fix-chat-suggest-scroll`
 - **추천 질문 칩 고정 해제**(`ui/chat_panel.py`, `assets/v2/streamlit-overrides.css`): 안내 카드·추천 질문이 상단 고정 flex item 이라 메시지가 쌓여도 자리를 차지했다 → 안내+추천+대화를 `side_chat_scrollwrap` 한 컨테이너로 묶어 **함께 스크롤**(헤더·입력창만 패널 고정). 추천 질문이 메시지와 함께 위로 밀려 올라간다(사용자 요청).
 - **스크롤 높이 체인 수정**: st.container 가 만든 중간 stLayoutWrapper(flex:0 1 auto)가 grow 못 해 높이 0 으로 collapse 하던 것 → 중간 래퍼를 flex 셀(flex:1·min-height:0), 안쪽 st-key 블록을 height:100% 스크롤 컨테이너로(실측 clientHeight 0→618). form 의 margin-top:auto 가 flex 자유공간을 먼저 흡수해 스크롤 영역을 0 으로 만들던 것도 제거(스크롤 래퍼 grow 가 form 을 하단으로 밀어냄).

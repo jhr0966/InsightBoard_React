@@ -120,7 +120,7 @@ def consume_opp_action_if_any() -> tuple[str, str, str] | None:
         return None
 
     status = _OPP_ACTION_TO_STATUS[action]
-    bm_title = title_q or f"{dept_q} · {lv3_q} 자동화 기회"
+    bm_title = title_q or f"{dept_q} · {lv3_q} 자동화 제안"
     try:
         from store.bookmarks import Bookmark
         import uuid as _uuid
@@ -378,49 +378,6 @@ def _md_bold_to_html(text: str) -> str:
     return "".join(out)
 
 
-# ── 보드 음성으로 듣기 (TTS) — Web Speech API 인라인 재생 ───────
-
-
-def _tts_button_html(text: str, *, label: str = "음성으로 듣기",
-                     cls: str = "db-act db-act-tts") -> str:
-    """간단 TTS 버튼 — onclick 에서 Web Speech API 호출 (서버 무관).
-
-    - 텍스트는 `json.dumps` 로 JS 안전 인코딩 → `data-tts` 속성에 escape
-    - 클릭 시 `JSON.parse(this.dataset.tts)` → `SpeechSynthesisUtterance(ko-KR)`
-    - 같은 페이지에 여러 버튼 가능, 새 재생 시 직전 재생 cancel
-    - 빈 텍스트면 빈 문자열 반환(버튼 미노출)
-    """
-    payload = (text or "").strip()
-    if not payload:
-        return ""
-    safe_attr = _html.escape(_json.dumps(payload, ensure_ascii=False), quote=True)
-    return (
-        f'<button class="{cls}" type="button" data-tts="{safe_attr}" '
-        f'onclick="(function(b){{var s=window.speechSynthesis;if(!s)return;'
-        f"s.cancel();var u=new SpeechSynthesisUtterance(JSON.parse(b.dataset.tts));"
-        f"u.lang='ko-KR';u.rate=1.0;u.pitch=1.0;s.speak(u);}})(this);\" "
-        f'title="이 문단을 음성으로 재생합니다 (브라우저 TTS)">'
-        f'<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' '
-        f'width=\'11\' height=\'11\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#475569\' '
-        f'stroke-width=\'2.4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'>'
-        f'<polygon points=\'11 5 6 9 2 9 2 15 6 15 11 19 11 5\'/>'
-        f'<path d=\'M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07\'/>'
-        f'</svg>" width="11" height="11" alt="" />{_html.escape(label)}</button>'
-    )
-
-
-def _tts_disabled_html(label: str = "음성으로 듣기") -> str:
-    """TTS 대상 텍스트가 없을 때 disabled 버튼."""
-    return (
-        f'<button class="db-act db-act-tts" disabled title="재생할 내용이 없어요">'
-        f'<img src="data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' '
-        f'width=\'11\' height=\'11\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#94A3B8\' '
-        f'stroke-width=\'2.4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'>'
-        f'<polygon points=\'11 5 6 9 2 9 2 15 6 15 11 19 11 5\'/>'
-        f'<path d=\'M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07\'/>'
-        f'</svg>" width="11" height="11" alt="" />{_html.escape(label)}</button>'
-    )
-
 def _story_age(when: str) -> str:
     if not when:
         return ""
@@ -529,7 +486,7 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
     """SOLA 오늘의 브리핑 — 페르소나 매칭 top 5 뉴스 카드(썸네일+요약) + 한 줄 헤드라인.
 
     summary 텍스트는 `sola.board_brief.brief()` (디스크 캐시 + LLM 미설정
-    시 룰 fallback) 가 생성. 그 외 list/cites/cta/tts_btn 은 score_matches
+    시 룰 fallback) 가 생성. 그 외 list/cites/cta 는 score_matches
     상위 3건 기반.
     """
     news_df = None
@@ -605,7 +562,6 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
             "list": "",
             "cites": "",
             "cta": "",
-            "tts_btn": _tts_disabled_html(),
         }
 
     # SOLA workshop 컨텍스트 인계용 — 다음 rerun 에서 from=brief 가 들어오면 소비
@@ -708,14 +664,8 @@ def _brief_html(persona_label: str = "") -> dict[str, str]:
         f'</a>'
     )
 
-    # TTS — 요약 + 번호 매긴 제목 (서버 무관 인라인 재생)
-    tts_lines = [summary_text]
-    for i, item in enumerate(items, start=1):
-        tts_lines.append(f"{i}번. {item['title'][:160]}")
-    tts_btn_html = _tts_button_html(" ".join(tts_lines))
-
     return {"summary": summary_html, "list": list_html, "cites": cites_html,
-            "cta": cta_html, "tts_btn": tts_btn_html}
+            "cta": cta_html}
 
 
 # 트렌드 차트 4 series 색상 (Azure/Teal/Amber/Indigo)
@@ -1142,24 +1092,12 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
     sample_tasks = str(detail_row.get("sample_tasks", "") or "").split(" · ")[:1]
     detail_href = _sola_handoff_href("matrix", dept=detail_dept_raw, lv3=detail_lv3_raw)
     # TTS 원문은 HTML escape 이전(원문)을 사용
-    why_text_raw = (
-        f"{detail_dept_raw} 영역의 {detail_lv3_raw} 작업과 매칭 뉴스 {roi_val}건이 누적, "
-        f"관련 작업 {ease_val}건이 잠재 적용 대상."
-        if not sample_tasks or not sample_tasks[0]
-        else f"{detail_dept_raw} · {sample_tasks[0][:80]} — 매칭 뉴스 {roi_val}건."
-    )
     why_text = (
         f"{detail_dept} 영역의 {detail_label} 작업과 매칭 뉴스 {roi_val}건이 누적, "
         f"관련 작업 {ease_val}건이 잠재 적용 대상."
         if not sample_tasks or not sample_tasks[0]
         else f"{detail_dept} · {_html.escape(sample_tasks[0])[:80]} — 매칭 뉴스 {roi_val}건."
     )
-    mx_tts_text = (
-        f"{detail_dept_raw} · {detail_lv3_raw}. 종합 점수 {score_val}점. "
-        f"매칭 뉴스 {roi_val}건. 매칭 작업 {ease_val}건. {why_text_raw}"
-    )
-    mx_tts_btn = _tts_button_html(mx_tts_text, label="듣기",
-                                  cls="db-mx-tts")
 
     return f"""<div class="db-matrix-wrap">
         <div class="db-matrix">
@@ -1185,7 +1123,6 @@ def _board_matrix_html(selected_key: str | None = None) -> str:
           </div>
           <p class="db-mx-why">{why_text}</p>
           <div class="db-mx-detail-actions">
-            {mx_tts_btn}
             <a class="db-mx-cta" href="{detail_href}" target="_self">
               제안서 작업장에서 보기 →
             </a>
@@ -1358,7 +1295,7 @@ def _kw_mgr_empty_html() -> str:
 def _matrix_empty_html() -> str:
     return ('<div style="padding: 32px 18px; text-align: center; color: var(--text-muted);'
             ' font-size: 14px; border: 1px dashed var(--surface-divider); border-radius: 12px;">'
-            '아직 매트릭스에 그릴 자동화 기회가 없어요.<br>'
+            '아직 매트릭스에 그릴 자동화 제안이 없어요.<br>'
             '<span style="font-size:12.5px;">뉴스 + 작업 정의 매칭 후 자동으로 채워집니다.</span>'
             '</div>')
 
@@ -1409,7 +1346,7 @@ def _opp_empty_html() -> str:
         color: var(--text-muted); font-size: 14px;
         border: 1px dashed var(--surface-divider); border-radius: 12px;
         background: rgba(0,0,0,0.01);">
-      아직 도출된 자동화 기회가 없어요.<br>
+      아직 도출된 자동화 제안이 없어요.<br>
       <span style="font-size:12.5px;">뉴스 수집 + 작업 정의 데이터 업로드 후 자동으로 매칭됩니다.</span>
     </div>"""
 
@@ -1445,7 +1382,7 @@ def _opp_card_html(row: pd.Series) -> str:
         <span class="db-prop-status">초안 0초</span>
         <span class="db-prop-tag db-prop-tag-tech">{lv3}</span>
       </div>
-      <h3 class="db-prop-h">{dept} · {lv3} 자동화 기회</h3>
+      <h3 class="db-prop-h">{dept} · {lv3} 자동화 제안</h3>
       <div class="db-prop-tagline">{tagline_safe}</div>
       {objective_html}
 
@@ -1572,7 +1509,7 @@ def _greet_summary_html(persona: Persona, kpis: dict[str, int]) -> str:
         parts.append(f'페르소나 기준으로 <b>{match}건</b>이 매칭됐어요.')
     if opp > 0:
         # opp 는 14일 윈도우(④⑥ 섹션과 동일) — '그중' 같은 오늘 종속 표현 금지.
-        parts.append(f'현재 <b>자동화 기회 {opp}건</b>이 열려 있어요.')
+        parts.append(f'현재 <b>자동화 제안 {opp}건</b>이 열려 있어요.')
     return " ".join(parts)
 
 
@@ -1671,7 +1608,7 @@ def chat_context_block(persona: Persona) -> str:
         kpis = _board_kpis()
         parts.append(
             f"오늘 KPI: 수집 {kpis['collect']}건 · 매칭 {kpis['match']}건 · "
-            f"자동화 기회 {kpis['opp']}건 · 채택 대기 {kpis['pending']}건"
+            f"자동화 제안 {kpis['opp']}건 · 채택 대기 {kpis['pending']}건"
         )
     except Exception:
         pass
@@ -1713,7 +1650,7 @@ def chat_context_block(persona: Persona) -> str:
         try:
             cells = _score_cells(news, tasks).head(4)
             if not cells.empty:
-                parts.append("④ 자동화 기회 top 4:")
+                parts.append("④ 자동화 제안 top 4:")
                 for _, r in cells.iterrows():
                     parts.append(
                         f"  - {r.get('dept','')} · {r.get('lv3','')} "
@@ -1876,7 +1813,6 @@ def _render_main(*, persona: Persona, refresh_label: str) -> None:
         .replace("{{BRIEF_LIST}}", brief["list"])
         .replace("{{BRIEF_CITES}}", brief["cites"])
         .replace("{{BRIEF_CTA}}", brief["cta"])
-        .replace("{{BRIEF_TTS_BTN}}", brief.get("tts_btn", ""))
     )
     html_out = _clean_board_html(html_out)
 
@@ -1897,8 +1833,9 @@ def _opp_sec_head_html() -> str:
     return (
         '<div class="db-sec-head">'
         '<div>'
-        '<div class="db-sec-eye">자동화 기회 · SOLA 자동 제안서 초안</div>'
-        '<h2 class="db-sec-title">자동화 기회</h2>'
+        '<div class="db-sec-eye">SOLA 자동 제안서 초안</div>'
+        '<h2 class="db-sec-title">자동화 제안</h2>'
+        '<p class="db-sec-desc">뉴스와 작업 정의 매칭에서 도출된 자동화 제안이에요. [채택]하면 산출물 보관함으로, [보류]하면 대기 목록으로 이동합니다.</p>'
         '</div>'
         '<div class="db-sec-meta">'
         f'<a class="db-sec-link" href="{ins_href}" target="_self">전체 보러가기 →</a>'
@@ -1929,7 +1866,7 @@ def _render_opportunities_zone() -> None:
                 i = base + j
                 dept_raw = str(row.get("dept", "") or "—")
                 lv3_raw = str(row.get("lv3", "") or "—")
-                title = f"{dept_raw} · {lv3_raw} 자동화 기회"
+                title = f"{dept_raw} · {lv3_raw} 자동화 제안"
                 with cols[j], st.container(key=f"opp_card_{i}"):
                     st.html(_components.prepare_screen_html(_opp_card_html(row)))
                     b_hold, b_accept = st.columns(2, gap="small")
@@ -1962,6 +1899,8 @@ def _kw_sec_head_html() -> str:
         '<div>'
         '<div class="db-sec-eye">내 키워드 관리</div>'
         '<h2 class="db-sec-title">매일 새벽 06:00 이 키워드로 수집됩니다</h2>'
+        '<p class="db-sec-desc">SOLA 가 수집 결과에서 자동 추출한 키워드와 내가 등록한 키워드예요. '
+        '[⚙ 키워드 설정]에서 추가·제거·숨김을 관리합니다.</p>'
         '</div>'
         '</div>'
     )
