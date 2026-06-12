@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Changed (SOLA 채팅 패널 레이아웃·컨텍스트 전수 보강) — `fix-chat-panel-layout-context`
+- **채팅 패널 상단 빈 공간 제거**(`assets/v2/streamlit-overrides.css`): @st.fragment 래퍼(stLayoutWrapper)가 패널 콘텐츠 전체를 감싸는데, `:has([data-testid="stForm"])` form-하단고정 룰이 이 래퍼에도 매칭돼 `margin-top:auto`(실측 157px)가 통째로 걸려 제목·안내가 패널 중앙으로 내려가 있었다 → `.side-chat-marker` 를 후손으로 갖는 fragment 래퍼만 골라 `height:100% + flex-column + margin-top:0` 강제, form 룰은 `:not(:has(.side-chat-marker))` 로 직계 form 래퍼에만 적용. 빈 공간 157→13px.
+- **추천 질문 세로 1열**: 가로 wrap 으로 들쭉날쭉하던 pills 를 `radiogroup{flex-direction:column}` + 버튼 `width:100%` 풀폭 스택으로(한 줄에 하나씩).
+- **입력창 상단 여백 축소**: stForm 기본 상단 여백 + 컨테이너 gap 으로 마지막 메시지와 입력창 사이가 떠 잘려 보이던 것 → form `margin-top:0`·컨테이너 마진 4px 로 메시지 스크롤이 입력창 테두리 경계까지 닿게.
+- **뉴스 수집 화면 — 보이는 카드뷰가 컨텍스트에 누락되던 문제 해소**(`ui/data_management_v2.py`): 컨텍스트가 전역 통계(헤더·추이·분포·최근 6건)만 담고, 사용자가 실제 보고 있는 **카드뷰 필터(대분류 탭·출처칩·검색어)와 그 결과 카드 목록**은 빠져 있었다 → `_collect_live_view_context`(세션 상태 의존이라 60s 캐시 밖)가 '지금 화면에 보이는 뉴스(현재 필터)' 섹션으로 보기모드·필터 + 카드 상위 8건(제목/요약/출처라벨/시각)을 덧붙인다. 최근 6건 출처도 표시 라벨로.
+- **출처·트렌드 라벨 일관화**(`ui/board_v2.py`, `ui/insights_v2.py`): 채팅 컨텍스트의 보드 ②브리핑·③탑스토리 출처를 내부 ID→표시 라벨로, 보드 ⑤·인사이트 5주 트렌드를 `_delta_info` 기반 '신규 N건/변화율'로(전부 +100% 로 보이던 문제와 일관).
+- 검증: pytest **962 passed**(신규 1: 카드뷰 라이브 컨텍스트) · 금지패턴 0 · Playwright — 빈 공간 13px·추천 5칩 세로 동일 너비·뉴스 수집 화면 동일 적용.
+
 ### Changed (보드 재설계 — 적응형 트렌드·키워드 설정 모달·한눈요약 구조화) — `feat-board-trend-keywords`
 - **트렌드 그래프 적응형 재구조화**(`ui/board_v2.py`): 수집 누적이 짧으면(데이터가 1~2주에만 존재) 주별 8칸이 '0→금주 스파이크' 만 그려 전부 +100% 로 보이던 문제 → ① 그 경우 **일별 14칸 모드**로 자동 전환(라벨 '6/3'…'오늘', 3주+ 쌓이면 주별 복귀) ② 비교 기준이 0 인 키워드는 % 대신 **'신규 N건' 배지** ③ 수집 시작이 8주 윈도보다 늦으면 **선행 무데이터 버킷을 잘라** 실제 구간으로 % 계산(전부 신규/+100% 뭉개짐 방지) ④ 어노테이션을 총량 1위 키워드 기준 + 모드 안내로 교체. `_bucketed_keyword_series`(주/일 공용)·`_delta_info` 신설.
 - **키워드 관리 UI 단순화**: 칩 아래 또 그려지던 `× 키워드` 삭제 버튼 행과 '+ 키워드 추가 + 즉시 수집' 칩 제거(중복·혼란 피드백) → 칩은 표시 전용, 편집은 새 **[⚙ 키워드 설정] 모달** 한 곳으로: 내 키워드 multiselect(입력=추가/×=제거, tasks·lv3·자유 키워드 통합 관리) + 숨길 자동 추출 키워드 multiselect(muted 해제 가능 — 기존엔 한 번 숨기면 풀 방법 없었음). 저장은 `consume_kw_settings_save_if_any`(run 최상단 pending) 가 수행.

@@ -1682,7 +1682,9 @@ def chat_context_block(persona: Persona) -> str:
         parts.append("② SOLA 브리핑 top 3 매칭 뉴스:")
         for i, it in enumerate(items[:3], 1):
             t = (it.get("title") or "")[:120]
-            src = it.get("source") or "—"
+            src = (it.get("source_label")
+                   or _source_label(str(it.get("source", "") or ""),
+                                    str(it.get("press", "") or "")) or "—")
             parts.append(f"  {i}. {t} ({src})")
 
     # ③ + ④ + ⑤ + ⑥ — 매칭/기회 데이터 재사용
@@ -1702,7 +1704,7 @@ def chat_context_block(persona: Persona) -> str:
                 parts.append("③ 탑 스토리 (최근 3일):")
                 for _, r in recent.head(5).iterrows():
                     t = str(r.get("title", ""))[:100]
-                    s = str(r.get("source", ""))
+                    s = _source_label(str(r.get("source", "")), str(r.get("press", "") or ""))
                     parts.append(f"  - {t} ({s})")
         except Exception:
             pass
@@ -1770,8 +1772,9 @@ def chat_context_block(persona: Persona) -> str:
         if series:
             parts.append("⑤ 트렌드 (최근 8주, 키워드 변화율):")
             for s in series[:6]:
-                d = _delta_pct(s["counts"])
-                parts.append(f"  - {s['name']}: 변화율 {'+' if d>=0 else ''}{d}%")
+                d, is_new = _delta_info(s["counts"])
+                val = f"신규 {sum(s['counts'])}건" if is_new else f"변화율 {'+' if d>=0 else ''}{d}%"
+                parts.append(f"  - {s['name']}: {val}")
     except Exception:
         pass
 

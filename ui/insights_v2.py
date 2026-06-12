@@ -1062,13 +1062,14 @@ def chat_context_block(persona: Persona) -> str:
 
     # 5주 트렌드 차트 series (board 공유 helper)
     try:
-        from ui.board_v2 import _weekly_keyword_series, _delta_pct
+        from ui.board_v2 import _weekly_keyword_series, _delta_info
         _labels, series = _weekly_keyword_series(weeks=5)
         if series:
             parts.append("5주 차트 — 키워드 변화율:")
             for s in series[:5]:
-                d = _delta_pct(s["counts"])
-                parts.append(f"  - {s['name']}: 변화율 {'+' if d>=0 else ''}{d}%")
+                d, is_new = _delta_info(s["counts"])
+                val = f"신규 {sum(s['counts'])}건" if is_new else f"변화율 {'+' if d>=0 else ''}{d}%"
+                parts.append(f"  - {s['name']}: {val}")
     except Exception:
         pass
 

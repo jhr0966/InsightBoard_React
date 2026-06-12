@@ -505,8 +505,16 @@ def chat_context_block_collect(persona: Persona) -> str:
 
     페르소나 비의존(헤더 stats·추이·출처 분포·최근 기사) → 본문은 60s 캐시
     (`_chat_context_collect_cached`). 직전엔 매 rerun 뉴스 윈도우 4회 로드였다.
+
+    + 캐시 밖 `_collect_live_view_context` — 사용자가 지금 보고 있는 카드뷰 필터
+    (대분류 탭·출처칩·검색어)와 그 결과 카드 목록을 덧붙인다(세션 의존이라 캐시 불가).
     """
-    return _chat_context_collect_cached()
+    base = _chat_context_collect_cached()
+    try:
+        live = _collect_live_view_context()
+    except Exception:  # noqa: BLE001 — 컨텍스트 보강 실패가 화면을 깨면 안 됨
+        live = ""
+    return base + ("\n" + live if live else "")
 
 
 @st.cache_data(ttl=60)
@@ -556,7 +564,7 @@ def _chat_context_collect_cached() -> str:
     except Exception:
         pass
 
-    # 뉴스 라이브러리 — 최근 6건
+    # 뉴스 라이브러리 — 최근 6건 (출처는 표시 라벨로)
     try:
         today_df = _news_db.load_all_today()
         recent = today_df if today_df is not None and not today_df.empty else \
@@ -567,7 +575,8 @@ def _chat_context_collect_cached() -> str:
             parts.append("뉴스 라이브러리 (최근 6건):")
             for _, r in recent.head(6).iterrows():
                 t = str(r.get("title", ""))[:100]
-                s = str(r.get("source", ""))
+                s = _news_sources.source_label(
+                    str(r.get("source", "")), str(r.get("press", "") or ""))
                 summary = str(r.get("summary_llm", "") or r.get("summary", ""))[:120]
                 parts.append(f"  - {t} ({s})")
                 if summary:
@@ -575,6 +584,52 @@ def _chat_context_collect_cached() -> str:
     except Exception:
         pass
 
+    return "\n".join(parts)
+
+
+def _collect_live_view_context() -> str:
+    """현재 카드뷰가 **실제 보여주는** 상태를 컨텍스트로 — 보기모드·대분류 탭·출처칩·
+    검색어 + 그 필터로 화면에 깔린 카드 목록(제목/요약/출처/시각).
+
+    `_chat_context_collect_cached`(60s 캐시)는 세션 필터에 무관한 전역 통계만 담는다.
+    사용자가 화면에서 '키워드 뉴스 > 네이버 뉴스' 탭에 검색어를 걸어 보고 있는 바로
+    그 카드들을 SOLA 가 알도록, 캐시 밖에서 매 rerun 세션 상태를 읽어 덧붙인다
+    (사용자 보고: "메인영역에 보이는 수집 내용이 채팅 컨텍스트에 안 들어간다").
+    """
+    mode = str(st.session_state.get("sc_browse_mode", "cards") or "cards")
+    q = str(st.session_state.get(_NEWS_SEARCH_KEY, "") or "").strip()
+    parts: list[str] = ["", "--- 지금 화면에 보이는 뉴스(현재 필터) ---"]
+
+    if mode == "table":
+        recs = _sc_filtered_records("keyword", _SC_ALL_CHANNEL, q) \
+            + _sc_filtered_records("portal", _SC_ALL_CHANNEL, q)
+        parts.append(f"보기: 데이터 표" + (f" · 검색어 '{q}'" if q else ""))
+    else:
+        cat = str(st.session_state.get("sc_news_cat", _SC_CATS[0]) or _SC_CATS[0])
+        if cat not in _SC_CATS:
+            cat = _SC_CATS[0]
+        chan = str(st.session_state.get(f"sc_chan_{cat}", _SC_ALL_CHANNEL) or _SC_ALL_CHANNEL)
+        cat_label = _SC_CAT_LABEL.get(cat, cat)
+        parts.append(
+            f"보기: 카드 · 대분류 '{cat_label}' · 출처 '{chan}'"
+            + (f" · 검색어 '{q}'" if q else "")
+        )
+        recs = _sc_filtered_records(cat, chan, q)
+
+    if not recs:
+        parts.append("(이 필터에 해당하는 카드가 없습니다.)")
+        return "\n".join(parts)
+
+    parts.append(f"보이는 카드 {len(recs)}건 중 상위 {min(len(recs), 8)}건:")
+    for r in recs[:8]:
+        t = str(r.get("title", ""))[:100]
+        chan_lbl = str(r.get("_chan", "") or "")
+        age = _news_age_label(str(r.get("collected_at") or r.get("published_at") or ""))
+        meta = " · ".join(x for x in (chan_lbl, age) if x)
+        body = _news_body_src(r, ("summary_llm", "summary", "content"))[:120]
+        parts.append(f"  - {t}" + (f" ({meta})" if meta else ""))
+        if body:
+            parts.append(f"    요약: {body}")
     return "\n".join(parts)
 
 
