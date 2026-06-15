@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Docs (React UI/UX 완전 패리티 실행계획) — `docs-react-parity-plan`
+- **`docs/REACT_PARITY_PLAN.md` 신설**: 현행 Streamlit 전 화면(보드·인사이트·뉴스수집·작업정의·보관함·셸·페르소나·온보딩·채팅·SOLA 작업실) 실측 인벤토리 기반 100% 재현 계획. 화면별 패리티 명세, API 공백표(persona·matches·board·trends weekly/emergence·sources·collect status/runs/diagnose·summarize 등), SVG 차트 4종(라인·버블매트릭스·히트맵·스파크라인) 직접 구현 결정, Phase 0~4, 리스크. `CLAUDE.md` 라우팅 추가.
+
+
 ### Added (Phase 2 준비 — 스토리지 백엔드 seam) — `claude/dazzling-fermat-bbomgp`
 - **`store/repository.py` 신설**: 영구화 백엔드 추상화(Phase 2 교체점). `Repository` 프로토콜(id 기반 CRUD + `list(user_id=,workspace_id=)` 테넌트 스코프), `JsonlRepository`(현행 파일 구현 — `config.DATA_ROOT` 동적 참조 + 식별·감사 stamp/backfill), `get_repository(name)` 팩토리(`INSIGHTBOARD_STORAGE` env, 기본 "file"; "postgres" 등은 Phase 2 분기). Postgres 미도입 — **seam만**.
 - **`store/bookmarks.py`**: 영구화 IO 를 `get_repository("bookmarks")` 로 위임(`_path`/직접 파일 IO 제거, 공개 API·도메인 로직 불변). → Phase 2 에서 백엔드만 교체.
