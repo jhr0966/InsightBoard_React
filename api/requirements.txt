@@ -1,0 +1,9 @@
+# Vercel Python 함수 전용(경량) — api/index.py 진입점.
+# 전체 앱(streamlit·scraping 등)을 빼고 API 가 실제 import 하는 것만.
+fastapi>=0.110
+pydantic>=2.6
+pandas
+pyarrow
+openai>=1.40
+anthropic>=0.40
+python-dotenv

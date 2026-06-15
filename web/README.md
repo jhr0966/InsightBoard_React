@@ -38,6 +38,20 @@ npm run build        # tsc + vite build → dist/
 - `VITE_API_TARGET` — dev 프록시 타깃(기본 `http://localhost:8000`)
 - `VITE_API_BASE` — 프로덕션 절대 API base(비우면 동일 출처 `/api`)
 
+## Vercel 배포
+
+두 가지 모드. 둘 다 LLM 키 등은 Vercel 대시보드 환경변수로 설정(`LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`).
+
+### A. 풀스택 (프런트 + API 한 프로젝트) — repo 루트 기준
+- 루트 `vercel.json` 이 web 정적 빌드 + `api/index.py`(FastAPI ASGI) 서버리스 함수 + `/api/*` 라우팅을 구성.
+- `api/requirements.txt`(경량) 로 함수 의존성만 설치, `.vercelignore` 로 streamlit/scraping/data 제외.
+- **서버리스 제약**: 파일시스템 읽기전용 → `INSIGHTBOARD_DATA_ROOT=/tmp/data`(vercel.json env). `/tmp` 는 호출 간 휘발 → 영구 저장은 Phase 2(Postgres). 데모/읽기 위주.
+- Project Root = repo 루트로 import 후 그대로 Deploy.
+
+### B. 프런트엔드만 (API 는 별도 호스팅)
+- Project Root = `web/`. `web/vercel.json` 이 SPA rewrite 처리.
+- 빌드 환경변수 `VITE_API_BASE = https://<백엔드-도메인>` 로 API 위치 지정(비우면 동일 출처 `/api`).
+
 ## 남은 일
 - 화면 데이터 패리티(보드 다이제스트·기회 매트릭스·작업정의 업로드 폼)
 - openapi-typescript 로 `types.ts` 자동 생성

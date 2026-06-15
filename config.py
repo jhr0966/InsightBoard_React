@@ -20,7 +20,10 @@ except ImportError:
 
 
 REPO_ROOT = Path(__file__).resolve().parent
-DATA_ROOT = REPO_ROOT / "data"
+# DATA_ROOT 은 `INSIGHTBOARD_DATA_ROOT` 로 오버라이드 가능 — Vercel 등 읽기전용
+# 파일시스템(쓰기는 /tmp 만 허용)에서 `INSIGHTBOARD_DATA_ROOT=/tmp/data` 로 띄운다.
+_DATA_ENV = os.getenv("INSIGHTBOARD_DATA_ROOT", "").strip()
+DATA_ROOT = Path(_DATA_ENV).expanduser() if _DATA_ENV else REPO_ROOT / "data"
 NEWS_DIR = DATA_ROOT / "news"
 ROADMAP_DIR = DATA_ROOT / "roadmap"
 SOLA_DIR = DATA_ROOT / "sola"

@@ -1,0 +1,16 @@
+# Vercel 업로드/함수 번들에서 제외 — API(api/ + store/sola/persona/roadmap/config.py)와
+# 프런트(web/)만 있으면 된다. Streamlit UI·수집기·로컬 데이터·문서는 불필요.
+ui/
+app.py
+scraping/
+tests/
+scripts/
+assets/
+static/
+docs/
+data/
+.github/
+__pycache__/
+*.pyc
+web/node_modules/
+web/dist/

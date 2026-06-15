@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — Vercel 배포 구성 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: 루트 `vercel.json`(web 정적 + api ASGI 함수 + /api 라우팅), `api/index.py` shim, 경량 `api/requirements.txt`, `.vercelignore`, `config.INSIGHTBOARD_DATA_ROOT` env 오버라이드. `web/vercel.json`(프런트단독). README 2모드 문서.
+
+**조치**: env override 부팅 확인, 전체 1004 통과. API import 폐쇄가 ui/scraping/app 미참조(정적 검증) → .vercelignore 안전. 서버리스 저장소 휘발 → 영구화는 Phase 2.
+
+---
+
 ## 2026-06-15 — React 프런트엔드 스캐폴딩 (web/) (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `web/`(Vite+React+TS+Router+Query) 신설. 5라우트 + Layout(좌 nav·중앙·우 드로어) + 타입드 API 클라이언트(streamChat SSE 파서) + AssistantDrawer(SSE 챗+컨텍스트 주입) + 5화면 API 연동. tokens.css 승계.

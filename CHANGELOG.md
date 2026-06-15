@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (Vercel 배포 구성) — `claude/dazzling-fermat-bbomgp`
+- **`vercel.json`(루트)**: 풀스택 — `web/` 정적 빌드(`@vercel/static-build`) + `api/index.py`(FastAPI ASGI) 서버리스 함수(`@vercel/python`) + `/api/*` 라우팅 + SPA fallback. `INSIGHTBOARD_DATA_ROOT=/tmp/data` env.
+- **`api/index.py`**: Vercel ASGI shim(`from api.main import app`). 로컬은 `uvicorn api.main:app` 그대로.
+- **`api/requirements.txt`(경량)** + **`.vercelignore`**(ui/·scraping/·tests/·data/ 등 제외 — API import 폐쇄에 불필요, 정적 검증으로 위반 0 확인) → 함수 번들 슬림.
+- **`config.py`**: `INSIGHTBOARD_DATA_ROOT` env 로 `DATA_ROOT` 오버라이드(읽기전용 FS 대응). 미설정 시 기존 `repo/data`.
+- **`web/vercel.json`**: 프런트엔드-단독 배포(SPA rewrite) 옵션. `web/README.md`에 풀스택/프런트단독 2모드 문서.
+
 ### Added (React 프런트엔드 스캐폴딩 — web/) — `claude/dazzling-fermat-bbomgp`
 - **`web/` 신설**: Vite + React 18 + TS + React Router + TanStack Query. `REACT_MIGRATION_PLAN §4`.
 - **5 라우트** (`App.tsx`): `/`(보드)·`/insights`·`/proposals`·`/collect`·`/taskdefs`. `Layout.tsx`=좌 nav · 중앙 본문 · 우 어시스턴트 드로어.
