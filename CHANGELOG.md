@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (React 프런트엔드 스캐폴딩 — web/) — `claude/dazzling-fermat-bbomgp`
+- **`web/` 신설**: Vite + React 18 + TS + React Router + TanStack Query. `REACT_MIGRATION_PLAN §4`.
+- **5 라우트** (`App.tsx`): `/`(보드)·`/insights`·`/proposals`·`/collect`·`/taskdefs`. `Layout.tsx`=좌 nav · 중앙 본문 · 우 어시스턴트 드로어.
+- **타입드 API 클라이언트** (`src/api/client.ts`+`types.ts`): `api/schemas.py` 미러. taskdefs·bookmarks·news·trends·proposals·assistant. `streamChat()`=SSE 파서(`/api/assistant/chat`).
+- **AssistantDrawer**: SSE 스트리밍 챗 + 화면 컨텍스트(`/api/assistant/context`) system 주입.
+- **화면 5종 API 연동**: Board(다이제스트)·Insights(트렌드 키워드/볼륨/출처)·Collect(뉴스 카드)·TaskDefs(목록+검색)·Proposals(작업선택→생성+보관목록).
+- **디자인 토큰 승계** `src/styles/tokens.css` ← `assets/v2/tokens.css`. dev 프록시(`/api`→:8000).
+- **검증**: `npm run typecheck` 통과, `npm run build` 성공(89 모듈, gzip 69KB). `node_modules`/`dist`/`*.tsbuildinfo` gitignore.
+
 ### Added (API 계약 확장 — news·trends·proposals·assistant/context) — `claude/dazzling-fermat-bbomgp`
 - **`api/routers/news.py`**: `GET /api/news`(days·source·limit), `/api/news/today` → `store.news_db` 위임. Parquet 합본을 경량 레코드(content 제외)로 변환.
 - **`api/routers/trends.py`**: `/api/trends/keywords`·`/volume`·`/sources` → `store.trends` 집계(최근 N일 뉴스 파생).

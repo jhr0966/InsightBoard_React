@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — React 프런트엔드 스캐폴딩 (web/) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `web/`(Vite+React+TS+Router+Query) 신설. 5라우트 + Layout(좌 nav·중앙·우 드로어) + 타입드 API 클라이언트(streamChat SSE 파서) + AssistantDrawer(SSE 챗+컨텍스트 주입) + 5화면 API 연동. tokens.css 승계.
+
+**조치**: npm typecheck 통과, vite build 성공(89모듈). node_modules/dist/tsbuildinfo gitignore. dev=uvicorn:8000 + vite:5173 프록시.
+
+---
+
 ## 2026-06-15 — API 계약 확장 (news·trends·proposals·assistant/context) (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `api/routers/`에 news(조회)·trends(키워드/볼륨/출처 집계)·proposals(생성)·assistant/context(서버측 컨텍스트 일반화) 추가. 모두 store/sola 위임. OpenAPI 17경로.

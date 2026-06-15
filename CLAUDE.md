@@ -72,6 +72,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | HTML 컴포넌트 빌더 | `ui/components.py` |
 | 진입점·디스패치·세션 키 | `app.py` (+ `docs/INVARIANTS.md`) |
 | 백엔드 HTTP API (React 전환) | `api/main.py`(앱·CORS·health), `api/deps.py`(no-op 인증=Phase2 교체점), `api/schemas.py`(식별필드), `api/routers/*`(`taskdefs`·`bookmarks` CRUD·`news`·`trends`·`proposals`·`assistant` SSE챗+context — `store`/`sola` 위임) |
+| React 프런트엔드 | `web/`(Vite+React+TS+Router+Query). `web/src/api/client.ts`(타입드 fetch+SSE), `web/src/components/{Layout,AssistantDrawer}.tsx`, `web/src/pages/*`, `web/src/styles/tokens.css`(assets/v2 승계). dev: `uvicorn api.main:app` + `npm run dev` |
 | 식별·감사 필드 표준 | `store/_audit.py` (`stamp`/`backfill`/`now_iso`) |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
 | 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |

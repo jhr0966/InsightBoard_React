@@ -311,6 +311,8 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 
 ## 4단계 — React 전환
 
+> **진행** (`claude/dazzling-fermat-bbomgp`): `web/` 스캐폴딩 ✅ — Vite+React+TS+Router+Query, 5라우트, 타입드 API 클라이언트(+SSE `streamChat`), AssistantDrawer(SSE+context), 5화면 API 연동, tokens.css 승계. typecheck/build 통과. 남은 일: 데이터 패리티(보드·기회 매트릭스·업로드 폼)·openapi 타입 자동생성·컴포넌트 확장(칸반/모달).
+
 - **라우팅** = 5 화면(메뉴 순): `/`, `/insights`, `/proposals`, `/collect`, `/taskdefs`. 보관함 라우트 없음 — 보관은 `/collect`·`/proposals`의 탭.
 - **전역 어시스턴트 드로어 1개** — 채팅 2중화 해소. 현재 화면을 context로 전달. 응답은 SSE 스트리밍.
 - **디자인 토큰 승계** — `assets/v2/*.css`(tokens·card·shell·sidebar) 토큰을 그대로 가져와 시각 일관성 유지.
