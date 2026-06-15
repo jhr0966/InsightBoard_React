@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import (
     assistant,
+    board,
     bookmarks,
     collect,
     news,
@@ -48,6 +49,7 @@ def health() -> dict[str, str]:
     return {"status": "ok", "phase": "1"}
 
 
+app.include_router(board.router)
 app.include_router(taskdefs.router)
 app.include_router(bookmarks.router)
 app.include_router(news.router)

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (화면 풍부화 — 보드 다이제스트 + 작업정의 JSON 편집) — `claude/dazzling-fermat-bbomgp`
+- **`api/routers/board.py`**: `GET /api/board/brief` → `sola.board_brief.brief`(최근 뉴스 items + 페르소나 라벨). LLM 미설정 시 룰 기반 폴백 내장(키 없이 안전).
+- **React 보드 풍부화**: `Board` 페이지에 요약(브리프) 카드 + 페르소나 라벨.
+- **작업정의 JSON 편집(per-task CRUD)**: `TaskDefs` 페이지 — 카드 클릭→JSON 에디터(textarea) 로드, 저장(PUT)·삭제(DELETE)·"+ 새 작업 정의" 템플릿. 클라이언트 측 JSON 파싱 검증.
+- **OpenAPI 재생성**: 24경로, `schema.ts` 갱신. 테스트 +2(1011→1013). web build 통과.
+
 ### Added (OpenAPI 타입 자동생성 — 계약 드리프트 제거) — `claude/dazzling-fermat-bbomgp`
 - **`scripts/gen_openapi.py`**: FastAPI `app.openapi()` → `web/openapi.json` 덤프(`--check` CI 모드).
 - **`web/` openapi-typescript**: `npm run gen:types` → `src/api/schema.ts` 자동생성. `types.ts` 가 모델 응답(TaskDef=TaskDefOut·Bookmark=BookmarkOut·ChatMessage)을 **schema.ts 에서 alias** → 서버 스키마 변경 시 타입 자동 추종. dict 반환 엔드포인트(news/trends/opportunities/threads)는 named schema 부재로 손수 유지(주석 명시).

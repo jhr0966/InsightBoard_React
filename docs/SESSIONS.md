@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — 화면 풍부화 (보드 다이제스트 + 작업정의 JSON 편집) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `GET /api/board/brief`(board_brief, 룰 폴백). React: Board 요약 카드, TaskDefs JSON 에디터(로드/저장 PUT/삭제/새 템플릿). OpenAPI 24경로 재생성.
+
+**조치**: 테스트 +2(1011→1013), web build 통과.
+
+---
+
 ## 2026-06-15 — OpenAPI 타입 자동생성 (계약 드리프트 제거) (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `scripts/gen_openapi.py`(app.openapi→web/openapi.json), web openapi-typescript(`gen:types`→schema.ts), `types.ts` 모델 alias. `test_openapi_snapshot.py` 드리프트 가드.

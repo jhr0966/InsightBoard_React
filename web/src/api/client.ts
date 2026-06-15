@@ -40,6 +40,13 @@ const qs = (params: Record<string, unknown>) => {
 export const api = {
   health: () => req<{ status: string; phase: string }>("/api/health"),
 
+  board: {
+    brief: (days = 1) =>
+      req<{ brief: string; item_count: number; persona_label: string }>(
+        `/api/board/brief${qs({ days })}`,
+      ),
+  },
+
   taskdefs: {
     list: (q?: { team?: string; dept?: string; q?: string; limit?: number }) =>
       req<TaskDef[]>(`/api/taskdefs${qs(q ?? {})}`),
