@@ -15,21 +15,36 @@ from roadmap.query import load_latest as load_tasks
 from sola.client import is_configured as llm_ready
 
 
-AREAS = (
+# 라우팅 키(세션 app_area · 핸드오프 URL)는 그대로 유지한다 — 화면 표시명만
+# `_AREA_DISPLAY` 로 갈음한다(예: SOLA 작업실 → 자동화 제안). 키를 바꾸면 chat_panel/
+# board_v2/insights 핸드오프와 테스트가 깨지므로, React 전환 전 '안전한 nav만' 단계에선
+# 표시·순서·그룹핑만 손본다.
+#
+# 순서(2026-06-15): 메인(소비/실행) 3 → 관리(데이터 운영) 3. `_MAIN_AREAS` 가
+# 앞쪽(보드·인사이트·자동화 제안), `_MANAGE_AREAS` 가 뒤쪽(수집·작업 정의·보관함).
+_MAIN_AREAS = (
     "📊 오늘의 보드",
-    "🗞 뉴스 수집",
-    "📋 작업 정의",
     "🔎 인사이트 분석",
     "🤖 SOLA 작업실",
+)
+_MANAGE_AREAS = (
+    "🗞 뉴스 수집",
+    "📋 작업 정의",
     "📦 산출물 보관함",
 )
+AREAS = _MAIN_AREAS + _MANAGE_AREAS
+
+# 표시명 갈음 — 키→사용자에게 보일 이름. 키가 없으면 그대로 표시.
+_AREA_DISPLAY = {
+    "🤖 SOLA 작업실": "🤖 자동화 제안",
+}
 
 _AREA_DESCRIPTIONS = {
     "📊 오늘의 보드": "맞춤 인사이트",
-    "🗞 뉴스 수집": "수집잡 · 키워드 · 출처",
-    "📋 작업 정의": "엑셀 업로드 · 정의 관리",
     "🔎 인사이트 분석": "트렌드 · 기회 · 매칭",
-    "🤖 SOLA 작업실": "초안 · 대화",
+    "🤖 SOLA 작업실": "제안 생성 · 대화",
+    "🗞 뉴스 수집": "수집 · 보관 · 설정",
+    "📋 작업 정의": "엑셀 업로드 · 정의 관리",
     "📦 산출물 보관함": "북마크 · 채택",
 }
 
@@ -171,34 +186,60 @@ def _nav_label(area: str, desc: str) -> str:
     return f"**{area}** *{desc}*" if desc else f"**{area}**"
 
 
-def _render_sidebar_nav(current_area: str) -> None:
-    """업무 흐름 5-nav — `st.button` 위젯(소켓 rerun, 화면 전환 흰 깜빡임 없음).
+def _nav_group_divider_html(label: str) -> str:
+    """nav 그룹(메인↔관리) 구분 라벨 — `.st-key-sidebar_nav` 안의 비-버튼 요소라
+    CSS 카운터(button 마다 증가)에 영향을 주지 않아 번호가 연속 유지된다."""
+    return (
+        '<div class="sidebar-nav-group" style="'
+        'margin:9px 2px 3px; padding-top:8px;'
+        'border-top:1px solid var(--surface-divider);'
+        'font-size:10.5px; font-weight:700; letter-spacing:.06em;'
+        'text-transform:uppercase; color:var(--text-muted);">'
+        f'{_html.escape(label)}</div>'
+    )
 
-    앵커(`<a href=?app_area=>`)는 클릭 시 **문서 전체 reload**(흰 깜빡임)였다. 버튼은
-    **소켓 rerun**(부분 갱신·문서 reload 없음)이라 메뉴 이동에서 깜빡임이 사라진다.
-    look 은 `sidebar.css` 의 `.st-key-sidebar_nav` 스코프가 기존 `.sidebar-nav-item`
-    (인덱스+제목+설명, 활성=accent)을 복제한다. 활성=`type="primary"`. `on_click`
-    미사용 — `if st.button(): 세팅 → st.rerun()` (CLAUDE.md #3).
+
+def _render_nav_button(idx: int, area: str, current_area: str, editing: bool) -> None:
+    """단일 nav 버튼 — 표시명(`_AREA_DISPLAY`)으로 라벨, 라우팅은 키(area)로.
+
+    on_click 미사용 — `if st.button(): 세팅 → st.rerun()` (CLAUDE.md #3).
+    """
+    active = (area == current_area) and not editing
+    display = _AREA_DISPLAY.get(area, area)
+    clicked = st.button(
+        _nav_label(display, _AREA_DESCRIPTIONS.get(area, "")),
+        key=f"_nav_btn_{idx}",
+        use_container_width=True,
+        type="primary" if active else "secondary",
+    )
+    # 이미 활성(같은 area·편집 아님)이면 무반응 → 불필요한 rerun 방지.
+    if clicked and not active:
+        st.session_state["app_area"] = area  # 표시명이 아니라 키로 라우팅
+        st.session_state["show_persona_editor"] = False
+        st.rerun()
+
+
+def _render_sidebar_nav(current_area: str) -> None:
+    """업무 흐름 nav — `st.button` 위젯(소켓 rerun, 화면 전환 흰 깜빡임 없음).
+
+    2단 그룹핑: 메인(보드·인사이트·자동화 제안) → 구분선(`관리`) → 관리(수집·작업
+    정의·보관함). 같은 `.st-key-sidebar_nav` 컨테이너에 모두 담아 CSS 카운터(01·02…)는
+    버튼 기준으로 연속, divider 는 카운터에 영향 없음. 버튼 라벨은 `_AREA_DISPLAY`
+    표시명, 라우팅은 키(area). 활성=`type="primary"`. on_click 미사용.
 
     컨텍스트 딥링크(`?app_area=` from 보드/히트맵/알림)는 `_consume_area_query` 가
-    그대로 처리하므로 여기선 사이드바 메뉴 클릭만 위젯화한다. (I-22 재위젯화 —
-    `.st-key-*` 스코프는 데이터관리 필터·수집 버튼과 동일 방식으로 동작.)
+    그대로 처리하므로 여기선 사이드바 메뉴 클릭만 위젯화한다.
     """
     editing = bool(st.session_state.get("show_persona_editor"))
     with st.container(key="sidebar_nav"):
-        for idx, area in enumerate(AREAS, start=1):
-            active = (area == current_area) and not editing
-            clicked = st.button(
-                _nav_label(area, _AREA_DESCRIPTIONS.get(area, "")),
-                key=f"_nav_btn_{idx}",
-                use_container_width=True,
-                type="primary" if active else "secondary",
-            )
-            # 이미 활성(같은 area·편집 아님)이면 무반응 → 불필요한 rerun 방지.
-            if clicked and not active:
-                st.session_state["app_area"] = area
-                st.session_state["show_persona_editor"] = False
-                st.rerun()
+        idx = 1
+        for area in _MAIN_AREAS:
+            _render_nav_button(idx, area, current_area, editing)
+            idx += 1
+        render_html(_nav_group_divider_html("관리"), unsafe_allow_html=True)
+        for area in _MANAGE_AREAS:
+            _render_nav_button(idx, area, current_area, editing)
+            idx += 1
 
 
 def _side_stats_html(stats: dict) -> str:
@@ -287,7 +328,7 @@ def render() -> str:
     _render_sidebar_nav(area)
     render_html(
         '<div class="sidebar-flow-hint apple">'
-        '데이터 준비 → 분석 → SOLA 산출물 → 보관'
+        '보드 · 인사이트 · 자동화 제안 → 데이터(수집 · 작업 정의)'
         '</div>',
         unsafe_allow_html=True,
     )

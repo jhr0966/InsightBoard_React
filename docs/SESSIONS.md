@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-06-15 — React 전환 정리 계획 + nav 2단 그룹핑 선반영 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: React 전환 전 화면 구성 정리 계획 수립(`docs/REACT_MIGRATION_PLAN.md`) + 1단계 중 '안전한 nav'만 Streamlit 선반영.
+
+**계획(문서)**: 6→5 화면(산출물 보관함 삭제, 보관 기능은 뉴스 수집/자동화 제안 탭으로 분산) · SOLA 작업실→자동화 제안 개명 · nav 2단 분리(메인 보드·인사이트·자동화 제안 / 관리 뉴스 수집·작업 정의) · 인사이트 기회→제안 CTA 연결 · 자동화 제안 파이프라인(2단 lazy, Top 1~3건 선생성, dedup) · 작업정의 JSON v1.0 폼/API 계약.
+
+**코드(선반영)**: nav를 `_MAIN_AREAS`/`_MANAGE_AREAS` 2단 그룹핑 + 구분선 + 순서 변경, `_AREA_DISPLAY`로 SOLA 작업실→자동화 제안 표시명만 갈음(라우팅 키 불변). sola_workshop 상단바·컨텍스트 헤더 표시명도 일치.
+
+**왜 nav만**: 라우팅 키 전역 개명·archive 삭제·보관 탭 이식은 소스~10+테스트~7 파일을 건드리는 고위험 churn인데 곧 React로 재작성 → 목표 구조는 계획 문서에 박제하고 신규 구현이 더 쌈.
+
+**검증**: pytest 953 passed · 금지패턴 0 · PR #1(Draft).
+
+---
+
 ## 2026-06-12 — fix: 페르소나 설정 Tab 내비 + 'No results' 팝업 숨김 (`fix-persona-tab-nav`)
 
 **무엇을**: ① 이름 입력 후 Tab 한 번에 팀→부서→직무 순서로 이동 ② 키워드 입력 클릭 시 뜨는 'No results' 드롭다운 제거.

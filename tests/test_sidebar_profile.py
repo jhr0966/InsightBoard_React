@@ -72,10 +72,12 @@ def test_sidebar_nav_is_widget_buttons_socket_rerun():
     assert not at.exception
     nav = [b for b in at.sidebar.button if b.key and b.key.startswith("_nav_btn_")]
     assert len(nav) == len(sidebar.AREAS)
-    target = next(b for b in nav if b.key == "_nav_btn_4")   # 인사이트(1보드·2뉴스수집·3작업정의·4인사이트)
+    # 2단 그룹핑 순서: 1보드·2인사이트·3자동화제안 | 4뉴스수집·5작업정의·6보관함.
+    # 관리 그룹(divider 이후)의 버튼도 키로 정상 라우팅되는지 함께 검증한다.
+    target = next(b for b in nav if b.key == "_nav_btn_4")   # 뉴스 수집(관리 그룹 첫 항목)
     target.click().run()
     assert not at.exception
-    assert at.session_state["app_area"] == "🔎 인사이트 분석"
+    assert at.session_state["app_area"] == "🗞 뉴스 수집"
     assert "app_area" not in at.query_params      # 소켓 rerun — URL 쿼리 미사용
 
 

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (React 전환 전 정리 — nav 2단 그룹핑·SOLA 작업실→자동화 제안 개명) — `claude/dazzling-fermat-bbomgp`
+- **사이드바 nav 2단 그룹핑 + 순서 변경**(`ui/sidebar.py`): 메뉴를 메인(① 오늘의 보드 ② 인사이트 분석 ③ 자동화 제안) → 구분선 `관리` → 관리(④ 뉴스 수집 ⑤ 작업 정의 ⑥ 산출물 보관함)로 재배치. 성격이 다른 화면(소비/실행 vs 데이터 운영)을 한 줄에 평면 나열하지 않아 첫인상 부담을 줄임. `_MAIN_AREAS`/`_MANAGE_AREAS`로 분리하고 `AREAS = _MAIN + _MANAGE`로 합성(기존 라우팅 키·세션·핸드오프 URL 불변).
+- **SOLA 작업실 → 자동화 제안 표시명 개명**(`ui/sidebar.py` `_AREA_DISPLAY`, `ui/sola_workshop_v2.py` topbar·컨텍스트 헤더): 라우팅 키(`🤖 SOLA 작업실`)는 유지하고 사용자에게 보이는 이름만 `🤖 자동화 제안`으로 갈음 — chat_panel/board_v2/insights 핸드오프와 테스트(area 키 의존)를 깨지 않으면서 사용자 언어로 정리. nav 버튼 라벨은 표시명, 클릭 라우팅은 키로 분리(`_render_nav_button`).
+- **흐름 힌트 문구 갱신**(`ui/sidebar.py`): `데이터 준비 → 분석 → SOLA 산출물 → 보관` → `보드 · 인사이트 · 자동화 제안 → 데이터(수집 · 작업 정의)`.
+- 배경: `docs/REACT_MIGRATION_PLAN.md`의 1단계(화면 정리)를 Streamlit에 '안전한 nav만' 선반영. 라우팅 키 전역 개명·산출물 보관함 삭제·보관 탭 이식은 throwaway 리스크가 커 React 전환에서 신규 구현(계획 문서 기준).
+- 검증: pytest **953 passed** · 금지패턴(on_click/requests) 0 · `test_sidebar_profile` 새 순서 반영(관리 그룹 버튼 라우팅 검증).
+
 ### Fixed (페르소나 설정 — Tab 한 번에 다음 입력 + 'No results' 팝업 숨김) — `fix-persona-tab-nav`
 - **Tab 순서 이름→팀→부서→직무**(`ui/persona_page.py`, `ui/components.py`): ① 기본 정보 2컬럼이 DOM 컬럼 우선(이름,부서|팀,직무)이라 Tab 이 이름→부서로 건너뛰던 것 → 행 단위 columns(이름|팀 / 부서|직무)로 재배치(시각 동일, DOM 순서 교정) ② focus-nav JS 에 **Tab/Shift+Tab 핸들러** 추가 — scope 안 입력(selectbox combobox 포함)끼리만 이동해 사이의 버튼·도움말 등 다른 focusable 을 건너뛴다(경계에선 기본 동작). 온보딩 모달에도 동일 적용.
 - **키워드 입력 'No results' 팝업 숨김**(`streamlit-overrides.css`): 직전 숨김 CSS 가 `:has([role="listbox"])` 한정이라 옵션이 없을 때 뜨는 **빈 'No results' 패널**(listbox 없음)이 새어 나왔다 → 키워드 입력 포커스 동안 popover 전체 숨김으로 확대. Enter 칩 등록은 그대로 동작(실측).
