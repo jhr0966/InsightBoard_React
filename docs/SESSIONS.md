@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — FastAPI 백엔드 스캐폴딩 + /api/taskdefs CRUD (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `api/` 패키지(main·deps·schemas·routers/taskdefs) 신설. `/api/taskdefs` CRUD를 `store.task_defs_db`에 위임, 모든 응답에 식별·감사 필드 노출. no-op 인증(`current_identity`)이 Phase 2 교체 지점. requirements에 fastapi/uvicorn/httpx 추가.
+
+**조치**: 테스트 +8(970→978), OpenAPI 4경로 생성 확인. 다른 도메인 라우터의 레퍼런스 패턴.
+
+---
+
 ## 2026-06-15 — 식별·감사 필드 표준 헬퍼 + bookmarks/task_defs 적용 (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `store/_audit.py` 표준 헬퍼(`stamp`/`backfill`/`now_iso`) 신설. `bookmarks`(dataclass 5필드 전체)·`task_defs_db`(SQLite v2 user_id/workspace_id 컬럼+마이그레이션) 적용. 과거 레코드 백필.

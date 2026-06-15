@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added (FastAPI 백엔드 스캐폴딩 + /api/taskdefs CRUD) — `claude/dazzling-fermat-bbomgp`
+- **`api/` 패키지 신설** (React 전환용 백엔드 계약, `REACT_MIGRATION_PLAN §3`):
+  - `api/main.py` — FastAPI 앱 + CORS(env `INSIGHTBOARD_CORS_ORIGINS`, 기본 localhost:3000/5173) + `/api/health`.
+  - `api/deps.py` — `current_identity()` 의존성. **Phase 1 no-op 인증**(항상 `local`/`default`), Phase 2에서 토큰 검증으로 교체할 단일 지점.
+  - `api/schemas.py` — `AuditedModel`(식별·감사 5필드 노출) + `TaskDefOut`/`TaskDefUpsertIn`. `json` 키는 alias로 노출해 pydantic `.json()` shadow 회피.
+  - `api/routers/taskdefs.py` — `/api/taskdefs` CRUD(list+필터+검색 / get / put upsert / delete / history)를 `store.task_defs_db`에 위임. 행위자는 `Identity.user_id`로 stamp, store ValueError→422.
+- **requirements.txt**: `fastapi>=0.110`, `uvicorn>=0.27`, `httpx>=0.27` 추가. 실행 `uvicorn api.main:app`.
+- **테스트 +8**: `tests/test_api_taskdefs.py`(TestClient — 헬스/CRUD/필터/검색/이력/404/422). 970→978 passed.
+
 ### Added (식별·감사 필드 표준 + bookmarks/task_defs 적용) — `claude/dazzling-fermat-bbomgp`
 - **`store/_audit.py` 신설**: 식별·감사 5필드 표준 헬퍼. `stamp(record, user=, workspace=)`(신규=created_at 채움/기존=updated_at 갱신), `backfill()`(읽기 시 누락 백필, updated_at 불변), `now_iso()`(UTC 초단위 단일 진입점), `DEFAULT_USER="local"`/`DEFAULT_WORKSPACE="default"`. Phase 2(Postgres·멀티유저) 이전 시 호출부가 `user=`만 넘기면 그대로 흐르도록 설계.
 - **`store/bookmarks.py`**: `Bookmark` dataclass에 `user_id`/`workspace_id`/`created_by`/`updated_at` 추가. `add`는 `stamp()`로 5필드 보장, `update_content`/`set_status`는 `updated_at` 갱신, `from_dict`는 과거 레코드 백필.

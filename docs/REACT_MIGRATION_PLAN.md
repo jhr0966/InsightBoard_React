@@ -57,7 +57,7 @@ updated_at   : 갱신 시각 (UTC ISO)
 ### 준비물 9 워크스트림
 | # | 워크스트림 | 핵심 작업 | 실측 근거 | 상태 |
 |---|---|---|---|---|
-| A | **백엔드 API 추출** | FastAPI로 `store/sola/roadmap/scraping` 래핑 + OpenAPI → React 타입드 클라이언트. `chat_context_block`→`/api/assistant/context` | UI가 도메인 직호출 | 작업정의 JSON 계약 ✅ / 나머지 ⬜ |
+| A | **백엔드 API 추출** | FastAPI로 `store/sola/roadmap/scraping` 래핑 + OpenAPI → React 타입드 클라이언트. `chat_context_block`→`/api/assistant/context` | UI가 도메인 직호출 | `api/` 스캐폴딩 + `/api/taskdefs` CRUD ✅ / 나머지 도메인 ⬜ |
 | B | **상태·인터랙션 변환** | 세션키 34개 분류(서버데이터 vs UI), pending/rerun→이벤트·뮤테이션, `?app_area=&from=`→React Router | session_state 301곳·rerun 105곳·query_params 91곳 | ⬜ |
 | C | **LLM 스트리밍** | `sola/client.chat()` 동기 → **SSE** 스트리밍(챗·제안서). chat_log·sola_threads API화 | 현재 동기 OpenAI SDK | ⬜ |
 | D | **데이터·영구화** | 파일/SQLite를 API 뒤로. 식별·감사 필드 도입. task_defs.json 모델 확장 | SQLite×3·Parquet×8·JSON/JSONL×20 | 부분(task_defs ✅) |
@@ -287,6 +287,8 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 ## 3단계 — 백엔드 API 계약 추출 (Streamlit 분리)
 
 화면이 의존하는 `store/`·`roadmap/`·`sola/` 호출을 **FastAPI** 엔드포인트로 묶어 **OpenAPI 고정**(0.5 결정).
+
+> **진행** (`claude/dazzling-fermat-bbomgp`): `api/` 패키지 스캐폴딩 + **`/api/taskdefs` CRUD 완료** ✅ (레퍼런스 패턴). `api/main.py`(앱·CORS·`/api/health`), `api/deps.py`(`current_identity` no-op 인증), `api/schemas.py`(`AuditedModel` 5필드), `api/routers/taskdefs.py`(list/get/put/delete/history → `store.task_defs_db` 위임). 나머지 도메인은 이 패턴 복제.
 
 **공통 규약**:
 - 모든 read/write 응답·요청에 식별·감사 필드(`user_id`·`workspace_id`·`created_by`·`created_at`·`updated_at`) 포함. Phase 1 기본값(`user_id="local"`, `workspace_id="default"`).

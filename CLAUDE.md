@@ -71,6 +71,8 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | CSS·스타일 | `ui/styles.py` (+ `assets/v2/*.css`: tokens·card·shell·sidebar·streamlit-overrides·scale + `screens/*.css`) |
 | HTML 컴포넌트 빌더 | `ui/components.py` |
 | 진입점·디스패치·세션 키 | `app.py` (+ `docs/INVARIANTS.md`) |
+| 백엔드 HTTP API (React 전환) | `api/main.py`(앱·CORS·health), `api/deps.py`(no-op 인증), `api/schemas.py`(식별필드), `api/routers/*`(도메인별·`store` 위임) |
+| 식별·감사 필드 표준 | `store/_audit.py` (`stamp`/`backfill`/`now_iso`) |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
 | 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
 | React 전환 계획·Phase | `docs/REACT_MIGRATION_PLAN.md` |
