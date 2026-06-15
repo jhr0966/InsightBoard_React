@@ -6,7 +6,8 @@ curl_cffi>=0.7  # TLS 지문 위장 — WAF 차단 사이트(thebell 등) 폴백
 pandas
 pyarrow
 openpyxl
-openai>=1.40
+openai>=1.40             # OpenAI 호환 제공자 (groq·사내 SOLA·ollama)
+anthropic>=0.40          # 네이티브 Claude 제공자 (LLM_PROVIDER=anthropic)
 python-dotenv
 fastapi>=0.110          # React 전환용 백엔드 API (api/)
 uvicorn>=0.27           # ASGI 서버 — `uvicorn api.main:app`

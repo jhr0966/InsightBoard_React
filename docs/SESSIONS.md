@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-15 — LLM 제공자 추상화 + SSE 스트리밍 + API 확장 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `sola/providers/`(base·anthropic) 추상화 + `config.llm_provider()`. `sola.client`를 facade로 리팩토링(하위호환 유지: LLMNotConfigured re-export, `_client` lru_cache 보존) + `chat_stream()` 추가. `/api/assistant/chat` SSE + `/api/bookmarks` CRUD. requirements에 anthropic 추가.
+
+**왜**: 사내 SOLA(OpenAI 형식)·Claude api를 `LLM_PROVIDER` 한 줄로 교체 가능하게(사용자 요구). 챗은 SSE 스트리밍(0.5-C 결정).
+
+**조치**: 테스트 +20(978→998), 금지패턴 0, OpenAPI 10경로.
+
+---
+
 ## 2026-06-15 — FastAPI 백엔드 스캐폴딩 + /api/taskdefs CRUD (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `api/` 패키지(main·deps·schemas·routers/taskdefs) 신설. `/api/taskdefs` CRUD를 `store.task_defs_db`에 위임, 모든 응답에 식별·감사 필드 노출. no-op 인증(`current_identity`)이 Phase 2 교체 지점. requirements에 fastapi/uvicorn/httpx 추가.

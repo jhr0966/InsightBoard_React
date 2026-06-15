@@ -65,6 +65,19 @@ def _env_or_secret(name: str, default: str = "") -> str:
         return default
 
 
+def llm_provider() -> str:
+    """LLM 제공자 계열 — 호출 SDK/메시지 포맷을 결정한다.
+
+    - "openai"    : OpenAI 호환 (groq · 사내 SOLA(OpenAI 형식) · ollama · openai).
+                    base_url/api_key/model 만 바꾸면 되는 모든 백엔드.
+    - "anthropic" : 네이티브 Claude(Anthropic) API. (별칭 "claude")
+
+    `LLM_BACKEND` 는 OpenAI 호환 계열 안에서 base_url 을 고르는 하위 스위치로 남는다.
+    """
+    p = _env_or_secret("LLM_PROVIDER", "openai").strip().lower()
+    return "anthropic" if p in ("anthropic", "claude") else "openai"
+
+
 def llm_backend() -> str:
     return _env_or_secret("LLM_BACKEND", "groq").strip().lower()
 

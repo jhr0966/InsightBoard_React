@@ -83,3 +83,43 @@ class TaskDefHistoryOut(BaseModel):
 class DeletedOut(BaseModel):
     deleted: bool
     process_id: str
+
+
+# ── bookmarks ──────────────────────────────────────────────
+
+class BookmarkOut(AuditedModel):
+    """북마크 응답 (store.bookmarks.Bookmark)."""
+    id: str
+    type: str
+    title: str
+    content: str = ""
+    link: str = ""
+    tags: list[str] = Field(default_factory=list)
+    status: str = "pending"
+    decision_note: str = ""
+    decided_at: str = ""
+
+    @classmethod
+    def from_bookmark(cls, bm: Any) -> "BookmarkOut":
+        d = bm.to_dict()
+        return cls(**d)
+
+
+class BookmarkCreateIn(BaseModel):
+    type: str = Field(..., description="news | proposal | opportunity | task")
+    title: str
+    content: str = ""
+    link: str = ""
+    tags: list[str] = Field(default_factory=list)
+    id: Optional[str] = Field(default=None, description="생략 시 내용 해시로 생성")
+
+
+class BookmarkUpdateIn(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
+class BookmarkStatusIn(BaseModel):
+    status: str = Field(..., description="pending | adopted | rejected")
+    note: str = ""

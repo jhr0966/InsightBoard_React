@@ -10,7 +10,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import taskdefs
+from api.routers import assistant, bookmarks, taskdefs
 
 app = FastAPI(
     title="InsightBoard API",
@@ -39,3 +39,5 @@ def health() -> dict[str, str]:
 
 
 app.include_router(taskdefs.router)
+app.include_router(bookmarks.router)
+app.include_router(assistant.router)

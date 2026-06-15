@@ -56,7 +56,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | 로드맵 조회 (SQLite→Parquet) | `roadmap/query.py`, `roadmap/sqlite_sync.py` |
 | 뉴스↔작업 매칭 / 자동화 기회 | `store/match.py`, `sola/opportunity.py` |
 | 트렌드·캐시·북마크·채팅 영구화 | `store/{trends,cache,bookmarks,chat_log,sola_threads,sources}.py` |
-| LLM 호출·프롬프트 | `sola/client.py`, `sola/prompts.py` |
+| LLM 호출·프롬프트 | `sola/client.py`(facade·`chat`/`chat_stream`), `sola/providers/*`(openai 내장·`anthropic`), `sola/prompts.py`. 교체: `LLM_PROVIDER`(openai/anthropic) |
 | 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
 | 페르소나 | `persona/{schema,store,context}.py` |
 | 📊 오늘의 보드 | `ui/board_v2.py` |
@@ -71,7 +71,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | CSS·스타일 | `ui/styles.py` (+ `assets/v2/*.css`: tokens·card·shell·sidebar·streamlit-overrides·scale + `screens/*.css`) |
 | HTML 컴포넌트 빌더 | `ui/components.py` |
 | 진입점·디스패치·세션 키 | `app.py` (+ `docs/INVARIANTS.md`) |
-| 백엔드 HTTP API (React 전환) | `api/main.py`(앱·CORS·health), `api/deps.py`(no-op 인증), `api/schemas.py`(식별필드), `api/routers/*`(도메인별·`store` 위임) |
+| 백엔드 HTTP API (React 전환) | `api/main.py`(앱·CORS·health), `api/deps.py`(no-op 인증=Phase2 교체점), `api/schemas.py`(식별필드), `api/routers/*`(`taskdefs` CRUD·`bookmarks` CRUD·`assistant` SSE챗 — `store`/`sola.client` 위임) |
 | 식별·감사 필드 표준 | `store/_audit.py` (`stamp`/`backfill`/`now_iso`) |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
 | 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |

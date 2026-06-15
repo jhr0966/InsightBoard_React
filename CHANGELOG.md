@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (LLM 제공자 추상화 + 스트리밍 + /api/assistant SSE·/api/bookmarks) — `claude/dazzling-fermat-bbomgp`
+- **`sola/providers/` 추상화 신설**: `base.py`(`LLMProvider` 프로토콜·`LLMNotConfigured`·`split_system`), `anthropic.py`(네이티브 Claude 제공자, system 분리 매핑·스트리밍). `config.llm_provider()`(기본 `openai`, `claude`/`anthropic` 별칭) 추가. **사내 SOLA(OpenAI 형식)·groq·ollama는 `openai` 계열, Claude는 `anthropic` 계열** — `LLM_PROVIDER` 한 줄로 교체.
+- **`sola/client.py` facade 리팩토링**: `chat`/`chat_stream`/`is_configured`가 `_provider_for()`로 분기. **하위호환 유지** — `LLMNotConfigured` re-export(동일 객체), `_client` lru_cache(`cache_clear()` 테스트 의존)·기존 시그니처 보존. `chat_stream()` 신규(SSE용 토큰 제너레이터).
+- **`api/routers/assistant.py`**: `POST /api/assistant/chat` **SSE 스트리밍**(`text/event-stream`, `data: {delta|done|error}`) — 제공자 무관하게 `chat_stream` 흘려보냄. `GET /api/assistant/status`(configured·provider).
+- **`api/routers/bookmarks.py`**: `/api/bookmarks` CRUD(list+필터 / create / patch / status / delete / summary) → `store.bookmarks` 위임, 생성 시 행위자 stamp.
+- **requirements.txt**: `anthropic>=0.40` 추가(Claude 제공자), openai 주석 보강.
+- **테스트 +20**: `test_llm_providers.py`(9), `test_api_bookmarks.py`(8), `test_api_assistant.py`(3). 978→998 passed.
+
 ### Added (FastAPI 백엔드 스캐폴딩 + /api/taskdefs CRUD) — `claude/dazzling-fermat-bbomgp`
 - **`api/` 패키지 신설** (React 전환용 백엔드 계약, `REACT_MIGRATION_PLAN §3`):
   - `api/main.py` — FastAPI 앱 + CORS(env `INSIGHTBOARD_CORS_ORIGINS`, 기본 localhost:3000/5173) + `/api/health`.

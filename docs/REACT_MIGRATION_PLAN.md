@@ -57,9 +57,9 @@ updated_at   : 갱신 시각 (UTC ISO)
 ### 준비물 9 워크스트림
 | # | 워크스트림 | 핵심 작업 | 실측 근거 | 상태 |
 |---|---|---|---|---|
-| A | **백엔드 API 추출** | FastAPI로 `store/sola/roadmap/scraping` 래핑 + OpenAPI → React 타입드 클라이언트. `chat_context_block`→`/api/assistant/context` | UI가 도메인 직호출 | `api/` 스캐폴딩 + `/api/taskdefs` CRUD ✅ / 나머지 도메인 ⬜ |
+| A | **백엔드 API 추출** | FastAPI로 `store/sola/roadmap/scraping` 래핑 + OpenAPI → React 타입드 클라이언트. `chat_context_block`→`/api/assistant/context` | UI가 도메인 직호출 | `api/` 스캐폴딩 + `taskdefs`·`bookmarks` CRUD + `assistant` SSE챗 ✅ / news·trends·proposals·context ⬜ |
 | B | **상태·인터랙션 변환** | 세션키 34개 분류(서버데이터 vs UI), pending/rerun→이벤트·뮤테이션, `?app_area=&from=`→React Router | session_state 301곳·rerun 105곳·query_params 91곳 | ⬜ |
-| C | **LLM 스트리밍** | `sola/client.chat()` 동기 → **SSE** 스트리밍(챗·제안서). chat_log·sola_threads API화 | 현재 동기 OpenAI SDK | ⬜ |
+| C | **LLM 스트리밍·제공자** | `chat_stream()` + SSE(`/api/assistant/chat`) ✅. **제공자 추상화**(`sola/providers`: openai 호환·anthropic) — `LLM_PROVIDER`로 사내 SOLA·Claude 교체 ✅. chat_log·sola_threads API화 ⬜ | 동기 OpenAI SDK였음 | 스트리밍·제공자 ✅ / 스레드 영구화 API ⬜ |
 | D | **데이터·영구화** | 파일/SQLite를 API 뒤로. 식별·감사 필드 도입. task_defs.json 모델 확장 | SQLite×3·Parquet×8·JSON/JSONL×20 | 부분(task_defs ✅) |
 | E | **인증·테넌시** | Phase 1 no-op 인증(상수 user) + 필드 예약. Phase 2 실제 로그인 | 현재 인증 없음·단일 페르소나 | Phase 2 |
 | F | **디자인 시스템** | `st.html` 96곳→React 컴포넌트(카드·칸반·칩·배지·topbar·사이드바·모달). `assets/v2/*.css` 토큰 승계 | st.html 96·dialog 11 | ⬜ |
