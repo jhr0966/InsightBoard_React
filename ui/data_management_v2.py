@@ -1877,7 +1877,9 @@ def _consume_task_def_upload_if_any() -> None:
     import io
     bio = io.BytesIO(data)
     try:
-        result = _ingest.ingest_excel(bio, sheet_name=sheet_name, save_raw=True)
+        # 재업로드 = 데이터 교체(replace=True): 직전 데이터셋을 비우고 새 파일로 교체 +
+        # 정규 JSON(task_defs.json) 통째로 덮어쓰기.
+        result = _ingest.ingest_excel(bio, sheet_name=sheet_name, save_raw=True, replace=True)
     except Exception as exc:
         st.session_state["_task_def_toast"] = ("error", f"업로드 실패: {type(exc).__name__}: {exc}")
         st.rerun()
@@ -1901,7 +1903,7 @@ def _consume_task_def_upload_if_any() -> None:
             pass
         st.session_state["_task_def_toast"] = (
             "ok",
-            f"✅ '{filename}' 업로드 완료 — {result.row_count}건 작업 정의 저장됨. 보드·인사이트가 곧 갱신됩니다.",
+            f"✅ '{filename}' 업로드 완료 — 기존 작업 정의를 교체하고 {result.row_count}건 저장(JSON 보유). 보드·인사이트가 곧 갱신됩니다.",
         )
     st.rerun()
 

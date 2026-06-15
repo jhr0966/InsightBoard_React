@@ -69,6 +69,20 @@ def test_upsert_creates_new_row():
     assert task_defs_db.count() == 1
 
 
+def test_upsert_sets_identity_fields():
+    from store import task_defs_db
+    row = task_defs_db.upsert("PNL-SEL-001", _make_json(), changed_by="alice")
+    assert row["user_id"] == "alice"        # changed_by 가 소유자로
+    assert row["workspace_id"] == "default"  # Phase1 기본 테넌트
+
+
+def test_upsert_default_identity_when_no_changed_by():
+    from store import task_defs_db
+    row = task_defs_db.upsert("PNL-SEL-001", _make_json())
+    assert row["user_id"] == "local"
+    assert row["workspace_id"] == "default"
+
+
 def test_upsert_updates_existing_row():
     from store import task_defs_db
     task_defs_db.upsert("PNL-SEL-001", _make_json(objectives=["A"]))

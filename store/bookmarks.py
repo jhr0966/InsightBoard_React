@@ -15,12 +15,11 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
-from config import DATA_ROOT, ensure_data_dirs
+from store._audit import DEFAULT_USER, DEFAULT_WORKSPACE, now_iso, stamp
+from store.repository import get_repository
 
 
 BOOKMARK_TYPES = ("news", "proposal", "opportunity", "task")
@@ -41,6 +40,11 @@ class Bookmark:
     status: str = "pending"
     decision_note: str = ""
     decided_at: str = ""  # status 가 마지막으로 변한 시점 (UTC ISO)
+    # 식별·감사 필드 (store/_audit.py). Phase1 단일 사용자 기본값.
+    user_id: str = DEFAULT_USER
+    workspace_id: str = DEFAULT_WORKSPACE
+    created_by: str = DEFAULT_USER
+    updated_at: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -50,6 +54,7 @@ class Bookmark:
         status = str(data.get("status") or "pending")
         if status not in BOOKMARK_STATUSES:
             status = "pending"
+        created_at = str(data.get("created_at", ""))
         return cls(
             id=str(data.get("id", "")),
             type=str(data.get("type", "")),
@@ -57,18 +62,20 @@ class Bookmark:
             content=str(data.get("content", "")),
             link=str(data.get("link", "")),
             tags=list(data.get("tags", []) or []),
-            created_at=str(data.get("created_at", "")),
+            created_at=created_at,
             status=status,
             decision_note=str(data.get("decision_note", "")),
             decided_at=str(data.get("decided_at", "")),
+            # 과거 레코드 호환: 누락 시 기본값 백필.
+            user_id=str(data.get("user_id") or DEFAULT_USER),
+            workspace_id=str(data.get("workspace_id") or DEFAULT_WORKSPACE),
+            created_by=str(data.get("created_by") or DEFAULT_USER),
+            updated_at=str(data.get("updated_at") or created_at),
         )
 
 
-def _path() -> Path:
-    ensure_data_dirs()
-    d = DATA_ROOT / "bookmarks"
-    d.mkdir(parents=True, exist_ok=True)
-    return d / "items.jsonl"
+# 영구화는 repository seam 경유(Phase 2 백엔드 교체점). 컬렉션명 = "bookmarks".
+_repo = get_repository("bookmarks")
 
 
 def make_id(*parts: str) -> str:
@@ -84,30 +91,14 @@ def _utc_now_iso() -> str:
 
 
 def list_all(*, type_: str | None = None) -> list[Bookmark]:
-    p = _path()
-    if not p.exists():
-        return []
-    items: list[Bookmark] = []
-    for line in p.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        bm = Bookmark.from_dict(obj)
-        if type_ is None or bm.type == type_:
-            items.append(bm)
-    return items
+    items = [Bookmark.from_dict(obj) for obj in _repo.read_all()]
+    if type_ is None:
+        return items
+    return [bm for bm in items if bm.type == type_]
 
 
 def _write_all(items: list[Bookmark]) -> None:
-    p = _path()
-    with p.open("w", encoding="utf-8") as f:
-        for it in items:
-            f.write(json.dumps(it.to_dict(), ensure_ascii=False))
-            f.write("\n")
+    _repo.write_all([it.to_dict() for it in items])
 
 
 def summary_counts(items: list[Bookmark] | None = None) -> dict[str, dict[str, int] | int]:
@@ -127,8 +118,13 @@ def summary_counts(items: list[Bookmark] | None = None) -> dict[str, dict[str, i
 
 
 def add(bm: Bookmark) -> Bookmark:
-    if not bm.created_at:
-        bm.created_at = _utc_now_iso()
+    # 식별·감사 5필드 보장 (신규=created_at 채움, 기존=updated_at 갱신).
+    d = stamp(bm.to_dict(), user=bm.user_id, workspace=bm.workspace_id)
+    bm.user_id = d["user_id"]
+    bm.workspace_id = d["workspace_id"]
+    bm.created_by = d["created_by"]
+    bm.created_at = d["created_at"]
+    bm.updated_at = d["updated_at"]
     items = list_all()
     items = [it for it in items if it.id != bm.id]
     items.append(bm)
@@ -154,6 +150,7 @@ def update_content(
                 it.content = content
             if tags is not None:
                 it.tags = tags
+            it.updated_at = now_iso()
             changed = True
             break
     if changed:
@@ -206,6 +203,7 @@ def set_status(bm_id: str, status: str, *, note: str = "") -> bool:
             it.status = status
             it.decision_note = note
             it.decided_at = _utc_now_iso()
+            it.updated_at = it.decided_at
             changed = True
             break
     if changed:

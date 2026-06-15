@@ -56,7 +56,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | 로드맵 조회 (SQLite→Parquet) | `roadmap/query.py`, `roadmap/sqlite_sync.py` |
 | 뉴스↔작업 매칭 / 자동화 기회 | `store/match.py`, `sola/opportunity.py` |
 | 트렌드·캐시·북마크·채팅 영구화 | `store/{trends,cache,bookmarks,chat_log,sola_threads,sources}.py` |
-| LLM 호출·프롬프트 | `sola/client.py`, `sola/prompts.py` |
+| LLM 호출·프롬프트 | `sola/client.py`(facade·`chat`/`chat_stream`), `sola/providers/*`(openai 내장·`anthropic`), `sola/prompts.py`. 교체: `LLM_PROVIDER`(openai/anthropic) |
 | 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
 | 페르소나 | `persona/{schema,store,context}.py` |
 | 📊 오늘의 보드 | `ui/board_v2.py` |
@@ -71,8 +71,14 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | CSS·스타일 | `ui/styles.py` (+ `assets/v2/*.css`: tokens·card·shell·sidebar·streamlit-overrides·scale + `screens/*.css`) |
 | HTML 컴포넌트 빌더 | `ui/components.py` |
 | 진입점·디스패치·세션 키 | `app.py` (+ `docs/INVARIANTS.md`) |
+| 백엔드 HTTP API (React 전환) | `api/main.py`(앱·CORS·health), `api/deps.py`(no-op 인증=Phase2 교체점), `api/schemas.py`(식별필드), `api/routers/*`(`taskdefs` CRUD+엑셀upload·`bookmarks`·`news`·`trends`·`opportunities`·`proposals`·`collect`(scraping 지연)·`threads`+메시지·`assistant` SSE챗+context·`board` 브리프 — `store`/`sola` 위임) |
+| React 프런트엔드 | `web/`(Vite+React+TS+Router+Query). `web/src/api/client.ts`(타입드 fetch+SSE), `web/src/components/{Layout,AssistantDrawer}.tsx`, `web/src/pages/*`, `web/src/styles/tokens.css`(assets/v2 승계). dev: `uvicorn api.main:app` + `npm run dev` |
+| 식별·감사 필드 표준 | `store/_audit.py` (`stamp`/`backfill`/`now_iso`) |
+| 영구화 백엔드 seam (Phase 2 교체점) | `store/repository.py` (`Repository`·`JsonlRepository`·`get_repository`, `INSIGHTBOARD_STORAGE`). bookmarks 적용 |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
 | 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
+| React 전환 계획·Phase | `docs/REACT_MIGRATION_PLAN.md` |
+| React 전환 준비물 실측 카탈로그 (세션키·라우팅·컴포넌트·식별필드) | `docs/REACT_PREP_INVENTORY.md` |
 
 > ⚠ 데드 (건드리기 전 `REFACTOR_PLAN` 확인): `sola/side_context.py`(orphan·보존 — 사이드 채팅 컨텍스트 연결 대상). `propose`/`summarize` 는 부활(SOLA 작업실 연결). Phase 3 에서 `ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`app_shell.render_app_side/sola`(+패널 토글)·`chat_panel.render`·`task_defs_db.upsert_many`·`sola_main.html` 삭제됨.
 

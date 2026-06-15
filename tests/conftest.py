@@ -34,12 +34,8 @@ def _isolated_data_dirs(monkeypatch, tmp_path):
         monkeypatch.setattr(persona_store_mod, "DATA_ROOT", root, raising=True)
     except ImportError:
         pass
-    try:
-        import store.bookmarks as bookmarks_mod
-
-        monkeypatch.setattr(bookmarks_mod, "DATA_ROOT", root, raising=True)
-    except ImportError:
-        pass
+    # store.bookmarks 는 영구화를 store.repository(config.DATA_ROOT 동적 참조) 로
+    # 위임하므로 위의 config.DATA_ROOT monkeypatch 로 이미 격리된다(별도 패치 불필요).
 
     # store.cache / chat_log 는 import 시 SOLA_DIR 를 from-import 함
     try:

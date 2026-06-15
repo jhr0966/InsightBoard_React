@@ -5,6 +5,140 @@
 
 ---
 
+## 2026-06-15 — Phase 2 준비: 스토리지 백엔드 seam (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `store/repository.py`(Repository 프로토콜 + JsonlRepository + get_repository, `INSIGHTBOARD_STORAGE` env). bookmarks 가 seam 경유 IO. Postgres 미도입(seam만 — 사용자 선택).
+
+**왜**: Phase 2(Postgres·멀티유저)에서 `get_repository` 한 곳만 바꾸면 도메인 store 불변. 식별 스코프(user_id/workspace_id)도 인터페이스에 반영.
+
+**조치**: bm._path monkeypatch 4곳 → repository 주입 갱신, test_repository +6. 1013→1019 passed.
+
+---
+
+## 2026-06-15 — 화면 풍부화 (보드 다이제스트 + 작업정의 JSON 편집) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `GET /api/board/brief`(board_brief, 룰 폴백). React: Board 요약 카드, TaskDefs JSON 에디터(로드/저장 PUT/삭제/새 템플릿). OpenAPI 24경로 재생성.
+
+**조치**: 테스트 +2(1011→1013), web build 통과.
+
+---
+
+## 2026-06-15 — OpenAPI 타입 자동생성 (계약 드리프트 제거) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `scripts/gen_openapi.py`(app.openapi→web/openapi.json), web openapi-typescript(`gen:types`→schema.ts), `types.ts` 모델 alias. `test_openapi_snapshot.py` 드리프트 가드.
+
+**조치**: 테스트 +1(1010→1011), web build 통과. dict 반환 엔드포인트는 named schema 부재로 hand-type 유지.
+
+---
+
+## 2026-06-15 — 수집 실행 API + 대화 스레드/메시지 영구화 API (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `/api/threads` CRUD+메시지(sola_threads·chat_log 위임), `/api/collect`(scraping 지연 import, 서버리스 503 폴백). React: 드로어 대화 스레드 영구화, Collect 수집 버튼. client.ts threads/collect.
+
+**조치**: 테스트 +3(1007→1010), OpenAPI 23경로, api.main이 scraping 미로드(Vercel 안전) 검증, web build 통과.
+
+---
+
+## 2026-06-15 — 화면 데이터 패리티 (작업정의 업로드 + 자동화 기회) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `POST /api/taskdefs/upload`(엑셀→roadmap.ingest)·`GET /api/opportunities`(score_cells). React TaskDefs 업로드 폼 + Insights 기회 섹션. client.ts upload(FormData)/opportunities.
+
+**조치**: 테스트 +3(1004→1007), OpenAPI 19경로, web build 통과. python-multipart 의존 추가. 엑셀 골격행은 task_defs_db skip·roadmap 적재(정상).
+
+---
+
+## 2026-06-15 — Vercel 배포 구성 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: 루트 `vercel.json`(web 정적 + api ASGI 함수 + /api 라우팅), `api/index.py` shim, 경량 `api/requirements.txt`, `.vercelignore`, `config.INSIGHTBOARD_DATA_ROOT` env 오버라이드. `web/vercel.json`(프런트단독). README 2모드 문서.
+
+**조치**: env override 부팅 확인, 전체 1004 통과. API import 폐쇄가 ui/scraping/app 미참조(정적 검증) → .vercelignore 안전. 서버리스 저장소 휘발 → 영구화는 Phase 2.
+
+---
+
+## 2026-06-15 — React 프런트엔드 스캐폴딩 (web/) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `web/`(Vite+React+TS+Router+Query) 신설. 5라우트 + Layout(좌 nav·중앙·우 드로어) + 타입드 API 클라이언트(streamChat SSE 파서) + AssistantDrawer(SSE 챗+컨텍스트 주입) + 5화면 API 연동. tokens.css 승계.
+
+**조치**: npm typecheck 통과, vite build 성공(89모듈). node_modules/dist/tsbuildinfo gitignore. dev=uvicorn:8000 + vite:5173 프록시.
+
+---
+
+## 2026-06-15 — API 계약 확장 (news·trends·proposals·assistant/context) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `api/routers/`에 news(조회)·trends(키워드/볼륨/출처 집계)·proposals(생성)·assistant/context(서버측 컨텍스트 일반화) 추가. 모두 store/sola 위임. OpenAPI 17경로.
+
+**조치**: 테스트 +6(998→1004), 금지패턴 0.
+
+---
+
+## 2026-06-15 — LLM 제공자 추상화 + SSE 스트리밍 + API 확장 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `sola/providers/`(base·anthropic) 추상화 + `config.llm_provider()`. `sola.client`를 facade로 리팩토링(하위호환 유지: LLMNotConfigured re-export, `_client` lru_cache 보존) + `chat_stream()` 추가. `/api/assistant/chat` SSE + `/api/bookmarks` CRUD. requirements에 anthropic 추가.
+
+**왜**: 사내 SOLA(OpenAI 형식)·Claude api를 `LLM_PROVIDER` 한 줄로 교체 가능하게(사용자 요구). 챗은 SSE 스트리밍(0.5-C 결정).
+
+**조치**: 테스트 +20(978→998), 금지패턴 0, OpenAPI 10경로.
+
+---
+
+## 2026-06-15 — FastAPI 백엔드 스캐폴딩 + /api/taskdefs CRUD (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `api/` 패키지(main·deps·schemas·routers/taskdefs) 신설. `/api/taskdefs` CRUD를 `store.task_defs_db`에 위임, 모든 응답에 식별·감사 필드 노출. no-op 인증(`current_identity`)이 Phase 2 교체 지점. requirements에 fastapi/uvicorn/httpx 추가.
+
+**조치**: 테스트 +8(970→978), OpenAPI 4경로 생성 확인. 다른 도메인 라우터의 레퍼런스 패턴.
+
+---
+
+## 2026-06-15 — 식별·감사 필드 표준 헬퍼 + bookmarks/task_defs 적용 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `store/_audit.py` 표준 헬퍼(`stamp`/`backfill`/`now_iso`) 신설. `bookmarks`(dataclass 5필드 전체)·`task_defs_db`(SQLite v2 user_id/workspace_id 컬럼+마이그레이션) 적용. 과거 레코드 백필.
+
+**조치**: 테스트 +12(958→970), 금지패턴 0. Phase2 Postgres·멀티유저 이전 대비 데이터 모델 forward-compat 확보.
+
+---
+
+## 2026-06-15 — React 전환 준비물 실측 카탈로그 박제 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `docs/REACT_PREP_INVENTORY.md` 신설 — 세션키 ~60개 3분류(E/U/S), query_params 24종 라우팅 매핑, st.html 85곳 컴포넌트 인벤토리, 식별·감사 필드 표준·현황. 계획문서·CLAUDE 라우팅에 링크.
+
+**기준선**: pytest 958/958, `__pycache__` 미추적(정리 불필요). 코드 변경 없음(문서 전용).
+
+---
+
+## 2026-06-15 — React 전환 전제·준비물 발굴 + Phase 구분 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: 전환 직전 코드 실측으로 준비물을 9 워크스트림(API 추출·상태변환·LLM 스트리밍·영구화·인증·디자인·배포·테스트·잡)으로 발굴, 계획문서 0.5에 박제.
+
+**결정**: Phase 1=React 전환+API 안정화(FastAPI + 파일/SQLite 유지, Postgres 이전 쉽게 설계), Phase 2=Postgres+멀티유저/인증 분리. 식별·감사 필드(user_id/workspace_id/created_by/created_at/updated_at)를 처음부터 전 레코드·API에 포함(Phase1 기본값 local/default, 인증 no-op). 챗·제안서는 SSE 스트리밍.
+
+**실측**: session_state 301곳/키 34개·rerun 105곳·query_params 91곳·st.html 96·dialog 11·pytest 958/85파일.
+
+---
+
+## 2026-06-15 — 작업 정의 폼 확정(공정정의서_통합) + JSON 보유 + 재업로드 교체 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: 사용자 제공 엑셀 폼(시트 `공정정의서_통합`, 19컬럼)을 표준 업로드 포맷으로 확정 — JSON으로 저장·보유하고 재업로드 시 데이터 교체.
+
+**어떻게**: ① `작업 설명`→process_description 매핑 + 리스트 구분자 ·→, 변경(가운뎃점은 항목 내부 보존) + `◀ 안내배너 ▶` 행 스킵(`drop_guide_rows`) → 실파일 88행 중 배너 1행 제거, 87건 정상 적재. ② `write_canonical_json` 으로 `data/roadmap/task_defs.json`(완성 JSON 배열) 매 업로드 원자적 덮어쓰기. ③ `clear_all`+`sync_dataframe(replace=True)`+`ingest_excel(replace=True)` 로 재업로드 교체(병합 아님), 업로드 UI는 항상 replace.
+
+**검증**: pytest 958 passed(신규 5건) · 금지패턴 0 · PR #1(Draft).
+
+---
+
+## 2026-06-15 — React 전환 정리 계획 + nav 2단 그룹핑 선반영 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: React 전환 전 화면 구성 정리 계획 수립(`docs/REACT_MIGRATION_PLAN.md`) + 1단계 중 '안전한 nav'만 Streamlit 선반영.
+
+**계획(문서)**: 6→5 화면(산출물 보관함 삭제, 보관 기능은 뉴스 수집/자동화 제안 탭으로 분산) · SOLA 작업실→자동화 제안 개명 · nav 2단 분리(메인 보드·인사이트·자동화 제안 / 관리 뉴스 수집·작업 정의) · 인사이트 기회→제안 CTA 연결 · 자동화 제안 파이프라인(2단 lazy, Top 1~3건 선생성, dedup) · 작업정의 JSON v1.0 폼/API 계약.
+
+**코드(선반영)**: nav를 `_MAIN_AREAS`/`_MANAGE_AREAS` 2단 그룹핑 + 구분선 + 순서 변경, `_AREA_DISPLAY`로 SOLA 작업실→자동화 제안 표시명만 갈음(라우팅 키 불변). sola_workshop 상단바·컨텍스트 헤더 표시명도 일치.
+
+**왜 nav만**: 라우팅 키 전역 개명·archive 삭제·보관 탭 이식은 소스~10+테스트~7 파일을 건드리는 고위험 churn인데 곧 React로 재작성 → 목표 구조는 계획 문서에 박제하고 신규 구현이 더 쌈.
+
+**검증**: pytest 953 passed · 금지패턴 0 · PR #1(Draft).
+
+---
+
 ## 2026-06-12 — fix: 페르소나 설정 Tab 내비 + 'No results' 팝업 숨김 (`fix-persona-tab-nav`)
 
 **무엇을**: ① 이름 입력 후 Tab 한 번에 팀→부서→직무 순서로 이동 ② 키워드 입력 클릭 시 뜨는 'No results' 드롭다운 제거.

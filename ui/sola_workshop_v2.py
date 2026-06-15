@@ -144,8 +144,8 @@ def render() -> None:
     _render_sola_action_toasts()
 
     app_shell.render_topbar(
-        page_title="SOLA 작업실",
-        eyebrow_current="SOLA 작업실",
+        page_title="자동화 제안",
+        eyebrow_current="자동화 제안",
         refresh_label=app_shell.refresh_label_now(),
         fresh_kind="accent",
     )
@@ -155,8 +155,8 @@ def render() -> None:
 
 
 def chat_context_block(persona: Persona) -> str:
-    """우측 채팅(render_side)에 자동 첨부될 SOLA 작업실 컨텍스트."""
-    parts = ["--- 현재 화면: SOLA 작업실 (제안서·요약 작업대) ---"]
+    """우측 채팅(render_side)에 자동 첨부될 자동화 제안 화면 컨텍스트."""
+    parts = ["--- 현재 화면: 자동화 제안 (제안서·요약 작업대) ---"]
     try:
         th = _active_thread()
         parts.append(f"활성 세션: {th.title or '새 대화'}")

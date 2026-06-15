@@ -263,15 +263,19 @@ _COL_LIST_FIELDS: tuple[tuple[str, str], ...] = (
     ("automation_areas", "automation_potential_areas"),
 )
 
-_LIST_SPLIT_RE = re.compile(r"[\n;•·]+")
+# 항목 구분자: 줄바꿈 / 쉼표 / 세미콜론. 가운뎃점(·)은 **항목 내부**에 자주 쓰여
+# (예: "마그네틱 크레인·호이스트", "가스·플라즈마") 구분자에서 제외한다.
+# 공정정의서_통합 폼(2026-06+)은 한 셀 안 항목을 쉼표로 나열한다.
+_LIST_SPLIT_RE = re.compile(r"[\n,;]+")
 _BULLET_PREFIX_RE = re.compile(r"^\s*[-*•·]\s+")
 
 
 def split_list_cell(cell: Any) -> list[str]:
-    """엑셀 셀 1개 → 항목 리스트. 줄바꿈 / `;` / `•` / `·` 로 분리.
+    """엑셀 셀 1개 → 항목 리스트. 줄바꿈 / 쉼표(`,`) / 세미콜론(`;`) 으로 분리.
 
     각 항목의 선행 불릿(`- `, `* `, `• `, `· `)은 제거하고 strip. 빈 항목·중복 제외.
-    한 줄이면 1개짜리 리스트, None/빈 셀이면 빈 리스트.
+    가운뎃점(·)은 항목 내부 표기로 보존(구분자 아님). 한 줄이면 1개짜리 리스트,
+    None/빈 셀이면 빈 리스트.
     """
     if cell is None:
         return []

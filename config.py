@@ -20,7 +20,10 @@ except ImportError:
 
 
 REPO_ROOT = Path(__file__).resolve().parent
-DATA_ROOT = REPO_ROOT / "data"
+# DATA_ROOT 은 `INSIGHTBOARD_DATA_ROOT` 로 오버라이드 가능 — Vercel 등 읽기전용
+# 파일시스템(쓰기는 /tmp 만 허용)에서 `INSIGHTBOARD_DATA_ROOT=/tmp/data` 로 띄운다.
+_DATA_ENV = os.getenv("INSIGHTBOARD_DATA_ROOT", "").strip()
+DATA_ROOT = Path(_DATA_ENV).expanduser() if _DATA_ENV else REPO_ROOT / "data"
 NEWS_DIR = DATA_ROOT / "news"
 ROADMAP_DIR = DATA_ROOT / "roadmap"
 SOLA_DIR = DATA_ROOT / "sola"
@@ -63,6 +66,19 @@ def _env_or_secret(name: str, default: str = "") -> str:
         return str(st.secrets.get(name, default) or default).strip()
     except Exception:  # noqa: BLE001 — streamlit 미설치/secrets 미설정 등 모두 fallback.
         return default
+
+
+def llm_provider() -> str:
+    """LLM 제공자 계열 — 호출 SDK/메시지 포맷을 결정한다.
+
+    - "openai"    : OpenAI 호환 (groq · 사내 SOLA(OpenAI 형식) · ollama · openai).
+                    base_url/api_key/model 만 바꾸면 되는 모든 백엔드.
+    - "anthropic" : 네이티브 Claude(Anthropic) API. (별칭 "claude")
+
+    `LLM_BACKEND` 는 OpenAI 호환 계열 안에서 base_url 을 고르는 하위 스위치로 남는다.
+    """
+    p = _env_or_secret("LLM_PROVIDER", "openai").strip().lower()
+    return "anthropic" if p in ("anthropic", "claude") else "openai"
 
 
 def llm_backend() -> str:
