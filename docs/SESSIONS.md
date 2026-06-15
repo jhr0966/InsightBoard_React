@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — API 계약 확장 (news·trends·proposals·assistant/context) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `api/routers/`에 news(조회)·trends(키워드/볼륨/출처 집계)·proposals(생성)·assistant/context(서버측 컨텍스트 일반화) 추가. 모두 store/sola 위임. OpenAPI 17경로.
+
+**조치**: 테스트 +6(998→1004), 금지패턴 0.
+
+---
+
 ## 2026-06-15 — LLM 제공자 추상화 + SSE 스트리밍 + API 확장 (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `sola/providers/`(base·anthropic) 추상화 + `config.llm_provider()`. `sola.client`를 facade로 리팩토링(하위호환 유지: LLMNotConfigured re-export, `_client` lru_cache 보존) + `chat_stream()` 추가. `/api/assistant/chat` SSE + `/api/bookmarks` CRUD. requirements에 anthropic 추가.

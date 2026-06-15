@@ -76,3 +76,35 @@ def status() -> dict:
     from config import llm_provider
 
     return {"configured": llm.is_configured(), "provider": llm_provider()}
+
+
+# 화면별 컨텍스트 — UI 의 chat_context_block 일반화(서버 데이터 기반).
+_SCREENS = ("board", "insights", "collect", "taskdefs", "proposals")
+
+
+@router.get("/context")
+def context(
+    screen: str = "board",
+    days: int = 7,
+) -> dict:
+    """현재 화면 컨텍스트를 system 메시지용 문자열로 패키징.
+
+    React 드로어가 이 문자열을 `/api/assistant/chat` 의 system 메시지로 넣으면,
+    챗이 화면 데이터(페르소나 + 최근 뉴스/키워드 다이제스트)에 근거해 답한다.
+    """
+    from persona import context as persona_ctx
+    from persona import store as persona_store
+    from store import news_db, trends
+
+    persona = persona_store.load()
+    df = news_db.load_news_for_days(days)
+    kw = trends.top_keywords(df, top_n=10)
+    kw_line = ", ".join(f"{r['keyword']}({r['count']})" for r in kw.to_dict("records"))
+    parts = [persona_ctx.system_block(persona)]
+    parts.append(f"## 현재 화면: {screen}")
+    parts.append(f"## 최근 {days}일 뉴스 {len(df)}건 · 상위 키워드: {kw_line or '없음'}")
+    return {
+        "screen": screen if screen in _SCREENS else "board",
+        "context": "\n\n".join(p for p in parts if p),
+        "news_count": int(len(df)),
+    }

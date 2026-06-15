@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (API 계약 확장 — news·trends·proposals·assistant/context) — `claude/dazzling-fermat-bbomgp`
+- **`api/routers/news.py`**: `GET /api/news`(days·source·limit), `/api/news/today` → `store.news_db` 위임. Parquet 합본을 경량 레코드(content 제외)로 변환.
+- **`api/routers/trends.py`**: `/api/trends/keywords`·`/volume`·`/sources` → `store.trends` 집계(최근 N일 뉴스 파생).
+- **`api/routers/proposals.py`**: `POST /api/proposals/generate`(task×최근뉴스→제안서 초안) → `sola.propose.propose_for_task` 위임, 페르소나 자동 주입. 보관/채택은 `/api/bookmarks?type=proposal` 재사용.
+- **`api/routers/assistant.py` 확장**: `GET /api/assistant/context?screen=&days=` — UI `chat_context_block`을 서버 데이터(페르소나 + 최근 뉴스/키워드 다이제스트)로 일반화. React 드로어가 system 메시지로 사용.
+- **테스트 +6**: `test_api_news_trends.py`(news·trends·proposals·context). 998→1004 passed. OpenAPI 17경로.
+
 ### Added (LLM 제공자 추상화 + 스트리밍 + /api/assistant SSE·/api/bookmarks) — `claude/dazzling-fermat-bbomgp`
 - **`sola/providers/` 추상화 신설**: `base.py`(`LLMProvider` 프로토콜·`LLMNotConfigured`·`split_system`), `anthropic.py`(네이티브 Claude 제공자, system 분리 매핑·스트리밍). `config.llm_provider()`(기본 `openai`, `claude`/`anthropic` 별칭) 추가. **사내 SOLA(OpenAI 형식)·groq·ollama는 `openai` 계열, Claude는 `anthropic` 계열** — `LLM_PROVIDER` 한 줄로 교체.
 - **`sola/client.py` facade 리팩토링**: `chat`/`chat_stream`/`is_configured`가 `_provider_for()`로 분기. **하위호환 유지** — `LLMNotConfigured` re-export(동일 객체), `_client` lru_cache(`cache_clear()` 테스트 의존)·기존 시그니처 보존. `chat_stream()` 신규(SSE용 토큰 제너레이터).
