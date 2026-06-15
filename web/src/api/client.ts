@@ -11,6 +11,7 @@ import type {
   OpportunityCell,
   SourceCount,
   TaskDef,
+  Thread,
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
@@ -108,6 +109,31 @@ export const api = {
     status: () => req<{ configured: boolean; provider: string }>("/api/assistant/status"),
     context: (screen: string, days = 7) =>
       req<AssistantContext>(`/api/assistant/context${qs({ screen, days })}`),
+  },
+
+  threads: {
+    list: () => req<Thread[]>("/api/threads"),
+    create: (title = "") =>
+      req<Thread>("/api/threads", { method: "POST", body: JSON.stringify({ title }) }),
+    get: (id: string) => req<Thread>(`/api/threads/${encodeURIComponent(id)}`),
+    update: (id: string, body: { title?: string; pinned?: boolean }) =>
+      req<Thread>(`/api/threads/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
+    remove: (id: string) =>
+      req<{ deleted: boolean }>(`/api/threads/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    messages: (id: string) => req<ChatMessage[]>(`/api/threads/${encodeURIComponent(id)}/messages`),
+    saveMessages: (id: string, messages: ChatMessage[]) =>
+      req<{ ok: boolean; count: number }>(`/api/threads/${encodeURIComponent(id)}/messages`, {
+        method: "PUT",
+        body: JSON.stringify({ messages }),
+      }),
+  },
+
+  collect: {
+    run: (keywords: string[], opts?: { sources?: string[]; max_results?: number; do_enrich?: boolean }) =>
+      req<{ total_articles: number; total_files: number; saved: unknown[]; errors: string[] }>(
+        "/api/collect",
+        { method: "POST", body: JSON.stringify({ keywords, ...opts }) },
+      ),
   },
 };
 

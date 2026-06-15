@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (수집 실행 API + 대화 스레드/메시지 영구화 API) — `claude/dazzling-fermat-bbomgp`
+- **`api/routers/threads.py`**: `/api/threads` CRUD + `/{id}/messages` GET/PUT → `store.sola_threads`·`store.chat_log`(chat_key=thread id) 위임. 스레드 메시지 수 동기화, 삭제 시 메시지 reset.
+- **`api/routers/collect.py`**: `POST /api/collect` → `scraping.run_daily.collect_batch`. **`scraping` 지연 import**(top-level 미사용) — 서버리스(`.vercelignore` 제외)에서 앱 부팅을 깨지 않고 호출 시 503 안내. `api.main` import 시 scraping 미로드 검증.
+- **React 연동**: `AssistantDrawer` 대화를 스레드로 영구화(첫 메시지 때 생성, 교환 후 PUT). `Collect` 페이지 수집 실행 버튼(키워드→`/api/collect`). `client.ts` `threads`·`collect` 추가.
+- **테스트 +3**: `test_api_threads_collect.py`(스레드 CRUD+메시지·404·collect 위임 mock). 1007→1010. OpenAPI 23경로. web build 통과.
+
 ### Added (화면 데이터 패리티 — 작업정의 업로드 + 자동화 기회) — `claude/dazzling-fermat-bbomgp`
 - **`POST /api/taskdefs/upload`** (multipart 엑셀): `roadmap.ingest.ingest_excel` 위임 → 로드맵 데이터셋 적재(+완성 행은 task_defs_db upsert). `replace`로 교체 업로드. 파싱 실패→422. `python-multipart` 의존 추가(root·api requirements).
 - **`GET /api/opportunities`** (`api/routers/opportunities.py`): 최근 뉴스 × 로드맵 → `sola.opportunity.score_cells` 부서×공정 셀 점수. NaN/inf→null 정제.

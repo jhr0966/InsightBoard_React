@@ -78,3 +78,12 @@ export interface AssistantContext {
 }
 
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; }
+
+export interface Thread {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  pinned: boolean;
+}

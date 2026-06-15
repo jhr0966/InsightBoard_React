@@ -14,6 +14,22 @@ export default function AssistantDrawer({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const threadRef = useRef<string | null>(null);
+
+  // 스레드 영구화 — 첫 메시지 때 스레드 생성, 교환 후 저장(best-effort).
+  async function persist(all: ChatMessage[]) {
+    try {
+      if (!threadRef.current) {
+        const first = all.find((m) => m.role === "user")?.content ?? "";
+        const t = await api.threads.create(first.slice(0, 36));
+        threadRef.current = t.id;
+      }
+      const id = threadRef.current;
+      if (id) await api.threads.saveMessages(id, all);
+    } catch {
+      /* 영구화 실패는 무시(대화는 계속) */
+    }
+  }
 
   async function send() {
     const text = input.trim();
@@ -59,6 +75,10 @@ export default function AssistantDrawer({
     } finally {
       setBusy(false);
       abortRef.current = null;
+      setMessages((prev) => {
+        void persist(prev);
+        return prev;
+      });
     }
   }
 

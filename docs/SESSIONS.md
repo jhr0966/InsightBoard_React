@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — 수집 실행 API + 대화 스레드/메시지 영구화 API (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `/api/threads` CRUD+메시지(sola_threads·chat_log 위임), `/api/collect`(scraping 지연 import, 서버리스 503 폴백). React: 드로어 대화 스레드 영구화, Collect 수집 버튼. client.ts threads/collect.
+
+**조치**: 테스트 +3(1007→1010), OpenAPI 23경로, api.main이 scraping 미로드(Vercel 안전) 검증, web build 통과.
+
+---
+
 ## 2026-06-15 — 화면 데이터 패리티 (작업정의 업로드 + 자동화 기회) (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `POST /api/taskdefs/upload`(엑셀→roadmap.ingest)·`GET /api/opportunities`(score_cells). React TaskDefs 업로드 폼 + Insights 기회 섹션. client.ts upload(FormData)/opportunities.

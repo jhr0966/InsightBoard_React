@@ -13,10 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routers import (
     assistant,
     bookmarks,
+    collect,
     news,
     opportunities,
     proposals,
     taskdefs,
+    threads,
     trends,
 )
 
@@ -52,4 +54,6 @@ app.include_router(news.router)
 app.include_router(trends.router)
 app.include_router(opportunities.router)
 app.include_router(proposals.router)
+app.include_router(collect.router)
+app.include_router(threads.router)
 app.include_router(assistant.router)
