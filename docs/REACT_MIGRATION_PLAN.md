@@ -93,7 +93,58 @@ store/bookmarks.py  (단일 저장소, 화면만 사라짐)
 
 ---
 
+## 1.5단계 — 자동화 제안 파이프라인 (핵심 가치 흐름)
+
+> 컨셉(2026-06-15): 뉴스 수집 + 작업정의(업로드 완료)를 전제로, **적절한 작업↔뉴스를 자동
+> 매칭해 자동화 제안서를 만들고 오늘의 보드에 띄운다.** 단, "전부 자동 생성"의 비용·노이즈·신뢰
+> 문제를 피하기 위해 **2단 Lazy 생성**으로 구현한다.
+>
+> 생성 적극성 결정: **매일 상위 1~3건은 풀 제안서 선생성**(보드에서 바로 읽기), 나머지는 클릭 시 생성.
+
+### 재사용 빌딩블록 (대부분 이미 존재)
+| 단계 | 모듈 | 비고 |
+|---|---|---|
+| 매칭 | `store/match.py::score_matches` | 토큰 + LLM 키워드 + TF-IDF 의미유사도. **LLM 없이도 동작** |
+| 기회 랭킹 | `sola/opportunity.py::score_cells` | 부서×공정(Lv3) 기회 점수 |
+| 제안서 작성 | `sola/propose.py::propose_for_task(task, news_df, persona)` | 작업 1건 + 관련 뉴스 → 마크다운 |
+| 보드 노출 | `sola/board_brief.py` | 캐시 + LLM 실패 시 룰 fallback |
+| 저장 | `store/bookmarks.py` | `type=proposal` 저장·만료 |
+
+### 파이프라인 (2단 Lazy)
+```
+[일일 cron · 싼 단계 — LLM 거의 안 씀]   scraping/run_daily.py 확장
+  뉴스 수집 → score_matches → score_cells 로 '오늘의 기회' Top-N 랭킹
+    → 후보 리스트 저장(작업명 × 뉴스 N건 × 점수 × 한줄 이유)
+    → 상위 1~3건만 propose_for_task() 로 풀 제안서 '선생성'(초안=대기 저장)
+
+[오늘의 보드 — 슬림]
+  "오늘의 자동화 제안 N건" 티저 카드. 선생성된 1~3건은 [바로 읽기],
+   나머지 후보는 [제안서 보기](클릭 시 생성)
+
+[자동화 제안 화면 · 비싼 단계 — 클릭 시 1회 LLM]
+  미생성 후보 클릭 → propose_for_task() 1회 생성 → 초안(대기)
+   → 사용자 [채택/보관] → [보관한 제안] 탭
+```
+
+### 두 진입점 → 한 화면 수렴
+- **보드 티저 카드** (자동 추천) ─┐
+- **인사이트 매트릭스 `이 기회로 제안 만들기` CTA** (탐색) ─┴→ **자동화 제안 화면**(생성·편집·보관)
+
+### 신뢰·비용 통제 장치
+- **Top-N 한정**(일 3~5건 노출, 선생성은 1~3건) — 전량 생성 금지.
+- **dedup** — 이미 제안/기각한 작업↔뉴스 클러스터는 N일 재노출 안 함.
+- **근거 노출** — 제안서에 매칭 뉴스·점수("왜 매칭됐나") 항상 동반.
+- **피드백(후속)** — 티저 👍/🙈 → 다음 랭킹 가중치 조정.
+
+### API 영향 (3단계와 연결)
+- `POST /api/proposals/generate` — 후보(작업+뉴스) → 풀 제안서 1회 생성 (클릭/선생성 공용).
+- `GET /api/proposals/today` — 오늘의 후보·선생성 제안 리스트(보드 티저용).
+- `GET /api/proposals?status=saved` — 보관한 제안 탭.
+
+---
+
 ## 2단계 — 작업정의 업로드 & JSON 저장 폼 확정 (전환 선행 필수)
+
 
 현 폼은 이미 잘 정의됨: `roadmap/task_def_form.py::TaskDefForm` + `roadmap/task_def_json.py`(스키마 v1.0). 이를 **React/백엔드 공용 계약**으로 고정한다.
 
@@ -146,7 +197,7 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 | 뉴스 | `/api/news`, `/api/collect/run`, `/api/keywords`, `/api/sources` | `store/news_db`, `scraping/`, `store/sources` |
 | 작업정의 | (2단계 표) | `roadmap/`, `store/task_defs_db` |
 | 트렌드/매칭 | `/api/trends`, `/api/matches`, `/api/opportunities` | `store/trends`, `store/match`, `sola/opportunity` |
-| 자동화 제안 | `/api/proposals/summarize`, `/api/proposals/generate`, `/api/threads`, `/api/assistant/chat` | `sola/`, `store/sola_threads`, `store/chat_log` |
+| 자동화 제안 | `/api/proposals/generate`, `/api/proposals/today`, `/api/proposals?status=saved`, `/api/threads`, `/api/assistant/chat` | `sola/propose`, `sola/opportunity`, `store/sola_threads`, `store/bookmarks` |
 | 보관(북마크) | `/api/bookmarks?type=news\|proposal` — 단일 저장소, 화면 없이 탭에서 조회 | `store/bookmarks` |
 | 페르소나 | `/api/persona` | `persona/` |
 | 어시스턴트 컨텍스트 | `/api/assistant/context?screen=` | 화면별 `chat_context_block` 일반화 |
