@@ -35,23 +35,39 @@
 
 ## 1단계 — 화면 역할 재정의 · 이름 변경 · 取捨 (6→5)
 
-| 새 화면명 | 라우트 | 이전 | 결정 | 역할(한 문장) |
+> 결정 갱신(2026-06-15): **산출물 보관함 화면 삭제**, **SOLA 작업실 → 자동화 제안 개명**.
+> 보관(북마크) 기능은 별도 화면 대신 **콘텐츠가 생기는 화면의 탭으로 분산**한다
+> (뉴스 보관 → 뉴스 수집 탭, 제안서 보관 → 자동화 제안 탭).
+
+| 새 화면명 | 라우트 | 이전 | 결정 | 역할(한 문장) · 탭 구성 |
 |---|---|---|---|---|
 | **홈 / 오늘의 브리핑** | `/` | 오늘의 보드 | 유지·축소 | 페르소나 맞춤 "오늘 볼 것" 다이제스트. 심층 차트는 분석으로 이관 |
-| **뉴스 수집** | `/collect` | 뉴스 수집 | 유지 | 수집잡·키워드·출처 운영 + 수집설정 |
+| **뉴스 수집** | `/collect` | 뉴스 수집 | 유지·**탭 추가** | 탭: `수집`(카드뷰) · **`보관한 뉴스`**(북마크 뉴스만) · `수집 설정`(키워드·출처·이력) |
 | **작업 정의** | `/taskdefs` | 작업 정의 | 유지·폼 확정 | 엑셀 업로드 + JSON 폼 CRUD (→ 2단계) |
 | **인사이트 분석** | `/insights` | 인사이트 분석 | 유지·강화 | 트렌드·매칭·자동화 기회 매트릭스 집중 |
-| **SOLA 작업실** | `/workshop` | SOLA 작업실 + 산출물 보관함 | 유지·**흡수** | 요약·제안서 생성 + 대화 + **산출물 보관(탭)** |
+| **자동화 제안** | `/proposals` | SOLA 작업실(개명) | 유지·**탭 추가** | 탭: `제안 생성`(채팅/작업대로 제안서 초안) · **`보관한 제안`**(채택·보관 제안서만) |
 
-- **取**: 보드(축소) · 수집 · 작업정의 · 인사이트 · SOLA 5축.
-- **捨**:
-  - ① **산출물 보관함 → SOLA 작업실 하위 탭으로 흡수** (별도 메뉴 제거). 칸반(대기/채택/기각)을 작업실의 `산출물` 탭으로 이동.
-  - ② **보드 내부 중복 트렌드/매트릭스/키워드 블록 제거** → 인사이트 분석으로 단일화. 보드에는 "더 보기 → 인사이트" 링크만 남긴다.
-  - ③ 데드코드(`sola/side_context.py` orphan 등)는 전환 대상에서 제외.
-- **이름**: 보드는 React 첫 진입(`/`)이므로 **홈/브리핑** 성격을 이름에 반영.
+- **取**: 보드(축소) · 뉴스 수집 · 작업정의 · 인사이트 · **자동화 제안** 5축.
+- **捨 / 변경**:
+  - ① **SOLA 작업실 → `자동화 제안`(`/proposals`) 개명**. 역할(요약·제안서 생성 + 대화)은 유지, 명칭만 사용자 언어로.
+  - ② **산출물 보관함 화면 완전 삭제** (사이드바 메뉴 제거 + `ui/archive_v2.py` 폐기). 데이터(`store/bookmarks.py`)는 그대로 두되 **type별로 표시 위치를 분산**:
+    - `type=news`(보관한 뉴스) → **뉴스 수집 `보관한 뉴스` 탭**.
+    - `type=proposal`(보관/채택한 제안서) → **자동화 제안 `보관한 제안` 탭**(기존 칸반 대신 보관 목록).
+  - ③ **보드 내부 중복 트렌드/매트릭스/키워드 블록 제거** → 인사이트 분석으로 단일화. 보드에는 "더 보기 → 인사이트" 링크만.
+  - ④ 데드코드(`sola/side_context.py` orphan 등)는 전환 대상에서 제외.
+- **이름**: 보드는 React 첫 진입(`/`)이므로 **홈/브리핑** 성격을 반영.
+
+### 보관(북마크) 데이터 흐름 (화면 삭제 후)
+```
+store/bookmarks.py  (단일 저장소, 화면만 사라짐)
+        ├─ type=news     →  뉴스 수집 · [보관한 뉴스] 탭
+        └─ type=proposal →  자동화 제안 · [보관한 제안] 탭
+```
+- 보드 사이드바 통계 "채택 대기"는 `type=proposal` 미채택 수로 그대로 산출(저장소 유지라 영향 없음).
 
 ### 1단계 산출물
-- 화면 매핑 확정표(위) + 사이드바 nav를 6→5로 축소.
+- 화면 매핑 확정표(위) + 사이드바 nav 6→5(`ui/sidebar.py::AREAS`에서 `📦 산출물 보관함` 제거, `🤖 SOLA 작업실`→`🤖 자동화 제안`).
+- `ui/archive_v2.py` 폐기 + 북마크 렌더를 `보관한 뉴스`/`보관한 제안` 탭으로 이식.
 - 보드에서 인사이트로 이관/삭제할 블록 목록.
 
 ---
@@ -109,8 +125,8 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 | 뉴스 | `/api/news`, `/api/collect/run`, `/api/keywords`, `/api/sources` | `store/news_db`, `scraping/`, `store/sources` |
 | 작업정의 | (2단계 표) | `roadmap/`, `store/task_defs_db` |
 | 트렌드/매칭 | `/api/trends`, `/api/matches`, `/api/opportunities` | `store/trends`, `store/match`, `sola/opportunity` |
-| SOLA | `/api/sola/summarize`, `/api/sola/propose`, `/api/threads`, `/api/assistant/chat` | `sola/`, `store/sola_threads`, `store/chat_log` |
-| 산출물 | `/api/bookmarks` | `store/bookmarks` |
+| 자동화 제안 | `/api/proposals/summarize`, `/api/proposals/generate`, `/api/threads`, `/api/assistant/chat` | `sola/`, `store/sola_threads`, `store/chat_log` |
+| 보관(북마크) | `/api/bookmarks?type=news\|proposal` — 단일 저장소, 화면 없이 탭에서 조회 | `store/bookmarks` |
 | 페르소나 | `/api/persona` | `persona/` |
 | 어시스턴트 컨텍스트 | `/api/assistant/context?screen=` | 화면별 `chat_context_block` 일반화 |
 
@@ -120,7 +136,7 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 
 ## 4단계 — React 전환
 
-- **라우팅** = 5 화면(`/`, `/collect`, `/taskdefs`, `/insights`, `/workshop`).
+- **라우팅** = 5 화면(`/`, `/collect`, `/taskdefs`, `/insights`, `/proposals`). 보관함 라우트 없음 — 보관은 `/collect`·`/proposals`의 탭.
 - **전역 어시스턴트 드로어 1개** — 채팅 2중화 해소. 현재 화면을 context로 전달.
 - **디자인 토큰 승계** — `assets/v2/*.css`(tokens·card·shell·sidebar) 토큰을 그대로 가져와 시각 일관성 유지.
 - 상태관리/데이터 패칭은 API 계약(3단계) 기준.
@@ -129,7 +145,7 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 
 ## 진행 순서 & 권장 착수점
 
-1. **1단계(화면 확정)** — nav 6→5, 보관함 흡수, 보드 중복 블록 정리 목록.
+1. **1단계(화면 확정)** — nav 6→5(보관함 삭제 + SOLA 작업실→자동화 제안), 보관 탭(뉴스/제안) 이식, 보드 중복 블록 정리.
 2. **2단계(작업정의 폼/API)** — 데이터 계약의 기준점. **여기를 먼저 단단히.**
 3. **3단계(API 계약)** — 나머지 도메인 OpenAPI 고정.
 4. **4단계(React)** — 라우트·컴포넌트·드로어.
