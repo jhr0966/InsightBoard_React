@@ -21,7 +21,11 @@ def isolated_bookmarks(tmp_path, monkeypatch):
     bdir = tmp_path / "bookmarks"
     bdir.mkdir(parents=True, exist_ok=True)
     from store import bookmarks as bm
-    monkeypatch.setattr(bm, "_path", lambda: bdir / "items.jsonl")
+    from store.repository import JsonlRepository
+    # 영구화는 repository seam 경유 → 전용 tmp 파일로 향하는 repo 주입.
+    repo = JsonlRepository("bookmarks")
+    monkeypatch.setattr(repo, "_path", lambda: bdir / "items.jsonl")
+    monkeypatch.setattr(bm, "_repo", repo)
     yield bm
 
 

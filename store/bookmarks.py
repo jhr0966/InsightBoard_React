@@ -15,13 +15,11 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
-from config import DATA_ROOT, ensure_data_dirs
 from store._audit import DEFAULT_USER, DEFAULT_WORKSPACE, now_iso, stamp
+from store.repository import get_repository
 
 
 BOOKMARK_TYPES = ("news", "proposal", "opportunity", "task")
@@ -76,11 +74,8 @@ class Bookmark:
         )
 
 
-def _path() -> Path:
-    ensure_data_dirs()
-    d = DATA_ROOT / "bookmarks"
-    d.mkdir(parents=True, exist_ok=True)
-    return d / "items.jsonl"
+# 영구화는 repository seam 경유(Phase 2 백엔드 교체점). 컬렉션명 = "bookmarks".
+_repo = get_repository("bookmarks")
 
 
 def make_id(*parts: str) -> str:
@@ -96,30 +91,14 @@ def _utc_now_iso() -> str:
 
 
 def list_all(*, type_: str | None = None) -> list[Bookmark]:
-    p = _path()
-    if not p.exists():
-        return []
-    items: list[Bookmark] = []
-    for line in p.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        bm = Bookmark.from_dict(obj)
-        if type_ is None or bm.type == type_:
-            items.append(bm)
-    return items
+    items = [Bookmark.from_dict(obj) for obj in _repo.read_all()]
+    if type_ is None:
+        return items
+    return [bm for bm in items if bm.type == type_]
 
 
 def _write_all(items: list[Bookmark]) -> None:
-    p = _path()
-    with p.open("w", encoding="utf-8") as f:
-        for it in items:
-            f.write(json.dumps(it.to_dict(), ensure_ascii=False))
-            f.write("\n")
+    _repo.write_all([it.to_dict() for it in items])
 
 
 def summary_counts(items: list[Bookmark] | None = None) -> dict[str, dict[str, int] | int]:

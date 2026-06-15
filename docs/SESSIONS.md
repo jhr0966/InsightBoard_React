@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-15 — Phase 2 준비: 스토리지 백엔드 seam (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `store/repository.py`(Repository 프로토콜 + JsonlRepository + get_repository, `INSIGHTBOARD_STORAGE` env). bookmarks 가 seam 경유 IO. Postgres 미도입(seam만 — 사용자 선택).
+
+**왜**: Phase 2(Postgres·멀티유저)에서 `get_repository` 한 곳만 바꾸면 도메인 store 불변. 식별 스코프(user_id/workspace_id)도 인터페이스에 반영.
+
+**조치**: bm._path monkeypatch 4곳 → repository 주입 갱신, test_repository +6. 1013→1019 passed.
+
+---
+
 ## 2026-06-15 — 화면 풍부화 (보드 다이제스트 + 작업정의 JSON 편집) (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `GET /api/board/brief`(board_brief, 룰 폴백). React: Board 요약 카드, TaskDefs JSON 에디터(로드/저장 PUT/삭제/새 템플릿). OpenAPI 24경로 재생성.

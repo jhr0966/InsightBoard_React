@@ -10,7 +10,10 @@ def isolated_bookmarks(tmp_path, monkeypatch):
     bookmarks_dir = tmp_path / "bookmarks"
     bookmarks_dir.mkdir(parents=True, exist_ok=True)
     from store import bookmarks as bm
-    monkeypatch.setattr(bm, "_path", lambda: bookmarks_dir / "items.jsonl")
+    from store.repository import JsonlRepository
+    _repo = JsonlRepository("bookmarks")
+    monkeypatch.setattr(_repo, "_path", lambda: bookmarks_dir / "items.jsonl")
+    monkeypatch.setattr(bm, "_repo", _repo)
     from ui import archive_v2
     try:
         archive_v2._oa_data.clear()

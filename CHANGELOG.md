@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (Phase 2 준비 — 스토리지 백엔드 seam) — `claude/dazzling-fermat-bbomgp`
+- **`store/repository.py` 신설**: 영구화 백엔드 추상화(Phase 2 교체점). `Repository` 프로토콜(id 기반 CRUD + `list(user_id=,workspace_id=)` 테넌트 스코프), `JsonlRepository`(현행 파일 구현 — `config.DATA_ROOT` 동적 참조 + 식별·감사 stamp/backfill), `get_repository(name)` 팩토리(`INSIGHTBOARD_STORAGE` env, 기본 "file"; "postgres" 등은 Phase 2 분기). Postgres 미도입 — **seam만**.
+- **`store/bookmarks.py`**: 영구화 IO 를 `get_repository("bookmarks")` 로 위임(`_path`/직접 파일 IO 제거, 공개 API·도메인 로직 불변). → Phase 2 에서 백엔드만 교체.
+- **테스트 정합**: `conftest`·`test_{sola_propose_loop,opp_actions,archive_more,sola_ctx_panel}` 의 `bm._path` monkeypatch 를 repository 주입으로 갱신. `tests/test_repository.py` +6. 1013→1019 passed.
+
 ### Added (화면 풍부화 — 보드 다이제스트 + 작업정의 JSON 편집) — `claude/dazzling-fermat-bbomgp`
 - **`api/routers/board.py`**: `GET /api/board/brief` → `sola.board_brief.brief`(최근 뉴스 items + 페르소나 라벨). LLM 미설정 시 룰 기반 폴백 내장(키 없이 안전).
 - **React 보드 풍부화**: `Board` 페이지에 요약(브리프) 카드 + 페르소나 라벨.
