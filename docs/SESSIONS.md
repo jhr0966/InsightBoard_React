@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-15 — 작업 정의 폼 확정(공정정의서_통합) + JSON 보유 + 재업로드 교체 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: 사용자 제공 엑셀 폼(시트 `공정정의서_통합`, 19컬럼)을 표준 업로드 포맷으로 확정 — JSON으로 저장·보유하고 재업로드 시 데이터 교체.
+
+**어떻게**: ① `작업 설명`→process_description 매핑 + 리스트 구분자 ·→, 변경(가운뎃점은 항목 내부 보존) + `◀ 안내배너 ▶` 행 스킵(`drop_guide_rows`) → 실파일 88행 중 배너 1행 제거, 87건 정상 적재. ② `write_canonical_json` 으로 `data/roadmap/task_defs.json`(완성 JSON 배열) 매 업로드 원자적 덮어쓰기. ③ `clear_all`+`sync_dataframe(replace=True)`+`ingest_excel(replace=True)` 로 재업로드 교체(병합 아님), 업로드 UI는 항상 replace.
+
+**검증**: pytest 958 passed(신규 5건) · 금지패턴 0 · PR #1(Draft).
+
+---
+
 ## 2026-06-15 — React 전환 정리 계획 + nav 2단 그룹핑 선반영 (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: React 전환 전 화면 구성 정리 계획 수립(`docs/REACT_MIGRATION_PLAN.md`) + 1단계 중 '안전한 nav'만 Streamlit 선반영.

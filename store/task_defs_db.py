@@ -268,6 +268,20 @@ def delete(
     return True
 
 
+def clear_all() -> int:
+    """`task_defs` 전체 삭제 — 엑셀 재업로드 '교체(replace)' 의미용. 삭제된 행 수 반환.
+
+    history 는 보존(이력 테이블은 건드리지 않음). 교체 업로드 시
+    `sqlite_sync.sync_dataframe(replace=True)` 가 이 함수로 먼저 비운 뒤 새 행을
+    일괄 삽입한다 — 직전 업로드에 없던 행이 남지 않게 한다.
+    """
+    with _connect() as conn:
+        n = conn.execute("SELECT COUNT(*) AS c FROM task_defs").fetchone()["c"]
+        conn.execute("DELETE FROM task_defs")
+        conn.commit()
+    return int(n)
+
+
 def list_all(
     *,
     team: str | None = None,

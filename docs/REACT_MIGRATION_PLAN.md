@@ -173,8 +173,35 @@ store/bookmarks.py  (단일 저장소, 화면만 사라짐)
 
 ## 2단계 — 작업정의 업로드 & JSON 저장 폼 확정 (전환 선행 필수)
 
-
 현 폼은 이미 잘 정의됨: `roadmap/task_def_form.py::TaskDefForm` + `roadmap/task_def_json.py`(스키마 v1.0). 이를 **React/백엔드 공용 계약**으로 고정한다.
+
+### 2.0 업로드 엑셀 폼 확정 — `공정정의서_통합`(2026-06) ✅ 구현됨
+
+사용자 제공 폼(시트 `공정정의서_통합`, 19컬럼)을 표준 업로드 포맷으로 확정했다.
+
+| 엑셀 컬럼 | → JSON 필드 |
+|---|---|
+| 분과 / 팀 / 부서 / 공정 / 작업 | org_meta(division/team/dept/process/task) + lv1=분과·lv2=공정·lv3=작업 fallback |
+| Process_ID | `process_id` (PK) |
+| 작업 설명 | `process_description` |
+| 작업흐름 | `work_flow` (원문 보존) |
+| 주요확인사항 | `key_check_points[]` |
+| 안전주의사항 | `safety_notes[]` |
+| 주요사용장비 | `main_equipment[]` |
+| 품질리스크 | `overall_quality_risks[]` |
+| 자동화가능영역 | `automation_potential_areas[]` |
+| 이전공정 / 다음공정 | `previous_process` / `next_process` |
+| Dept_ID / Work_ID / Pre·Post_Process_ID | (식별 보조 — 현재 JSON 미사용) |
+
+**파싱 규칙(구현 반영)**:
+- 한 셀 안 항목은 **쉼표(,)** 로 나열 — 가운뎃점(·)은 항목 내부 표기라 구분자에서 제외(`task_def_json._LIST_SPLIT_RE = [\n,;]`). 예: `마그네틱 크레인·호이스트 (이동), 대차` → 2항목.
+- 첫 행 `◀ 계층 구조 ▶` 류 **안내 배너는 검증 전 제거**(`ingest.drop_guide_rows`).
+- `작업 설명`(공백 포함) 헤더 매핑 추가(`schema.COLUMN_MAP`).
+
+### 2.0.1 저장·교체 정책 ✅ 구현됨
+- **정규 JSON 보유**: 업로드마다 작업 정의 전체를 `data/roadmap/task_defs.json`(`{schema_version, updated_at, count, task_defs[]}`)으로 원자적 저장 — React/백엔드 공용 단일 SOT.
+- **재업로드 = 데이터 교체(replace)**: `ingest_excel(..., replace=True)` → `sqlite_sync.sync_dataframe(replace=True)` 가 `task_defs` 를 비운 뒤 새 데이터셋으로 채움 + 정규 JSON 통째 덮어쓰기. 직전 업로드에 없던 행은 남지 않음(병합 아님).
+- 업로드 UI(`ui/data_management_v2._consume_task_def_upload_if_any`)는 항상 `replace=True`.
 
 ### 2.1 스키마 고정 (task_def JSON v1.0)
 

@@ -188,13 +188,21 @@ def sync_dataframe(
     *,
     changed_by: str | None = None,
     source: str = "excel_upload",
+    replace: bool = False,
 ) -> SyncResult:
-    """정규화된 로드맵 DataFrame → SQLite UPSERT. import 는 함수 내부(순환 방지)."""
+    """정규화된 로드맵 DataFrame → SQLite UPSERT. import 는 함수 내부(순환 방지).
+
+    replace=True (재업로드 교체): UPSERT 전에 `task_defs` 를 전부 비운다 → 직전
+    업로드에 없던 process_id 가 남지 않고 데이터셋 전체가 교체된다.
+    """
     from store import task_defs_db
 
     res = SyncResult()
     if df is None or getattr(df, "empty", True):
         return res
+
+    if replace:
+        task_defs_db.clear_all()
 
     for _, raw in df.iterrows():
         row = raw.to_dict()

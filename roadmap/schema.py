@@ -53,6 +53,8 @@ COLUMN_MAP: dict[str, str] = {
     # flat-column 엑셀(2026-06+) — JSON 열 없이 개별 컬럼을 task_def_json 으로 조립.
     # (조립 규칙은 task_def_json.assemble_from_columns)
     "공정설명": "process_description",
+    "작업 설명": "process_description",   # 공정정의서_통합 폼(2026-06+) — "작업 설명"
+    "작업설명": "process_description",
     "작업흐름": "work_flow",
     "주요확인사항": "key_check_points",
     "안전주의사항": "safety_notes",

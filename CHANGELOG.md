@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 — 공정정의서_통합 폼 업로드 + JSON 보유 + 재업로드 교체) — `claude/dazzling-fermat-bbomgp`
+- **공정정의서_통합 폼(2026-06, 19컬럼) 지원**(`roadmap/schema.py`, `roadmap/task_def_json.py`, `roadmap/ingest.py`): ① `작업 설명`(공백 포함) → `process_description` 헤더 매핑 추가 ② 리스트 항목 구분자를 가운뎃점(·)→**쉼표(,)** 로 변경(`_LIST_SPLIT_RE=[\n,;]`) — 가운뎃점은 "마그네틱 크레인·호이스트"처럼 항목 내부 표기라 보존, 주요확인사항·주요사용장비·품질리스크·자동화가능영역이 올바르게 분해됨 ③ `◀ 계층 구조 ▶` 류 안내 배너 행을 검증 전 제거(`ingest.drop_guide_rows`). 실제 폼(88행) → 배너 1행 제거 후 87건 정상 적재 검증.
+- **정규 JSON 데이터셋 보유**(`roadmap/ingest.write_canonical_json`): 업로드마다 작업 정의 전체를 `data/roadmap/task_defs.json`(`{schema_version, updated_at, count, task_defs[]}`)으로 원자적 저장 — org_meta·process_id 주입된 완성 JSON 배열(React/백엔드 공용 단일 SOT). `IngestResult.json_path` 추가.
+- **재업로드 = 데이터 교체(replace)**(`store/task_defs_db.clear_all`, `roadmap/sqlite_sync.sync_dataframe(replace=)`, `roadmap/ingest.ingest_excel(replace=)`, `ui/data_management_v2.py`): 업로드 시 `task_defs` 를 비운 뒤 새 데이터셋으로 채움 + 정규 JSON 통째 덮어쓰기 → 직전 업로드에 없던 행은 남지 않음(병합 아님). 업로드 UI는 항상 `replace=True`, 토스트 문구를 "기존 작업 정의를 교체하고 N건 저장(JSON 보유)"로.
+- 검증: pytest **958 passed**(신규 `tests/test_taskdef_form_2026.py` 5건 — 쉼표 구분/배너 스킵/정규 JSON/교체) · 금지패턴 0.
+
 ### Changed (React 전환 전 정리 — nav 2단 그룹핑·SOLA 작업실→자동화 제안 개명) — `claude/dazzling-fermat-bbomgp`
 - **사이드바 nav 2단 그룹핑 + 순서 변경**(`ui/sidebar.py`): 메뉴를 메인(① 오늘의 보드 ② 인사이트 분석 ③ 자동화 제안) → 구분선 `관리` → 관리(④ 뉴스 수집 ⑤ 작업 정의 ⑥ 산출물 보관함)로 재배치. 성격이 다른 화면(소비/실행 vs 데이터 운영)을 한 줄에 평면 나열하지 않아 첫인상 부담을 줄임. `_MAIN_AREAS`/`_MANAGE_AREAS`로 분리하고 `AREAS = _MAIN + _MANAGE`로 합성(기존 라우팅 키·세션·핸드오프 URL 불변).
 - **SOLA 작업실 → 자동화 제안 표시명 개명**(`ui/sidebar.py` `_AREA_DISPLAY`, `ui/sola_workshop_v2.py` topbar·컨텍스트 헤더): 라우팅 키(`🤖 SOLA 작업실`)는 유지하고 사용자에게 보이는 이름만 `🤖 자동화 제안`으로 갈음 — chat_panel/board_v2/insights 핸드오프와 테스트(area 키 의존)를 깨지 않으면서 사용자 언어로 정리. nav 버튼 라벨은 표시명, 클릭 라우팅은 키로 분리(`_render_nav_button`).

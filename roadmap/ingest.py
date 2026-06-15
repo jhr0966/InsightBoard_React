@@ -24,6 +24,8 @@ class IngestResult:
     row_count: int = 0
     parquet_path: str | None = None
     raw_path: str | None = None
+    # 정규 JSON 데이터셋 경로 — 작업 정의 전체를 JSON 배열로 보유(재업로드 교체).
+    json_path: str | None = None
     # PR-3 — SQLite 동기화 결과 (best-effort; Parquet 저장 성공이 ok 의 기준).
     sqlite_created: int = 0
     sqlite_updated: int = 0
@@ -86,6 +88,31 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return renamed
 
 
+_GUIDE_MARKERS = ("◀", "▶")
+
+
+def drop_guide_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """안내/배너 행 제거 — 공정정의서_통합 폼 1행(`◀ 계층 구조 ▶` 등 가이드 배너).
+
+    제거 기준(둘 중 하나):
+      1) 어떤 셀이든 `◀`/`▶` 마커를 포함 (가이드 배너),
+      2) 작업·팀·process_id 가 모두 빈 행 (실데이터가 아님).
+    정규화 후 호출 — 컬럼은 코드명(team/task/process_id …).
+    """
+    if df.empty:
+        return df
+
+    def _is_guide(r: pd.Series) -> bool:
+        joined = " ".join(str(v) for v in r.values)
+        if any(m in joined for m in _GUIDE_MARKERS):
+            return True
+        ident = [str(r.get(c, "")).strip() for c in ("team", "task", "process_id")]
+        return not any(ident)
+
+    mask = df.apply(_is_guide, axis=1)
+    return df.loc[~mask].reset_index(drop=True)
+
+
 def validate(df: pd.DataFrame) -> list[str]:
     errors: list[str] = []
     if df.empty:
@@ -101,18 +128,60 @@ def validate(df: pd.DataFrame) -> list[str]:
     return errors
 
 
+CANONICAL_JSON_NAME = "task_defs.json"
+
+
+def write_canonical_json(df: pd.DataFrame, out_dir: Path) -> Path:
+    """정규화 DataFrame → 작업 정의 JSON 배열을 `task_defs.json` 으로 (원자적) 저장.
+
+    각 행을 `sqlite_sync.row_to_task_def` 로 변환해 org_meta·process_id 가 주입된
+    **완성 JSON 객체**를 모은다(= SQLite 에 들어가는 것과 동일). 매 업로드 통째로
+    덮어쓰므로 파일 자체가 '교체' 의미의 단일 SOT(React/백엔드 공용 계약).
+    """
+    from roadmap.sqlite_sync import row_to_task_def
+
+    objects: list[dict] = []
+    if df is not None and not df.empty:
+        for _, raw in df.iterrows():
+            built = row_to_task_def(raw.to_dict())
+            if built is None:
+                continue
+            _pid, json_str = built
+            try:
+                objects.append(json.loads(json_str))
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / CANONICAL_JSON_NAME
+    tmp = path.with_suffix(".json.tmp")
+    payload = {
+        "schema_version": "1.0",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "count": len(objects),
+        "task_defs": objects,
+    }
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)  # 원자적 교체
+    return path
+
+
 def ingest_excel(
     fileobj: BinaryIO,
     *,
     sheet_name: str | int = "Master_Table",
     save_raw: bool = True,
     to_sqlite: bool = True,
+    replace: bool = False,
 ) -> IngestResult:
-    """엑셀 → 정규화 DataFrame → Parquet 저장. 원본 .xlsx도 별도 보관.
+    """엑셀 → 정규화 DataFrame → Parquet + 정규 JSON 저장. 원본 .xlsx도 별도 보관.
 
     to_sqlite=True (기본): Parquet 저장 후 `store.task_defs_db` 에도 행 단위
-    UPSERT (best-effort). SQLite 동기화 실패는 ingest 전체를 실패시키지 않는다
-    (M1 단계에서 Parquet 이 여전히 SOT).
+    UPSERT (best-effort). SQLite 동기화 실패는 ingest 전체를 실패시키지 않는다.
+
+    replace=True (재업로드 교체): SQLite 를 비운 뒤 새 데이터셋으로 채운다 +
+    정규 JSON(`task_defs.json`)을 통째로 덮어쓴다 → 직전 업로드에 없던 행이
+    남지 않는다("한 번 더 업로드 = 데이터 교체").
     """
     try:
         df_raw = pd.read_excel(fileobj, sheet_name=sheet_name, dtype=str).fillna("")
@@ -127,6 +196,9 @@ def ingest_excel(
     # 문자열 strip
     for col in df.columns:
         df[col] = df[col].astype(str).str.strip()
+
+    # 안내/배너 행(◀ 계층 구조 ▶ 등) 제거 — 검증 전.
+    df = drop_guide_rows(df)
 
     errs = validate(df)
     if errs:
@@ -146,19 +218,28 @@ def ingest_excel(
         except Exception:
             raw_path = None
 
+    # 정규 JSON 데이터셋 — 작업 정의 전체를 JSON 배열로 보유(SQLite/Parquet 와 동일
+    # 내용, org_meta·process_id 주입 완료). 업로드마다 통째로 덮어써 '교체' 의미를 만든다.
+    json_path: Path | None = None
+    try:
+        json_path = write_canonical_json(df, out_dir)
+    except Exception:
+        json_path = None
+
     result = IngestResult(
         ok=True,
         errors=[],
         row_count=len(df),
         parquet_path=str(parquet_path),
         raw_path=str(raw_path) if raw_path else None,
+        json_path=str(json_path) if json_path else None,
     )
 
     if to_sqlite:
         try:
             from roadmap.sqlite_sync import sync_dataframe
 
-            sync = sync_dataframe(df, source="excel_upload")
+            sync = sync_dataframe(df, source="excel_upload", replace=replace)
             result.sqlite_created = sync.created
             result.sqlite_updated = sync.updated
             result.sqlite_skipped = sync.skipped
