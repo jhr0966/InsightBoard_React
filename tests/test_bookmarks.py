@@ -23,6 +23,38 @@ def test_add_and_list_roundtrip():
     assert items[0].title == "가공부 · 전처리"
 
 
+def test_add_sets_audit_fields():
+    bookmarks.clear()
+    saved = bookmarks.add(Bookmark(id="aud", type="news", title="t"))
+    assert saved.user_id == "local"
+    assert saved.workspace_id == "default"
+    assert saved.created_by == "local"
+    assert saved.created_at and saved.updated_at
+    # 영구화 round-trip 후에도 유지
+    got = bookmarks.list_all()[0]
+    assert got.user_id == "local" and got.workspace_id == "default"
+    assert got.updated_at == saved.updated_at
+
+
+def test_legacy_record_backfills_audit_fields():
+    # user_id/workspace_id 없는 과거 레코드도 읽을 때 기본값으로 채워짐.
+    bm = Bookmark.from_dict({"id": "old", "type": "news", "title": "t",
+                             "created_at": "2020-01-01T00:00:00+00:00"})
+    assert bm.user_id == "local"
+    assert bm.workspace_id == "default"
+    assert bm.created_by == "local"
+    assert bm.updated_at == "2020-01-01T00:00:00+00:00"  # created_at 로 백필
+
+
+def test_set_status_bumps_updated_at():
+    bookmarks.clear()
+    bookmarks.add(Bookmark(id="p", type="proposal", title="p"))
+    bookmarks.set_status("p", "adopted")
+    got = bookmarks.list_all()[0]
+    assert got.status == "adopted"
+    assert got.updated_at == got.decided_at
+
+
 def test_filter_by_type():
     bookmarks.clear()
     bookmarks.add(Bookmark(id="a", type="opportunity", title="o"))

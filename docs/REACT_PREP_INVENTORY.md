@@ -130,8 +130,11 @@ updated_at   str   갱신 UTC ISO8601
 ```
 
 ### 현황 (실측)
-- `store/sola_threads.py` — `created_at`/`updated_at` **이미 보유** ✅ (패턴 레퍼런스).
-- 그 외 store(`news_db`,`bookmarks`,`trends`,`task_defs_db`,`sources`,`chat_log`), `persona/store`, `roadmap` — 식별·감사 필드 **없음** ⬜.
+- `store/_audit.py` — **표준 헬퍼 도입** ✅ (`stamp()`/`backfill()`/`now_iso()` + `DEFAULT_USER="local"`/`DEFAULT_WORKSPACE="default"`).
+- `store/bookmarks.py` — 5필드 **전체 적용** ✅ (`Bookmark` dataclass + `add`/`update_content`/`set_status` stamp, 과거 레코드 백필).
+- `store/task_defs_db.py` — `user_id`/`workspace_id` 컬럼 추가(schema v2 마이그레이션) + `upsert` stamp + 읽기 백필 ✅. (`created_at`/`updated_at`/`created_by`/`updated_by` 는 기존 보유.)
+- `store/sola_threads.py` — `created_at`/`updated_at` 기존 보유(부분).
+- 그 외 store(`news_db`,`trends`,`sources`,`chat_log`), `persona/store`, `roadmap` — **미적용** ⬜ (헬퍼 준비됨, 동일 패턴으로 점진 적용).
 
 ### 적용 원칙
 1. 신규/수정되는 모든 write 경로에 5필드 채움(헬퍼 1개로 통일 권장: `store/_audit.stamp(record, user="local")`).

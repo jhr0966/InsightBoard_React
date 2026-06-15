@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (식별·감사 필드 표준 + bookmarks/task_defs 적용) — `claude/dazzling-fermat-bbomgp`
+- **`store/_audit.py` 신설**: 식별·감사 5필드 표준 헬퍼. `stamp(record, user=, workspace=)`(신규=created_at 채움/기존=updated_at 갱신), `backfill()`(읽기 시 누락 백필, updated_at 불변), `now_iso()`(UTC 초단위 단일 진입점), `DEFAULT_USER="local"`/`DEFAULT_WORKSPACE="default"`. Phase 2(Postgres·멀티유저) 이전 시 호출부가 `user=`만 넘기면 그대로 흐르도록 설계.
+- **`store/bookmarks.py`**: `Bookmark` dataclass에 `user_id`/`workspace_id`/`created_by`/`updated_at` 추가. `add`는 `stamp()`로 5필드 보장, `update_content`/`set_status`는 `updated_at` 갱신, `from_dict`는 과거 레코드 백필.
+- **`store/task_defs_db.py`**: SQLite 스키마 v2 — `user_id`/`workspace_id` 컬럼 추가(`_migrate` ADD COLUMN으로 기존 *.db 호환). `upsert` INSERT가 `changed_by`를 소유자로 stamp, `_row_to_dict`는 NULL을 기본값 백필. (`created_at`/`updated_at`/`created_by`/`updated_by`는 기존 보유.)
+- **테스트 +12**: `tests/test_audit.py`(헬퍼 7), `test_bookmarks.py`(감사필드 3), `test_task_defs_db.py`(식별필드 2). 전체 958→970 passed.
+
 ### Docs (React 전환 준비물 실측 카탈로그 박제) — `claude/dazzling-fermat-bbomgp`
 - **`docs/REACT_PREP_INVENTORY.md` 신설**: 코드 실측으로 ① 세션 상태키 ~60개를 (E)이벤트트리거/(U)UI로컬/(S)서버데이터로 3분류, ② query_params 24종을 진짜 라우트 vs 일회성 액션으로 분리한 React Router 매핑표, ③ st.html 85곳 컴포넌트 인벤토리(공통 빌더→React 컴포넌트 1:1 + 화면별 밀도 + CSS 토큰 승계), ④ 식별·감사 필드(`user_id`/`workspace_id`/`created_by`/`created_at`/`updated_at`) 표준·현황(`sola_threads` 이미 보유, 나머지 미보유)·적용원칙. 재현 grep 커맨드 부록 포함. `REACT_MIGRATION_PLAN §0.5`·`CLAUDE.md` 라우팅에 링크.
   - 기준선: pytest 958/958 통과, `__pycache__` 미추적 확인(정리 불필요).

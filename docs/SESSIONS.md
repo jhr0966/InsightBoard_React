@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — 식별·감사 필드 표준 헬퍼 + bookmarks/task_defs 적용 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `store/_audit.py` 표준 헬퍼(`stamp`/`backfill`/`now_iso`) 신설. `bookmarks`(dataclass 5필드 전체)·`task_defs_db`(SQLite v2 user_id/workspace_id 컬럼+마이그레이션) 적용. 과거 레코드 백필.
+
+**조치**: 테스트 +12(958→970), 금지패턴 0. Phase2 Postgres·멀티유저 이전 대비 데이터 모델 forward-compat 확보.
+
+---
+
 ## 2026-06-15 — React 전환 준비물 실측 카탈로그 박제 (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `docs/REACT_PREP_INVENTORY.md` 신설 — 세션키 ~60개 3분류(E/U/S), query_params 24종 라우팅 매핑, st.html 85곳 컴포넌트 인벤토리, 식별·감사 필드 표준·현황. 계획문서·CLAUDE 라우팅에 링크.

@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from store._audit import DEFAULT_USER, DEFAULT_WORKSPACE
 from store.paths import roadmap_dir
 
 
@@ -54,7 +55,9 @@ CREATE TABLE IF NOT EXISTS task_defs (
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL,
   created_by    TEXT,
-  updated_by    TEXT
+  updated_by    TEXT,
+  user_id       TEXT,
+  workspace_id  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_task_defs_dept    ON task_defs(dept);
 CREATE INDEX IF NOT EXISTS idx_task_defs_team    ON task_defs(team);
@@ -75,7 +78,8 @@ CREATE INDEX IF NOT EXISTS idx_history_process ON task_def_history(process_id, c
 
 
 # 현재 스키마 버전 — 컬럼 추가/변경 시 +1 하고 _TASK_DEFS_COLUMNS 갱신.
-_SCHEMA_VERSION = 1
+# v2: 식별 필드 user_id/workspace_id 추가 (store/_audit.py 표준).
+_SCHEMA_VERSION = 2
 
 # task_defs 기대 컬럼(마이그레이션용). `CREATE TABLE IF NOT EXISTS` 만으론 기존
 # *.db 에 새 컬럼이 반영 안 되므로(C4), 누락 컬럼을 ALTER ADD 로 보강한다.
@@ -84,6 +88,7 @@ _TASK_DEFS_COLUMNS: dict[str, str] = {
     "process_id": "TEXT", "team": "TEXT", "dept": "TEXT", "division": "TEXT",
     "process": "TEXT", "task": "TEXT", "json": "TEXT", "task_def_text": "TEXT",
     "created_at": "TEXT", "updated_at": "TEXT", "created_by": "TEXT", "updated_by": "TEXT",
+    "user_id": "TEXT", "workspace_id": "TEXT",
 }
 
 
@@ -201,8 +206,9 @@ def upsert(
                 """
                 INSERT INTO task_defs
                   (process_id, team, dept, division, process, task,
-                   json, task_def_text, created_at, updated_at, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   json, task_def_text, created_at, updated_at, created_by, updated_by,
+                   user_id, workspace_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     process_id,
@@ -210,6 +216,7 @@ def upsert(
                     scalars["process"], scalars["task"],
                     json_str, task_def_text,
                     now, now, changed_by, changed_by,
+                    changed_by or DEFAULT_USER, DEFAULT_WORKSPACE,
                 ),
             )
             json_before = None
@@ -394,6 +401,9 @@ def _row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if row is None:
         return None
     d = dict(row)
+    # 식별 필드 — 과거 행(NULL)은 읽을 때 기본값으로 백필(store/_audit.py 표준).
+    d["user_id"] = d.get("user_id") or DEFAULT_USER
+    d["workspace_id"] = d.get("workspace_id") or DEFAULT_WORKSPACE
     # json 컬럼은 디코드해서 별도 필드 'json_obj' 제공 (raw 'json' 도 유지)
     try:
         d["json_obj"] = json.loads(d["json"])
