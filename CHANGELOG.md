@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (OpenAPI 타입 자동생성 — 계약 드리프트 제거) — `claude/dazzling-fermat-bbomgp`
+- **`scripts/gen_openapi.py`**: FastAPI `app.openapi()` → `web/openapi.json` 덤프(`--check` CI 모드).
+- **`web/` openapi-typescript**: `npm run gen:types` → `src/api/schema.ts` 자동생성. `types.ts` 가 모델 응답(TaskDef=TaskDefOut·Bookmark=BookmarkOut·ChatMessage)을 **schema.ts 에서 alias** → 서버 스키마 변경 시 타입 자동 추종. dict 반환 엔드포인트(news/trends/opportunities/threads)는 named schema 부재로 손수 유지(주석 명시).
+- **`tests/test_openapi_snapshot.py`**: `web/openapi.json` 이 현재 계약과 일치하는지 pytest 가 강제(어긋나면 실패 + 재생성 안내). 별도 CI 수정 없이 드리프트 가드.
+- 1010→1011 passed. web build/typecheck 통과.
+
 ### Added (수집 실행 API + 대화 스레드/메시지 영구화 API) — `claude/dazzling-fermat-bbomgp`
 - **`api/routers/threads.py`**: `/api/threads` CRUD + `/{id}/messages` GET/PUT → `store.sola_threads`·`store.chat_log`(chat_key=thread id) 위임. 스레드 메시지 수 동기화, 삭제 시 메시지 reset.
 - **`api/routers/collect.py`**: `POST /api/collect` → `scraping.run_daily.collect_batch`. **`scraping` 지연 import**(top-level 미사용) — 서버리스(`.vercelignore` 제외)에서 앱 부팅을 깨지 않고 호출 시 503 안내. `api.main` import 시 scraping 미로드 검증.

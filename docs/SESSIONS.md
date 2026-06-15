@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — OpenAPI 타입 자동생성 (계약 드리프트 제거) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `scripts/gen_openapi.py`(app.openapi→web/openapi.json), web openapi-typescript(`gen:types`→schema.ts), `types.ts` 모델 alias. `test_openapi_snapshot.py` 드리프트 가드.
+
+**조치**: 테스트 +1(1010→1011), web build 통과. dict 반환 엔드포인트는 named schema 부재로 hand-type 유지.
+
+---
+
 ## 2026-06-15 — 수집 실행 API + 대화 스레드/메시지 영구화 API (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: `/api/threads` CRUD+메시지(sola_threads·chat_log 위임), `/api/collect`(scraping 지연 import, 서버리스 503 폴백). React: 드로어 대화 스레드 영구화, Collect 수집 버튼. client.ts threads/collect.

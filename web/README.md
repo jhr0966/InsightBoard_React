@@ -34,6 +34,15 @@ npm run typecheck    # tsc --noEmit
 npm run build        # tsc + vite build → dist/
 ```
 
+## API 타입 재생성 (계약 드리프트 방지)
+`src/api/schema.ts` 는 OpenAPI 에서 자동생성, `types.ts` 가 그 모델을 alias.
+계약(api/) 변경 시:
+```bash
+python scripts/gen_openapi.py   # web/openapi.json 갱신(repo 루트)
+cd web && npm run gen:types     # schema.ts 재생성
+```
+`tests/test_openapi_snapshot.py` 가 `openapi.json` 과 현재 계약의 일치를 강제(어긋나면 pytest 실패).
+
 ## 환경변수 (`.env`, `.env.example` 참고)
 - `VITE_API_TARGET` — dev 프록시 타깃(기본 `http://localhost:8000`)
 - `VITE_API_BASE` — 프로덕션 절대 API base(비우면 동일 출처 `/api`)

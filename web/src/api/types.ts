@@ -1,5 +1,19 @@
-// FastAPI api/schemas.py 계약 미러 타입.
-// (후속: openapi-typescript 로 자동 생성 권장 — 지금은 손수 미러)
+// API 계약 타입.
+//
+// 두 갈래:
+//  (1) pydantic 모델 응답 → `schema.ts`(openapi-typescript 자동생성)에서 **alias** →
+//      서버 스키마가 바뀌면 타입도 자동으로 바뀐다(드리프트 제거).
+//      재생성: `python scripts/gen_openapi.py && cd web && npm run gen:types`
+//  (2) dict 를 그대로 반환하는 엔드포인트(news/trends/opportunities/threads 등)는
+//      OpenAPI 에 named schema 가 없으므로 손수 유지(아래 hand-written).
+import type { components } from "./schema";
+
+type S = components["schemas"];
+
+// (1) 자동생성 스키마 alias
+export type TaskDef = S["TaskDefOut"];
+export type Bookmark = S["BookmarkOut"];
+export type ChatMessage = S["ChatMessage"];
 
 export interface Audited {
   user_id: string;
@@ -9,30 +23,7 @@ export interface Audited {
   updated_at: string | null;
 }
 
-export interface TaskDef extends Audited {
-  process_id: string;
-  team: string | null;
-  dept: string | null;
-  division: string | null;
-  process: string | null;
-  task: string | null;
-  json: Record<string, unknown> | null;
-  task_def_text: string | null;
-  updated_by: string | null;
-}
-
-export interface Bookmark extends Audited {
-  id: string;
-  type: "news" | "proposal" | "opportunity" | "task";
-  title: string;
-  content: string;
-  link: string;
-  tags: string[];
-  status: "pending" | "adopted" | "rejected";
-  decision_note: string;
-  decided_at: string;
-}
-
+// (2) dict 반환 엔드포인트 — 손수 유지
 export interface NewsArticle {
   title: string;
   press?: string;
@@ -76,8 +67,6 @@ export interface AssistantContext {
   context: string;
   news_count: number;
 }
-
-export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; }
 
 export interface Thread {
   id: string;
