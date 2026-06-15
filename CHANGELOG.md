@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Docs (React 전환 전제·준비물 발굴 + Phase 구분) — `claude/dazzling-fermat-bbomgp`
+- **`docs/REACT_MIGRATION_PLAN.md` 0.5 전환 전제·준비물 신설**: 코드 실측(session_state 301곳/키 34개·st.rerun 105곳·query_params 91곳·st.html 96곳·st.dialog 11·pytest 958)에 근거해 준비물 9 워크스트림(API 추출·상태변환·LLM 스트리밍·영구화·인증·디자인·배포·테스트·잡)과 상태표 정리.
+- **Phase 구분 결정 반영**: Phase 1=React 전환+API 계약 안정화(FastAPI + 기존 파일/SQLite 유지), Phase 2=PostgreSQL 이전+풀 멀티유저/인증(분리). 모든 영구화 레코드·API에 식별·감사 필드(`user_id`·`workspace_id`·`created_by`·`created_at`·`updated_at`)를 처음부터 포함(Phase 1 기본값 `local`/`default`, 인증 no-op). 챗·제안서 생성은 **SSE 스트리밍**.
+- 3·4단계·진행순서에 FastAPI·식별필드·SSE·strangler 이식 순서 반영.
+
 ### Added (작업 정의 — 공정정의서_통합 폼 업로드 + JSON 보유 + 재업로드 교체) — `claude/dazzling-fermat-bbomgp`
 - **공정정의서_통합 폼(2026-06, 19컬럼) 지원**(`roadmap/schema.py`, `roadmap/task_def_json.py`, `roadmap/ingest.py`): ① `작업 설명`(공백 포함) → `process_description` 헤더 매핑 추가 ② 리스트 항목 구분자를 가운뎃점(·)→**쉼표(,)** 로 변경(`_LIST_SPLIT_RE=[\n,;]`) — 가운뎃점은 "마그네틱 크레인·호이스트"처럼 항목 내부 표기라 보존, 주요확인사항·주요사용장비·품질리스크·자동화가능영역이 올바르게 분해됨 ③ `◀ 계층 구조 ▶` 류 안내 배너 행을 검증 전 제거(`ingest.drop_guide_rows`). 실제 폼(88행) → 배너 1행 제거 후 87건 정상 적재 검증.
 - **정규 JSON 데이터셋 보유**(`roadmap/ingest.write_canonical_json`): 업로드마다 작업 정의 전체를 `data/roadmap/task_defs.json`(`{schema_version, updated_at, count, task_defs[]}`)으로 원자적 저장 — org_meta·process_id 주입된 완성 JSON 배열(React/백엔드 공용 단일 SOT). `IngestResult.json_path` 추가.

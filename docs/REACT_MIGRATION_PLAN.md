@@ -33,6 +33,46 @@
 
 ---
 
+## 0.5 전환 전제·준비물 (발굴, 2026-06-15)
+
+> 전환 직전 코드 실측으로 준비물을 빠짐없이 발굴. 숫자는 현재 코드 기준.
+
+### Phase 구분 (결정)
+- **Phase 1 (이번)**: **React 전환 + API 계약 안정화**. 백엔드 = **FastAPI + 기존 파일/SQLite/Parquet 유지**. 단 **데이터 모델은 Postgres·다중 사용자 이전이 쉽도록 설계**. 챗/제안서 생성은 **SSE 스트리밍** 도입.
+- **Phase 2 (분리)**: **PostgreSQL 이전 + 풀 멀티유저/인증**. 목표 규모 수백 명. 이때 다중 사용자 UX·권한·테넌시를 다시 설계 제안.
+
+### 지금 심어둘 식별·감사 필드 (forward-compat)
+모든 영구화 레코드(작업정의·뉴스·북마크/제안·스레드·페르소나·제안로그)에 아래를 **초기 설계부터** 포함 → Phase 2 Postgres 이전 시 스키마 변경 최소화.
+```
+user_id      : 작성/소유 사용자 (Phase 1 기본값 "local" 단일 사용자)
+workspace_id : 테넌트/작업공간 (Phase 1 기본값 "default")
+created_by   : 행위자 (감사)
+created_at   : 생성 시각 (UTC ISO)
+updated_at   : 갱신 시각 (UTC ISO)
+```
+- Phase 1엔 단일 사용자라 값은 상수 기본값으로 채우되 **컬럼/필드는 존재**시킨다. API 응답·요청 스키마도 이 필드를 포함(클라이언트가 미리 인지).
+- 인증 미들웨어는 Phase 1에선 no-op(항상 `user_id="local"`), Phase 2에서 실제 토큰 검증으로 교체.
+
+### 준비물 9 워크스트림
+| # | 워크스트림 | 핵심 작업 | 실측 근거 | 상태 |
+|---|---|---|---|---|
+| A | **백엔드 API 추출** | FastAPI로 `store/sola/roadmap/scraping` 래핑 + OpenAPI → React 타입드 클라이언트. `chat_context_block`→`/api/assistant/context` | UI가 도메인 직호출 | 작업정의 JSON 계약 ✅ / 나머지 ⬜ |
+| B | **상태·인터랙션 변환** | 세션키 34개 분류(서버데이터 vs UI), pending/rerun→이벤트·뮤테이션, `?app_area=&from=`→React Router | session_state 301곳·rerun 105곳·query_params 91곳 | ⬜ |
+| C | **LLM 스트리밍** | `sola/client.chat()` 동기 → **SSE** 스트리밍(챗·제안서). chat_log·sola_threads API화 | 현재 동기 OpenAI SDK | ⬜ |
+| D | **데이터·영구화** | 파일/SQLite를 API 뒤로. 식별·감사 필드 도입. task_defs.json 모델 확장 | SQLite×3·Parquet×8·JSON/JSONL×20 | 부분(task_defs ✅) |
+| E | **인증·테넌시** | Phase 1 no-op 인증(상수 user) + 필드 예약. Phase 2 실제 로그인 | 현재 인증 없음·단일 페르소나 | Phase 2 |
+| F | **디자인 시스템** | `st.html` 96곳→React 컴포넌트(카드·칸반·칩·배지·topbar·사이드바·모달). `assets/v2/*.css` 토큰 승계 | st.html 96·dialog 11 | ⬜ |
+| G | **빌드·배포** | 프론트(Vercel) + 백엔드 호스팅 분리, 시크릿(`LLM_*`), CORS, CI 2개 | Streamlit Cloud 단일 | ⬜ |
+| H | **테스트·패리티** | pytest 958 유지(백엔드) + API 계약 테스트 + React E2E + **동작 패리티 체크리스트** | 958 tests/85 파일 | ⬜ |
+| I | **백그라운드 잡** | `daily_scrape` cron 유지 + 자동화 제안 파이프라인(1.5단계) 배선 | scripts/daily_scrape.py | ⬜ |
+
+### 가장 큰 리스크 / 숨은 작업
+1. **세션키 34개·rerun 105곳**(B) — 화면별 "상태 사양서"를 먼저 뽑아야 React 이식이 기계적으로 됨.
+2. **챗 동기→SSE**(C) — 백엔드 인터페이스가 달라지므로 API 설계 시점에 스트리밍 전제로 못박아야 함.
+3. **식별·감사 필드 누락 방지**(D/E) — Phase 1에 안 심으면 Phase 2에서 전 테이블 마이그레이션. 그래서 지금 심는다.
+
+---
+
 ## 1단계 — 화면 역할 재정의 · 이름 변경 · 取捨 (6→5)
 
 > 결정 갱신(2026-06-15): **산출물 보관함 화면 삭제**, **SOLA 작업실 → 자동화 제안 개명**.
@@ -245,14 +285,19 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 
 ## 3단계 — 백엔드 API 계약 추출 (Streamlit 분리)
 
-화면이 의존하는 `store/`·`roadmap/`·`sola/` 호출을 REST(or tRPC) 엔드포인트로 묶어 **OpenAPI 고정**.
+화면이 의존하는 `store/`·`roadmap/`·`sola/` 호출을 **FastAPI** 엔드포인트로 묶어 **OpenAPI 고정**(0.5 결정).
+
+**공통 규약**:
+- 모든 read/write 응답·요청에 식별·감사 필드(`user_id`·`workspace_id`·`created_by`·`created_at`·`updated_at`) 포함. Phase 1 기본값(`user_id="local"`, `workspace_id="default"`).
+- 인증: Phase 1 no-op 미들웨어(항상 `local` 사용자) → Phase 2에서 실제 토큰 검증으로 교체.
+- LLM 챗·제안서 생성은 **SSE 스트리밍** 엔드포인트(`text/event-stream`).
 
 | 도메인 | 대표 엔드포인트 | 위임 모듈 |
 |---|---|---|
 | 뉴스 | `/api/news`, `/api/collect/run`, `/api/keywords`, `/api/sources` | `store/news_db`, `scraping/`, `store/sources` |
 | 작업정의 | (2단계 표) | `roadmap/`, `store/task_defs_db` |
 | 트렌드/매칭 | `/api/trends`, `/api/matches`, `/api/opportunities` | `store/trends`, `store/match`, `sola/opportunity` |
-| 자동화 제안 | `/api/proposals/generate`, `/api/proposals/today`, `/api/proposals?status=saved`, `/api/threads`, `/api/assistant/chat` | `sola/propose`, `sola/opportunity`, `store/sola_threads`, `store/bookmarks` |
+| 자동화 제안 | `/api/proposals/generate` **(SSE)**, `/api/proposals/today`, `/api/proposals?status=saved`, `/api/threads`, `/api/assistant/chat` **(SSE)** | `sola/propose`, `sola/opportunity`, `store/sola_threads`, `store/bookmarks` |
 | 보관(북마크) | `/api/bookmarks?type=news\|proposal` — 단일 저장소, 화면 없이 탭에서 조회 | `store/bookmarks` |
 | 페르소나 | `/api/persona` | `persona/` |
 | 어시스턴트 컨텍스트 | `/api/assistant/context?screen=` | 화면별 `chat_context_block` 일반화 |
@@ -264,18 +309,18 @@ org_meta              : { team*, dept*, division, process, task, sub_task, lv1, 
 ## 4단계 — React 전환
 
 - **라우팅** = 5 화면(메뉴 순): `/`, `/insights`, `/proposals`, `/collect`, `/taskdefs`. 보관함 라우트 없음 — 보관은 `/collect`·`/proposals`의 탭.
-- **전역 어시스턴트 드로어 1개** — 채팅 2중화 해소. 현재 화면을 context로 전달.
+- **전역 어시스턴트 드로어 1개** — 채팅 2중화 해소. 현재 화면을 context로 전달. 응답은 SSE 스트리밍.
 - **디자인 토큰 승계** — `assets/v2/*.css`(tokens·card·shell·sidebar) 토큰을 그대로 가져와 시각 일관성 유지.
-- 상태관리/데이터 패칭은 API 계약(3단계) 기준.
+- **상태관리** = 서버 데이터(React Query 등) + UI 로컬 상태 분리(0.5-B 세션키 카탈로그 기준). 데이터 패칭은 3단계 OpenAPI 타입드 클라이언트.
 
 ---
 
-## 진행 순서 & 권장 착수점
+## 진행 순서 & 권장 착수점 (Phase 1)
 
-1. **1단계(화면 확정)** — nav 6→5(보관함 삭제 + SOLA 작업실→자동화 제안), 보관 탭(뉴스/제안) 이식, 보드 중복 블록 정리.
-2. **2단계(작업정의 폼/API)** — 데이터 계약의 기준점. **여기를 먼저 단단히.**
-3. **3단계(API 계약)** — 나머지 도메인 OpenAPI 고정.
-4. **4단계(React)** — 라우트·컴포넌트·드로어.
+1. **0.5 준비물 정리** — 세션키 34개 카탈로그(서버/UI 분류) + 식별·감사 필드 표준 확정.
+2. **2단계(작업정의 폼/API)** — 데이터 계약의 기준점(폼·교체·JSON ✅). FastAPI `/api/taskdefs` 가장 먼저 노출.
+3. **3단계(API 계약)** — 나머지 도메인 FastAPI/OpenAPI 고정(식별 필드·SSE 규약 포함).
+4. **4단계(React)** — 라우트·컴포넌트·드로어. 화면별 strangler 이식(taskdefs/news→insights→proposals→board).
 
-> 작업정의 폼이 전체 데이터 계약의 기준이므로 2단계를 최우선으로 확정한 뒤 나머지
-> API를 같은 패턴으로 확장한다.
+> 작업정의가 데이터 계약 기준이므로 2단계를 먼저 단단히 한 뒤 같은 패턴으로 확장.
+> 식별·감사 필드(`user_id`·`workspace_id`·`created_*`·`updated_*`)는 **모든 신규 API·레코드에 처음부터** 포함해 Phase 2(Postgres·멀티유저) 이전 비용을 0에 가깝게 만든다.

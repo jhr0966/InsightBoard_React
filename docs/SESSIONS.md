@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-15 — React 전환 전제·준비물 발굴 + Phase 구분 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: 전환 직전 코드 실측으로 준비물을 9 워크스트림(API 추출·상태변환·LLM 스트리밍·영구화·인증·디자인·배포·테스트·잡)으로 발굴, 계획문서 0.5에 박제.
+
+**결정**: Phase 1=React 전환+API 안정화(FastAPI + 파일/SQLite 유지, Postgres 이전 쉽게 설계), Phase 2=Postgres+멀티유저/인증 분리. 식별·감사 필드(user_id/workspace_id/created_by/created_at/updated_at)를 처음부터 전 레코드·API에 포함(Phase1 기본값 local/default, 인증 no-op). 챗·제안서는 SSE 스트리밍.
+
+**실측**: session_state 301곳/키 34개·rerun 105곳·query_params 91곳·st.html 96·dialog 11·pytest 958/85파일.
+
+---
+
 ## 2026-06-15 — 작업 정의 폼 확정(공정정의서_통합) + JSON 보유 + 재업로드 교체 (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: 사용자 제공 엑셀 폼(시트 `공정정의서_통합`, 19컬럼)을 표준 업로드 포맷으로 확정 — JSON으로 저장·보유하고 재업로드 시 데이터 교체.
