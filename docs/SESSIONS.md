@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — React 전환 준비물 실측 카탈로그 박제 (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `docs/REACT_PREP_INVENTORY.md` 신설 — 세션키 ~60개 3분류(E/U/S), query_params 24종 라우팅 매핑, st.html 85곳 컴포넌트 인벤토리, 식별·감사 필드 표준·현황. 계획문서·CLAUDE 라우팅에 링크.
+
+**기준선**: pytest 958/958, `__pycache__` 미추적(정리 불필요). 코드 변경 없음(문서 전용).
+
+---
+
 ## 2026-06-15 — React 전환 전제·준비물 발굴 + Phase 구분 (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: 전환 직전 코드 실측으로 준비물을 9 워크스트림(API 추출·상태변환·LLM 스트리밍·영구화·인증·디자인·배포·테스트·잡)으로 발굴, 계획문서 0.5에 박제.

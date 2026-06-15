@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Docs (React 전환 준비물 실측 카탈로그 박제) — `claude/dazzling-fermat-bbomgp`
+- **`docs/REACT_PREP_INVENTORY.md` 신설**: 코드 실측으로 ① 세션 상태키 ~60개를 (E)이벤트트리거/(U)UI로컬/(S)서버데이터로 3분류, ② query_params 24종을 진짜 라우트 vs 일회성 액션으로 분리한 React Router 매핑표, ③ st.html 85곳 컴포넌트 인벤토리(공통 빌더→React 컴포넌트 1:1 + 화면별 밀도 + CSS 토큰 승계), ④ 식별·감사 필드(`user_id`/`workspace_id`/`created_by`/`created_at`/`updated_at`) 표준·현황(`sola_threads` 이미 보유, 나머지 미보유)·적용원칙. 재현 grep 커맨드 부록 포함. `REACT_MIGRATION_PLAN §0.5`·`CLAUDE.md` 라우팅에 링크.
+  - 기준선: pytest 958/958 통과, `__pycache__` 미추적 확인(정리 불필요).
+
 ### Docs (React 전환 전제·준비물 발굴 + Phase 구분) — `claude/dazzling-fermat-bbomgp`
 - **`docs/REACT_MIGRATION_PLAN.md` 0.5 전환 전제·준비물 신설**: 코드 실측(session_state 301곳/키 34개·st.rerun 105곳·query_params 91곳·st.html 96곳·st.dialog 11·pytest 958)에 근거해 준비물 9 워크스트림(API 추출·상태변환·LLM 스트리밍·영구화·인증·디자인·배포·테스트·잡)과 상태표 정리.
 - **Phase 구분 결정 반영**: Phase 1=React 전환+API 계약 안정화(FastAPI + 기존 파일/SQLite 유지), Phase 2=PostgreSQL 이전+풀 멀티유저/인증(분리). 모든 영구화 레코드·API에 식별·감사 필드(`user_id`·`workspace_id`·`created_by`·`created_at`·`updated_at`)를 처음부터 포함(Phase 1 기본값 `local`/`default`, 인증 no-op). 챗·제안서 생성은 **SSE 스트리밍**.
