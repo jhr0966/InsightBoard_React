@@ -11,5 +11,6 @@ anthropic>=0.40          # 네이티브 Claude 제공자 (LLM_PROVIDER=anthropic
 python-dotenv
 fastapi>=0.110          # React 전환용 백엔드 API (api/)
 uvicorn>=0.27           # ASGI 서버 — `uvicorn api.main:app`
+python-multipart>=0.0.9 # FastAPI 파일 업로드 (/api/taskdefs/upload)
 httpx>=0.27             # FastAPI TestClient + 향후 API 클라이언트
 pytest

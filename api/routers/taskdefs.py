@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import json as _json
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from dataclasses import asdict
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 
 from api.deps import Identity, current_identity
 from api.schemas import DeletedOut, TaskDefHistoryOut, TaskDefOut, TaskDefUpsertIn
+from roadmap.ingest import ingest_excel
 from store import task_defs_db
 
 router = APIRouter(prefix="/api/taskdefs", tags=["taskdefs"])
@@ -30,6 +33,26 @@ def list_taskdefs(
     else:
         rows = task_defs_db.list_all(team=team, dept=dept, process=process, limit=limit)
     return [TaskDefOut.from_row(r) for r in rows]
+
+
+@router.post("/upload")
+def upload_taskdefs(
+    file: UploadFile,
+    replace: bool = Query(default=False, description="true=기존 데이터셋 교체"),
+    _identity: Identity = Depends(current_identity),
+) -> dict:
+    """공정정의서 엑셀 업로드 → 정규화 + bulk upsert(`roadmap.ingest`).
+
+    `replace=true` 면 기존 작업정의를 비우고 새 데이터셋으로 교체("한 번 더 업로드 = 교체").
+    """
+    try:
+        result = ingest_excel(file.file, replace=replace)
+    except Exception as exc:  # noqa: BLE001 — 손상 파일 등 파싱 실패 → 422
+        raise HTTPException(status_code=422, detail={"errors": [f"엑셀 파싱 실패: {exc}"]}) from exc
+    payload = asdict(result)
+    if not result.ok:
+        raise HTTPException(status_code=422, detail={"errors": result.errors})
+    return payload
 
 
 @router.get("/{process_id}", response_model=TaskDefOut)

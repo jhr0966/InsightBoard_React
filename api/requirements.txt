@@ -2,8 +2,10 @@
 # 전체 앱(streamlit·scraping 등)을 빼고 API 가 실제 import 하는 것만.
 fastapi>=0.110
 pydantic>=2.6
+python-multipart>=0.0.9
 pandas
 pyarrow
+openpyxl
 openai>=1.40
 anthropic>=0.40
 python-dotenv

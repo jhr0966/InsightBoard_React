@@ -8,6 +8,7 @@ export default function Insights() {
   const keywords = useQuery({ queryKey: ["trends", "keywords", days], queryFn: () => api.trends.keywords(days, 20) });
   const volume = useQuery({ queryKey: ["trends", "volume", days], queryFn: () => api.trends.volume(days) });
   const sources = useQuery({ queryKey: ["trends", "sources", days], queryFn: () => api.trends.sources(days) });
+  const opps = useQuery({ queryKey: ["opportunities", days], queryFn: () => api.opportunities.list(days, 8) });
 
   return (
     <div>
@@ -47,6 +48,27 @@ export default function Insights() {
             <span key={s.source} className="chip">{s.source} · {s.count}</span>
           ))}
         </div>
+      </div>
+
+      <div className="card">
+        <strong>🤖 자동화 기회 (부서 × 공정)</strong>
+        {opps.isLoading && <div className="muted">계산 중…</div>}
+        {opps.data?.length === 0 && (
+          <div className="muted" style={{ marginTop: 8 }}>
+            뉴스 또는 작업정의(로드맵) 데이터가 필요합니다.
+          </div>
+        )}
+        {opps.data?.map((c) => (
+          <div key={`${c.dept}-${c.lv3}`} style={{ padding: "8px 0", borderBottom: "1px solid var(--surface-divider)" }}>
+            <div style={{ fontWeight: 600 }}>
+              {c.dept} · {c.lv3} <span className="chip">점수 {c.cell_score.toFixed(1)}</span>
+            </div>
+            <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>
+              뉴스 {c.matched_news} · 작업 {c.matched_tasks}
+              {c.sample_tasks ? ` · ${c.sample_tasks}` : ""}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (화면 데이터 패리티 — 작업정의 업로드 + 자동화 기회) — `claude/dazzling-fermat-bbomgp`
+- **`POST /api/taskdefs/upload`** (multipart 엑셀): `roadmap.ingest.ingest_excel` 위임 → 로드맵 데이터셋 적재(+완성 행은 task_defs_db upsert). `replace`로 교체 업로드. 파싱 실패→422. `python-multipart` 의존 추가(root·api requirements).
+- **`GET /api/opportunities`** (`api/routers/opportunities.py`): 최근 뉴스 × 로드맵 → `sola.opportunity.score_cells` 부서×공정 셀 점수. NaN/inf→null 정제.
+- **React 연동**: `TaskDefs` 페이지에 엑셀 업로드 폼(추가/교체 + 결과 표시 + 쿼리 무효화), `Insights` 페이지에 자동화 기회 섹션. `client.ts` `taskdefs.upload`(FormData)·`opportunities.list` 추가.
+- **테스트 +3**: `test_api_taskdef_upload.py`(업로드 적재·손상파일 422·기회 빈배열). 1004→1007. OpenAPI 19경로. web build 통과.
+
 ### Added (Vercel 배포 구성) — `claude/dazzling-fermat-bbomgp`
 - **`vercel.json`(루트)**: 풀스택 — `web/` 정적 빌드(`@vercel/static-build`) + `api/index.py`(FastAPI ASGI) 서버리스 함수(`@vercel/python`) + `/api/*` 라우팅 + SPA fallback. `INSIGHTBOARD_DATA_ROOT=/tmp/data` env.
 - **`api/index.py`**: Vercel ASGI shim(`from api.main import app`). 로컬은 `uvicorn api.main:app` 그대로.

@@ -10,7 +10,15 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import assistant, bookmarks, news, proposals, taskdefs, trends
+from api.routers import (
+    assistant,
+    bookmarks,
+    news,
+    opportunities,
+    proposals,
+    taskdefs,
+    trends,
+)
 
 app = FastAPI(
     title="InsightBoard API",
@@ -42,5 +50,6 @@ app.include_router(taskdefs.router)
 app.include_router(bookmarks.router)
 app.include_router(news.router)
 app.include_router(trends.router)
+app.include_router(opportunities.router)
 app.include_router(proposals.router)
 app.include_router(assistant.router)

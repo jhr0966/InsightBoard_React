@@ -5,8 +5,10 @@ import type {
   Bookmark,
   ChatMessage,
   DayCount,
+  IngestResult,
   KeywordCount,
   NewsArticle,
+  OpportunityCell,
   SourceCount,
   TaskDef,
 } from "./types";
@@ -48,6 +50,24 @@ export const api = {
       }),
     remove: (id: string) =>
       req<{ deleted: boolean }>(`/api/taskdefs/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    upload: async (file: File, replace = false): Promise<IngestResult> => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${BASE}/api/taskdefs/upload?replace=${replace}`, {
+        method: "POST",
+        body: fd, // multipart — Content-Type 자동 설정(boundary)
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`${res.status} ${detail}`);
+      }
+      return (await res.json()) as IngestResult;
+    },
+  },
+
+  opportunities: {
+    list: (days = 30, top = 20) =>
+      req<OpportunityCell[]>(`/api/opportunities${qs({ days, top })}`),
   },
 
   bookmarks: {

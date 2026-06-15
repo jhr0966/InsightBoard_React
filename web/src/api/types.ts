@@ -50,6 +50,27 @@ export interface KeywordCount { keyword: string; count: number; }
 export interface DayCount { date: string; count: number; }
 export interface SourceCount { source: string; count: number; }
 
+export interface OpportunityCell {
+  dept: string;
+  lv3: string;
+  cell_score: number;
+  avg_score: number;
+  matched_news: number;
+  matched_tasks: number;
+  sample_tasks?: string;
+  sample_news?: string;
+}
+
+export interface IngestResult {
+  ok: boolean;
+  errors: string[];
+  row_count: number;
+  sqlite_created: number;
+  sqlite_updated: number;
+  sqlite_skipped: number;
+  sqlite_error: string;
+}
+
 export interface AssistantContext {
   screen: string;
   context: string;

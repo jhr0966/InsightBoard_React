@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-15 — 화면 데이터 패리티 (작업정의 업로드 + 자동화 기회) (`claude/dazzling-fermat-bbomgp`)
+
+**무엇을**: `POST /api/taskdefs/upload`(엑셀→roadmap.ingest)·`GET /api/opportunities`(score_cells). React TaskDefs 업로드 폼 + Insights 기회 섹션. client.ts upload(FormData)/opportunities.
+
+**조치**: 테스트 +3(1004→1007), OpenAPI 19경로, web build 통과. python-multipart 의존 추가. 엑셀 골격행은 task_defs_db skip·roadmap 적재(정상).
+
+---
+
 ## 2026-06-15 — Vercel 배포 구성 (`claude/dazzling-fermat-bbomgp`)
 
 **무엇을**: 루트 `vercel.json`(web 정적 + api ASGI 함수 + /api 라우팅), `api/index.py` shim, 경량 `api/requirements.txt`, `.vercelignore`, `config.INSIGHTBOARD_DATA_ROOT` env 오버라이드. `web/vercel.json`(프런트단독). README 2모드 문서.
