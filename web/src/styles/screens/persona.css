@@ -1,0 +1,32 @@
+/* ── 페르소나 설정 + 온보딩 (P2) ── */
+.pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.pf-field label { display: block; font-size: var(--fs-micro); color: var(--text-muted); margin-bottom: 3px; }
+.pf-field input { width: 100%; padding: var(--space-2); font: inherit; font-size: var(--fs-caption);
+  border: 1px solid var(--surface-divider); border-radius: var(--r-md); background: var(--surface-card); color: var(--text-primary); }
+
+.chip-input { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px;
+  border: 1px solid var(--surface-divider); border-radius: var(--r-md); background: var(--surface-card); }
+.chip-input input { flex: 1; min-width: 120px; border: 0; outline: none; font: inherit;
+  font-size: var(--fs-caption); background: transparent; color: var(--text-primary); padding: 4px; }
+.chip-input-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: var(--r-full);
+  background: var(--accent-ring); color: var(--accent-primary); font-size: var(--fs-caption); }
+.chip-input-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 14px; line-height: 1; }
+
+.pf-derived { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.pf-proc { padding: 6px 0; border-bottom: 1px solid var(--surface-divider); font-size: var(--fs-caption); }
+.pf-proc:last-child { border-bottom: 0; }
+
+/* 온보딩 */
+.onb-hero { text-align: center; padding: var(--space-4) var(--space-2); }
+.onb-emoji { font-size: 44px; }
+.onb-title { font-size: var(--fs-headline); font-weight: var(--fw-bold); margin: var(--space-2) 0; }
+.onb-sub { color: var(--text-secondary); font-size: var(--fs-caption); line-height: 1.6; }
+.onb-steps { display: flex; gap: 6px; justify-content: center; margin-bottom: var(--space-4); }
+.onb-dot { width: 8px; height: 8px; border-radius: var(--r-full); background: var(--surface-divider); }
+.onb-dot.on { background: var(--accent-primary); }
+.onb-dot.done { background: var(--accent-active); }
+.onb-nav { display: flex; gap: 8px; margin-top: var(--space-4); }
+.onb-field { margin: var(--space-3) 0; }
+.onb-field label { display: block; font-size: var(--fs-caption); font-weight: var(--fw-semibold); margin-bottom: 6px; }
+.onb-field input { width: 100%; padding: var(--space-2) var(--space-3); font: inherit;
+  border: 1px solid var(--surface-divider); border-radius: var(--r-md); background: var(--surface-card); color: var(--text-primary); }

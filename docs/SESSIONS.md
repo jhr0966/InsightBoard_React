@@ -1,3 +1,11 @@
+## 2026-06-16 — P2 페르소나 설정 + 온보딩 (P2 화면 7개 완료) (`feat-p2-persona`)
+
+**무엇을**: Persona.tsx(/persona 라우트·기본정보·관심사 ChipInput·SOLA derive·테마·저장/초기화) + Onboarding.tsx(6단계 마법사·미설정 시 자동) + ChipInput. 사이드바/설정기어 연결.
+
+**조치**: web build 통과. P2 7화면 완료 → 다음 P3(교차: 어시스턴트 컨텍스트·핸드오프·핸드오프 수신).
+
+---
+
 ## 2026-06-16 — P2 자동화 제안 + 보관함 칸반 (`feat-p2-proposals`)
 
 **무엇을**: Proposals.tsx 재작성(탭: 제안생성[작업선택→생성→저장] / 보관함[KPI+칸반3열·채택/기각/되돌리기/삭제]). proposals.css.

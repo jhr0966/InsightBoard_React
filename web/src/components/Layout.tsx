@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import AssistantDrawer from "./AssistantDrawer";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import Onboarding, { shouldOnboard } from "./Onboarding";
 import { SCREEN_BY_PATH } from "../nav";
 import { useGlobalSearch } from "../search";
+import { api } from "../api/client";
 
 export default function Layout() {
   // 채팅 드로어 — 기본 펼침. 사용자가 닫으면 localStorage 로 기억.
@@ -12,6 +15,9 @@ export default function Layout() {
   const { pathname } = useLocation();
   const screen = SCREEN_BY_PATH[pathname] ?? "board";
   const { setQuery } = useGlobalSearch();
+  const persona = useQuery({ queryKey: ["persona"], queryFn: () => api.persona.get() });
+  const [onbClosed, setOnbClosed] = useState(false);
+  const showOnb = !onbClosed && shouldOnboard(persona.data?.is_set);
 
   function setDrawer(open: boolean) {
     setDrawerOpen(open);
@@ -36,6 +42,8 @@ export default function Layout() {
           💬 SOLA
         </button>
       )}
+
+      {showOnb && <Onboarding onClose={() => setOnbClosed(true)} />}
     </div>
   );
 }
