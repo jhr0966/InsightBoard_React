@@ -55,7 +55,7 @@ export default function Topbar({
         >
           🔔{pendingAdopt > 0 && <span className="topbar-dot-badge">{pendingAdopt}</span>}
         </button>
-        <button className="topbar-btn" title="설정 · 프로필" onClick={() => navigate("/proposals")}>⚙</button>
+        <button className="topbar-btn" title="설정 · 프로필" onClick={() => navigate("/persona")}>⚙</button>
         <div className="topbar-avatar">?</div>
       </div>
     </header>

@@ -13,6 +13,7 @@ import "./styles/screens/insights.css";
 import "./styles/screens/collect.css";
 import "./styles/screens/taskdefs.css";
 import "./styles/screens/proposals.css";
+import "./styles/screens/persona.css";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },

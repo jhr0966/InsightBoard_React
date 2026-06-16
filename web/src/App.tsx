@@ -5,6 +5,7 @@ import Insights from "./pages/Insights";
 import Proposals from "./pages/Proposals";
 import Collect from "./pages/Collect";
 import TaskDefs from "./pages/TaskDefs";
+import PersonaPage from "./pages/Persona";
 
 // 5 라우트 (REACT_MIGRATION_PLAN §4): 보드/인사이트/자동화제안/수집/작업정의.
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/proposals" element={<Proposals />} />
         <Route path="/collect" element={<Collect />} />
         <Route path="/taskdefs" element={<TaskDefs />} />
+        <Route path="/persona" element={<PersonaPage />} />
       </Route>
     </Routes>
   );

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P2 페르소나 설정 + 온보딩 — P2 화면 7개 완료) — `feat-p2-persona`
+- **`pages/Persona.tsx`**: 기본정보(이름·팀·부서·직무) · 관심사(공정·키워드 **ChipInput**) · **SOLA 분석**(derive·결과 칩+연관공정) · 표시설정(테마/글자) · 저장/초기화. `/persona` 라우트.
+- **`components/Onboarding.tsx`**: 6단계 마법사(환영→이름→팀·부서→직무→관심사→완료) · 진행 dot · dismiss(localStorage) · 완료 시 persona 저장+derive. 페르소나 미설정 시 자동 노출.
+- **`ChipInput`**(Enter 추가/× 제거) 재사용. 사이드바 페르소나 카드·topbar 설정기어 → `/persona` 연결. persona.css. web build 통과.
+- **REACT_PARITY_PLAN P2 화면 7개 완료**(보드·인사이트·수집·작업정의·제안+보관함·페르소나·온보딩).
+
+
 ### Added (P2 자동화 제안 + 보관함 칸반 풀빌드) — `feat-p2-proposals`
 - **`pages/Proposals.tsx` 전면 재작성**: 탭(🤖 제안 생성 / 📦 보관함).
   - **제안 생성**: 작업정의 선택 → `/api/proposals/generate` → 출력 → **📦 보관함 저장**(bookmark proposal).

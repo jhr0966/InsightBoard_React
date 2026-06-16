@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { NAV_MAIN, NAV_MANAGE } from "../nav";
 import ThemeSwitcher from "./ThemeSwitcher";
@@ -21,6 +21,7 @@ export default function Sidebar() {
   const summary = useQuery({ queryKey: ["bookmarks", "summary"], queryFn: () => api.bookmarks.summary() });
   const llm = useQuery({ queryKey: ["assistant", "status"], queryFn: () => api.assistant.status() });
   const persona = useQuery({ queryKey: ["persona"], queryFn: () => api.persona.get() });
+  const navigate = useNavigate();
 
   const status = (summary.data?.proposal_status as Record<string, number> | undefined) ?? {};
   const total = (summary.data?.total as number | undefined) ?? 0;
@@ -35,7 +36,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="persona-card">
+      <div className="persona-card" onClick={() => navigate("/persona")}>
         {persona.data?.is_set ? (
           <>
             <div className="persona-head">{(persona.data.name || persona.data.dept || "?").slice(0, 1)}</div>
