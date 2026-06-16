@@ -9,6 +9,8 @@ import type {
   KeywordCount,
   NewsArticle,
   OpportunityCell,
+  Persona,
+  Prefs,
   SourceCount,
   TaskDef,
   Thread,
@@ -133,6 +135,20 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ messages }),
       }),
+  },
+
+  persona: {
+    get: () => req<Persona>("/api/persona"),
+    save: (body: Partial<Persona>) =>
+      req<Persona>("/api/persona", { method: "PUT", body: JSON.stringify(body) }),
+    derive: () => req<Persona>("/api/persona/derive", { method: "POST" }),
+    reset: () => req<Persona>("/api/persona/reset", { method: "POST" }),
+  },
+
+  prefs: {
+    get: () => req<Prefs>("/api/ui-prefs"),
+    save: (theme: string, font: string) =>
+      req<Prefs>("/api/ui-prefs", { method: "PUT", body: JSON.stringify({ theme, font }) }),
   },
 
   collect: {

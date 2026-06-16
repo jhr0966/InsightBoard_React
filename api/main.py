@@ -17,6 +17,8 @@ from api.routers import (
     collect,
     news,
     opportunities,
+    persona,
+    prefs,
     proposals,
     taskdefs,
     threads,
@@ -59,3 +61,5 @@ app.include_router(proposals.router)
 app.include_router(collect.router)
 app.include_router(threads.router)
 app.include_router(assistant.router)
+app.include_router(persona.router)
+app.include_router(prefs.router)

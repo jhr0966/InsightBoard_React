@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P1a 백엔드 API — persona + ui-prefs) — `feat-p1-persona-prefs`
+- **`api/routers/persona.py`**: `GET/PUT /api/persona`(프로필, 파생결과 보존하며 입력필드만 갱신) + `POST /api/persona/derive`(SOLA LLM 분석, 룰 폴백) + `POST /api/persona/reset`. `label`/`is_set` 파생 노출. → `persona.store`/`persona.derive` 위임.
+- **`api/routers/prefs.py`**: `GET/PUT /api/ui-prefs`(테마 4종·글자 3단, 잘못된 값 기본값 폴백) → `store.ui_prefs`.
+- **React 연동**: 사이드바 페르소나 카드 실데이터(`/api/persona` — 설정/미설정 분기·아바타·label), `client.ts` persona/prefs 메서드.
+- OpenAPI 28경로 재생성. 테스트 +7(1019→1026). web build 통과. REACT_PARITY_PLAN Phase 1 착수.
+
+
 ### Added (P0-4 SVG 차트 4종 — Phase 0 완료) — `feat-p0-charts`
 - **`components/charts/`**: `LineChart`(다계열·top강조·격자·마커·적응형 입력), `BarChart`(수집량·오늘강조·호버 title), `Sparkline`(인라인 추세), `BubbleMatrix`(4분면·반경=score·dept색·**충돌회피**·선택 글로우/halo·클릭), `Heatmap`(공정×기술·색강도 5단계·셀 선택). 전부 SVG 직접 구현(결정대로).
 - **Insights 연동**: 일자별 수집량=BarChart, 키워드=Sparkline, 자동화 기회=BubbleMatrix(+선택 상세 패널). 히트맵 컴포넌트는 P1(공정×기술 API) 후 배선.

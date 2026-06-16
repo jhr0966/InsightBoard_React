@@ -374,6 +374,165 @@
         "title": "MessagesIn",
         "type": "object"
       },
+      "PersonaIn": {
+        "properties": {
+          "dept": {
+            "default": "",
+            "title": "Dept",
+            "type": "string"
+          },
+          "interest_keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interest Keywords",
+            "type": "array"
+          },
+          "interest_lv3": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interest Lv3",
+            "type": "array"
+          },
+          "interest_tasks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interest Tasks",
+            "type": "array"
+          },
+          "job": {
+            "default": "",
+            "title": "Job",
+            "type": "string"
+          },
+          "muted_keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Muted Keywords",
+            "type": "array"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "team": {
+            "default": "",
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "title": "PersonaIn",
+        "type": "object"
+      },
+      "PersonaModel": {
+        "properties": {
+          "dept": {
+            "default": "",
+            "title": "Dept",
+            "type": "string"
+          },
+          "derived_at": {
+            "default": "",
+            "title": "Derived At",
+            "type": "string"
+          },
+          "derived_interests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Derived Interests",
+            "type": "array"
+          },
+          "derived_source": {
+            "default": "",
+            "title": "Derived Source",
+            "type": "string"
+          },
+          "interest_keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interest Keywords",
+            "type": "array"
+          },
+          "interest_lv3": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interest Lv3",
+            "type": "array"
+          },
+          "interest_tasks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interest Tasks",
+            "type": "array"
+          },
+          "is_set": {
+            "default": false,
+            "title": "Is Set",
+            "type": "boolean"
+          },
+          "job": {
+            "default": "",
+            "title": "Job",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "matched_processes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Matched Processes",
+            "type": "array"
+          },
+          "muted_keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Muted Keywords",
+            "type": "array"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "team": {
+            "default": "",
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "title": "PersonaModel",
+        "type": "object"
+      },
+      "PrefsModel": {
+        "properties": {
+          "font": {
+            "default": "medium",
+            "title": "Font",
+            "type": "string"
+          },
+          "theme": {
+            "default": "light",
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "title": "PrefsModel",
+        "type": "object"
+      },
       "ProposalGenerateIn": {
         "properties": {
           "days": {
@@ -1436,6 +1595,108 @@
         ]
       }
     },
+    "/api/persona": {
+      "get": {
+        "operationId": "get_persona_api_persona_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonaModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Persona",
+        "tags": [
+          "persona"
+        ]
+      },
+      "put": {
+        "operationId": "put_persona_api_persona_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonaModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Persona",
+        "tags": [
+          "persona"
+        ]
+      }
+    },
+    "/api/persona/derive": {
+      "post": {
+        "operationId": "derive_persona_api_persona_derive_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonaModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Derive Persona",
+        "tags": [
+          "persona"
+        ]
+      }
+    },
+    "/api/persona/reset": {
+      "post": {
+        "operationId": "reset_persona_api_persona_reset_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonaModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reset Persona",
+        "tags": [
+          "persona"
+        ]
+      }
+    },
     "/api/proposals/generate": {
       "post": {
         "operationId": "generate_api_proposals_generate_post",
@@ -2315,6 +2576,66 @@
         "summary": "Volume",
         "tags": [
           "trends"
+        ]
+      }
+    },
+    "/api/ui-prefs": {
+      "get": {
+        "operationId": "get_prefs_api_ui_prefs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrefsModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Prefs",
+        "tags": [
+          "prefs"
+        ]
+      },
+      "put": {
+        "operationId": "put_prefs_api_ui_prefs_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrefsModel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrefsModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Prefs",
+        "tags": [
+          "prefs"
         ]
       }
     }

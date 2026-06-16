@@ -14,6 +14,8 @@ type S = components["schemas"];
 export type TaskDef = S["TaskDefOut"];
 export type Bookmark = S["BookmarkOut"];
 export type ChatMessage = S["ChatMessage"];
+export type Persona = S["PersonaModel"];
+export type Prefs = S["PrefsModel"];
 
 export interface Audited {
   user_id: string;
