@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P2 자동화 제안 + 보관함 칸반 풀빌드) — `feat-p2-proposals`
+- **`pages/Proposals.tsx` 전면 재작성**: 탭(🤖 제안 생성 / 📦 보관함).
+  - **제안 생성**: 작업정의 선택 → `/api/proposals/generate` → 출력 → **📦 보관함 저장**(bookmark proposal).
+  - **보관함 칸반**: KPI4(총·채택·대기·채택률) + **3열 칸반**(대기/채택/기각) 카드 + 액션(채택/기각/되돌리기/삭제, `/api/bookmarks` setStatus).
+- `client.ts bookmarks.list(type,status)`, `styles/screens/proposals.css`(칸반 카드). web build 통과(112 모듈).
+
+
 ### Added (P2 작업 정의 화면 풀빌드 — 구조화 상세·풀 폼·이력) — `feat-p2-taskdefs`
 - **`pages/TaskDefs.tsx` 전면 재작성**: KPI3(등록정의·부서·마지막갱신) · 엑셀 업로드(추가/교체) · 검색 · 리스트 카드.
   - **구조화 상세뷰**: org_meta 그리드 · 공정설명 · 섹션(작업흐름·목표·확인사항·품질리스크·자동화영역·안전·장비) · **공정 연결**(이전→현재→다음) · **변경 이력**(action·시각·source·who, `/{id}/history`).
