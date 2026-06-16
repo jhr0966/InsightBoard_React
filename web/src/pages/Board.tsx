@@ -82,7 +82,7 @@ export default function Board() {
 
       {/* ② SOLA 브리핑 + 캐러셀 */}
       <Section title="SOLA 오늘의 브리핑" note="아침 7분"
-        cta={news.length > 0 && <button className="btn primary" onClick={() => nav("/proposals")}>이 뉴스로 제안서 →</button>}>
+        cta={news.length > 0 && <button className="btn primary" onClick={() => nav("/proposals?from=brief")}>이 뉴스로 제안서 →</button>}>
         <div className="bd-brief">
           <span className="bd-brief-tag">요약</span>
           {brief.isLoading ? <div className="skel" style={{ height: 40, marginTop: 12 }} />
@@ -117,7 +117,7 @@ export default function Board() {
                   <span><b>{c.matched_tasks}</b> 작업</span>
                 </div>
                 {c.sample_tasks && <div className="muted" style={{ fontSize: "var(--fs-micro)" }}>{c.sample_tasks}</div>}
-                <button className="btn" style={{ marginTop: "auto" }} onClick={() => nav("/proposals")}>SOLA 검토 →</button>
+                <button className="btn" style={{ marginTop: "auto" }} onClick={() => nav(`/proposals?from=board&dept=${encodeURIComponent(c.dept)}&lv3=${encodeURIComponent(c.lv3)}`)}>SOLA 검토 →</button>
               </div>
             ))}
           </div>}
@@ -135,7 +135,7 @@ export default function Board() {
                   <span><b>{selCell.cell_score.toFixed(1)}</b> <span className="muted">점수</span></span>
                   <span><b>{selCell.matched_news}</b> <span className="muted">뉴스</span></span>
                 </div>
-                <button className="btn primary" onClick={() => nav("/proposals")}>제안서 작업장 →</button>
+                <button className="btn primary" onClick={() => nav(`/proposals?from=matrix&dept=${encodeURIComponent(selCell.dept)}&lv3=${encodeURIComponent(selCell.lv3)}`)}>제안서 작업장 →</button>
               </> : <div className="muted">버블을 클릭하면 상세가 표시됩니다.</div>}
             </div>
           </div>}

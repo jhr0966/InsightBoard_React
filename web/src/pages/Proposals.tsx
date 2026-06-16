@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { KPIStatGrid, Tabs, EmptyState } from "../components/ui";
 import { KanbanBoard, KanbanColumn } from "../components/ui/Kanban";
@@ -8,7 +9,10 @@ import { ageLabel } from "../lib/time";
 import type { Bookmark } from "../api/types";
 
 export default function Proposals() {
+  const [params] = useSearchParams();
   const [tab, setTab] = useState<"gen" | "archive">("gen");
+  // 핸드오프로 들어오면 자동으로 제안 생성 탭.
+  useEffect(() => { if (params.get("from")) setTab("gen"); }, [params]);
   return (
     <div>
       <Tabs items={[{ key: "gen", label: "🤖 제안 생성" }, { key: "archive", label: "📦 보관함" }]}
@@ -21,8 +25,25 @@ export default function Proposals() {
 function Generate() {
   const toast = useToast();
   const qc = useQueryClient();
+  const [params] = useSearchParams();
+  const from = params.get("from");
+  const hoDept = params.get("dept") ?? "";
+  const hoLv3 = params.get("lv3") ?? "";
   const [selected, setSelected] = useState("");
   const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
+
+  // 핸드오프(dept/lv3)면 매칭되는 작업정의를 자동 선택.
+  useEffect(() => {
+    if (selected || !taskdefs.data || (!hoLv3 && !hoDept)) return;
+    const m = taskdefs.data.find((t) =>
+      (hoLv3 && (t.task?.includes(hoLv3) || (t.json?.process_name as string)?.includes(hoLv3) || t.process?.includes(hoLv3))) ||
+      (hoDept && t.dept?.includes(hoDept)));
+    if (m) setSelected(m.process_id);
+  }, [taskdefs.data, hoLv3, hoDept, selected]);
+
+  const HANDOFF_LABEL: Record<string, string> = {
+    board: "📊 보드에서 인계됨", matrix: "🧭 매트릭스에서 인계됨", insights: "🔎 인사이트에서 인계됨", brief: "📊 보드 브리핑에서 인계됨",
+  };
 
   const gen = useMutation({
     mutationFn: async (pid: string) => {
@@ -39,6 +60,12 @@ function Generate() {
 
   return (
     <>
+      {from && (
+        <div className="cl-alert" style={{ background: "var(--accent-ring)", color: "var(--accent-primary)", border: "1px solid var(--accent-ring)" }}>
+          {HANDOFF_LABEL[from] ?? "인계됨"}{(hoDept || hoLv3) && ` — ${hoDept}${hoLv3 ? ` · ${hoLv3}` : ""}`}
+          {(hoLv3 || hoDept) && <span className="muted" style={{ marginLeft: "auto" }}>매칭 작업을 자동 선택했어요</span>}
+        </div>
+      )}
       <div className="card">
         <div className="card-title">작업 선택 → 제안서 생성</div>
         <div className="pr-gen">

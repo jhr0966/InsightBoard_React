@@ -1,3 +1,11 @@
+## 2026-06-16 — P3 핸드오프 + 데이터 헬스 (`feat-p3-handoff`)
+
+**무엇을**: 보드/인사이트 카드 CTA → /proposals?from=&dept=&lv3= 핸드오프(배너+작업 자동선택). 수집 설정 데이터 헬스 카드.
+
+**조치**: web build 통과. P3 완료 → 다음 P4(백엔드 호스팅·Streamlit 은퇴).
+
+---
+
 ## 2026-06-16 — P3 어시스턴트 강화: 추천질문 pills (`feat-p3-assistant`)
 
 **무엇을**: AssistantDrawer 화면별 추천질문 pills(클릭=즉시전송)·새 대화 버튼. send(text?) 리팩토링.

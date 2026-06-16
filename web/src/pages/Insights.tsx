@@ -120,7 +120,7 @@ export default function Insights() {
               selected={hmSel} onSelect={setHmSel} />
             {hmSel && <div className="ia-hm-detail">
               <b>{hmSel.replace("||", " × ")}</b> — 관련 뉴스 매칭{" "}
-              <button className="btn" style={{ marginLeft: 8 }} onClick={() => nav("/proposals")}>SOLA에서 더 보기 →</button>
+              <button className="btn" style={{ marginLeft: 8 }} onClick={() => nav(`/proposals?from=insights${hmSel ? `&lv3=${encodeURIComponent(hmSel.split("||")[0])}` : ""}`)}>SOLA에서 더 보기 →</button>
             </div>}
           </div>}
       </Section>

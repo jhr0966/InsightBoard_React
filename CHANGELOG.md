@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (P3 핸드오프 + 데이터 헬스) — `feat-p3-handoff`
+- **핸드오프 수신**: 보드(제안카드 SOLA검토·매트릭스 제안서작업장·브리핑 이 뉴스로 제안서)·인사이트(히트맵 SOLA에서 더 보기) → `/proposals?from=&dept=&lv3=`. 제안 화면이 **인계 배너** + dept/lv3 매칭 **작업정의 자동 선택**(useSearchParams·useEffect).
+- **데이터 헬스**: 수집 설정 상단 카드 — 오늘 뉴스·정의된 작업·활성 출처·LLM 상태(ok/warn 좌측 바).
+- web build 통과.
+
+
 ### Added (P3 어시스턴트 강화 — 화면별 추천질문 pills) — `feat-p3-assistant`
 - **`AssistantDrawer`**: 화면별 **추천질문 pills**(board/insights/collect/taskdefs/proposals/persona — 클릭=즉시 전송, `ui/chat_panel` suggestion 승계) + 새 대화(＋) 버튼. `send(text?)` 리팩토링. 화면 컨텍스트(`/api/assistant/context`)·SSE·스레드 영구화 유지.
 - `styles/app.css` drawer-pills. web build 통과.

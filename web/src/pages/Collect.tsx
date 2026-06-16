@@ -124,6 +124,15 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
   const [diagUrl, setDiagUrl] = useState(""); const [kw, setKw] = useState("");
   const sources = useQuery({ queryKey: ["sources"], queryFn: () => api.sources.list() });
   const status = useQuery({ queryKey: ["collect", "status"], queryFn: () => api.collect.status() });
+  const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
+  const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
+  const llm = useQuery({ queryKey: ["assistant", "status"], queryFn: () => api.assistant.status() });
+  const health = [
+    { label: "오늘 뉴스", ok: (today.data?.length ?? 0) > 0, val: `${today.data?.length ?? 0}건` },
+    { label: "정의된 작업", ok: (taskdefs.data?.length ?? 0) > 0, val: `${taskdefs.data?.length ?? 0}개` },
+    { label: "활성 출처", ok: (sources.data?.items.filter((s) => s.enabled).length ?? 0) > 0, val: `${sources.data?.items.filter((s) => s.enabled).length ?? 0}개` },
+    { label: "LLM", ok: !!llm.data?.configured, val: llm.data?.configured ? "Ready" : "키 미설정" },
+  ];
 
   const toggle = useMutation({ mutationFn: (n: string) => api.sources.toggle(n), onSuccess: () => qc.invalidateQueries({ queryKey: ["sources"] }) });
   const add = useMutation({ mutationFn: () => api.sources.add(name, url), onSuccess: () => { qc.invalidateQueries({ queryKey: ["sources"] }); setName(""); setUrl(""); toast.push("출처 추가됨", "success"); }, onError: (e) => toast.push((e as Error).message, "danger") });
@@ -135,6 +144,18 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
 
   return (
     <div>
+      <div className="card">
+        <div className="card-title">🩺 데이터 준비 상태</div>
+        <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 0 }}>
+          {health.map((h) => (
+            <div className="kpi-card" key={h.label} style={{ borderLeft: `3px solid ${h.ok ? "var(--semantic-success)" : "var(--semantic-warning)"}` }}>
+              <div className="kpi-label">{h.ok ? "✅" : "⚠️"} {h.label}</div>
+              <div className="kpi-value" style={{ fontSize: "var(--fs-headline)" }}>{h.val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="card">
         <div className="card-title">⚡ 빠른 수집</div>
         <div style={{ display: "flex", gap: 8 }}>
