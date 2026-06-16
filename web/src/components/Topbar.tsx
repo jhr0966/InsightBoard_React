@@ -7,11 +7,9 @@ import { navByPath } from "../nav";
 export default function Topbar({
   pathname,
   onSearch,
-  onOpenPalette,
 }: {
   pathname: string;
   onSearch: (q: string) => void;
-  onOpenPalette: () => void;
 }) {
   const nav = navByPath(pathname);
   const navigate = useNavigate();
@@ -50,7 +48,6 @@ export default function Topbar({
             }
           }}
         />
-        <button className="topbar-btn" title="⌘K 빠른 이동" onClick={onOpenPalette}>⌘K</button>
         <button
           className="topbar-btn"
           title={pendingAdopt > 0 ? `${pendingAdopt}건 채택 대기` : "새 알림 없음"}

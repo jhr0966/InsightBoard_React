@@ -5,12 +5,12 @@
 
 ## [Unreleased]
 
-### Added (P0-2 앱 셸 — topbar·sidebar·⌘K) — `feat-p0-app-shell`
-- **`Topbar`**: 브레드크럼(WORKFLOW/화면)·제목·갱신시각·LIVE 배지·전역 검색(Enter→수집)·⌘K 버튼·알림벨(채택대기 카운트, `/api/bookmarks/summary`)·설정·아바타.
+### Added (P0-2 앱 셸 — topbar·sidebar) — `feat-p0-app-shell`
+- **`Topbar`**: 브레드크럼(WORKFLOW/화면)·제목·갱신시각·LIVE 배지·전역 검색(Enter→수집 필터)·알림벨(채택대기 카운트, `/api/bookmarks/summary`)·설정·아바타.
 - **`Sidebar` 보강**: 브랜드 블록·페르소나 카드(미설정 플레이스홀더, P1 `/api/persona` 연동 예정)·통계 3열·**그룹 nav**(워크플로 ①②③ / 관리 ④⑤·번호·active)·LLM 상태 푸터(`/api/assistant/status`)·테마 스위처.
-- **`CommandPalette`(⌘K)**: 화면 빠른 이동(검색·↑↓·Enter·Esc), `Ctrl/⌘+K` 토글.
 - **`nav.ts`**(단일 nav 소스), **`search.ts`**(전역 검색 스토어, Topbar→Collect 필터). 각 페이지 중복 `page-title` 제거(topbar로 일원화).
-- web build 통과(97 모듈).
+- **⌘K 커맨드 팔레트 미도입**(윈도우 환경·현행 Streamlit에서도 제거됨 — 전역 검색으로 대체).
+- web build 통과.
 
 
 ### Added (P0-1 디자인시스템 — 4테마·글자크기) — `feat-p0-design-system`
