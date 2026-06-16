@@ -67,3 +67,19 @@
 .kanban-col-desc { font-size: var(--fs-micro); margin: 4px 0 var(--space-2); }
 .kanban-col-actions { display: flex; gap: 4px; margin-bottom: var(--space-2); flex-wrap: wrap; }
 .kanban-cards { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* Heatmap */
+.heatmap { overflow-x: auto; }
+.heatmap-tbl { border-collapse: separate; border-spacing: 3px; font-size: var(--fs-micro); }
+.heatmap-col { font-weight: var(--fw-semibold); color: var(--text-secondary); padding: 0 2px;
+  writing-mode: horizontal-tb; white-space: nowrap; }
+.heatmap-row { color: var(--text-secondary); text-align: right; padding-right: 6px; white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.heatmap-cell { padding: 0; }
+.heatmap-c { width: 38px; height: 30px; border: 1px solid var(--surface-divider); border-radius: var(--r-sm);
+  font-size: var(--fs-micro); font-weight: var(--fw-semibold); cursor: pointer; transition: transform var(--t-fast); }
+.heatmap-c:hover { transform: scale(1.08); }
+.heatmap-c.on { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+
+/* 차트 카드 2열 레이아웃 */
+.chart-row { display: grid; grid-template-columns: 3fr 2fr; gap: var(--space-4); align-items: start; }
+@media (max-width: 900px) { .chart-row { grid-template-columns: 1fr; } }

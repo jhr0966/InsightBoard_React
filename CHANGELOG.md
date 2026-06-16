@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (P0-4 SVG 차트 4종 — Phase 0 완료) — `feat-p0-charts`
+- **`components/charts/`**: `LineChart`(다계열·top강조·격자·마커·적응형 입력), `BarChart`(수집량·오늘강조·호버 title), `Sparkline`(인라인 추세), `BubbleMatrix`(4분면·반경=score·dept색·**충돌회피**·선택 글로우/halo·클릭), `Heatmap`(공정×기술·색강도 5단계·셀 선택). 전부 SVG 직접 구현(결정대로).
+- **Insights 연동**: 일자별 수집량=BarChart, 키워드=Sparkline, 자동화 기회=BubbleMatrix(+선택 상세 패널). 히트맵 컴포넌트는 P1(공정×기술 API) 후 배선.
+- web build 통과(102 모듈). **REACT_PARITY_PLAN Phase 0 완료** → 다음 P1(API 공백)·P2(화면 재현).
+
+
 ### Added (P0-3 공통 컴포넌트 라이브러리) — `feat-p0-components`
 - **`components/ui/`**: `Card`·`Badge`(tone 6)·`Chip`(dot)·`Delta`(↑↓·%)·`KPIStatGrid`·`Tabs`·`EmptyState`·`Modal`(dismissible 제어)·`ToastProvider`/`useToast`(1회성)·`KanbanBoard`/`KanbanColumn`. `lib/time.ageLabel`(방금/N시간 전/어제/M월D일).
 - **`styles/ui.css`**: 토큰 기반 컴포넌트 스타일. `main.tsx`에 `ToastProvider` 배선.
