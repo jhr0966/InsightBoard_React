@@ -1,3 +1,11 @@
+## 2026-06-16 — P3 어시스턴트 강화: 추천질문 pills (`feat-p3-assistant`)
+
+**무엇을**: AssistantDrawer 화면별 추천질문 pills(클릭=즉시전송)·새 대화 버튼. send(text?) 리팩토링.
+
+**조치**: web build 통과. 다음 P3/P4: 핸드오프 수신·백엔드 호스팅·Streamlit 은퇴.
+
+---
+
 ## 2026-06-16 — P2 페르소나 설정 + 온보딩 (P2 화면 7개 완료) (`feat-p2-persona`)
 
 **무엇을**: Persona.tsx(/persona 라우트·기본정보·관심사 ChipInput·SOLA derive·테마·저장/초기화) + Onboarding.tsx(6단계 마법사·미설정 시 자동) + ChipInput. 사이드바/설정기어 연결.
