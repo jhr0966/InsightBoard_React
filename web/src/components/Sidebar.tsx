@@ -20,6 +20,7 @@ function NavRow({ to, emoji, num, name, sub, end }: (typeof NAV_MAIN)[number]) {
 export default function Sidebar() {
   const summary = useQuery({ queryKey: ["bookmarks", "summary"], queryFn: () => api.bookmarks.summary() });
   const llm = useQuery({ queryKey: ["assistant", "status"], queryFn: () => api.assistant.status() });
+  const persona = useQuery({ queryKey: ["persona"], queryFn: () => api.persona.get() });
 
   const status = (summary.data?.proposal_status as Record<string, number> | undefined) ?? {};
   const total = (summary.data?.total as number | undefined) ?? 0;
@@ -34,12 +35,24 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="persona-card persona-card-empty">
-        <div className="persona-head-empty">👤</div>
-        <div>
-          <div className="persona-name">페르소나 미설정</div>
-          <div className="muted">설정에서 시작하세요 (곧 지원)</div>
-        </div>
+      <div className="persona-card">
+        {persona.data?.is_set ? (
+          <>
+            <div className="persona-head">{(persona.data.name || persona.data.dept || "?").slice(0, 1)}</div>
+            <div>
+              <div className="persona-name">{persona.data.name || persona.data.dept}</div>
+              <div className="muted">{persona.data.label}</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="persona-head-empty">👤</div>
+            <div>
+              <div className="persona-name">페르소나 미설정</div>
+              <div className="muted">설정에서 시작하세요</div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="sidebar-stats">

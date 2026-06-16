@@ -1,3 +1,11 @@
+## 2026-06-16 — P1a API: persona + ui-prefs (`feat-p1-persona-prefs`)
+
+**무엇을**: /api/persona(GET/PUT/derive/reset)·/api/ui-prefs(GET/PUT). 사이드바 페르소나 카드 실데이터 연결. client.ts persona/prefs. OpenAPI 28경로.
+
+**조치**: 테스트 +7(1019→1026), web build 통과. 다음 P1: sources·collect status/diagnose·trends weekly/emergence·matches·summarize.
+
+---
+
 ## 2026-06-16 — P0-4 SVG 차트 4종 (Phase 0 완료) (`feat-p0-charts`)
 
 **무엇을**: components/charts(LineChart·BarChart·Sparkline·BubbleMatrix·Heatmap) SVG 직접 구현. Insights에 BarChart·Sparkline·BubbleMatrix 연동. Phase 0(디자인시스템·셸·컴포넌트·차트) 완료.
