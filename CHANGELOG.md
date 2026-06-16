@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P0-1 디자인시스템 — 4테마·글자크기) — `feat-p0-design-system`
+- **`web/src/styles/themes.css`**: `ui/styles.py` 승계 — `[data-theme=dark/ocean/sunset]` 토큰 오버라이드(다크=bg/surface/text, 오션=teal accent, 선셋=rose accent) + `[data-font=small/medium/large]` 글자 스케일.
+- **`web/src/theme/ThemeProvider.tsx`**: 테마/글자 컨텍스트 + `<html data-theme data-font>` 동기화 + localStorage 영속(후속 `/api/ui-prefs`). `store/ui_prefs.py` 기본값(light·medium) 계승.
+- **`ThemeSwitcher`**: 페르소나 "🎨 표시 설정" 승계 — 사이드바 하단 세그먼트 컨트롤. `main.tsx`에 Provider 배선.
+- web build 통과(92 모듈). REACT_PARITY_PLAN Phase 0 착수.
+
+
 ### Docs (React UI/UX 완전 패리티 실행계획) — `docs-react-parity-plan`
 - **`docs/REACT_PARITY_PLAN.md` 신설**: 현행 Streamlit 전 화면(보드·인사이트·뉴스수집·작업정의·보관함·셸·페르소나·온보딩·채팅·SOLA 작업실) 실측 인벤토리 기반 100% 재현 계획. 화면별 패리티 명세, API 공백표(persona·matches·board·trends weekly/emergence·sources·collect status/runs/diagnose·summarize 등), SVG 차트 4종(라인·버블매트릭스·히트맵·스파크라인) 직접 구현 결정, Phase 0~4, 리스크. `CLAUDE.md` 라우팅 추가.
 

@@ -1,3 +1,11 @@
+## 2026-06-16 — P0-1 디자인시스템: 4테마·글자크기 (`feat-p0-design-system`)
+
+**무엇을**: themes.css(dark/ocean/sunset 토큰+글자 스케일, ui/styles.py 승계) + ThemeProvider(컨텍스트·html data-attr·localStorage) + ThemeSwitcher(사이드바). REACT_PARITY_PLAN Phase 0 착수.
+
+**조치**: web build 통과(92모듈). 다음 P0: 앱 셸(topbar/sidebar/⌘K) · 공통 컴포넌트 · SVG 차트 4종.
+
+---
+
 ## 2026-06-15 — React 완전 패리티 실행계획 박제 (`docs-react-parity-plan`)
 
 **무엇을**: 3개 Explore 에이전트로 전 화면 기능 실측 인벤토리 → `docs/REACT_PARITY_PLAN.md` 작성. 차트=SVG 직접구현, 문서 PR 먼저→P0 착수 결정.

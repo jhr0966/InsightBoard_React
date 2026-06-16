@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import AssistantDrawer from "./AssistantDrawer";
+import ThemeSwitcher from "./ThemeSwitcher";
 
 const NAV = [
   { to: "/", label: "📊 오늘의 보드", end: true, screen: "board" },
@@ -37,6 +38,9 @@ export default function Layout() {
             {n.label}
           </NavLink>
         ))}
+        <div style={{ marginTop: "auto" }}>
+          <ThemeSwitcher />
+        </div>
       </aside>
 
       <main className="main">

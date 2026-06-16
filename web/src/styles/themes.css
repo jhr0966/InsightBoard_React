@@ -1,0 +1,43 @@
+/* ──────────────────────────────────────────────────────────────
+   테마 — light(기본) / dark / ocean / sunset + 글자 크기.
+   `ui/styles.py` 의 _THEME_CSS 승계. Streamlit DOM 패치(body:has(...))는
+   불필요 — React 컴포넌트는 토큰을 직접 참조하므로 `:root` 토큰만 오버라이드.
+   적용: <html data-theme="..." data-font="..."> (ThemeProvider).
+   ────────────────────────────────────────────────────────────── */
+
+/* dark — bg/surface/text 토큰 교체 */
+[data-theme="dark"] {
+  --bg-base: #0F172A;
+  --surface-page: #0F172A;
+  --surface-card: #1E293B;
+  --surface-soft: #172033;
+  --surface-divider: #334155;
+  --text-primary: #F1F5F9;
+  --text-secondary: rgba(241, 245, 249, 0.74);
+  --text-muted: rgba(241, 245, 249, 0.52);
+  --accent-ring: rgba(96, 165, 250, 0.30);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 12px 28px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ocean — teal accent (light 베이스) */
+[data-theme="ocean"] {
+  --accent-primary: #0D9488;
+  --accent-hover: #0F766E;
+  --accent-active: #115E59;
+  --accent-ring: rgba(13, 148, 136, 0.22);
+}
+
+/* sunset — rose accent (light 베이스) */
+[data-theme="sunset"] {
+  --accent-primary: #E11D48;
+  --accent-hover: #BE123C;
+  --accent-active: #9F1239;
+  --accent-ring: rgba(225, 29, 72, 0.22);
+}
+
+/* 글자 크기 — small/medium/large (root font-size 스케일) */
+[data-font="small"]  { font-size: 92%; }
+[data-font="medium"] { font-size: 100%; }
+[data-font="large"]  { font-size: 112%; }
