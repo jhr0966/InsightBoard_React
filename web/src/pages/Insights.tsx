@@ -11,9 +11,7 @@ export default function Insights() {
   const opps = useQuery({ queryKey: ["opportunities", days], queryFn: () => api.opportunities.list(days, 8) });
 
   return (
-    <div>
-      <h1 className="page-title">🔎 인사이트 분석</h1>
-      <div style={{ marginBottom: 16 }}>
+    <div>      <div style={{ marginBottom: 16 }}>
         기간:{" "}
         {[7, 14, 30].map((d) => (
           <button key={d} className={`btn${d === days ? " primary" : ""}`} style={{ marginRight: 6 }} onClick={() => setDays(d)}>

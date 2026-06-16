@@ -17,8 +17,6 @@ export default function Proposals() {
 
   return (
     <div>
-      <h1 className="page-title">🤖 자동화 제안</h1>
-
       <div className="card">
         <strong>작업 선택 → 제안서 생성</strong>
         <div className="drawer-input" style={{ border: 0, padding: "10px 0 0" }}>

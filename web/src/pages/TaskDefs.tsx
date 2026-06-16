@@ -81,8 +81,6 @@ export default function TaskDefs() {
 
   return (
     <div>
-      <h1 className="page-title">📋 작업 정의</h1>
-
       <div className="card">
         <strong>공정정의서 엑셀 업로드</strong>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
