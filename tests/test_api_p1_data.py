@@ -62,6 +62,13 @@ def test_trends_emergence_shape():
     assert set(body.keys()) >= {"new", "rising"}
 
 
+def test_trends_emergence_new_excludes_today_from_base():
+    # 오늘만 수집된 키워드는 base(어제 기준)에 없으므로 'new' 로 잡혀야 한다.
+    _seed()  # 오늘 '용접','자동화'
+    new_kw = {k["keyword"] for k in client.get("/api/trends/emergence").json()["new"]}
+    assert "자동화" in new_kw  # base 가 오늘을 포함하면 비어서 실패하던 케이스
+
+
 # ── matches ────────────────────────────────────────────────
 
 def test_matches_empty_without_roadmap():

@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Query
 
 from store import news_db, trends
@@ -38,8 +40,13 @@ def emergence(
     base_days: int = Query(default=30, ge=2, le=90),
     top: int = Query(default=20, ge=1, le=100),
 ) -> dict:
-    """신규/급상승 키워드 — 오늘 vs 직전 기간(`store.trends.keyword_emergence`)."""
+    """신규/급상승 키워드 — 오늘 vs 직전 기간(`store.trends.keyword_emergence`).
+
+    base 는 **오늘을 제외**한 직전 기간(어제 기준 N일) — base 가 오늘을 포함하면
+    오늘 등장 키워드가 base 에도 잡혀 `new` 가 항상 비게 된다.
+    """
     today = news_db.load_news_for_days(1)
-    base = news_db.load_news_for_days(base_days)
+    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
+    base = news_db.load_news_for_days(base_days, now=yesterday)
     em = trends.keyword_emergence(today, base, top_n=top)
     return {k: v.to_dict(orient="records") for k, v in em.items()}

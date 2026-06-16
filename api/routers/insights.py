@@ -17,7 +17,9 @@ TECHS = ["비전", "협동 로봇", "예지보전", "디지털 트윈", "AGV", "
 
 
 def _row_text(rec: dict) -> str:
-    return " ".join(str(rec.get(c, "")) for c in ("title", "summary", "summary_llm", "keywords")).lower()
+    # enrich 가 채우는 keywords_llm·content 까지 포함(legacy _hm_count_in_news 와 동일 범위).
+    cols = ("title", "summary", "summary_llm", "keywords", "keywords_llm", "content")
+    return " ".join(str(rec.get(c, "")) for c in cols).lower()
 
 
 @router.get("/heatmap")
