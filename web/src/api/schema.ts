@@ -614,6 +614,9 @@ export interface paths {
         /**
          * Emergence
          * @description 신규/급상승 키워드 — 오늘 vs 직전 기간(`store.trends.keyword_emergence`).
+         *
+         *     base 는 **오늘을 제외**한 직전 기간(어제 기준 N일) — base 가 오늘을 포함하면
+         *     오늘 등장 키워드가 base 에도 잡혀 `new` 가 항상 비게 된다.
          */
         get: operations["emergence_api_trends_emergence_get"];
         put?: never;
