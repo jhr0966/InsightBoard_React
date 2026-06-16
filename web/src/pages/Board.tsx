@@ -8,9 +8,7 @@ export default function Board() {
   const brief = useQuery({ queryKey: ["board", "brief"], queryFn: () => api.board.brief(1) });
 
   return (
-    <div>
-      <h1 className="page-title">📊 오늘의 보드</h1>
-      <div className="card">
+    <div>      <div className="card">
         <strong>요약</strong>
         {brief.isLoading && <div className="muted">생성 중…</div>}
         {brief.data && (

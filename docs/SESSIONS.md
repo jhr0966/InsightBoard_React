@@ -1,3 +1,11 @@
+## 2026-06-16 — P0-2 앱 셸: topbar·sidebar·⌘K (`feat-p0-app-shell`)
+
+**무엇을**: Topbar(브레드크럼·제목·갱신·검색·알림벨·아바타) + Sidebar 보강(브랜드·페르소나카드·통계3열·그룹nav·LLM푸터) + CommandPalette(⌘K) + nav.ts/search.ts. 중복 page-title 제거.
+
+**조치**: web build 통과(97모듈). 데이터: bookmarks summary·assistant status 연동, persona는 P1 대기. 다음 P0: 공통 컴포넌트 · SVG 차트 4종.
+
+---
+
 ## 2026-06-16 — P0-1 디자인시스템: 4테마·글자크기 (`feat-p0-design-system`)
 
 **무엇을**: themes.css(dark/ocean/sunset 토큰+글자 스케일, ui/styles.py 승계) + ThemeProvider(컨텍스트·html data-attr·localStorage) + ThemeSwitcher(사이드바). REACT_PARITY_PLAN Phase 0 착수.

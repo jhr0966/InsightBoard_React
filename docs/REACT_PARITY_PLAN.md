@@ -61,7 +61,7 @@
 ### 1.6 🧭 앱 셸 (`ui/app_shell.py`·`ui/sidebar.py`)
 - **Topbar**: 브레드크럼(WORKFLOW/화면) · 제목 · 갱신시각 · **FRESH/LIVE/STALE 배지** · 알림벨(채택대기>0 카운트→보관함) · 설정기어(→페르소나) · 아바타 · **전역 검색**(Enter→뉴스수집 필터).
 - **Sidebar**: 브랜드 · **페르소나 카드**(설정/미설정 분기·→페르소나) · 통계 3열 · **그룹 nav 6**(메인①②③ / 관리④⑤⑥·active 강조) · **LLM 상태 푸터**(키 미설정 안내+Groq 발급 링크).
-- **⌘K 커맨드 팔레트** · 우측 SOLA 채팅 패널.
+- 우측 SOLA 채팅 패널. (⌘K 커맨드 팔레트는 미도입 — 윈도우 환경·현행에서도 제거, 전역 검색으로 대체.)
 
 ### 1.7 👤 페르소나 설정 (`ui/persona_page.py`)
 - 기본정보(이름·팀·부서·직무 — 로드맵 있으면 select) · 관심공정(multiselect) · 관심키워드(Enter 칩) · **SOLA 분석**(derive/캐시/규칙폴백·칩+연관공정/작업·재분석) · 테마/글자크기(4테마) · 저장/초기화/돌아가기 · 키보드 내비.
@@ -104,7 +104,7 @@
 | ↳ 수집 모달 | 진행/결과 | §1.3 | ✅ |
 | `ui/data_management_v2.py` `render_taskdef`·`task_def_manage` | 작업 정의(업로드 diff·상세·풀폼·이력) | §1.4 | ✅ |
 | `ui/archive_v2.py` | 보관함 칸반 3열 | §1.5 | ✅ |
-| `ui/app_shell.py` | topbar·우측 패널·⌘K | §1.6 | ✅ |
+| `ui/app_shell.py` | topbar·우측 패널·전역검색 | §1.6 | ✅ |
 | `ui/sidebar.py` | 사이드바(페르소나 카드·nav·LLM) | §1.6 | ✅ |
 | `ui/persona_page.py` | 페르소나 설정·derive·테마 | §1.7 | ✅ |
 | `ui/onboarding.py` | 온보딩 6단계 | §1.8 | ✅ |
@@ -158,7 +158,7 @@
 
 | Phase | 내용 | 산출물 |
 |---|---|---|
-| **P0** | 디자인시스템·셸·공통 컴포넌트·**차트 4종** | `components/ui/*`·`charts/*`·`Layout`(topbar/sidebar/⌘K) |
+| **P0** | 디자인시스템·셸·공통 컴포넌트·**차트 4종** | `components/ui/*`·`charts/*`·`Layout`(topbar/sidebar) |
 | **P1** | API 공백 메우기(§2 전부) + OpenAPI 타입 재생성 | `api/routers/*` 확장 |
 | **P2** | 화면 재현 (보드→인사이트→수집→작업정의→보관함→페르소나/온보딩→자동화제안) | `web/src/pages/*` 정밀화 |
 | **P3** | 교차: 어시스턴트 컨텍스트·핸드오프(`from=*`)·추천 pills·토스트·URL 파라미터·온보딩 게이팅 | `AssistantDrawer`·라우팅 |
