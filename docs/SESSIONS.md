@@ -1,3 +1,11 @@
+## 2026-06-16 — P2 뉴스 수집 화면 풀빌드 (`feat-p2-collect`)
+
+**무엇을**: Collect.tsx 재작성(KPI·카드/설정뷰·대분류탭·출처칩·카드그리드·기사모달·검색·출처설정·수집이력·진단). collect.css.
+
+**조치**: web build 통과(109모듈). 다음 P2: 작업정의 화면(업로드 diff·상세·풀폼).
+
+---
+
 ## 2026-06-16 — P2 인사이트 화면 풀빌드 + 히트맵 API (`feat-p2-insights`)
 
 **무엇을**: /api/insights/heatmap(공정×기술) + Insights.tsx 풀빌드(KPI·트렌드 랭크·매트릭스+PoC랭킹·히트맵). insights.css.

@@ -32,3 +32,10 @@ export function gradientFor(seed: string): string {
 export function newsSummary(a: NewsArticle): string {
   return (a.summary_llm || a.summary || "").trim();
 }
+
+// 대분류 — 키워드 뉴스(naver/google) vs 뉴스 포탈(tech/AI Times/오토메이션월드).
+export function newsCategory(source?: string): "keyword" | "portal" {
+  const s = (source || "").toLowerCase();
+  return s.includes("naver") || s.includes("google") || s.includes("네이버") || s.includes("구글")
+    ? "keyword" : "portal";
+}
