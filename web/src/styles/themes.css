@@ -37,7 +37,9 @@
   --accent-ring: rgba(225, 29, 72, 0.22);
 }
 
-/* 글자 크기 — small/medium/large (root font-size 스케일) */
-[data-font="small"]  { font-size: 92%; }
-[data-font="medium"] { font-size: 100%; }
-[data-font="large"]  { font-size: 112%; }
+/* 글자 크기 — small/medium/large.
+   토큰 폰트가 px 고정이라 font-size:%는 무효 → ui/styles.py 와 동일하게 zoom 사용
+   (px 포함 전체 스케일). */
+[data-font="small"]  { zoom: 0.92; }
+[data-font="medium"] { zoom: 1; }
+[data-font="large"]  { zoom: 1.12; }
