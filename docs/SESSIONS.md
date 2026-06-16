@@ -1,3 +1,11 @@
+## 2026-06-16 — P2 인사이트 화면 풀빌드 + 히트맵 API (`feat-p2-insights`)
+
+**무엇을**: /api/insights/heatmap(공정×기술) + Insights.tsx 풀빌드(KPI·트렌드 랭크·매트릭스+PoC랭킹·히트맵). insights.css.
+
+**조치**: 테스트 +1(1035), OpenAPI 38경로, web build 통과. 다음 P2: 뉴스 수집 화면.
+
+---
+
 ## 2026-06-16 — P2 보드 화면 풀빌드 (7섹션) (`feat-p2-board`)
 
 **무엇을**: Board.tsx 전면 재작성(인사말·KPI·브리핑 캐러셀·탑스토리·제안카드·매트릭스·트렌드·키워드 관리) + NewsCard·lib/news·board.css. 토큰 기반 클린 + 폴리시(호버·그라데이션·스켈레톤).

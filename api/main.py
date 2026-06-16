@@ -15,6 +15,7 @@ from api.routers import (
     board,
     bookmarks,
     collect,
+    insights,
     matches,
     news,
     opportunities,
@@ -67,3 +68,4 @@ app.include_router(persona.router)
 app.include_router(prefs.router)
 app.include_router(sources.router)
 app.include_router(matches.router)
+app.include_router(insights.router)

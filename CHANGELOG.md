@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (P2 인사이트 화면 풀빌드 + 히트맵 API) — `feat-p2-insights`
+- **`api/routers/insights.py` 신설**: `GET /api/insights/heatmap`(공정 lv3 × 기술 7종 동시출현 빈도) → `score_cells`+뉴스 텍스트 매칭. 테스트 +1.
+- **`pages/Insights.tsx` 전면 재작성**: 헤더+KPI4(분석뉴스·신규트렌드·매칭공정·PoC후보) · 기간 필터 · STEP1 트렌드(막대+키워드 랭크·NEW배지·바) · STEP2 매트릭스(버블+PoC 랭킹 클릭연동) · STEP3 **히트맵**(셀 선택+상세 strip).
+- `styles/screens/insights.css`, client.ts insights.heatmap. OpenAPI 38경로. pytest 1034→1035. web build 통과.
+
+
 ### Added (P2 보드 화면 풀빌드 — 7섹션 클린 재작성) — `feat-p2-board`
 - **`pages/Board.tsx` 전면 재작성**(토큰 기반·UI/UX 폴리시): ① 인사말+페르소나+KPI4 ② SOLA 브리핑+**뉴스 카드 캐러셀**+CTA ③ 탑스토리 그리드 ④ 자동화 제안 카드3 ⑤ 기회 매트릭스(버블+상세) ⑥ 수집 트렌드(막대+키워드 스파크라인) ⑦ 키워드 관리(+지금 수집).
 - **`components/NewsCard.tsx`**: 썸네일(그라데이션 폴백)·출처 배지·상대시간·제목/요약·호버 lift. **`lib/news.ts`**(출처 색/라벨·https 승격·그라데이션).

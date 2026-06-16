@@ -1653,6 +1653,65 @@
         ]
       }
     },
+    "/api/insights/heatmap": {
+      "get": {
+        "operationId": "heatmap_api_insights_heatmap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rows",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Rows",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Heatmap Api Insights Heatmap Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heatmap",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
     "/api/matches": {
       "get": {
         "operationId": "matches_api_matches_get",
@@ -2916,7 +2975,7 @@
     },
     "/api/trends/emergence": {
       "get": {
-        "description": "신규/급상승 키워드 — 오늘 vs 직전 기간(`store.trends.keyword_emergence`).",
+        "description": "신규/급상승 키워드 — 오늘 vs 직전 기간(`store.trends.keyword_emergence`).\n\nbase 는 **오늘을 제외**한 직전 기간(어제 기준 N일) — base 가 오늘을 포함하면\n오늘 등장 키워드가 base 에도 잡혀 `new` 가 항상 비게 된다.",
         "operationId": "emergence_api_trends_emergence_get",
         "parameters": [
           {

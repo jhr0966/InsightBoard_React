@@ -248,6 +248,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights/heatmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Heatmap */
+        get: operations["heatmap_api_insights_heatmap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches": {
         parameters: {
             query?: never;
@@ -597,6 +614,9 @@ export interface paths {
         /**
          * Emergence
          * @description 신규/급상승 키워드 — 오늘 vs 직전 기간(`store.trends.keyword_emergence`).
+         *
+         *     base 는 **오늘을 제외**한 직전 기간(어제 기준 N일) — base 가 오늘을 포함하면
+         *     오늘 등장 키워드가 base 에도 잡혀 `new` 가 항상 비게 된다.
          */
         get: operations["emergence_api_trends_emergence_get"];
         put?: never;
@@ -1601,6 +1621,40 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    heatmap_api_insights_heatmap_get: {
+        parameters: {
+            query?: {
+                days?: number;
+                rows?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

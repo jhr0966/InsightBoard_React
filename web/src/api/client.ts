@@ -114,6 +114,11 @@ export const api = {
     list: (days = 7, top_k = 5) => req<Record<string, unknown>[]>(`/api/matches${qs({ days, top_k })}`),
   },
 
+  insights: {
+    heatmap: (days = 30) =>
+      req<{ rows: string[]; cols: string[]; data: number[][] }>(`/api/insights/heatmap${qs({ days })}`),
+  },
+
   sources: {
     list: () => req<{ items: { name: string; enabled: boolean; custom: boolean; url: string | null }[] }>("/api/sources"),
     toggle: (name: string) => req(`/api/sources/${encodeURIComponent(name)}/toggle`, { method: "POST" }),
