@@ -1,3 +1,11 @@
+## 2026-06-16 — P0-4 SVG 차트 4종 (Phase 0 완료) (`feat-p0-charts`)
+
+**무엇을**: components/charts(LineChart·BarChart·Sparkline·BubbleMatrix·Heatmap) SVG 직접 구현. Insights에 BarChart·Sparkline·BubbleMatrix 연동. Phase 0(디자인시스템·셸·컴포넌트·차트) 완료.
+
+**조치**: web build 통과(102모듈). 다음: P1 API 공백(persona·matches·board·trends weekly/emergence·sources·collect status/diagnose·summarize) → P2 화면 재현.
+
+---
+
 ## 2026-06-16 — P0-3 공통 컴포넌트 라이브러리 (`feat-p0-components`)
 
 **무엇을**: components/ui(Card·Badge·Chip·Delta·KPIStatGrid·Tabs·EmptyState·Modal·Toast·Kanban) + lib/time.ageLabel + ui.css. Board(KPI그리드)·TaskDefs(토스트) 적용.
