@@ -1,0 +1,41 @@
+/* ── 인사이트 분석 (P2 클린 재작성) ── */
+.ia-head { margin-bottom: var(--space-5); }
+.ia-eyebrow { font-size: var(--fs-micro); color: var(--text-muted); letter-spacing: var(--tracking-loose); }
+.ia-title { font-size: var(--fs-headline-lg); font-weight: var(--fw-black); letter-spacing: var(--tracking-tight); }
+.ia-desc { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 4px; }
+
+.ia-filter { display: inline-flex; gap: 2px; background: var(--surface-soft); border-radius: var(--r-md);
+  padding: 3px; margin-bottom: var(--space-5); }
+.ia-filter-btn { border: 0; background: transparent; color: var(--text-secondary); font: inherit;
+  font-size: var(--fs-caption); padding: var(--space-1) var(--space-3); border-radius: var(--r-sm); cursor: pointer; }
+.ia-filter-btn.on { background: var(--accent-primary); color: var(--text-on-accent); }
+
+/* 트렌드 키워드 랭크 리스트 */
+.ia-kw { display: flex; align-items: center; gap: var(--space-2); padding: 6px 0;
+  border-bottom: 1px solid var(--surface-divider); }
+.ia-kw:last-child { border-bottom: 0; }
+.ia-kw-rank { width: 22px; font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-muted); }
+.ia-kw-name { flex: 1; font-size: var(--fs-caption); font-weight: var(--fw-medium); }
+.ia-kw-bar { height: 5px; border-radius: var(--r-full); background: var(--accent-primary); min-width: 4px; }
+
+/* 매핑 카드 3열 */
+.ia-pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
+.ia-pcard { background: var(--surface-card); border: 1px solid var(--surface-divider); border-radius: var(--r-lg);
+  padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.ia-pcard-top { display: flex; align-items: center; gap: var(--space-2); }
+.ia-pcard-ic { width: 26px; height: 26px; border-radius: var(--r-md); display: grid; place-items: center;
+  color: #fff; font-size: 13px; }
+.ia-pcard-fit { margin-left: auto; font-weight: var(--fw-bold); font-size: var(--fs-caption); }
+
+/* PoC 랭킹 */
+.ia-poc { display: flex; align-items: center; gap: var(--space-2); padding: 8px 6px; border-radius: var(--r-md);
+  cursor: pointer; transition: background var(--t-fast); }
+.ia-poc:hover { background: var(--surface-soft); }
+.ia-poc.on { background: var(--accent-ring); }
+.ia-poc-rank { width: 22px; font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-muted); }
+.ia-poc-name { flex: 1; font-size: var(--fs-caption); font-weight: var(--fw-semibold); }
+.ia-poc-score { font-family: var(--font-mono); font-weight: var(--fw-bold); color: var(--semantic-success); }
+
+/* 히트맵 상세 strip */
+.ia-hm-detail { margin-top: var(--space-3); padding: var(--space-3); background: var(--surface-soft);
+  border-radius: var(--r-md); font-size: var(--fs-caption); }
