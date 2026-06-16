@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### Added (P1b 데이터 API — sources·collect 이력/진단·trends emergence·matches·summarize) — `feat-p1-data-apis`
+- **`api/routers/sources.py`**: `/api/sources` 목록·toggle·추가(POST)·삭제 → `store.sources`.
+- **`api/routers/collect.py` 확장**: `GET /status`(최근런+14일), `/runs`, `POST /diagnose`(scraping 지연) → `store.run_log`·`scraping.diagnose`.
+- **`api/routers/trends.py` 확장**: `GET /emergence`(신규/급상승 키워드) → `keyword_emergence`.
+- **`api/routers/matches.py` 신설**: `GET /api/matches`(뉴스×작업정의 매칭) → `store.match.score_matches`(NaN→null).
+- **`api/routers/proposals.py` 확장**: `POST /summarize`(뉴스 요약) → `sola.summarize`.
+- **bookmarks**: `?status=` 필터(칸반).
+- **conftest**: `store.sources` 격리 추가(config.json import-bound DATA_ROOT).
+- React client.ts: trends.emergence·matches·sources·collect status/runs/diagnose·summarize. OpenAPI 37경로. 테스트 +8(1026→1034). web build 통과.
+- **REACT_PARITY_PLAN §4.5**: P2 실행 방식 결정(토큰 클린 재작성 + UI/UX 폴리시, 화면=PR).
+
+
 ### Added (P1a 백엔드 API — persona + ui-prefs) — `feat-p1-persona-prefs`
 - **`api/routers/persona.py`**: `GET/PUT /api/persona`(프로필, 파생결과 보존하며 입력필드만 갱신) + `POST /api/persona/derive`(SOLA LLM 분석, 룰 폴백) + `POST /api/persona/reset`. `label`/`is_set` 파생 노출. → `persona.store`/`persona.derive` 위임.
 - **`api/routers/prefs.py`**: `GET/PUT /api/ui-prefs`(테마 4종·글자 3단, 잘못된 값 기본값 폴백) → `store.ui_prefs`.

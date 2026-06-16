@@ -104,6 +104,22 @@ export const api = {
     keywords: (days = 7, top = 20) => req<KeywordCount[]>(`/api/trends/keywords${qs({ days, top })}`),
     volume: (days = 7) => req<DayCount[]>(`/api/trends/volume${qs({ days })}`),
     sources: (days = 7) => req<SourceCount[]>(`/api/trends/sources${qs({ days })}`),
+    emergence: (base_days = 30, top = 20) =>
+      req<{ new: KeywordCount[]; rising: { keyword: string; today: number; base: number; delta: number }[] }>(
+        `/api/trends/emergence${qs({ base_days, top })}`,
+      ),
+  },
+
+  matches: {
+    list: (days = 7, top_k = 5) => req<Record<string, unknown>[]>(`/api/matches${qs({ days, top_k })}`),
+  },
+
+  sources: {
+    list: () => req<{ items: { name: string; enabled: boolean; custom: boolean; url: string | null }[] }>("/api/sources"),
+    toggle: (name: string) => req(`/api/sources/${encodeURIComponent(name)}/toggle`, { method: "POST" }),
+    add: (name: string, url: string) =>
+      req("/api/sources", { method: "POST", body: JSON.stringify({ name, url }) }),
+    remove: (name: string) => req(`/api/sources/${encodeURIComponent(name)}`, { method: "DELETE" }),
   },
 
   proposals: {
@@ -157,6 +173,18 @@ export const api = {
         "/api/collect",
         { method: "POST", body: JSON.stringify({ keywords, ...opts }) },
       ),
+    status: () => req<{ latest: Record<string, unknown> | null; daily: (string | null)[] }>("/api/collect/status"),
+    runs: (limit = 12) => req<Record<string, unknown>[]>(`/api/collect/runs${qs({ limit })}`),
+    diagnose: (url: string) =>
+      req<Record<string, unknown>>("/api/collect/diagnose", { method: "POST", body: JSON.stringify({ url }) }),
+  },
+
+  proposalsExtra: {
+    summarize: (days = 3) =>
+      req<{ summary: string; news_count: number }>("/api/proposals/summarize", {
+        method: "POST",
+        body: JSON.stringify({ days }),
+      }),
   },
 };
 

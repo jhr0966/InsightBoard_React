@@ -41,3 +41,17 @@ def generate(
     )
     pid = body.task.get("process_id") or (body.task.get("org_meta") or {}).get("process_id")
     return ProposalOut(proposal=text, task_process_id=pid)
+
+
+class SummarizeIn(BaseModel):
+    days: int = Field(default=3, ge=1, le=30)
+    max_items: int = Field(default=20, ge=1, le=50)
+
+
+@router.post("/summarize")
+def summarize(body: SummarizeIn, _identity: Identity = Depends(current_identity)) -> dict:
+    """최근 뉴스 요약 (SOLA 작업실 '뉴스 요약')."""
+    from sola.summarize import summarize_news
+
+    df = news_db.load_news_for_days(body.days)
+    return {"summary": summarize_news(df, max_items=body.max_items), "news_count": int(len(df))}

@@ -15,11 +15,13 @@ from api.routers import (
     board,
     bookmarks,
     collect,
+    matches,
     news,
     opportunities,
     persona,
     prefs,
     proposals,
+    sources,
     taskdefs,
     threads,
     trends,
@@ -63,3 +65,5 @@ app.include_router(threads.router)
 app.include_router(assistant.router)
 app.include_router(persona.router)
 app.include_router(prefs.router)
+app.include_router(sources.router)
+app.include_router(matches.router)

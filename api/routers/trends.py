@@ -31,3 +31,15 @@ def volume(days: int = Query(default=7, ge=1, le=90)) -> list[dict]:
 @router.get("/sources")
 def sources(days: int = Query(default=7, ge=1, le=90)) -> list[dict]:
     return trends.by_source(_df(days)).to_dict(orient="records")
+
+
+@router.get("/emergence")
+def emergence(
+    base_days: int = Query(default=30, ge=2, le=90),
+    top: int = Query(default=20, ge=1, le=100),
+) -> dict:
+    """신규/급상승 키워드 — 오늘 vs 직전 기간(`store.trends.keyword_emergence`)."""
+    today = news_db.load_news_for_days(1)
+    base = news_db.load_news_for_days(base_days)
+    em = trends.keyword_emergence(today, base, top_n=top)
+    return {k: v.to_dict(orient="records") for k, v in em.items()}
