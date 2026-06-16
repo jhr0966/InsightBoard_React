@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (P3 어시스턴트 강화 — 화면별 추천질문 pills) — `feat-p3-assistant`
+- **`AssistantDrawer`**: 화면별 **추천질문 pills**(board/insights/collect/taskdefs/proposals/persona — 클릭=즉시 전송, `ui/chat_panel` suggestion 승계) + 새 대화(＋) 버튼. `send(text?)` 리팩토링. 화면 컨텍스트(`/api/assistant/context`)·SSE·스레드 영구화 유지.
+- `styles/app.css` drawer-pills. web build 통과.
+
+
 ### Added (P2 페르소나 설정 + 온보딩 — P2 화면 7개 완료) — `feat-p2-persona`
 - **`pages/Persona.tsx`**: 기본정보(이름·팀·부서·직무) · 관심사(공정·키워드 **ChipInput**) · **SOLA 분석**(derive·결과 칩+연관공정) · 표시설정(테마/글자) · 저장/초기화. `/persona` 라우트.
 - **`components/Onboarding.tsx`**: 6단계 마법사(환영→이름→팀·부서→직무→관심사→완료) · 진행 dot · dismiss(localStorage) · 완료 시 persona 저장+derive. 페르소나 미설정 시 자동 노출.

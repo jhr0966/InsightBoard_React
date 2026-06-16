@@ -2,21 +2,23 @@ import { useRef, useState } from "react";
 import { api, streamChat } from "../api/client";
 import type { ChatMessage } from "../api/types";
 
-// 전역 어시스턴트 드로어 — SSE 스트리밍. 현재 화면 컨텍스트를 system 으로 주입.
-export default function AssistantDrawer({
-  screen,
-  onClose,
-}: {
-  screen: string;
-  onClose: () => void;
-}) {
+// 화면별 추천질문 (클릭=즉시 전송) — ui/chat_panel 의 suggestion pills 승계.
+const SUGGEST: Record<string, string[]> = {
+  board: ["오늘 브리핑에서 우리 팀이 먼저 봐야 할 1건과 이유는?", "이번 주 가장 주목할 자동화 기회는?"],
+  insights: ["왜 이 키워드가 뜨고 있나요?", "우리 조선소 어디에 적용 가능한가요?", "추천 PoC 과제 3가지는?"],
+  collect: ["지금 화면 기사들 핵심만 3줄로 요약해줘", "이 중 우리 부서에 중요한 기사는?"],
+  taskdefs: ["부서별 작업 정의에서 미등록 공정을 찾아줘", "이 작업의 자동화 포인트는?"],
+  proposals: ["이 작업의 PoC 제안 초안을 만들어줘", "ROI·일정·위험요인을 정리해줘"],
+  persona: ["내 관심사에 맞는 공정을 추천해줘"],
+};
+
+export default function AssistantDrawer({ screen, onClose }: { screen: string; onClose: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const threadRef = useRef<string | null>(null);
 
-  // 스레드 영구화 — 첫 메시지 때 스레드 생성, 교환 후 저장(best-effort).
   async function persist(all: ChatMessage[]) {
     try {
       if (!threadRef.current) {
@@ -26,28 +28,22 @@ export default function AssistantDrawer({
       }
       const id = threadRef.current;
       if (id) await api.threads.saveMessages(id, all);
-    } catch {
-      /* 영구화 실패는 무시(대화는 계속) */
-    }
+    } catch { /* 무시 */ }
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(textArg?: string) {
+    const text = (textArg ?? input).trim();
     if (!text || busy) return;
     setInput("");
     setBusy(true);
 
-    // 화면 컨텍스트를 system 으로 (실패해도 챗은 진행).
     let system: ChatMessage[] = [];
     try {
       const ctx = await api.assistant.context(screen);
       if (ctx.context) system = [{ role: "system", content: ctx.context }];
-    } catch {
-      /* 컨텍스트 없이 진행 */
-    }
+    } catch { /* 컨텍스트 없이 진행 */ }
 
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const history = [...messages, userMsg];
+    const history = [...messages, { role: "user", content: text } as ChatMessage];
     setMessages([...history, { role: "assistant", content: "" }]);
 
     const ac = new AbortController();
@@ -56,42 +52,46 @@ export default function AssistantDrawer({
       await streamChat([...system, ...history], (delta) => {
         setMessages((prev) => {
           const next = [...prev];
-          next[next.length - 1] = {
-            role: "assistant",
-            content: next[next.length - 1].content + delta,
-          };
+          next[next.length - 1] = { role: "assistant", content: next[next.length - 1].content + delta };
           return next;
         });
       }, { signal: ac.signal });
     } catch (err) {
       setMessages((prev) => {
         const next = [...prev];
-        next[next.length - 1] = {
-          role: "assistant",
-          content: `⚠️ ${(err as Error).message}`,
-        };
+        next[next.length - 1] = { role: "assistant", content: `⚠️ ${(err as Error).message}` };
         return next;
       });
     } finally {
       setBusy(false);
       abortRef.current = null;
-      setMessages((prev) => {
-        void persist(prev);
-        return prev;
-      });
+      setMessages((prev) => { void persist(prev); return prev; });
     }
   }
+
+  function reset() { setMessages([]); threadRef.current = null; }
+
+  const pills = SUGGEST[screen] ?? [];
 
   return (
     <section className="drawer">
       <div className="drawer-header">
-        💬 SOLA 어시스턴트 <span className="muted">· {screen}</span>
-        <button className="btn" style={{ float: "right" }} onClick={onClose}>
-          닫기
-        </button>
+        <span>💬 SOLA</span>
+        <span className="muted" style={{ fontSize: "var(--fs-micro)", marginLeft: 6 }}>· {screen}</span>
+        <span style={{ float: "right", display: "flex", gap: 6 }}>
+          <button className="oa-mini" onClick={reset} title="새 대화">＋</button>
+          <button className="oa-mini" onClick={onClose}>닫기</button>
+        </span>
       </div>
       <div className="drawer-log">
-        {messages.length === 0 && <div className="muted">현재 화면에 대해 질문해 보세요.</div>}
+        {messages.length === 0 && (
+          <div>
+            <div className="muted" style={{ marginBottom: 10 }}>이 화면에 대해 무엇이든 물어보세요.</div>
+            <div className="drawer-pills">
+              {pills.map((p) => <button key={p} className="drawer-pill" disabled={busy} onClick={() => send(p)}>{p}</button>)}
+            </div>
+          </div>
+        )}
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
             {m.content || (busy && i === messages.length - 1 ? "…" : "")}
@@ -99,16 +99,9 @@ export default function AssistantDrawer({
         ))}
       </div>
       <div className="drawer-input">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="메시지 입력…"
-          disabled={busy}
-        />
-        <button className="btn primary" onClick={send} disabled={busy || !input.trim()}>
-          전송
-        </button>
+        <input value={input} onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()} placeholder="메시지 입력…" disabled={busy} />
+        <button className="btn primary" onClick={() => send()} disabled={busy || !input.trim()}>전송</button>
       </div>
     </section>
   );
