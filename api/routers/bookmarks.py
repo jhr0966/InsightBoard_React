@@ -21,8 +21,12 @@ router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 @router.get("", response_model=list[BookmarkOut])
 def list_bookmarks(
     type: str | None = Query(default=None, description="타입 필터(news/proposal/...)"),
+    status: str | None = Query(default=None, description="상태 필터(pending/adopted/rejected)"),
 ) -> list[BookmarkOut]:
-    return [BookmarkOut.from_bookmark(b) for b in bookmarks.list_all(type_=type)]
+    items = bookmarks.list_all(type_=type)
+    if status:
+        items = [b for b in items if b.status == status]
+    return [BookmarkOut.from_bookmark(b) for b in items]
 
 
 @router.get("/summary")

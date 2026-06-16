@@ -1,3 +1,11 @@
+## 2026-06-16 — P1b 데이터 API (sources·collect·emergence·matches·summarize) (`feat-p1-data-apis`)
+
+**무엇을**: sources·collect status/runs/diagnose·trends emergence·matches·proposals summarize·bookmarks status필터. conftest sources 격리. client.ts 메서드. OpenAPI 37경로. P2 실행 결정 박제(§4.5).
+
+**조치**: 테스트 +8(1026→1034), web build 통과. P1 거의 완료 → 다음 P2 화면 풀빌드(보드부터).
+
+---
+
 ## 2026-06-16 — P1a API: persona + ui-prefs (`feat-p1-persona-prefs`)
 
 **무엇을**: /api/persona(GET/PUT/derive/reset)·/api/ui-prefs(GET/PUT). 사이드바 페르소나 카드 실데이터 연결. client.ts persona/prefs. OpenAPI 28경로.

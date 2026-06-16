@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 from api.deps import Identity, current_identity
 
 router = APIRouter(prefix="/api/collect", tags=["collect"])
-
 # 스키마 기본값 — top-level 에서 scraping 을 import 하지 않기 위해 로컬 상수.
 _DEFAULT_SOURCES = ("naver", "google", "tech")
 
@@ -49,3 +48,32 @@ def run_collect(body: CollectIn, _identity: Identity = Depends(current_identity)
         "saved": report.saved,
         "errors": report.errors,
     }
+
+
+@router.get("/status")
+def collect_status() -> dict:
+    """최근 수집 런 + 14일 일별 상태(수집 설정 화면 이력 섹션)."""
+    from store import run_log
+
+    return {"latest": run_log.latest_run(), "daily": run_log.daily_status(days=14)}
+
+
+@router.get("/runs")
+def collect_runs(limit: int = 12) -> list[dict]:
+    from store import run_log
+
+    return run_log.load_runs(limit=limit)
+
+
+class DiagnoseIn(BaseModel):
+    url: str
+
+
+@router.post("/diagnose")
+def collect_diagnose(body: DiagnoseIn) -> dict:
+    """기사 URL 수집 진단(HTTP·소프트블록·셀렉터). scraping 지연 import."""
+    try:
+        from scraping.diagnose import diagnose
+    except ImportError as exc:
+        raise HTTPException(status_code=503, detail="진단 기능을 사용할 수 없는 환경입니다.") from exc
+    return diagnose(body.url)
