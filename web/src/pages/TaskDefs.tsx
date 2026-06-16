@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { IngestResult } from "../api/types";
+import { useToast } from "../components/ui/toast";
 
 const NEW_TEMPLATE = JSON.stringify(
   {
@@ -19,6 +20,7 @@ export default function TaskDefs() {
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const qc = useQueryClient();
+  const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const list = useQuery({
@@ -33,17 +35,20 @@ export default function TaskDefs() {
 
   const save = useMutation<unknown, Error, { id: string; json: Record<string, unknown> }>({
     mutationFn: ({ id, json }) => api.taskdefs.upsert(id, { json }),
-    onSuccess: () => {
+    onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["taskdefs"] });
       setEditId(null);
+      toast.push(`✅ ${v.id} 작업 정의를 저장했어요`, "success");
     },
+    onError: (e) => toast.push(`⚠️ 저장 실패: ${e.message}`, "danger"),
   });
 
   const remove = useMutation<unknown, Error, string>({
     mutationFn: (id) => api.taskdefs.remove(id),
-    onSuccess: () => {
+    onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: ["taskdefs"] });
       setEditId(null);
+      toast.push(`🗑️ ${id} 삭제했어요`, "default");
     },
   });
 

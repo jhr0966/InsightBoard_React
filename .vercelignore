@@ -1,16 +1,17 @@
-# Vercel 업로드/함수 번들에서 제외 — API(api/ + store/sola/persona/roadmap/config.py)와
-# 프런트(web/)만 있으면 된다. Streamlit UI·수집기·로컬 데이터·문서는 불필요.
-ui/
-app.py
-scraping/
-tests/
-scripts/
-assets/
-static/
-docs/
-data/
-.github/
+# Vercel 업로드/번들에서 제외 — 프런트(web/)와 API에 불필요한 것만.
+# ⚠ 패턴은 반드시 leading "/" 로 repo 루트 고정 — 안 그러면 `ui/` 가
+#   web/src/components/ui/ 같은 중첩 디렉터리까지 매칭해 빌드가 깨진다.
+/ui/
+/app.py
+/scraping/
+/tests/
+/scripts/
+/assets/
+/static/
+/docs/
+/data/
+/.github/
 __pycache__/
 *.pyc
-web/node_modules/
-web/dist/
+/web/node_modules/
+/web/dist/
