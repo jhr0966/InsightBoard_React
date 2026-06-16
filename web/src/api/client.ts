@@ -60,6 +60,10 @@ export const api = {
       }),
     remove: (id: string) =>
       req<{ deleted: boolean }>(`/api/taskdefs/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    history: (id: string) =>
+      req<{ id: number; action: string; changed_at: string; changed_by: string | null; source: string | null }[]>(
+        `/api/taskdefs/${encodeURIComponent(id)}/history`,
+      ),
     upload: async (file: File, replace = false): Promise<IngestResult> => {
       const fd = new FormData();
       fd.append("file", file);
