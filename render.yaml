@@ -1,0 +1,23 @@
+# Render 블루프린트 — InsightBoard 백엔드(FastAPI).
+# render.com → New → Blueprint → 이 repo 선택.
+services:
+  - type: web
+    name: insightboard-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: INSIGHTBOARD_DATA_ROOT
+        value: /data
+      - key: INSIGHTBOARD_CORS_ORIGINS
+        sync: false   # 대시보드에서 Vercel 도메인 입력 (예: https://insight-board-react.vercel.app)
+      - key: LLM_PROVIDER
+        sync: false   # anthropic | openai
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+    disk:
+      name: data
+      mountPath: /data   # 뉴스/작업정의/북마크 영구 보존
+      sizeGB: 1

@@ -1,0 +1,17 @@
+# 백엔드 이미지에 불필요 — 프런트·streamlit UI·테스트·로컬데이터 제외.
+web/
+ui/
+app.py
+tests/
+scripts/
+assets/
+static/
+docs/
+data/
+.git/
+.github/
+__pycache__/
+*.pyc
+.vercel/
+vercel.json
+.vercelignore
