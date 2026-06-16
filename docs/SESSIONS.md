@@ -1,3 +1,11 @@
+## 2026-06-16 — P0-3 공통 컴포넌트 라이브러리 (`feat-p0-components`)
+
+**무엇을**: components/ui(Card·Badge·Chip·Delta·KPIStatGrid·Tabs·EmptyState·Modal·Toast·Kanban) + lib/time.ageLabel + ui.css. Board(KPI그리드)·TaskDefs(토스트) 적용.
+
+**조치**: web build 통과, ToastProvider 배선. 다음 P0 4/4: SVG 차트 4종(라인·버블매트릭스·히트맵·스파크라인).
+
+---
+
 ## 2026-06-16 — P0-2 앱 셸: topbar·sidebar·⌘K (`feat-p0-app-shell`)
 
 **무엇을**: Topbar(브레드크럼·제목·갱신·검색·알림벨·아바타) + Sidebar 보강(브랜드·페르소나카드·통계3열·그룹nav·LLM푸터) + CommandPalette(⌘K) + nav.ts/search.ts. 중복 page-title 제거.

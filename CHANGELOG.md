@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P0-3 공통 컴포넌트 라이브러리) — `feat-p0-components`
+- **`components/ui/`**: `Card`·`Badge`(tone 6)·`Chip`(dot)·`Delta`(↑↓·%)·`KPIStatGrid`·`Tabs`·`EmptyState`·`Modal`(dismissible 제어)·`ToastProvider`/`useToast`(1회성)·`KanbanBoard`/`KanbanColumn`. `lib/time.ageLabel`(방금/N시간 전/어제/M월D일).
+- **`styles/ui.css`**: 토큰 기반 컴포넌트 스타일. `main.tsx`에 `ToastProvider` 배선.
+- **적용 검증**: Board=KPIStatGrid+Card+Chip+EmptyState, TaskDefs 저장/삭제=토스트.
+- web build 통과. REACT_PARITY_PLAN Phase 0 3/4.
+
+
 ### Added (P0-2 앱 셸 — topbar·sidebar) — `feat-p0-app-shell`
 - **`Topbar`**: 브레드크럼(WORKFLOW/화면)·제목·갱신시각·LIVE 배지·전역 검색(Enter→수집 필터)·알림벨(채택대기 카운트, `/api/bookmarks/summary`)·설정·아바타.
 - **`Sidebar` 보강**: 브랜드 블록·페르소나 카드(미설정 플레이스홀더, P1 `/api/persona` 연동 예정)·통계 3열·**그룹 nav**(워크플로 ①②③ / 관리 ④⑤·번호·active)·LLM 상태 푸터(`/api/assistant/status`)·테마 스위처.
