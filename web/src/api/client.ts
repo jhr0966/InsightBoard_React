@@ -85,7 +85,7 @@ export const api = {
   },
 
   bookmarks: {
-    list: (type?: string) => req<Bookmark[]>(`/api/bookmarks${qs({ type })}`),
+    list: (type?: string, status?: string) => req<Bookmark[]>(`/api/bookmarks${qs({ type, status })}`),
     summary: () => req<Record<string, unknown>>("/api/bookmarks/summary"),
     create: (body: Partial<Bookmark> & { type: string; title: string }) =>
       req<Bookmark>("/api/bookmarks", { method: "POST", body: JSON.stringify(body) }),
