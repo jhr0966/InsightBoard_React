@@ -1,0 +1,37 @@
+/* ── 뉴스 수집 (P2 클린 재작성) ── */
+.cl-bar { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
+.cl-bar .cl-grow { flex: 1; }
+.cl-search { flex: 1; min-width: 200px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--surface-divider); border-radius: var(--r-full);
+  background: var(--surface-soft); font: inherit; font-size: var(--fs-caption); }
+
+/* 출처 칩 */
+.cl-chips { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.cl-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: var(--r-full);
+  background: var(--surface-card); border: 1px solid var(--surface-divider); font-size: var(--fs-caption);
+  cursor: pointer; transition: background var(--t-fast), border-color var(--t-fast); }
+.cl-chip:hover { background: var(--surface-soft); }
+.cl-chip.on { background: var(--accent-primary); color: var(--text-on-accent); border-color: transparent; }
+.cl-chip-dot { width: 7px; height: 7px; border-radius: var(--r-full); }
+
+/* 알림 배너 */
+.cl-alert { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-md); margin-bottom: var(--space-4); font-size: var(--fs-caption); }
+.cl-alert-warn { background: rgba(180,83,9,.1); color: var(--semantic-warning); border: 1px solid rgba(180,83,9,.25); }
+
+/* 설정 — 출처 행 */
+.cl-src { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--surface-divider); }
+.cl-src:last-child { border-bottom: 0; }
+.cl-src-name { flex: 1; font-weight: var(--fw-medium); font-size: var(--fs-caption); }
+.cl-src-url { color: var(--text-muted); font-size: var(--fs-micro); }
+.cl-toggle { width: 40px; height: 22px; border-radius: var(--r-full); border: 0; cursor: pointer;
+  background: var(--surface-divider); position: relative; transition: background var(--t-fast); }
+.cl-toggle.on { background: var(--semantic-success); }
+.cl-toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: var(--r-full); background: #fff; transition: transform var(--t-fast); }
+.cl-toggle.on::after { transform: translateX(18px); }
+
+/* 진단 결과 */
+.cl-diag { font-family: var(--font-mono); font-size: var(--fs-micro); white-space: pre-wrap;
+  background: var(--surface-soft); border-radius: var(--r-md); padding: var(--space-3); margin-top: var(--space-2); }

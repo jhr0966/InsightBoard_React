@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P2 뉴스 수집 화면 풀빌드) — `feat-p2-collect`
+- **`pages/Collect.tsx` 전면 재작성**: KPI4(활성출처·오늘·30일·최종갱신) · 카드/설정 뷰 토글 · [🔄 지금 수집].
+  - **브라우즈**: 대분류 탭(키워드/포탈) · **출처칩**(색) · **사진 카드 그리드** · **기사 모달**(요약·키워드·원문) · 전역 검색 필터.
+  - **수집 설정**: 빠른 수집(키워드) · **출처 토글/추가/제거**(`/api/sources`) · **수집 이력**(14일 막대·`/api/collect/status`) · **기사 진단**(`/api/collect/diagnose`).
+- `lib/news.newsCategory`, `styles/screens/collect.css`(칩·토글 스위치·진단). web build 통과(109 모듈).
+
+
 ### Added (P2 인사이트 화면 풀빌드 + 히트맵 API) — `feat-p2-insights`
 - **`api/routers/insights.py` 신설**: `GET /api/insights/heatmap`(공정 lv3 × 기술 7종 동시출현 빈도) → `score_cells`+뉴스 텍스트 매칭. 테스트 +1.
 - **`pages/Insights.tsx` 전면 재작성**: 헤더+KPI4(분석뉴스·신규트렌드·매칭공정·PoC후보) · 기간 필터 · STEP1 트렌드(막대+키워드 랭크·NEW배지·바) · STEP2 매트릭스(버블+PoC 랭킹 클릭연동) · STEP3 **히트맵**(셀 선택+상세 strip).

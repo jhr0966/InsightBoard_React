@@ -10,6 +10,7 @@ import "./styles/themes.css";
 import "./styles/ui.css";
 import "./styles/screens/board.css";
 import "./styles/screens/insights.css";
+import "./styles/screens/collect.css";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
