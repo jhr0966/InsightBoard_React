@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P2 작업 정의 화면 풀빌드 — 구조화 상세·풀 폼·이력) — `feat-p2-taskdefs`
+- **`pages/TaskDefs.tsx` 전면 재작성**: KPI3(등록정의·부서·마지막갱신) · 엑셀 업로드(추가/교체) · 검색 · 리스트 카드.
+  - **구조화 상세뷰**: org_meta 그리드 · 공정설명 · 섹션(작업흐름·목표·확인사항·품질리스크·자동화영역·안전·장비) · **공정 연결**(이전→현재→다음) · **변경 이력**(action·시각·source·who, `/{id}/history`).
+  - **풀 편집 폼**: 구조화 입력(공정ID·org_meta·설명·흐름) + list 필드 textarea(한 줄=항목) → JSON 조립 PUT. 새 작업 템플릿·삭제(확인).
+- `styles/screens/taskdefs.css`, client.ts taskdefs.history. web build 통과.
+
+
 ### Added (P2 뉴스 수집 화면 풀빌드) — `feat-p2-collect`
 - **`pages/Collect.tsx` 전면 재작성**: KPI4(활성출처·오늘·30일·최종갱신) · 카드/설정 뷰 토글 · [🔄 지금 수집].
   - **브라우즈**: 대분류 탭(키워드/포탈) · **출처칩**(색) · **사진 카드 그리드** · **기사 모달**(요약·키워드·원문) · 전역 검색 필터.
