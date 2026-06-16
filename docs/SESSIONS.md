@@ -1,3 +1,11 @@
+## 2026-06-16 — P2 보드 화면 풀빌드 (7섹션) (`feat-p2-board`)
+
+**무엇을**: Board.tsx 전면 재작성(인사말·KPI·브리핑 캐러셀·탑스토리·제안카드·매트릭스·트렌드·키워드 관리) + NewsCard·lib/news·board.css. 토큰 기반 클린 + 폴리시(호버·그라데이션·스켈레톤).
+
+**조치**: web build 통과(106모듈). 다음 P2: 인사이트 화면 풀빌드.
+
+---
+
 ## 2026-06-16 — P1b 데이터 API (sources·collect·emergence·matches·summarize) (`feat-p1-data-apis`)
 
 **무엇을**: sources·collect status/runs/diagnose·trends emergence·matches·proposals summarize·bookmarks status필터. conftest sources 격리. client.ts 메서드. OpenAPI 37경로. P2 실행 결정 박제(§4.5).

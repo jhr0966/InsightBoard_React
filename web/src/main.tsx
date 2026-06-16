@@ -8,6 +8,7 @@ import { ToastProvider } from "./components/ui/toast";
 import "./styles/app.css";
 import "./styles/themes.css";
 import "./styles/ui.css";
+import "./styles/screens/board.css";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },

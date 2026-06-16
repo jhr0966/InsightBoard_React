@@ -1,0 +1,83 @@
+/* ── 오늘의 보드 (P2 클린 재작성) ── */
+
+.bd-greet { margin-bottom: var(--space-5); }
+.bd-greet-hi { font-size: var(--fs-headline-lg); font-weight: var(--fw-black);
+  letter-spacing: var(--tracking-tight); }
+.bd-greet-sub { color: var(--text-muted); font-size: var(--fs-caption); margin-top: 2px; }
+
+/* 섹션 헤더 */
+.bd-sec { margin-bottom: var(--space-6); }
+.bd-sec-head { display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-3); }
+.bd-sec-title { font-size: var(--fs-headline); font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-normal); }
+.bd-sec-note { color: var(--text-muted); font-size: var(--fs-caption); }
+.bd-sec-cta { margin-left: auto; }
+
+/* 브리핑 */
+.bd-brief { background: linear-gradient(135deg, var(--surface-card), var(--surface-soft));
+  border: 1px solid var(--surface-divider); border-radius: var(--r-xl); padding: var(--space-5);
+  box-shadow: var(--shadow-2); }
+.bd-brief-tag { display: inline-block; font-size: var(--fs-micro); font-weight: var(--fw-bold);
+  color: var(--accent-primary); background: var(--accent-ring); padding: 2px 8px;
+  border-radius: var(--r-full); letter-spacing: var(--tracking-loose); }
+.bd-brief-text { margin-top: var(--space-3); font-size: var(--fs-headline-sm);
+  line-height: 1.55; white-space: pre-wrap; }
+
+/* 뉴스 카드 캐러셀(가로 스크롤) */
+.bd-carousel { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr);
+  gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2); scroll-snap-type: x proximity; }
+.bd-carousel > * { scroll-snap-align: start; }
+
+/* 탑스토리 그리드 */
+.bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-3); }
+
+/* 뉴스 카드 */
+.news-card { display: flex; flex-direction: column; background: var(--surface-card);
+  border: 1px solid var(--surface-divider); border-radius: var(--r-lg); overflow: hidden;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast); }
+.news-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--accent-ring); }
+.news-card-thumb { height: 116px; background-size: cover; background-position: center;
+  display: grid; place-items: center; position: relative; }
+.news-card-thumb-ph { font-size: 28px; font-weight: var(--fw-black); color: rgba(255,255,255,.85); }
+.news-card-body { padding: var(--space-3); display: flex; flex-direction: column; gap: 6px; }
+.news-card-meta { display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--fs-micro); }
+.news-card-src { display: inline-flex; align-items: center; gap: 4px; font-weight: var(--fw-semibold); }
+.news-card-dot { width: 6px; height: 6px; border-radius: var(--r-full); }
+.news-card-age { color: var(--text-muted); }
+.news-card-title { font-size: var(--fs-caption); font-weight: var(--fw-semibold); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.news-card-sum { font-size: var(--fs-micro); color: var(--text-secondary); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.news-card-compact .news-card-thumb { height: 84px; }
+
+/* 자동화 제안 카드 3열 */
+.bd-opps { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-3); }
+.bd-opp { background: var(--surface-card); border: 1px solid var(--surface-divider);
+  border-radius: var(--r-lg); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);
+  transition: transform var(--t-fast), box-shadow var(--t-fast); }
+.bd-opp:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+.bd-opp-top { display: flex; align-items: center; justify-content: space-between; }
+.bd-opp-dept { font-weight: var(--fw-bold); }
+.bd-opp-metrics { display: flex; gap: var(--space-3); font-size: var(--fs-micro); color: var(--text-muted); }
+.bd-opp-metrics b { color: var(--text-primary); font-size: var(--fs-caption); }
+
+/* 키워드 칩 라인 */
+.bd-kw-line { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.bd-kw { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
+  border-radius: var(--r-full); background: var(--surface-soft); border: 1px solid var(--surface-divider);
+  font-size: var(--fs-caption); }
+.bd-kw-strong { background: var(--accent-ring); border-color: transparent; color: var(--accent-primary); }
+.bd-kw-n { font-size: var(--fs-micro); color: var(--text-muted); }
+
+/* 트렌드 키워드 행 */
+.bd-trend-kw { display: flex; align-items: center; gap: var(--space-3); padding: 6px 0;
+  border-bottom: 1px solid var(--surface-divider); }
+.bd-trend-kw:last-child { border-bottom: 0; }
+.bd-trend-kw-name { flex: 1; font-size: var(--fs-caption); }
+
+/* 스켈레톤 */
+.skel { background: linear-gradient(90deg, var(--surface-soft) 25%, var(--surface-divider) 37%, var(--surface-soft) 63%);
+  background-size: 400% 100%; animation: skel 1.4s ease infinite; border-radius: var(--r-md); }
+@keyframes skel { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.skel-card { height: 200px; }

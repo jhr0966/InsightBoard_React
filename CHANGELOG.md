@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (P2 보드 화면 풀빌드 — 7섹션 클린 재작성) — `feat-p2-board`
+- **`pages/Board.tsx` 전면 재작성**(토큰 기반·UI/UX 폴리시): ① 인사말+페르소나+KPI4 ② SOLA 브리핑+**뉴스 카드 캐러셀**+CTA ③ 탑스토리 그리드 ④ 자동화 제안 카드3 ⑤ 기회 매트릭스(버블+상세) ⑥ 수집 트렌드(막대+키워드 스파크라인) ⑦ 키워드 관리(+지금 수집).
+- **`components/NewsCard.tsx`**: 썸네일(그라데이션 폴백)·출처 배지·상대시간·제목/요약·호버 lift. **`lib/news.ts`**(출처 색/라벨·https 승격·그라데이션).
+- **`styles/screens/board.css`**: 섹션 헤더·브리핑·캐러셀·카드 그리드·제안 카드·스켈레톤 로딩.
+- 실데이터: persona·bookmarks summary·news today·board brief·opportunities·trends. web build 통과(106 모듈).
+
+
 ### Added (P1b 데이터 API — sources·collect 이력/진단·trends emergence·matches·summarize) — `feat-p1-data-apis`
 - **`api/routers/sources.py`**: `/api/sources` 목록·toggle·추가(POST)·삭제 → `store.sources`.
 - **`api/routers/collect.py` 확장**: `GET /status`(최근런+14일), `/runs`, `POST /diagnose`(scraping 지연) → `store.run_log`·`scraping.diagnose`.
