@@ -1,0 +1,16 @@
+# 백엔드(API) 호스팅 의존성 — streamlit/web 제외, 수집(scraping) 포함.
+# Vercel 함수용 경량은 api/requirements.txt (수집 제외). 이건 상시 호스팅용 풀세트.
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+pandas
+pyarrow
+openpyxl
+openai>=1.40
+anthropic>=0.40
+python-dotenv
+# 수집(scraping) — collect/diagnose 가 실제 동작하려면 필요
+beautifulsoup4
+lxml
+requests
+curl_cffi>=0.7

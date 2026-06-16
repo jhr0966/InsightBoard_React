@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (P4 백엔드 호스팅 설정) — `feat-p4-hosting`
+- **`Dockerfile`**(python:3.11-slim, `requirements-api.txt` 설치, api/store/sola/persona/roadmap/scraping/config 복사, `uvicorn api.main:app`) + **`.dockerignore`**(web/ui/tests/data 제외).
+- **`requirements-api.txt`**: 상시 호스팅용 풀세트(streamlit 제외, 수집 scraping 포함 — beautifulsoup4·lxml·requests·curl_cffi).
+- **`render.yaml`**(Render 블루프린트 — Docker·`/data` 영구 디스크·env) + **`Procfile`**(Railway/Fly).
+- **`docs/DEPLOY.md`**: 프런트(Vercel `VITE_API_BASE`) + 백엔드(Render/Railway·영구디스크·CORS) 연결 가이드.
+- 백엔드는 `INSIGHTBOARD_CORS_ORIGINS` env로 Vercel 도메인 허용(api.main 기존 지원).
+
+
 ### Added (P3 핸드오프 + 데이터 헬스) — `feat-p3-handoff`
 - **핸드오프 수신**: 보드(제안카드 SOLA검토·매트릭스 제안서작업장·브리핑 이 뉴스로 제안서)·인사이트(히트맵 SOLA에서 더 보기) → `/proposals?from=&dept=&lv3=`. 제안 화면이 **인계 배너** + dept/lv3 매칭 **작업정의 자동 선택**(useSearchParams·useEffect).
 - **데이터 헬스**: 수집 설정 상단 카드 — 오늘 뉴스·정의된 작업·활성 출처·LLM 상태(ok/warn 좌측 바).

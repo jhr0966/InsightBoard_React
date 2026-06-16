@@ -1,3 +1,11 @@
+## 2026-06-16 — P4 백엔드 호스팅 설정 (`feat-p4-hosting`)
+
+**무엇을**: Dockerfile·.dockerignore·requirements-api.txt(scraping 포함)·render.yaml·Procfile·docs/DEPLOY.md. 프런트(Vercel)+백엔드(Render 영구디스크) 분리 배포.
+
+**조치**: api.main 부팅 확인. 백엔드 배포 후 VITE_API_BASE 연결 → 실데이터. Streamlit 은퇴는 호스팅 검증 후.
+
+---
+
 ## 2026-06-16 — P3 핸드오프 + 데이터 헬스 (`feat-p3-handoff`)
 
 **무엇을**: 보드/인사이트 카드 CTA → /proposals?from=&dept=&lv3= 핸드오프(배너+작업 자동선택). 수집 설정 데이터 헬스 카드.
