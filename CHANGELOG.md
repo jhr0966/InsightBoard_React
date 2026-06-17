@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (엑셀 업로드 diff 미리보기) — `feat-taskdef-upload-diff`
+- **`roadmap/ingest.py` `preview_excel`**: 저장 없이(dry-run) 파싱·검증 후 기존 데이터셋과 **process_id 집합 diff** — 신규/갱신/삭제(=교체 시 사라질 항목). 검증 실패 시 errors.
+- **`api/routers/taskdefs.py`**: `POST /api/taskdefs/upload/preview` — diff 반환(저장 안 함), 검증 실패 422.
+- **`web` TaskDefs 업로드 흐름**: "추가/교체" → **즉시 반영 X**, 먼저 미리보기 → **diff 모달**(신규/갱신/삭제 목록 + 카운트). **교체 시 삭제 N건 경고**(빨강) + 확인 버튼으로만 실제 반영. 파괴적 교체의 안전장치.
+- `taskdefs.css` diff 스타일. 테스트 2건(미저장·검증) → pytest 1044, OpenAPI 43 paths.
+
 ### Changed (수집 런 타임라인) — `feat-collect-run-timeline`
 - **수집 설정 이력 카드(`web/pages/Collect.tsx`)**: 최근 런을 `JSON.stringify`로 조잡하게 보여주던 것 → **런 타임라인**(성공/실패 색점·상대시각·수동/자동·N건·N파일·오류수). 기존 `/api/collect/runs` 활용(미사용이던 엔드포인트 배선). `collect.css` `.cl-runs`. 프런트 전용.
 

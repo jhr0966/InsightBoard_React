@@ -32,3 +32,11 @@
 .td-hist-row { display: flex; gap: var(--space-2); align-items: baseline; padding: 5px 0;
   border-bottom: 1px solid var(--surface-divider); font-size: var(--fs-micro); }
 .td-hist-row:last-child { border-bottom: 0; }
+
+/* 업로드 미리보기 diff */
+.td-diff-grp { margin-bottom: 12px; }
+.td-diff-h { font-weight: 600; font-size: var(--fs-caption); margin-bottom: 4px; }
+.td-diff-list { display: grid; gap: 2px; }
+.td-diff-row { font-size: var(--fs-caption); padding: 3px 8px; border-radius: var(--r-sm);
+  background: var(--surface-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-diff-row b { color: var(--text-primary); margin-right: 6px; }

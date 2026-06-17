@@ -46,6 +46,26 @@ def test_upload_rejects_bad_excel():
     assert r.status_code == 422
 
 
+def test_upload_preview_diff_shape_and_no_persist():
+    files = {"file": ("master.xlsx", _excel_bytes(),
+                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    r = client.post("/api/taskdefs/upload/preview", files=files)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is True and body["row_count"] == 2
+    for k in ("new", "updated", "removed", "counts"):
+        assert k in body
+    assert body["removed"] == [] and body["counts"]["existing"] == 0
+    # 미리보기는 저장하지 않는다(dry-run).
+    from roadmap import query
+    assert len(query.load_latest()) == 0
+
+
+def test_upload_preview_rejects_bad_excel():
+    files = {"file": ("bad.xlsx", b"nope", "application/octet-stream")}
+    assert client.post("/api/taskdefs/upload/preview", files=files).status_code == 422
+
+
 def test_opportunities_empty_ok():
     # 데이터 없으면 빈 배열(에러 X)
     assert client.get("/api/opportunities").json() == []

@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { KPIStatGrid, EmptyState, Chip } from "../components/ui";
+import { KPIStatGrid, EmptyState, Chip, Modal } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import { ageLabel } from "../lib/time";
-import type { IngestResult } from "../api/types";
+import type { IngestResult, UploadPreview } from "../api/types";
 
 type Json = Record<string, any>;
 const LIST_FIELDS = ["objectives", "overall_quality_risks", "automation_potential_areas",
@@ -23,13 +23,21 @@ export default function TaskDefs() {
   const [editId, setEditId] = useState<string | null>(null); // "" = 새 작업
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [preview, setPreview] = useState<{ diff: UploadPreview; file: File; replace: boolean } | null>(null);
+
   const list = useQuery({ queryKey: ["taskdefs", q], queryFn: () => api.taskdefs.list(q ? { q } : undefined) });
   const upload = useMutation<IngestResult, Error, { file: File; replace: boolean }>({
     mutationFn: ({ file, replace }) => api.taskdefs.upload(file, replace),
-    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["taskdefs"] }); toast.push(`✅ ${r.row_count}행 적재`, "success"); },
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["taskdefs"] }); setPreview(null); toast.push(`✅ ${r.row_count}행 적재`, "success"); },
     onError: (e) => toast.push(`⚠️ ${e.message}`, "danger"),
   });
-  const onPick = (replace: boolean) => { const f = fileRef.current?.files?.[0]; if (f) upload.mutate({ file: f, replace }); };
+  // 업로드 전 미리보기(저장 X) → 모달에서 확인 후 실제 반영.
+  const prev = useMutation<UploadPreview, Error, { file: File; replace: boolean }>({
+    mutationFn: ({ file }) => api.taskdefs.uploadPreview(file),
+    onSuccess: (diff, { file, replace }) => setPreview({ diff, file, replace }),
+    onError: (e) => toast.push(`⚠️ ${e.message}`, "danger"),
+  });
+  const onPick = (replace: boolean) => { const f = fileRef.current?.files?.[0]; if (f) prev.mutate({ file: f, replace }); else toast.push("파일을 먼저 선택하세요", "warning"); };
 
   const defs = list.data ?? [];
   const depts = new Set(defs.map((d) => d.dept).filter(Boolean)).size;
@@ -51,12 +59,17 @@ export default function TaskDefs() {
         <div className="card-title">공정정의서 엑셀 업로드</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" />
-          <button className="btn" disabled={upload.isPending} onClick={() => onPick(false)}>추가</button>
-          <button className="btn primary" disabled={upload.isPending} onClick={() => onPick(true)}>교체</button>
+          <button className="btn" disabled={prev.isPending || upload.isPending} onClick={() => onPick(false)}>{prev.isPending ? "확인 중…" : "추가"}</button>
+          <button className="btn primary" disabled={prev.isPending || upload.isPending} onClick={() => onPick(true)}>교체</button>
           <button className="btn" style={{ marginLeft: "auto" }} onClick={() => setEditId("")}>＋ 새 작업 정의</button>
         </div>
+        <div className="muted" style={{ marginTop: 8, fontSize: "var(--fs-caption)" }}>업로드 전 변경 내역(신규·갱신·삭제)을 미리 확인합니다.</div>
         {upload.data && <div style={{ marginTop: 8 }} className="muted">{upload.data.row_count}행 (생성 {upload.data.sqlite_created} · 갱신 {upload.data.sqlite_updated} · skip {upload.data.sqlite_skipped})</div>}
       </div>
+
+      {preview && <UploadPreviewModal info={preview} pending={upload.isPending}
+        onConfirm={() => upload.mutate({ file: preview.file, replace: preview.replace })}
+        onClose={() => setPreview(null)} />}
 
       <input className="cl-search" value={q} onChange={(e) => setQ(e.target.value)}
         placeholder="작업 정의 검색 (공정 ID·작업명·내용)" style={{ width: "100%", marginBottom: 16 }} />
@@ -128,6 +141,51 @@ function DetailView({ id, onBack, onEdit, onDeleted }: { id: string; onBack: () 
         </div>
       )}
     </div>
+  );
+}
+
+function UploadPreviewModal({ info, pending, onConfirm, onClose }: {
+  info: { diff: UploadPreview; file: File; replace: boolean }; pending: boolean;
+  onConfirm: () => void; onClose: () => void;
+}) {
+  const { diff, replace } = info;
+  const c = diff.counts;
+  const willRemove = replace && c.removed > 0;
+  const group = (label: string, color: string, items: { process_id: string; name: string }[]) =>
+    items.length === 0 ? null : (
+      <div className="td-diff-grp">
+        <div className="td-diff-h" style={{ color }}>{label} {items.length}</div>
+        <div className="td-diff-list">
+          {items.slice(0, 8).map((it) => <div key={it.process_id} className="td-diff-row"><b>{it.process_id}</b> {it.name}</div>)}
+          {items.length > 8 && <div className="muted" style={{ fontSize: "var(--fs-micro)" }}>+{items.length - 8}건 더</div>}
+        </div>
+      </div>
+    );
+  return (
+    <Modal open onClose={onClose} title={`업로드 미리보기 — ${replace ? "교체" : "추가"}`} width={560}>
+      <div className="muted" style={{ marginBottom: 10, fontSize: "var(--fs-caption)" }}>
+        {diff.row_count}행 파싱됨 · 기존 {c.existing}건 · <b style={{ color: "var(--semantic-success)" }}>신규 {c.new}</b> · 갱신 {c.updated}{replace ? <> · <b style={{ color: "var(--semantic-danger)" }}>삭제 {c.removed}</b></> : ""}
+      </div>
+      {willRemove && (
+        <div className="cl-alert" style={{ background: "var(--semantic-danger-soft, rgba(220,38,38,.1))", color: "var(--semantic-danger)", marginBottom: 10 }}>
+          ⚠️ 교체 시 업로드에 없는 기존 작업정의 {c.removed}건이 <b>삭제</b>됩니다.
+        </div>
+      )}
+      <div style={{ maxHeight: 280, overflowY: "auto" }}>
+        {group("🟢 신규", "var(--semantic-success)", diff.new)}
+        {group("🔵 갱신", "var(--accent-primary)", diff.updated)}
+        {replace && group("🔴 삭제(교체 시)", "var(--semantic-danger)", diff.removed)}
+        {c.new === 0 && c.updated === 0 && (!replace || c.removed === 0) &&
+          <div className="muted">변경 사항이 없습니다(작업 정의로 적재되는 행 기준).</div>}
+      </div>
+      <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button className="btn" onClick={onClose} disabled={pending}>취소</button>
+        <button className={`btn ${willRemove ? "" : "primary"}`} onClick={onConfirm} disabled={pending}
+          style={willRemove ? { background: "var(--semantic-danger)", color: "#fff" } : undefined}>
+          {pending ? "반영 중…" : replace ? "교체 실행" : "추가 실행"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

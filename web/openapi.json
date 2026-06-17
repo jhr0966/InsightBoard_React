@@ -1,6 +1,20 @@
 {
   "components": {
     "schemas": {
+      "Body_preview_upload_api_taskdefs_upload_preview_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_preview_upload_api_taskdefs_upload_preview_post",
+        "type": "object"
+      },
       "Body_upload_taskdefs_api_taskdefs_upload_post": {
         "properties": {
           "file": {
@@ -2654,6 +2668,50 @@
           }
         },
         "summary": "Upload Taskdefs",
+        "tags": [
+          "taskdefs"
+        ]
+      }
+    },
+    "/api/taskdefs/upload/preview": {
+      "post": {
+        "description": "엑셀 업로드 **미리보기** — 저장하지 않고 기존과 diff(신규/갱신/삭제될 항목).\n\n`removed` 는 replace=true(교체)로 업로드 시 사라질 기존 작업정의 — 파괴적\n동작 전 확인용. 검증 실패 시 422.",
+        "operationId": "preview_upload_api_taskdefs_upload_preview_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_preview_upload_api_taskdefs_upload_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Preview Upload Api Taskdefs Upload Preview Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Upload",
         "tags": [
           "taskdefs"
         ]
