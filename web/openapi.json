@@ -1752,6 +1752,91 @@
         ]
       }
     },
+    "/api/insights/heatmap-cell": {
+      "get": {
+        "description": "선택 셀(공정 × 기술)에 동시 출현하는 매칭 뉴스 — 상세 strip 미리보기용.",
+        "operationId": "heatmap_cell_api_insights_heatmap_cell_get",
+        "parameters": [
+          {
+            "description": "공정(lv3) 이름",
+            "in": "query",
+            "name": "row",
+            "required": true,
+            "schema": {
+              "description": "공정(lv3) 이름",
+              "title": "Row",
+              "type": "string"
+            }
+          },
+          {
+            "description": "기술 키워드",
+            "in": "query",
+            "name": "col",
+            "required": true,
+            "schema": {
+              "description": "기술 키워드",
+              "title": "Col",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Heatmap Cell Api Insights Heatmap Cell Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heatmap Cell",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
     "/api/matches": {
       "get": {
         "operationId": "matches_api_matches_get",

@@ -39,3 +39,10 @@
 /* 히트맵 상세 strip */
 .ia-hm-detail { margin-top: var(--space-3); padding: var(--space-3); background: var(--surface-soft);
   border-radius: var(--r-md); font-size: var(--fs-caption); }
+.ia-hm-detail-head { display: flex; align-items: center; gap: var(--space-2); }
+.ia-hm-news { display: grid; gap: 4px; margin-top: var(--space-2); }
+.ia-hm-news-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: 6px 8px; border-radius: var(--r-sm); background: var(--surface-card);
+  text-decoration: none; color: var(--text-primary); transition: background var(--t-fast); }
+.ia-hm-news-item:hover { background: var(--surface-divider); }
+.ia-hm-news-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

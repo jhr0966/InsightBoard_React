@@ -125,6 +125,8 @@ export const api = {
   insights: {
     heatmap: (days = 30) =>
       req<{ rows: string[]; cols: string[]; data: number[][] }>(`/api/insights/heatmap${qs({ days })}`),
+    heatmapCell: (row: string, col: string, days = 30) =>
+      req<NewsArticle[]>(`/api/insights/heatmap-cell${qs({ row, col, days })}`),
   },
 
   sources: {

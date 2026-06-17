@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (히트맵 셀 → 매칭 뉴스 미리보기) — `feat-insights-heatmap-news`
+- **`api/routers/insights.py`**: `GET /api/insights/heatmap-cell?row=&col=&days=` — 선택 셀(공정 lv3 × 기술)에 **동시 출현하는 매칭 뉴스**(title/link/press/summary_llm) 상위 N 반환(`_row_text` 동일 매칭 범위).
+- **인사이트 히트맵 상세 strip(`web/pages/Insights.tsx`)**: 셀 선택 시 텍스트만 → **매칭 뉴스 카드 3건**(원본 링크) + 매칭 건수 + SOLA 핸드오프 CTA. `HeatmapDetail` 컴포넌트 분리, `insights.css` 뉴스 행 스타일.
+- Heatmap/BubbleMatrix 컴포넌트는 이미 5단계 색강도·충돌회피 구현돼 있어(갭분석 오판) 데이터 strip만 보강. 테스트 1건 → pytest 1042, OpenAPI 42 paths.
+
 ### Added (수집 진행 SSE + 진행 모달) — `feat-collect-sse-progress`
 - **`api/routers/collect.py`**: `POST /api/collect/stream` (SSE) 추가 — `collect_batch` 를 백그라운드 스레드에서 실행하며 `on_step`(source·keyword·found)을 `data:` 프레임으로 흘림(type: start/step/ping/done/error). 15초 idle 시 ping keep-alive → **무료 호스팅 프록시 타임아웃(동기 수집 'failed to fetch' 행) 완화**. 완료 시 `run_log.record_run` 기록(수집 이력/헬스가 채워짐 — 기존 `latest:null` 해소).
 - **`web` 수집 흐름(`pages/Collect.tsx`)**: 동기 mutation → `streamCollect` SSE 스트리밍. **진행 모달**(스피너 + 실시간 발견 건수 + 출처·키워드 스텝 로그 + 완료/오류 요약). 카드뷰·설정뷰 두 버튼 모두 스트리밍 경로 사용.

@@ -20,6 +20,35 @@ function Section({ title, step, children }: { title: string; step?: string; chil
   );
 }
 
+function HeatmapDetail({ sel, days, onProposals }: { sel: string; days: number; onProposals: () => void }) {
+  const [row, col] = sel.split("||");
+  const cell = useQuery({ queryKey: ["insights", "heatmap-cell", row, col, days], queryFn: () => api.insights.heatmapCell(row, col, days) });
+  const items = cell.data ?? [];
+  return (
+    <div className="ia-hm-detail">
+      <div className="ia-hm-detail-head">
+        <b>{row} × {col}</b>
+        <span className="muted" style={{ fontSize: "var(--fs-caption)" }}>
+          {cell.isLoading ? " · 불러오는 중…" : ` · 매칭 뉴스 ${items.length}건`}
+        </span>
+        <button className="btn" style={{ marginLeft: "auto" }} onClick={onProposals}>SOLA에서 더 보기 →</button>
+      </div>
+      {items.length > 0 ? (
+        <div className="ia-hm-news">
+          {items.slice(0, 3).map((a) => (
+            <a key={a.link} className="ia-hm-news-item" href={a.link} target="_blank" rel="noreferrer noopener">
+              <span className="ia-hm-news-title">{a.title}</span>
+              <span className="muted" style={{ fontSize: "var(--fs-micro)" }}>{a.press || a.source || ""}</span>
+            </a>
+          ))}
+        </div>
+      ) : !cell.isLoading ? (
+        <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>이 조합의 매칭 뉴스가 아직 없어요.</div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function Insights() {
   const nav = useNavigate();
   const [days, setDays] = useState(30);
@@ -118,10 +147,8 @@ export default function Insights() {
           : <div className="card" style={{ margin: 0 }}>
             <Heatmap rows={heatmap.data!.rows} cols={heatmap.data!.cols} data={heatmap.data!.data}
               selected={hmSel} onSelect={setHmSel} />
-            {hmSel && <div className="ia-hm-detail">
-              <b>{hmSel.replace("||", " × ")}</b> — 관련 뉴스 매칭{" "}
-              <button className="btn" style={{ marginLeft: 8 }} onClick={() => nav(`/proposals?from=insights${hmSel ? `&lv3=${encodeURIComponent(hmSel.split("||")[0])}` : ""}`)}>SOLA에서 더 보기 →</button>
-            </div>}
+            {hmSel && <HeatmapDetail sel={hmSel} days={days}
+              onProposals={() => nav(`/proposals?from=insights&lv3=${encodeURIComponent(hmSel.split("||")[0])}`)} />}
           </div>}
       </Section>
     </div>

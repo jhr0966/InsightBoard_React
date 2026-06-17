@@ -1,3 +1,11 @@
+## 2026-06-17 — 히트맵 셀 매칭 뉴스 미리보기 (`feat-insights-heatmap-news`)
+
+**무엇을**: `/api/insights/heatmap-cell` 추가(선택 공정×기술 동시출현 뉴스). 인사이트 히트맵 상세 strip을 텍스트→매칭 뉴스 카드 3건+CTA로. Heatmap/BubbleMatrix 컴포넌트는 이미 색강도·충돌회피 구현돼 있어 데이터만 보강(갭분석 오판 재확인).
+
+**조치**: pytest 1042(+1), build OK(42 paths). Tier1 5종 사실상 완료(매트릭스·히트맵은 기구현). 다음: Tier2(엑셀 diff·풀 편집폼·런 타임라인·인사이트 라인차트) 또는 디테일 폴리시.
+
+---
+
 ## 2026-06-17 — 수집 진행 SSE + 진행 모달 (`feat-collect-sse-progress`)
 
 **무엇을**: `POST /api/collect/stream`(SSE) — collect_batch 를 스레드+큐로 돌리며 on_step 을 흘림(start/step/ping/done/error), 15s ping keep-alive 로 무료 호스팅 idle 타임아웃 완화. 완료 시 run_log 기록(수집 이력 `latest:null` 해소). 프런트는 streamCollect + 진행 모달(스피너·실시간 건수·스텝 로그·결과).
