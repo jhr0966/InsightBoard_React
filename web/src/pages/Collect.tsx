@@ -102,14 +102,39 @@ function BrowseView({ cat, setCat, channels, chan, setChan, items, q, onOpen, lo
 }
 
 function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClose: () => void }) {
+  // 목록은 본문(content)을 빼고 주므로 모달 열릴 때 상세를 별도 조회.
+  const detail = useQuery({
+    queryKey: ["news", "detail", article?.link],
+    queryFn: () => api.news.detail(article!.link),
+    enabled: !!article?.link,
+    staleTime: 5 * 60 * 1000,
+  });
   if (!article) return null;
   const m = sourceMeta(article.source);
+  const full = detail.data ?? article;
+  const summary = newsSummary(full);
+  const body = (full.content || "").trim();
+  const kws = (full.keywords_llm || full.keywords || "").trim();
   return (
-    <Modal open onClose={onClose} title={<span style={{ color: m.color }}>{m.label}</span>} width={620}>
-      <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>{ageLabel(article.collected_at || article.date)}</div>
-      <h2 style={{ margin: "8px 0", fontSize: "var(--fs-headline)" }}>{article.title}</h2>
-      <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{newsSummary(article) || "본문 요약이 아직 없어요."}</div>
-      {article.keywords && <div style={{ marginTop: 10 }}>{article.keywords.split(",").map((k) => <span key={k} className="chip">{k.trim()}</span>)}</div>}
+    <Modal open onClose={onClose} title={<span style={{ color: m.color }}>{m.label}</span>} width={640}>
+      <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>
+        {full.press ? `${full.press} · ` : ""}{ageLabel(full.collected_at || full.date)}
+      </div>
+      <h2 style={{ margin: "8px 0 12px", fontSize: "var(--fs-headline)", lineHeight: 1.35 }}>{full.title}</h2>
+      {summary && (
+        <div style={{ padding: "10px 12px", marginBottom: 12, borderLeft: "3px solid var(--accent-primary)",
+          background: "var(--surface-soft)", borderRadius: 6, lineHeight: 1.55, fontSize: "var(--fs-body)" }}>
+          {summary}
+        </div>
+      )}
+      {detail.isLoading ? (
+        <div style={{ display: "grid", gap: 6 }}>{[0, 1, 2, 3].map((i) => <div key={i} className="skel" style={{ height: 14 }} />)}</div>
+      ) : body ? (
+        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, maxHeight: 340, overflowY: "auto", fontSize: "var(--fs-body)" }}>{body}</div>
+      ) : (
+        <div className="muted" style={{ lineHeight: 1.6 }}>본문이 아직 수집되지 않았어요. 아래에서 원본을 확인하세요.</div>
+      )}
+      {kws && <div style={{ marginTop: 12 }}>{kws.split(",").map((k) => <span key={k} className="chip">{k.trim()}</span>)}</div>}
       <div style={{ marginTop: 16 }}>
         {article.link && <a className="btn primary" href={article.link} target="_blank" rel="noreferrer noopener">원본 기사 열기 ↗</a>}
       </div>

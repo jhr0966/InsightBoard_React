@@ -1,3 +1,11 @@
+## 2026-06-17 — 기사 본문 상세 (`feat-article-content-detail`)
+
+**무엇을**: 백엔드 배포 검증 완료(Render 무료+Groq, end-to-end 수집 성공) 후 React 패리티 작업 시작. 첫 항목: `/api/news/detail` 추가(목록은 경량 유지, 단건만 content 포함) + Collect 기사 모달이 detail 조회해 본문 전체 렌더(요약 리드 + 본문 스크롤 + keywords_llm 칩).
+
+**조치**: pytest 1038 passed(+2), web build OK, OpenAPI 39 paths 재생성. 갭 분석(Streamlit↔React) 결과 Tier1 5종(트렌드 적응형·수집 진행 SSE·매트릭스 충돌회피·SOLA 핸드오프 자동검토·히트맵) 순차 진행 예정.
+
+---
+
 ## 2026-06-17 — Render 무료 플랜 배포 구성 (`chore-render-free-plan`)
 
 **무엇을**: 배포 사전 점검(import 폐쇄에 streamlit 없음·requirements-api 완전성·`/api/health` 200) 후, render.yaml을 무료 플랜용으로 — `plan: free`, 영구 디스크 블록 주석화(디스크는 유료 전용이라 카드 요구), `INSIGHTBOARD_DATA_ROOT`=`/app/data`(휘발). Dockerfile 기본값·DEPLOY.md 동기화.

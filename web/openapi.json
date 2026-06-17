@@ -1875,6 +1875,67 @@
         ]
       }
     },
+    "/api/news/detail": {
+      "get": {
+        "description": "단건 기사 상세 — 본문(content)·enrich 필드 포함. 목록의 link 로 조회.",
+        "operationId": "news_detail_api_news_detail_get",
+        "parameters": [
+          {
+            "description": "기사 URL(고유키)",
+            "in": "query",
+            "name": "link",
+            "required": true,
+            "schema": {
+              "description": "기사 URL(고유키)",
+              "title": "Link",
+              "type": "string"
+            }
+          },
+          {
+            "description": "조회 윈도(이 안에서 link 매칭)",
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "조회 윈도(이 안에서 link 매칭)",
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response News Detail Api News Detail Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "News Detail",
+        "tags": [
+          "news"
+        ]
+      }
+    },
     "/api/news/today": {
       "get": {
         "operationId": "list_today_api_news_today_get",
