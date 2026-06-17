@@ -79,6 +79,8 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
 | React 전환 계획·Phase | `docs/REACT_MIGRATION_PLAN.md` |
 | React UI/UX 완전 패리티 실행계획 | `docs/REACT_PARITY_PLAN.md` (화면별 명세·API공백·차트·Phase) |
+| React 전환 진행 현황·핸드오프 | `docs/REACT_STATUS.md` (완료 PR·결정·다음 단계 배포→폴리시→은퇴) |
+| 배포(프런트 Vercel + 백엔드 Render) | `docs/DEPLOY.md` |
 | React 전환 준비물 실측 카탈로그 (세션키·라우팅·컴포넌트·식별필드) | `docs/REACT_PREP_INVENTORY.md` |
 
 > ⚠ 데드 (건드리기 전 `REFACTOR_PLAN` 확인): `sola/side_context.py`(orphan·보존 — 사이드 채팅 컨텍스트 연결 대상). `propose`/`summarize` 는 부활(SOLA 작업실 연결). Phase 3 에서 `ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`app_shell.render_app_side/sola`(+패널 토글)·`chat_panel.render`·`task_defs_db.upsert_many`·`sola_main.html` 삭제됨.
