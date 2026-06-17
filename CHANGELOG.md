@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Docs (React 전환 진행 현황·핸드오프 박제) — `docs-react-status`
+- **`docs/REACT_STATUS.md` 신설**: 완료 PR(#1~17)·결정·다음 단계(① 백엔드 배포·검증 → ② 폴리시 → ③ Streamlit 은퇴) 박제. 대화 압축 후 연속성 확보. `CLAUDE.md` 라우팅에 REACT_STATUS·DEPLOY 추가.
+
+
 ### Added (P4 백엔드 호스팅 설정) — `feat-p4-hosting`
 - **`Dockerfile`**(python:3.11-slim, `requirements-api.txt` 설치, api/store/sola/persona/roadmap/scraping/config 복사, `uvicorn api.main:app`) + **`.dockerignore`**(web/ui/tests/data 제외).
 - **`requirements-api.txt`**: 상시 호스팅용 풀세트(streamlit 제외, 수집 scraping 포함 — beautifulsoup4·lxml·requests·curl_cffi).
