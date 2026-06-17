@@ -9,6 +9,11 @@
 - **`api/routers/insights.py`**: `GET /api/insights/heatmap-cell?row=&col=&days=` — 선택 셀(공정 lv3 × 기술)에 **동시 출현하는 매칭 뉴스**(title/link/press/summary_llm) 상위 N 반환(`_row_text` 동일 매칭 범위).
 - **인사이트 히트맵 상세 strip(`web/pages/Insights.tsx`)**: 셀 선택 시 텍스트만 → **매칭 뉴스 카드 3건**(원본 링크) + 매칭 건수 + SOLA 핸드오프 CTA. `HeatmapDetail` 컴포넌트 분리, `insights.css` 뉴스 행 스타일.
 - Heatmap/BubbleMatrix 컴포넌트는 이미 5단계 색강도·충돌회피 구현돼 있어(갭분석 오판) 데이터 strip만 보강. 테스트 1건 → pytest 1042, OpenAPI 42 paths.
+### Added (SOLA 핸드오프 자동 검토) — `feat-sola-handoff-autoreview`
+- **`web` AssistantDrawer**: 인계(`?from=board|matrix|insights|brief`, `dept`/`lv3`) 도착 시 **prefill 프롬프트를 우측 SOLA에 1회 자동 전송**(LLM 배선) — Streamlit `sola_workshop._auto_run_handoff_if_any`/`_composer_prefill` 패리티. from별 문구(브리핑 제안서·매트릭스 ROI·인사이트 옵션비교). 시그니처(`from|dept|lv3`)+sessionStorage 로 재마운트에도 1회만.
+- **`web` Layout**: 인계로 들어오면 드로어 **자동 펼침**(transient — 사용자 닫기 선호 localStorage 는 유지). 닫혀 있어도 자동 검토가 보이게.
+- **`web` Proposals 배너**: "✓ 오른쪽 SOLA가 자동 검토를 시작했어요" 안내로 시선 유도(기존 작업 자동선택과 함께).
+- 프런트 전용(API 무변경) · `npm run build` OK.
 
 ### Added (수집 진행 SSE + 진행 모달) — `feat-collect-sse-progress`
 - **`api/routers/collect.py`**: `POST /api/collect/stream` (SSE) 추가 — `collect_batch` 를 백그라운드 스레드에서 실행하며 `on_step`(source·keyword·found)을 `data:` 프레임으로 흘림(type: start/step/ping/done/error). 15초 idle 시 ping keep-alive → **무료 호스팅 프록시 타임아웃(동기 수집 'failed to fetch' 행) 완화**. 완료 시 `run_log.record_run` 기록(수집 이력/헬스가 채워짐 — 기존 `latest:null` 해소).

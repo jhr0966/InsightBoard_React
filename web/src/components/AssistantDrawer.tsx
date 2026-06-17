@@ -1,6 +1,21 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, streamChat } from "../api/client";
 import type { ChatMessage } from "../api/types";
+
+// 인계(?from=) → SOLA 자동 검토 prefill (ui/sola_workshop `_composer_prefill` 승계).
+function handoffPrefill(from: string, dept: string, lv3: string): string {
+  const target = [dept, lv3].filter(Boolean).join(" · ");
+  if (from === "brief" || from === "board")
+    return "오늘 보드 브리핑의 핵심 뉴스를 컨텍스트로, 부서장에게 보낼 1쪽 제안서 초안을 만들어줘.";
+  if ((from === "matrix" || from === "opp") && target)
+    return `${target} 자동화 기회에 대한 제안서 초안을 만들어줘.\n페르소나 컨텍스트로 ROI · 일정 · 위험요인을 포함해줘.`;
+  if ((from === "insights" || from === "ia_map") && target)
+    return `${target} 공정의 현재 상황과 매칭된 뉴스 신호를 정리하고, 적용 가능한 자동화 옵션 3가지를 비교해줘.`;
+  if (target)
+    return `${target} 작업에 적용할 자동화 기회를 외부 기술 동향과 연결해 검토해줘.`;
+  return "";
+}
 
 // 화면별 추천질문 (클릭=즉시 전송) — ui/chat_panel 의 suggestion pills 승계.
 const SUGGEST: Record<string, string[]> = {
@@ -18,6 +33,8 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
   const [busy, setBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const threadRef = useRef<string | null>(null);
+  const [params] = useSearchParams();
+  const firedRef = useRef<Set<string>>(new Set());
 
   async function persist(all: ChatMessage[]) {
     try {
@@ -70,6 +87,23 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
   }
 
   function reset() { setMessages([]); threadRef.current = null; }
+
+  // 인계 도착 시 prefill 1회 자동 전송 (시그니처로 중복 방지 — 재마운트엔 sessionStorage).
+  useEffect(() => {
+    const from = params.get("from");
+    if (!from) return;
+    const dept = params.get("dept") ?? "";
+    const lv3 = params.get("lv3") ?? "";
+    const prefill = handoffPrefill(from, dept, lv3);
+    if (!prefill) return;
+    const sig = `${from}|${dept}|${lv3}`;
+    const key = `sola.handoff.${sig}`;
+    if (firedRef.current.has(sig) || sessionStorage.getItem(key)) return;
+    firedRef.current.add(sig);
+    sessionStorage.setItem(key, "1");
+    void send(prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const pills = SUGGEST[screen] ?? [];
 

@@ -3,6 +3,11 @@
 **무엇을**: `/api/insights/heatmap-cell` 추가(선택 공정×기술 동시출현 뉴스). 인사이트 히트맵 상세 strip을 텍스트→매칭 뉴스 카드 3건+CTA로. Heatmap/BubbleMatrix 컴포넌트는 이미 색강도·충돌회피 구현돼 있어 데이터만 보강(갭분석 오판 재확인).
 
 **조치**: pytest 1042(+1), build OK(42 paths). Tier1 5종 사실상 완료(매트릭스·히트맵은 기구현). 다음: Tier2(엑셀 diff·풀 편집폼·런 타임라인·인사이트 라인차트) 또는 디테일 폴리시.
+## 2026-06-17 — SOLA 핸드오프 자동 검토 (`feat-sola-handoff-autoreview`)
+
+**무엇을**: 인계(?from=) 도착 시 우측 SOLA 드로어 자동 펼침 + prefill 프롬프트 1회 자동 전송(시그니처+sessionStorage 중복방지). from별 문구는 Streamlit `_composer_prefill` 패리티(브리핑/매트릭스/인사이트). Proposals 배너에 자동검토 안내 추가. 프런트 전용.
+
+**조치**: web build OK, .py 무변경(pytest 영향 없음). 다음 Tier1 남음: 히트맵 색강도.
 
 ---
 
