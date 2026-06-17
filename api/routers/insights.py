@@ -50,3 +50,29 @@ def heatmap(
         data.append(row)
 
     return {"rows": procs, "cols": TECHS, "data": data}
+
+
+@router.get("/heatmap-cell")
+def heatmap_cell(
+    row: str = Query(..., description="공정(lv3) 이름"),
+    col: str = Query(..., description="기술 키워드"),
+    days: int = Query(default=30, ge=1, le=90),
+    limit: int = Query(default=5, ge=1, le=20),
+) -> list[dict]:
+    """선택 셀(공정 × 기술)에 동시 출현하는 매칭 뉴스 — 상세 strip 미리보기용."""
+    news = news_db.load_news_for_days(days)
+    if news.empty:
+        return []
+    rl, cl = row.lower(), col.lower()
+    out: list[dict] = []
+    for rec in news.to_dict("records"):
+        text = _row_text(rec)
+        if rl in text and cl in text:
+            out.append({
+                "title": rec.get("title", ""), "link": rec.get("link", ""),
+                "press": rec.get("press", ""), "source": rec.get("source", ""),
+                "date": rec.get("date", ""), "summary_llm": rec.get("summary_llm", ""),
+            })
+            if len(out) >= limit:
+                break
+    return out
