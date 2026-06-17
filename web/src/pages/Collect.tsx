@@ -220,6 +220,30 @@ function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClo
   );
 }
 
+interface RunEntry {
+  ts?: string; trigger?: string; ok?: boolean;
+  total_articles?: number; total_files?: number; errors?: unknown[];
+}
+
+function RunTimeline({ runs }: { runs: RunEntry[] }) {
+  if (runs.length === 0) return <div className="muted" style={{ marginTop: 8, fontSize: "var(--fs-caption)" }}>아직 수집 런 기록이 없어요.</div>;
+  return (
+    <div className="cl-runs">
+      {runs.map((r, i) => {
+        const errs = (r.errors ?? []).length;
+        return (
+          <div className="cl-run" key={i}>
+            <span className="cl-run-dot" style={{ background: r.ok ? "var(--semantic-success)" : "var(--semantic-warning)" }} />
+            <span className="cl-run-time">{r.ts ? ageLabel(r.ts) : "—"}</span>
+            <span className="cl-run-trigger">{r.trigger === "manual" ? "수동" : r.trigger === "cron" ? "자동" : (r.trigger ?? "")}</span>
+            <span className="cl-run-stat">{r.total_articles ?? 0}건 · {r.total_files ?? 0}파일{errs > 0 ? ` · 오류 ${errs}` : ""}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => void; collecting: boolean }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -244,6 +268,7 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
 
   const daily = (status.data?.daily ?? []) as (string | null)[];
   const bars = daily.map((s, i) => ({ label: String(i), value: s ? 1 : 0, title: s ?? "수집 없음", highlight: i === daily.length - 1 }));
+  const runs = useQuery({ queryKey: ["collect", "runs"], queryFn: () => api.collect.runs(12) });
 
   return (
     <div>
@@ -287,8 +312,7 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
       <div className="card">
         <div className="card-title">수집 이력 <span className="muted" style={{ fontWeight: 400 }}>· 최근 14일</span></div>
         {bars.length > 0 ? <BarChart bars={bars} width={520} height={60} /> : <div className="muted">이력 없음</div>}
-        {status.data?.latest ? <div className="muted" style={{ marginTop: 8, fontSize: "var(--fs-caption)" }}>
-          최근: {JSON.stringify(status.data.latest).slice(0, 80)}</div> : null}
+        <RunTimeline runs={(runs.data ?? []) as RunEntry[]} />
       </div>
 
       <div className="card">
