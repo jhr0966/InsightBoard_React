@@ -49,6 +49,20 @@ export interface KeywordCount { keyword: string; count: number; }
 export interface DayCount { date: string; count: number; }
 export interface SourceCount { source: string; count: number; }
 
+export interface TrendSeriesItem {
+  keyword: string;
+  counts: number[];
+  total: number;
+  delta: number;
+  is_new: boolean;
+}
+export interface KeywordSeries {
+  mode: "weekly" | "daily";
+  labels: string[];
+  series: TrendSeriesItem[];
+  anno: { name: string; arrow: string; sub: string } | null;
+}
+
 export interface OpportunityCell {
   dept: string;
   lv3: string;

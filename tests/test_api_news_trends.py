@@ -59,6 +59,26 @@ def test_news_detail_404_when_missing():
     assert client.get("/api/news/detail", params={"link": "nope"}).status_code == 404
 
 
+def test_keyword_delta_edge_cases():
+    from store import trends
+    assert trends.keyword_delta([]) == (0, False)
+    assert trends.keyword_delta([0, 0, 0]) == (0, False)
+    assert trends.keyword_delta([0, 0, 3]) == (100, True)  # 첫 등장(선행 0 트림)
+    pct, is_new = trends.keyword_delta([2, 2, 2, 4, 4, 4])
+    assert not is_new and pct == 100  # 2→4 = +100%
+
+
+def test_keyword_series_endpoint_shape():
+    _seed()
+    d = client.get("/api/trends/keyword-series").json()
+    assert d["mode"] in ("weekly", "daily")
+    assert isinstance(d["labels"], list) and isinstance(d["series"], list)
+    if d["series"]:
+        s = d["series"][0]
+        assert {"keyword", "counts", "total", "delta", "is_new"} <= set(s)
+        assert len(s["counts"]) == len(d["labels"])
+
+
 def test_trends_keywords_volume_sources():
     _seed()
     kw = client.get("/api/trends/keywords").json()

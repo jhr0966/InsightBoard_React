@@ -7,6 +7,7 @@ import type {
   DayCount,
   IngestResult,
   KeywordCount,
+  KeywordSeries,
   NewsArticle,
   OpportunityCell,
   Persona,
@@ -110,6 +111,7 @@ export const api = {
     keywords: (days = 7, top = 20) => req<KeywordCount[]>(`/api/trends/keywords${qs({ days, top })}`),
     volume: (days = 7) => req<DayCount[]>(`/api/trends/volume${qs({ days })}`),
     sources: (days = 7) => req<SourceCount[]>(`/api/trends/sources${qs({ days })}`),
+    keywordSeries: () => req<KeywordSeries>("/api/trends/keyword-series"),
     emergence: (base_days = 30, top = 20) =>
       req<{ new: KeywordCount[]; rising: { keyword: string; today: number; base: number; delta: number }[] }>(
         `/api/trends/emergence${qs({ base_days, top })}`,

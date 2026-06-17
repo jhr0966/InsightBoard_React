@@ -647,6 +647,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trends/keyword-series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Keyword Series
+         * @description 보드 ⑤ 적응형 키워드 트렌드 — 주간 8칸(기본) / 일간 14칸(누적 부족 시).
+         *
+         *     응답: {mode, labels, series:[{keyword,counts,total,delta,is_new}], anno|None}
+         */
+        get: operations["keyword_series_api_trends_keyword_series_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trends/keywords": {
         parameters: {
             query?: never;
@@ -2583,6 +2605,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    keyword_series_api_trends_keyword_series_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

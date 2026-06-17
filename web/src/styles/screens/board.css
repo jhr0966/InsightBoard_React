@@ -76,6 +76,10 @@
 .bd-trend-kw:last-child { border-bottom: 0; }
 .bd-trend-kw-name { flex: 1; font-size: var(--fs-caption); }
 
+/* 트렌드 차트 어노테이션 (최상위 키워드 추세 콜아웃) */
+.bd-trend-anno { margin-top: 8px; font-size: var(--fs-caption); line-height: 1.45; }
+.bd-trend-anno strong { color: var(--accent-primary); }
+
 /* 스켈레톤 */
 .skel { background: linear-gradient(90deg, var(--surface-soft) 25%, var(--surface-divider) 37%, var(--surface-soft) 63%);
   background-size: 400% 100%; animation: skel 1.4s ease infinite; border-radius: var(--r-md); }

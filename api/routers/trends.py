@@ -35,6 +35,15 @@ def sources(days: int = Query(default=7, ge=1, le=90)) -> list[dict]:
     return trends.by_source(_df(days)).to_dict(orient="records")
 
 
+@router.get("/keyword-series")
+def keyword_series() -> dict:
+    """보드 ⑤ 적응형 키워드 트렌드 — 주간 8칸(기본) / 일간 14칸(누적 부족 시).
+
+    응답: {mode, labels, series:[{keyword,counts,total,delta,is_new}], anno|None}
+    """
+    return trends.adaptive_keyword_trend(_df(56))
+
+
 @router.get("/emergence")
 def emergence(
     base_days: int = Query(default=30, ge=2, le=90),
