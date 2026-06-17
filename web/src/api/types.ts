@@ -84,6 +84,17 @@ export interface IngestResult {
   sqlite_error: string;
 }
 
+export interface TaskDefDiffItem { process_id: string; name: string; }
+export interface UploadPreview {
+  ok: boolean;
+  errors: string[];
+  row_count: number;
+  new: TaskDefDiffItem[];
+  updated: TaskDefDiffItem[];
+  removed: TaskDefDiffItem[];
+  counts: { new: number; updated: number; removed: number; existing: number };
+}
+
 export interface AssistantContext {
   screen: string;
   context: string;

@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   DayCount,
   IngestResult,
+  UploadPreview,
   KeywordCount,
   KeywordSeries,
   NewsArticle,
@@ -77,6 +78,16 @@ export const api = {
         throw new Error(`${res.status} ${detail}`);
       }
       return (await res.json()) as IngestResult;
+    },
+    uploadPreview: async (file: File): Promise<UploadPreview> => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${BASE}/api/taskdefs/upload/preview`, { method: "POST", body: fd });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`${res.status} ${detail}`);
+      }
+      return (await res.json()) as UploadPreview;
     },
   },
 

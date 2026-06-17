@@ -1,3 +1,11 @@
+## 2026-06-17 — 엑셀 업로드 diff 미리보기 (`feat-taskdef-upload-diff`)
+
+**무엇을**: `roadmap.ingest.preview_excel`(dry-run 파싱+process_id 집합 diff) + `POST /api/taskdefs/upload/preview`. TaskDefs 업로드를 미리보기→확인 흐름으로 — diff 모달(신규/갱신/삭제) + 교체 시 삭제 경고. 파괴적 교체 안전장치.
+
+**조치**: pytest 1044(+2), build OK(43 paths), 금지패턴 0. Tier2 핵심 갭 마무리.
+
+---
+
 ## 2026-06-17 — 수집 런 타임라인 (`feat-collect-run-timeline`)
 
 **무엇을**: 수집 설정 '수집 이력'의 JSON.stringify → 런 타임라인(성공/실패 점·상대시각·트리거·건수/파일/오류). 기존 /api/collect/runs 배선(미사용이던 엔드포인트). 프런트 전용. EditForm·BubbleMatrix·Heatmap은 검증 결과 이미 충실 → 스킵.

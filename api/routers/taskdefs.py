@@ -35,6 +35,27 @@ def list_taskdefs(
     return [TaskDefOut.from_row(r) for r in rows]
 
 
+@router.post("/upload/preview")
+def preview_upload(
+    file: UploadFile,
+    _identity: Identity = Depends(current_identity),
+) -> dict:
+    """엑셀 업로드 **미리보기** — 저장하지 않고 기존과 diff(신규/갱신/삭제될 항목).
+
+    `removed` 는 replace=true(교체)로 업로드 시 사라질 기존 작업정의 — 파괴적
+    동작 전 확인용. 검증 실패 시 422.
+    """
+    from roadmap.ingest import preview_excel
+
+    try:
+        result = preview_excel(file.file)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=422, detail={"errors": [f"엑셀 파싱 실패: {exc}"]}) from exc
+    if not result.get("ok"):
+        raise HTTPException(status_code=422, detail={"errors": result.get("errors", [])})
+    return result
+
+
 @router.post("/upload")
 def upload_taskdefs(
     file: UploadFile,

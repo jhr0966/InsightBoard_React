@@ -250,3 +250,66 @@ def ingest_excel(
             logger.warning("로드맵 SQLite 동기화 실패(Parquet 은 성공): %s", exc, exc_info=True)
 
     return result
+
+
+def preview_excel(fileobj: BinaryIO, *, sheet_name: str | int = "Master_Table") -> dict:
+    """저장 없이 파싱 → 기존 데이터셋과 diff(신규/갱신/삭제될 항목).
+
+    업로드 전 확인용. process_id 집합 비교로 판정한다:
+      - new      : 업로드엔 있고 기존엔 없음 (추가됨)
+      - updated  : 둘 다 있음 (덮어써짐)
+      - removed  : 기존엔 있고 업로드엔 없음 (**replace=true 시 삭제됨**)
+    검증 실패 시 ok=False + errors. 어떤 것도 저장하지 않는다.
+    """
+    try:
+        df_raw = pd.read_excel(fileobj, sheet_name=sheet_name, dtype=str).fillna("")
+    except ValueError:
+        fileobj.seek(0)
+        df_raw = pd.read_excel(fileobj, sheet_name=0, dtype=str).fillna("")
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "errors": [f"엑셀 읽기 실패: {e}"], "row_count": 0}
+
+    df = normalize_columns(df_raw)
+    for col in df.columns:
+        df[col] = df[col].astype(str).str.strip()
+    df = drop_guide_rows(df)
+
+    errs = validate(df)
+    if errs:
+        return {"ok": False, "errors": errs, "row_count": int(len(df))}
+
+    from roadmap.sqlite_sync import _display_name, row_to_task_def
+
+    parsed: dict[str, str] = {}  # process_id -> 표시 이름
+    for _, row in df.iterrows():
+        conv = row_to_task_def(row)
+        if conv:
+            pid, jstr = conv
+            parsed[pid] = _display_name(jstr, pid)
+
+    from store import task_defs_db
+
+    existing: dict[str, str] = {}
+    for r in task_defs_db.list_all():
+        pid = r.get("process_id")
+        if pid:
+            existing[pid] = _display_name(r.get("json", "") or "", str(pid))
+
+    def _items(ids: list[str], src: dict[str, str]) -> list[dict]:
+        return [{"process_id": p, "name": src.get(p, p)} for p in ids]
+
+    new_ids = [p for p in parsed if p not in existing]
+    upd_ids = [p for p in parsed if p in existing]
+    rem_ids = [p for p in existing if p not in parsed]
+    return {
+        "ok": True,
+        "errors": [],
+        "row_count": int(len(df)),
+        "new": _items(new_ids, parsed),
+        "updated": _items(upd_ids, parsed),
+        "removed": _items(rem_ids, existing),
+        "counts": {
+            "new": len(new_ids), "updated": len(upd_ids),
+            "removed": len(rem_ids), "existing": len(existing),
+        },
+    }
