@@ -1,3 +1,11 @@
+## 2026-06-17 — 인사이트 STEP1 트렌드 라인차트 (`feat-insights-trend-linechart`)
+
+**무엇을**: 인사이트 STEP1 "일자별 수집량" 막대 → 적응형 키워드 트렌드 LineChart(top4+콜아웃). #21의 /api/trends/keyword-series 재사용(보드와 동일). 프런트 전용. Tier2 ① 착수.
+
+**조치**: web build OK, .py 무변경. 다음 Tier2: 작업정의 풀 편집폼 / 엑셀 diff / 수집 런 타임라인.
+
+---
+
 ## 2026-06-17 — 히트맵 셀 매칭 뉴스 미리보기 (`feat-insights-heatmap-news`)
 
 **무엇을**: `/api/insights/heatmap-cell` 추가(선택 공정×기술 동시출현 뉴스). 인사이트 히트맵 상세 strip을 텍스트→매칭 뉴스 카드 3건+CTA로. Heatmap/BubbleMatrix 컴포넌트는 이미 색강도·충돌회피 구현돼 있어 데이터만 보강(갭분석 오판 재확인).
