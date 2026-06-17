@@ -67,3 +67,27 @@ def test_collect_delegates(monkeypatch):
     assert body["total_articles"] == 3 and body["total_files"] == 1
     assert captured["keywords"] == ["용접 로봇"]
     assert captured["max_results"] == 5
+
+
+def test_collect_stream_emits_step_and_done(monkeypatch):
+    import scraping.run_daily as rd
+
+    class _Report:
+        total_articles = 2
+        total_files = 1
+        errors: list = []
+
+    def _fake_batch(keywords, *, on_step=None, **kw):
+        if on_step:
+            on_step("naver", "용접", 2)
+        return _Report()
+
+    monkeypatch.setattr(rd, "collect_batch", _fake_batch)
+    with client.stream("POST", "/api/collect/stream",
+                       json={"keywords": ["용접"], "do_enrich": False}) as r:
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers["content-type"]
+        frames = [ln for ln in r.iter_lines() if ln and ln.startswith("data:")]
+    types = [__import__("json").loads(f[5:].strip())["type"] for f in frames]
+    assert types[0] == "start"
+    assert "step" in types and types[-1] == "done"

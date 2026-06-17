@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (수집 진행 SSE + 진행 모달) — `feat-collect-sse-progress`
+- **`api/routers/collect.py`**: `POST /api/collect/stream` (SSE) 추가 — `collect_batch` 를 백그라운드 스레드에서 실행하며 `on_step`(source·keyword·found)을 `data:` 프레임으로 흘림(type: start/step/ping/done/error). 15초 idle 시 ping keep-alive → **무료 호스팅 프록시 타임아웃(동기 수집 'failed to fetch' 행) 완화**. 완료 시 `run_log.record_run` 기록(수집 이력/헬스가 채워짐 — 기존 `latest:null` 해소).
+- **`web` 수집 흐름(`pages/Collect.tsx`)**: 동기 mutation → `streamCollect` SSE 스트리밍. **진행 모달**(스피너 + 실시간 발견 건수 + 출처·키워드 스텝 로그 + 완료/오류 요약). 카드뷰·설정뷰 두 버튼 모두 스트리밍 경로 사용.
+- **`web/src/api/client.ts`**: `streamCollect`·`CollectEvent`. `collect.css` `.cl-spinner` 스피너. OpenAPI 41 paths. 테스트 1건(스트림 step/done 프레임) → pytest 1041.
+
 ### Added (보드 적응형 키워드 트렌드) — `feat-board-adaptive-trend`
 - **`store/trends.py`**: `keyword_buckets`(주간/일간 버킷별 top-6 키워드 빈도)·`keyword_delta`(첫⅓→마지막⅓ 변화율, 첫등장=신규)·`adaptive_keyword_trend`(주간 8칸 기본, 누적 2주 이하면 일간 14칸 자동전환 + 최상위 어노테이션) 추가 — Streamlit `_board_trend`/`_bucketed_keyword_series`/`_delta_info` 포팅.
 - **`api/routers/trends.py`**: `GET /api/trends/keyword-series` — `{mode, labels, series:[{keyword,counts,total,delta,is_new}], anno}` 반환.

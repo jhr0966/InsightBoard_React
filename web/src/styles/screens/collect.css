@@ -35,3 +35,9 @@
 /* 진단 결과 */
 .cl-diag { font-family: var(--font-mono); font-size: var(--fs-micro); white-space: pre-wrap;
   background: var(--surface-soft); border-radius: var(--r-md); padding: var(--space-3); margin-top: var(--space-2); }
+
+/* 수집 진행 스피너 */
+.cl-spinner { width: 16px; height: 16px; border-radius: var(--r-full);
+  border: 2px solid var(--surface-divider); border-top-color: var(--accent-primary);
+  animation: cl-spin 0.7s linear infinite; flex: 0 0 auto; }
+@keyframes cl-spin { to { transform: rotate(360deg); } }
