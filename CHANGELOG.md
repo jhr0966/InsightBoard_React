@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (Render 무료 플랜 배포 구성) — `chore-render-free-plan`
+- **`render.yaml`**: `plan: free` 명시 + 영구 디스크(`disk:`) 블록 주석 처리 → 카드 등록 없이 무료 배포. `INSIGHTBOARD_DATA_ROOT`=`/app/data`(컨테이너 휘발 경로). 영구화 시 디스크 블록 복원 + `/data` 안내 주석.
+- **`Dockerfile`**: 기본 `INSIGHTBOARD_DATA_ROOT`=`/app/data`(무료·휘발), 영구화 오버라이드 주석.
+- **`docs/DEPLOY.md`**: 무료 vs 유료(디스크 전용) 플랜 차이·휘발 주의·영구화 전환법 명시.
+- 사전 점검: 백엔드 import 폐쇄에 streamlit 미포함·requirements-api 완전성·`/api/health` 200·휘발 경로 자동생성 부팅 검증.
+
 ### Docs (React 전환 진행 현황·핸드오프 박제) — `docs-react-status`
 - **`docs/REACT_STATUS.md` 신설**: 완료 PR(#1~17)·결정·다음 단계(① 백엔드 배포·검증 → ② 폴리시 → ③ Streamlit 은퇴) 박제. 대화 압축 후 연속성 확보. `CLAUDE.md` 라우팅에 REACT_STATUS·DEPLOY 추가.
 
