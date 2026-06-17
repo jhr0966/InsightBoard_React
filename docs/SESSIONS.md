@@ -1,3 +1,11 @@
+## 2026-06-17 — Render 무료 플랜 배포 구성 (`chore-render-free-plan`)
+
+**무엇을**: 배포 사전 점검(import 폐쇄에 streamlit 없음·requirements-api 완전성·`/api/health` 200) 후, render.yaml을 무료 플랜용으로 — `plan: free`, 영구 디스크 블록 주석화(디스크는 유료 전용이라 카드 요구), `INSIGHTBOARD_DATA_ROOT`=`/app/data`(휘발). Dockerfile 기본값·DEPLOY.md 동기화.
+
+**조치**: 휘발 경로 자동생성+부팅 검증. 무료라 슬립·재배포 시 데이터 초기화(수집 재실행). 영구화는 디스크 블록 복원+유료 인스턴스. 다음: 사용자가 Render Blueprint 임포트 → VITE_API_BASE 연결.
+
+---
+
 ## 2026-06-16 — P4 백엔드 호스팅 설정 (`feat-p4-hosting`)
 
 **무엇을**: Dockerfile·.dockerignore·requirements-api.txt(scraping 포함)·render.yaml·Procfile·docs/DEPLOY.md. 프런트(Vercel)+백엔드(Render 영구디스크) 분리 배포.

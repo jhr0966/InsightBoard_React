@@ -21,8 +21,9 @@ COPY roadmap ./roadmap
 COPY scraping ./scraping
 COPY config.py ./
 
-# 데이터는 컨테이너 /data(영구 디스크 마운트 권장). 없으면 기본 repo/data.
-ENV INSIGHTBOARD_DATA_ROOT=/data
+# 데이터 경로. 무료 플랜은 휘발(임시) /app/data, 영구화하려면 디스크를 /data 에
+# 마운트하고 INSIGHTBOARD_DATA_ROOT 를 /data 로 오버라이드(render.yaml 참고).
+ENV INSIGHTBOARD_DATA_ROOT=/app/data
 ENV PORT=8000
 EXPOSE 8000
 

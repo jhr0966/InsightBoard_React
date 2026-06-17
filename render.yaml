@@ -1,14 +1,20 @@
 # Render 블루프린트 — InsightBoard 백엔드(FastAPI).
 # render.com → New → Blueprint → 이 repo 선택.
+#
+# ⚠ 무료(Free) 플랜 구성: 영구 디스크 미사용 → 데이터(뉴스/작업정의/북마크)는
+#   컨테이너 임시 경로(/app/data)에 저장되며 재배포·슬립마다 초기화된다(수집 재실행 필요).
+#   상시 운영·데이터 영구화가 필요하면 아래 주석된 `disk` 블록을 살리고
+#   INSIGHTBOARD_DATA_ROOT 를 /data 로 되돌린 뒤 유료 인스턴스로 배포한다.
 services:
   - type: web
     name: insightboard-api
     runtime: docker
+    plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     envVars:
       - key: INSIGHTBOARD_DATA_ROOT
-        value: /data
+        value: /app/data   # 임시(휘발) — 무료 플랜. 영구화하려면 /data + disk 블록.
       - key: INSIGHTBOARD_CORS_ORIGINS
         sync: false   # 대시보드에서 Vercel 도메인 입력 (예: https://insight-board-react.vercel.app)
       - key: LLM_PROVIDER
@@ -17,7 +23,8 @@ services:
         sync: false
       - key: LLM_MODEL
         sync: false
-    disk:
-      name: data
-      mountPath: /data   # 뉴스/작업정의/북마크 영구 보존
-      sizeGB: 1
+    # 영구 디스크(유료 플랜에서만) — 데이터 영구 보존이 필요하면 주석 해제:
+    # disk:
+    #   name: data
+    #   mountPath: /data
+    #   sizeGB: 1
