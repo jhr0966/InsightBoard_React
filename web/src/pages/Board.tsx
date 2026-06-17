@@ -7,8 +7,19 @@ import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
 import BubbleMatrix from "../components/charts/BubbleMatrix";
 import type { Bubble } from "../components/charts/BubbleMatrix";
-import BarChart from "../components/charts/BarChart";
+import LineChart from "../components/charts/LineChart";
 import Sparkline from "../components/charts/Sparkline";
+import type { TrendSeriesItem } from "../api/types";
+
+function deltaLabel(s: TrendSeriesItem): string {
+  if (s.is_new) return `신규 ${s.total}건`;
+  return s.delta >= 0 ? `+${s.delta}%` : `${s.delta}%`;
+}
+function deltaClass(s: TrendSeriesItem): string {
+  if (s.is_new || s.delta >= 20) return "badge-success";
+  if (s.delta <= -20) return "badge-danger";
+  return "badge-default";
+}
 
 function Section({ title, note, cta, children }: {
   title: string; note?: string; cta?: React.ReactNode; children: React.ReactNode;
@@ -36,7 +47,7 @@ export default function Board() {
   const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
   const brief = useQuery({ queryKey: ["board", "brief"], queryFn: () => api.board.brief(1) });
   const opps = useQuery({ queryKey: ["opportunities", 30], queryFn: () => api.opportunities.list(30, 6) });
-  const volume = useQuery({ queryKey: ["trends", "volume", 14], queryFn: () => api.trends.volume(14) });
+  const trend = useQuery({ queryKey: ["trends", "keyword-series"], queryFn: () => api.trends.keywordSeries() });
   const keywords = useQuery({ queryKey: ["trends", "keywords", 30], queryFn: () => api.trends.keywords(30, 8) });
 
   const status = (summary.data?.proposal_status as Record<string, number> | undefined) ?? {};
@@ -141,22 +152,33 @@ export default function Board() {
           </div>}
       </Section>
 
-      {/* ⑥ 트렌드 */}
-      <Section title="수집 트렌드" note="최근 14일">
+      {/* ⑥ 트렌드 — 적응형(주간 8칸 / 일간 14칸) */}
+      <Section title="키워드 트렌드" note={trend.data?.mode === "daily" ? "최근 14일(일별)" : "최근 8주(주별)"}>
         <div className="chart-row">
           <div className="card" style={{ margin: 0 }}>
-            {volume.data && volume.data.length > 0
-              ? <BarChart bars={volume.data.map((v, i, arr) => ({ label: v.date, value: v.count, title: `${v.date}: ${v.count}건`, highlight: i === arr.length - 1 }))} width={560} height={100} />
-              : <div className="muted">데이터 부족</div>}
+            {trend.data && trend.data.series.length > 0 ? (
+              <>
+                <LineChart labels={trend.data.labels}
+                  series={trend.data.series.slice(0, 4).map((s) => ({ name: s.keyword, values: s.counts }))}
+                  width={560} height={180} highlightTop={3} />
+                {trend.data.anno && (
+                  <div className="bd-trend-anno">
+                    <strong>{trend.data.anno.name} {trend.data.anno.arrow}</strong>
+                    <span className="muted"> · {trend.data.anno.sub}</span>
+                  </div>
+                )}
+              </>
+            ) : <div className="muted">아직 트렌드를 그릴 데이터가 부족해요. 수집이 쌓이면 키워드 추이가 표시됩니다.</div>}
           </div>
           <div className="card" style={{ margin: 0 }}>
-            {(keywords.data ?? []).slice(0, 6).map((k) => (
-              <div className="bd-trend-kw" key={k.keyword}>
-                <span className="bd-trend-kw-name">{k.keyword}</span>
-                <Sparkline values={[Math.max(0, k.count - 2), k.count - 1, k.count]} />
-                <span className="badge badge-default">{k.count}</span>
+            {(trend.data?.series ?? []).slice(0, 6).map((s) => (
+              <div className="bd-trend-kw" key={s.keyword}>
+                <span className="bd-trend-kw-name">{s.keyword}</span>
+                <Sparkline values={s.counts} />
+                <span className={`badge ${deltaClass(s)}`}>{deltaLabel(s)}</span>
               </div>
             ))}
+            {(trend.data?.series ?? []).length === 0 && <div className="muted">키워드 추이가 아직 없어요.</div>}
           </div>
         </div>
       </Section>

@@ -173,6 +173,139 @@ def keyword_emergence(
     return {"new": new_df, "gone": gone_df, "rising": rising_df}
 
 
+# ── 적응형 키워드 트렌드 (보드 ⑤ — 주간↔일간) ─────────────────────
+
+def _bucket_date_series(df: pd.DataFrame) -> pd.Series | None:
+    """버킷팅용 UTC datetime 시리즈 — published_at 우선, 없으면 collected_at."""
+    if "published_at" in df.columns:
+        return pd.to_datetime(df["published_at"], errors="coerce", utc=True)
+    if "collected_at" in df.columns:
+        return pd.to_datetime(df["collected_at"], errors="coerce", utc=True)
+    return None
+
+
+def keyword_buckets(
+    df: pd.DataFrame, buckets: int, unit_days: int, *, now: datetime | None = None
+) -> tuple[list[str], list[dict]]:
+    """top-6 키워드의 버킷별(주간 unit_days=7 / 일간 1) 출현 빈도.
+
+    Returns (labels, [{name, counts:list[int]}]) — counts 길이 = buckets.
+    라벨: 주간 'W14'~'금주', 일간 'M/D'~'오늘'. (보드 `_bucketed_keyword_series` 포팅)
+    """
+    if df is None or df.empty:
+        return [], []
+    dt = _bucket_date_series(df)
+    if dt is None:
+        return [], []
+    work = df.assign(_dt=dt).dropna(subset=["_dt"])
+    if work.empty:
+        return [], []
+    cur = now or datetime.now(timezone.utc)
+
+    def _bucket_idx(t: pd.Timestamp) -> int:
+        days_ago = (cur - t.to_pydatetime()).days
+        return int((buckets - 1) - (days_ago // unit_days))
+
+    work = work.assign(_w=work["_dt"].apply(_bucket_idx))
+    work = work[(work["_w"] >= 0) & (work["_w"] < buckets)]
+    if work.empty:
+        return [], []
+    top_df = top_keywords(work, top_n=6)
+    if top_df.empty:
+        return [], []
+
+    series: list[dict] = []
+    for kw in top_df["keyword"].astype(str).tolist():
+        counts = [0] * buckets
+        for w, sub in work.groupby("_w"):
+            mask = pd.Series(False, index=sub.index)
+            for col in ("keywords_llm", "keywords"):
+                if col in sub.columns:
+                    mask |= sub[col].fillna("").astype(str).str.contains(kw, regex=False, case=False)
+            counts[int(w)] = int(mask.sum())
+        series.append({"name": kw, "counts": counts})
+
+    labels: list[str] = []
+    for i in range(buckets):
+        b_dt = cur - timedelta(days=(buckets - 1 - i) * unit_days)
+        if i == buckets - 1:
+            labels.append("금주" if unit_days >= 7 else "오늘")
+        elif unit_days >= 7:
+            labels.append(f"W{b_dt.isocalendar().week:02d}")
+        else:
+            labels.append(f"{b_dt.month}/{b_dt.day}")
+    return labels, series
+
+
+def keyword_delta(counts: list[int]) -> tuple[int, bool]:
+    """첫 1/3 평균 → 마지막 1/3 평균 변화율(%). (pct, is_new).
+
+    is_new=True 는 비교할 과거 기준이 없는 첫 등장(표시는 '신규'). 선행 무데이터
+    버킷(0)은 잘라내고 실제 데이터 구간에서만 비교. (보드 `_delta_info` 포팅)
+    """
+    trimmed = list(counts or [])
+    while trimmed and trimmed[0] == 0:
+        trimmed.pop(0)
+    if not trimmed:
+        return 0, False
+    if len(trimmed) < 3:
+        return (100, True) if sum(trimmed) > 0 else (0, False)
+    n = len(trimmed)
+    third = max(n // 3, 1)
+    head = sum(trimmed[:third]) / third
+    tail = sum(trimmed[-third:]) / third
+    if head == 0:
+        return (100, True) if tail > 0 else (0, False)
+    return round((tail - head) / head * 100), False
+
+
+def adaptive_keyword_trend(df: pd.DataFrame, *, now: datetime | None = None) -> dict:
+    """보드 ⑤ 적응형 트렌드 페이로드 — 주간 8칸 기본, 데이터 누적이 2주 이하면
+    일간 14칸으로 자동 전환. series 각 항목에 total/delta/is_new, 최상위 어노테이션.
+
+    Returns: {mode, labels, series:[{keyword,counts,total,delta,is_new}], anno|None}
+    """
+    labels, series = keyword_buckets(df, buckets=8, unit_days=7, now=now)
+    mode = "weekly"
+    if series:
+        weeks_with_data = sum(
+            1 for w in range(len(labels)) if any(s["counts"][w] > 0 for s in series)
+        )
+        if weeks_with_data <= 2:
+            d_labels, d_series = keyword_buckets(df, buckets=14, unit_days=1, now=now)
+            if d_series:
+                labels, series, mode = d_labels, d_series, "daily"
+
+    if not series:
+        return {"mode": mode, "labels": [], "series": [], "anno": None}
+
+    out_series = []
+    for s in series[:6]:
+        delta, is_new = keyword_delta(s["counts"])
+        out_series.append({
+            "keyword": s["name"], "counts": s["counts"],
+            "total": int(sum(s["counts"])), "delta": int(delta), "is_new": is_new,
+        })
+
+    chart = series[:4]
+    top_s = max(chart, key=lambda s: sum(s["counts"]))
+    top_total = int(sum(top_s["counts"]))
+    top_delta, top_new = keyword_delta(top_s["counts"])
+    arrow = "↑" if (top_new or top_delta > 0) else ("↓" if top_delta < 0 else "·")
+    if mode == "daily":
+        sub = (f"최근 14일 {top_total}건 — 수집 초기라 일별 추이를 보여드려요. "
+               "3주 이상 쌓이면 주별 추세로 전환됩니다")
+    elif top_new:
+        sub = f"8주 내 첫 등장 — 최근 {top_total}건, 다음 주부터 추세가 계산됩니다"
+    elif abs(top_delta) >= 20:
+        sub = f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 산업 분기점 가능성"
+    else:
+        sub = f"8주간 {'+' if top_delta >= 0 else ''}{top_delta}% — 추세 관찰 중"
+
+    return {"mode": mode, "labels": labels, "series": out_series,
+            "anno": {"name": top_s["name"], "arrow": arrow, "sub": sub}}
+
+
 def compare_distribution(
     today_df: pd.DataFrame,
     base_df: pd.DataFrame,

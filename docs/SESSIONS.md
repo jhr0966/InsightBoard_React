@@ -1,3 +1,11 @@
+## 2026-06-17 — 보드 적응형 키워드 트렌드 (`feat-board-adaptive-trend`)
+
+**무엇을**: 보드 ⑥ 트렌드를 Streamlit 패리티로 — `store/trends.py`에 적응형 버킷(주간 8칸/일간 14칸 자동전환)·델타(신규/±%)·어노테이션 포팅, `/api/trends/keyword-series` 추가. 보드는 LineChart(top4+콜아웃)+델타 배지 키워드 리스트로 교체(기존 volume 막대 대체). BubbleMatrix는 이미 4분면·충돌회피 구현돼 있어 스킵(갭분석 오판 검증).
+
+**조치**: pytest 1040(+2), web build OK, OpenAPI 40 paths. 다음 Tier1: 수집 진행 SSE / SOLA 핸드오프 자동검토 / 히트맵 색강도.
+
+---
+
 ## 2026-06-17 — 기사 본문 상세 (`feat-article-content-detail`)
 
 **무엇을**: 백엔드 배포 검증 완료(Render 무료+Groq, end-to-end 수집 성공) 후 React 패리티 작업 시작. 첫 항목: `/api/news/detail` 추가(목록은 경량 유지, 단건만 content 포함) + Collect 기사 모달이 detail 조회해 본문 전체 렌더(요약 리드 + 본문 스크롤 + keywords_llm 칩).

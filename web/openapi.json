@@ -3094,6 +3094,30 @@
         ]
       }
     },
+    "/api/trends/keyword-series": {
+      "get": {
+        "description": "보드 ⑤ 적응형 키워드 트렌드 — 주간 8칸(기본) / 일간 14칸(누적 부족 시).\n\n응답: {mode, labels, series:[{keyword,counts,total,delta,is_new}], anno|None}",
+        "operationId": "keyword_series_api_trends_keyword_series_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Keyword Series Api Trends Keyword Series Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Keyword Series",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
     "/api/trends/keywords": {
       "get": {
         "operationId": "keywords_api_trends_keywords_get",

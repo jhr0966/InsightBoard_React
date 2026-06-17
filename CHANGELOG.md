@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (보드 적응형 키워드 트렌드) — `feat-board-adaptive-trend`
+- **`store/trends.py`**: `keyword_buckets`(주간/일간 버킷별 top-6 키워드 빈도)·`keyword_delta`(첫⅓→마지막⅓ 변화율, 첫등장=신규)·`adaptive_keyword_trend`(주간 8칸 기본, 누적 2주 이하면 일간 14칸 자동전환 + 최상위 어노테이션) 추가 — Streamlit `_board_trend`/`_bucketed_keyword_series`/`_delta_info` 포팅.
+- **`api/routers/trends.py`**: `GET /api/trends/keyword-series` — `{mode, labels, series:[{keyword,counts,total,delta,is_new}], anno}` 반환.
+- **보드 ⑥ 트렌드 섹션(`web/pages/Board.tsx`)**: 고정 14일 volume 막대 → **적응형 LineChart**(top4 강조 + 최상위 추세 콜아웃)로 교체. 키워드 리스트는 실제 counts 스파크라인 + **신규 N건/±%** 델타 배지(success/danger/default). 섹션 note도 모드(주별/일별) 반영.
+- **`web/src/api/{client,types}.ts`**, `board.css`(`.bd-trend-anno`): keywordSeries·KeywordSeries 타입. OpenAPI 40 paths 재생성. 테스트 2건(델타 엣지·엔드포인트 shape) → pytest 1040.
+
 ### Added (기사 본문 상세) — `feat-article-content-detail`
 - **`api/routers/news.py`**: `GET /api/news/detail?link=&days=` 추가 — 단건 기사의 **본문(content)·keywords_llm·enriched_at** 포함 반환(목록 `/api/news`는 payload 절감 위해 content 제외 유지). 없는 link → 404.
 - **`web` 기사 모달(`pages/Collect.tsx` ArticleModal)**: 열릴 때 `news.detail` 조회 → LLM 요약을 리드 블록으로, **기사 본문 전체**를 스크롤 영역(max-h 340)으로 렌더. 본문 로딩 스켈레톤·미수집 시 안내·`keywords_llm` 칩·언론사 라벨 추가.
