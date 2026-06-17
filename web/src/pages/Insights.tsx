@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { KPIStatGrid, EmptyState, Badge } from "../components/ui";
-import BarChart from "../components/charts/BarChart";
+import LineChart from "../components/charts/LineChart";
 import BubbleMatrix from "../components/charts/BubbleMatrix";
 import type { Bubble } from "../components/charts/BubbleMatrix";
 import Heatmap from "../components/charts/Heatmap";
@@ -57,6 +57,7 @@ export default function Insights() {
 
   const keywords = useQuery({ queryKey: ["trends", "keywords", days], queryFn: () => api.trends.keywords(days, 12) });
   const volume = useQuery({ queryKey: ["trends", "volume", days], queryFn: () => api.trends.volume(days) });
+  const trend = useQuery({ queryKey: ["trends", "keyword-series"], queryFn: () => api.trends.keywordSeries() });
   const emergence = useQuery({ queryKey: ["trends", "emergence", days], queryFn: () => api.trends.emergence(days, 20) });
   const opps = useQuery({ queryKey: ["opportunities", days], queryFn: () => api.opportunities.list(days, 8) });
   const heatmap = useQuery({ queryKey: ["insights", "heatmap", days], queryFn: () => api.insights.heatmap(days) });
@@ -99,10 +100,18 @@ export default function Insights() {
       <Section title="트렌드 → 공정 연결" step="STEP 1">
         <div className="chart-row">
           <div className="card" style={{ margin: 0 }}>
-            <div className="card-title">일자별 수집량</div>
-            {volume.data && volume.data.length > 0
-              ? <BarChart bars={volume.data.map((v, i, a) => ({ label: v.date, value: v.count, title: `${v.date}: ${v.count}건`, highlight: i === a.length - 1 }))} width={520} height={120} />
-              : <EmptyState icon="📈" title="트렌드 데이터 부족" hint="30일 이상 수집 후 표시됩니다." />}
+            <div className="card-title">키워드 트렌드 <span className="muted" style={{ fontWeight: 400 }}>· {trend.data?.mode === "daily" ? "최근 14일(일별)" : "최근 8주(주별)"}</span></div>
+            {trend.data && trend.data.series.length > 0 ? (
+              <>
+                <LineChart labels={trend.data.labels}
+                  series={trend.data.series.slice(0, 4).map((s) => ({ name: s.keyword, values: s.counts }))}
+                  width={520} height={150} highlightTop={3} />
+                {trend.data.anno && (
+                  <div className="ia-trend-anno"><b>{trend.data.anno.name} {trend.data.anno.arrow}</b>
+                    <span className="muted"> · {trend.data.anno.sub}</span></div>
+                )}
+              </>
+            ) : <EmptyState icon="📈" title="트렌드 데이터 부족" hint="30일 이상 수집 후 키워드 추이가 표시됩니다." />}
           </div>
           <div className="card" style={{ margin: 0 }}>
             <div className="card-title">트렌드 키워드 <span className="muted" style={{ fontWeight: 400 }}>· 상승순</span></div>

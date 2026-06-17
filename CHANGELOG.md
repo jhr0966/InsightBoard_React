@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Changed (인사이트 STEP1 트렌드 라인차트) — `feat-insights-trend-linechart`
+- **인사이트 STEP1(`web/pages/Insights.tsx`)**: "일자별 수집량" 단순 막대 → **적응형 키워드 트렌드 LineChart**(top4 강조 + 최상위 추세 콜아웃) — #21에서 만든 `/api/trends/keyword-series` 재사용. 보드와 동일 데이터·차트로 일관. `insights.css` `.ia-trend-anno`. 프런트 전용.
+
 ### Added (히트맵 셀 → 매칭 뉴스 미리보기) — `feat-insights-heatmap-news`
 - **`api/routers/insights.py`**: `GET /api/insights/heatmap-cell?row=&col=&days=` — 선택 셀(공정 lv3 × 기술)에 **동시 출현하는 매칭 뉴스**(title/link/press/summary_llm) 상위 N 반환(`_row_text` 동일 매칭 범위).
 - **인사이트 히트맵 상세 strip(`web/pages/Insights.tsx`)**: 셀 선택 시 텍스트만 → **매칭 뉴스 카드 3건**(원본 링크) + 매칭 건수 + SOLA 핸드오프 CTA. `HeatmapDetail` 컴포넌트 분리, `insights.css` 뉴스 행 스타일.

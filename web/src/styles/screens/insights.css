@@ -46,3 +46,7 @@
   text-decoration: none; color: var(--text-primary); transition: background var(--t-fast); }
 .ia-hm-news-item:hover { background: var(--surface-divider); }
 .ia-hm-news-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* STEP1 키워드 트렌드 차트 어노테이션 */
+.ia-trend-anno { margin-top: 8px; font-size: var(--fs-caption); line-height: 1.45; }
+.ia-trend-anno b { color: var(--accent-primary); }
