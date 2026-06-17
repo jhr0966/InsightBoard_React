@@ -1,3 +1,11 @@
+## 2026-06-17 — SOLA 핸드오프 자동 검토 (`feat-sola-handoff-autoreview`)
+
+**무엇을**: 인계(?from=) 도착 시 우측 SOLA 드로어 자동 펼침 + prefill 프롬프트 1회 자동 전송(시그니처+sessionStorage 중복방지). from별 문구는 Streamlit `_composer_prefill` 패리티(브리핑/매트릭스/인사이트). Proposals 배너에 자동검토 안내 추가. 프런트 전용.
+
+**조치**: web build OK, .py 무변경(pytest 영향 없음). 다음 Tier1 남음: 히트맵 색강도.
+
+---
+
 ## 2026-06-17 — 수집 진행 SSE + 진행 모달 (`feat-collect-sse-progress`)
 
 **무엇을**: `POST /api/collect/stream`(SSE) — collect_batch 를 스레드+큐로 돌리며 on_step 을 흘림(start/step/ping/done/error), 15s ping keep-alive 로 무료 호스팅 idle 타임아웃 완화. 완료 시 run_log 기록(수집 이력 `latest:null` 해소). 프런트는 streamCollect + 진행 모달(스피너·실시간 건수·스텝 로그·결과).

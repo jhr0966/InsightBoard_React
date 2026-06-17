@@ -63,7 +63,9 @@ function Generate() {
       {from && (
         <div className="cl-alert" style={{ background: "var(--accent-ring)", color: "var(--accent-primary)", border: "1px solid var(--accent-ring)" }}>
           {HANDOFF_LABEL[from] ?? "인계됨"}{(hoDept || hoLv3) && ` — ${hoDept}${hoLv3 ? ` · ${hoLv3}` : ""}`}
-          {(hoLv3 || hoDept) && <span className="muted" style={{ marginLeft: "auto" }}>매칭 작업을 자동 선택했어요</span>}
+          <span className="muted" style={{ marginLeft: "auto" }}>
+            {(hoLv3 || hoDept) ? "매칭 작업 자동 선택 · " : ""}✓ 오른쪽 SOLA가 자동 검토를 시작했어요
+          </span>
         </div>
       )}
       <div className="card">
