@@ -1,3 +1,11 @@
+## 2026-06-17 — 수집 진행 SSE + 진행 모달 (`feat-collect-sse-progress`)
+
+**무엇을**: `POST /api/collect/stream`(SSE) — collect_batch 를 스레드+큐로 돌리며 on_step 을 흘림(start/step/ping/done/error), 15s ping keep-alive 로 무료 호스팅 idle 타임아웃 완화. 완료 시 run_log 기록(수집 이력 `latest:null` 해소). 프런트는 streamCollect + 진행 모달(스피너·실시간 건수·스텝 로그·결과).
+
+**조치**: pytest 1041(+1), web build OK(41 paths), 금지패턴 0. 다음 Tier1: SOLA 핸드오프 자동검토 / 히트맵 색강도.
+
+---
+
 ## 2026-06-17 — 보드 적응형 키워드 트렌드 (`feat-board-adaptive-trend`)
 
 **무엇을**: 보드 ⑥ 트렌드를 Streamlit 패리티로 — `store/trends.py`에 적응형 버킷(주간 8칸/일간 14칸 자동전환)·델타(신규/±%)·어노테이션 포팅, `/api/trends/keyword-series` 추가. 보드는 LineChart(top4+콜아웃)+델타 배지 키워드 리스트로 교체(기존 volume 막대 대체). BubbleMatrix는 이미 4분면·충돌회피 구현돼 있어 스킵(갭분석 오판 검증).

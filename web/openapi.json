@@ -1627,6 +1627,46 @@
         ]
       }
     },
+    "/api/collect/stream": {
+      "post": {
+        "description": "수집 실행 — SSE 진행 스트림. collect_batch 를 백그라운드 스레드에서 돌리며\n`on_step`(source·keyword·found) 이벤트를 흘리고, 완료 시 결과 요약을 보낸다.\n\n프레임 type: start | step | ping(keep-alive) | done | error. SSE 가 연결을\n살려둬 무료 호스팅의 프록시 idle 타임아웃(동기 수집의 'failed to fetch' 행)도 완화.",
+        "operationId": "run_collect_stream_api_collect_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Collect Stream",
+        "tags": [
+          "collect"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "description": "헬스체크 — 배포 readiness 프로브용.",

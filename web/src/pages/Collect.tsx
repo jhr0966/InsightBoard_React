@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { api, streamCollect } from "../api/client";
+import type { CollectEvent } from "../api/client";
 import { KPIStatGrid, Tabs, EmptyState, Modal } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
@@ -30,11 +31,36 @@ export default function Collect() {
     (chan === "전체" || sourceMeta(a.source).label === chan) &&
     (!q || `${a.title} ${newsSummary(a)} ${a.keywords ?? ""}`.toLowerCase().includes(q)));
 
-  const collect = useMutation({
-    mutationFn: (kw: string[]) => api.collect.run(kw, { do_enrich: false }),
-    onSuccess: (r) => { toast.push(`✅ ${r.total_articles}건 수집했어요`, "success"); qc.invalidateQueries({ queryKey: ["news"] }); },
-    onError: (e) => toast.push(`⚠️ 수집 실패: ${(e as Error).message}`, "danger"),
-  });
+  const [prog, setProg] = useState<CollectProgress | null>(null);
+  const running = !!prog?.running;
+  const runningRef = useRef(false);
+
+  async function runCollect(kw: string[]) {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    setProg({ running: true, steps: [], total: 0 });
+    try {
+      await streamCollect({ keywords: kw, do_enrich: false }, (e: CollectEvent) => {
+        if (e.type === "step") {
+          const label = sourceMeta(e.source).label + (e.keyword ? ` · ${e.keyword}` : "");
+          setProg((p) => (p ? { ...p, steps: [...p.steps, { label, found: e.found ?? 0 }], total: p.total + (e.found ?? 0) } : p));
+        } else if (e.type === "done") {
+          setProg((p) => (p ? { ...p, running: false, done: { articles: e.total_articles ?? 0, files: e.total_files ?? 0, errors: (e.errors ?? []).length } } : p));
+          toast.push(`✅ ${e.total_articles ?? 0}건 수집했어요`, "success");
+          qc.invalidateQueries({ queryKey: ["news"] });
+          qc.invalidateQueries({ queryKey: ["collect"] });
+        } else if (e.type === "error") {
+          setProg((p) => (p ? { ...p, running: false, error: e.error } : p));
+          toast.push(`⚠️ 수집 실패: ${e.error}`, "danger");
+        }
+      });
+    } catch (err) {
+      setProg((p) => (p ? { ...p, running: false, error: (err as Error).message } : p));
+      toast.push(`⚠️ 수집 실패: ${(err as Error).message}`, "danger");
+    } finally {
+      runningRef.current = false;
+    }
+  }
 
   const activeSources = new Set(all.map((a) => sourceMeta(a.source).label)).size;
   const lastUpdate = all[0]?.collected_at || all[0]?.date;
@@ -52,7 +78,7 @@ export default function Collect() {
         <Tabs items={[{ key: "browse", label: "🃏 카드" }, { key: "settings", label: "⚙ 수집 설정" }]}
           value={view} onChange={(v) => setView(v as "browse" | "settings")} />
         <span className="cl-grow" />
-        <CollectButton pending={collect.isPending} onRun={() => collect.mutate([])} />
+        <CollectButton pending={running} onRun={() => runCollect([])} />
       </div>
 
       {view === "browse" ? (
@@ -60,11 +86,63 @@ export default function Collect() {
           channels={channels} chan={chan} setChan={setChan} items={items} q={query} onOpen={setOpen}
           loading={news.isLoading} />
       ) : (
-        <SettingsView onCollect={(kw) => collect.mutate(kw)} collecting={collect.isPending} />
+        <SettingsView onCollect={(kw) => runCollect(kw)} collecting={running} />
       )}
 
       <ArticleModal article={open} onClose={() => setOpen(null)} />
+      <CollectProgressModal prog={prog} onClose={() => { if (!running) setProg(null); }} />
     </div>
+  );
+}
+
+interface CollectProgress {
+  running: boolean;
+  steps: { label: string; found: number }[];
+  total: number;
+  done?: { articles: number; files: number; errors: number };
+  error?: string;
+}
+
+function CollectProgressModal({ prog, onClose }: { prog: CollectProgress | null; onClose: () => void }) {
+  if (!prog) return null;
+  const last = prog.steps[prog.steps.length - 1];
+  return (
+    <Modal open onClose={onClose} title="뉴스 수집" width={460}>
+      {prog.running ? (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <span className="cl-spinner" aria-hidden />
+            <span>수집 중… <b>{prog.total}</b>건 발견</span>
+          </div>
+          <div className="muted" style={{ fontSize: "var(--fs-caption)", minHeight: 18 }}>
+            {last ? `${last.label} — ${last.found}건` : "출처에 연결하는 중…"}
+          </div>
+        </>
+      ) : prog.error ? (
+        <div style={{ color: "var(--semantic-danger)", lineHeight: 1.6 }}>⚠️ 수집 실패: {prog.error}</div>
+      ) : prog.done ? (
+        <div style={{ lineHeight: 1.7 }}>
+          <div style={{ fontSize: "var(--fs-headline)", marginBottom: 6 }}>✅ {prog.done.articles}건 수집 완료</div>
+          <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>
+            파일 {prog.done.files}개 저장{prog.done.errors > 0 ? ` · 오류 ${prog.done.errors}건` : ""}
+          </div>
+        </div>
+      ) : null}
+      {prog.steps.length > 0 && (
+        <div style={{ marginTop: 12, maxHeight: 160, overflowY: "auto", display: "grid", gap: 4 }}>
+          {prog.steps.slice(-12).map((s, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-caption)" }}>
+              <span>{s.label}</span><span className="muted">{s.found}건</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {!prog.running && (
+        <div style={{ marginTop: 16, textAlign: "right" }}>
+          <button className="btn primary" onClick={onClose}>닫기</button>
+        </div>
+      )}
+    </Modal>
   );
 }
 

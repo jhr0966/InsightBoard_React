@@ -201,6 +201,48 @@ export const api = {
   },
 };
 
+// 수집 SSE 이벤트 — start | step | ping | done | error.
+export interface CollectEvent {
+  type: "start" | "step" | "ping" | "done" | "error";
+  source?: string;
+  keyword?: string;
+  found?: number;
+  total_articles?: number;
+  total_files?: number;
+  errors?: unknown[];
+  error?: string;
+}
+
+// 수집 SSE 스트림 — onEvent 로 진행 이벤트 전달. AbortSignal 로 취소.
+export async function streamCollect(
+  body: { keywords: string[]; sources?: string[]; max_results?: number; do_enrich?: boolean },
+  onEvent: (e: CollectEvent) => void,
+  opts?: { signal?: AbortSignal },
+): Promise<void> {
+  const res = await fetch(`${BASE}/api/collect/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: opts?.signal,
+  });
+  if (!res.ok || !res.body) throw new Error(`collect failed: ${res.status}`);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const frames = buf.split("\n\n");
+    buf = frames.pop() ?? "";
+    for (const frame of frames) {
+      const line = frame.trim();
+      if (!line.startsWith("data:")) continue;
+      onEvent(JSON.parse(line.slice(5).trim()) as CollectEvent);
+    }
+  }
+}
+
 // SSE 챗 스트림 — onDelta 로 토큰 조각 전달. AbortSignal 로 취소.
 export async function streamChat(
   messages: ChatMessage[],
