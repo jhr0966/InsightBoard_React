@@ -41,3 +41,13 @@
   border: 2px solid var(--surface-divider); border-top-color: var(--accent-primary);
   animation: cl-spin 0.7s linear infinite; flex: 0 0 auto; }
 @keyframes cl-spin { to { transform: rotate(360deg); } }
+
+/* 수집 런 타임라인 */
+.cl-runs { margin-top: 10px; display: grid; gap: 2px; }
+.cl-run { display: flex; align-items: center; gap: var(--space-3); padding: 5px 0;
+  font-size: var(--fs-caption); border-bottom: 1px solid var(--surface-divider); }
+.cl-run:last-child { border-bottom: 0; }
+.cl-run-dot { width: 8px; height: 8px; border-radius: var(--r-full); flex: 0 0 auto; }
+.cl-run-time { width: 84px; color: var(--text-secondary); }
+.cl-run-trigger { width: 36px; color: var(--text-muted); font-size: var(--fs-micro); }
+.cl-run-stat { flex: 1; text-align: right; color: var(--text-secondary); }

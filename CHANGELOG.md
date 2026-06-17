@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Changed (수집 런 타임라인) — `feat-collect-run-timeline`
+- **수집 설정 이력 카드(`web/pages/Collect.tsx`)**: 최근 런을 `JSON.stringify`로 조잡하게 보여주던 것 → **런 타임라인**(성공/실패 색점·상대시각·수동/자동·N건·N파일·오류수). 기존 `/api/collect/runs` 활용(미사용이던 엔드포인트 배선). `collect.css` `.cl-runs`. 프런트 전용.
+
 ### Changed (인사이트 STEP1 트렌드 라인차트) — `feat-insights-trend-linechart`
 - **인사이트 STEP1(`web/pages/Insights.tsx`)**: "일자별 수집량" 단순 막대 → **적응형 키워드 트렌드 LineChart**(top4 강조 + 최상위 추세 콜아웃) — #21에서 만든 `/api/trends/keyword-series` 재사용. 보드와 동일 데이터·차트로 일관. `insights.css` `.ia-trend-anno`. 프런트 전용.
 

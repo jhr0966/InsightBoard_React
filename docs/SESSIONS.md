@@ -1,3 +1,11 @@
+## 2026-06-17 — 수집 런 타임라인 (`feat-collect-run-timeline`)
+
+**무엇을**: 수집 설정 '수집 이력'의 JSON.stringify → 런 타임라인(성공/실패 점·상대시각·트리거·건수/파일/오류). 기존 /api/collect/runs 배선(미사용이던 엔드포인트). 프런트 전용. EditForm·BubbleMatrix·Heatmap은 검증 결과 이미 충실 → 스킵.
+
+**조치**: build OK, .py 무변경. Tier2 상당수가 이미 구현돼 있음(갭분석 과대평가 반복 확인).
+
+---
+
 ## 2026-06-17 — 인사이트 STEP1 트렌드 라인차트 (`feat-insights-trend-linechart`)
 
 **무엇을**: 인사이트 STEP1 "일자별 수집량" 막대 → 적응형 키워드 트렌드 LineChart(top4+콜아웃). #21의 /api/trends/keyword-series 재사용(보드와 동일). 프런트 전용. Tier2 ① 착수.
