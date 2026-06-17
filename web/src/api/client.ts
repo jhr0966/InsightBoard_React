@@ -102,6 +102,8 @@ export const api = {
     list: (q?: { days?: number; source?: string; limit?: number }) =>
       req<NewsArticle[]>(`/api/news${qs(q ?? {})}`),
     today: () => req<NewsArticle[]>("/api/news/today"),
+    detail: (link: string, days = 30) =>
+      req<NewsArticle>(`/api/news/detail${qs({ link, days })}`),
   },
 
   trends: {

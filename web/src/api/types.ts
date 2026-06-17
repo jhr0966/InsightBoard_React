@@ -37,6 +37,12 @@ export interface NewsArticle {
   image_url?: string;
   summary_llm?: string;
   collected_at?: string;
+  published_at?: string;
+  query?: string;
+  // /api/news/detail 전용 (목록에선 미포함)
+  content?: string;
+  keywords_llm?: string;
+  enriched_at?: string;
 }
 
 export interface KeywordCount { keyword: string; count: number; }

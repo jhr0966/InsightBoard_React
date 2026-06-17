@@ -41,6 +41,24 @@ def test_news_empty_ok():
     assert client.get("/api/news").json() == []
 
 
+def test_news_detail_returns_content():
+    news_db.save_articles(
+        [{"title": "본문 있는 기사", "link": "ld1", "source": "naver",
+          "content": "이것은 기사 본문 전체입니다.", "keywords_llm": "용접, 로봇",
+          "date": "2026-06-15"}],
+        source="naver",
+    )
+    r = client.get("/api/news/detail", params={"link": "ld1"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["content"] == "이것은 기사 본문 전체입니다."
+    assert body["keywords_llm"] == "용접, 로봇"
+
+
+def test_news_detail_404_when_missing():
+    assert client.get("/api/news/detail", params={"link": "nope"}).status_code == 404
+
+
 def test_trends_keywords_volume_sources():
     _seed()
     kw = client.get("/api/trends/keywords").json()

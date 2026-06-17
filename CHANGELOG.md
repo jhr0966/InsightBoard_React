@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (기사 본문 상세) — `feat-article-content-detail`
+- **`api/routers/news.py`**: `GET /api/news/detail?link=&days=` 추가 — 단건 기사의 **본문(content)·keywords_llm·enriched_at** 포함 반환(목록 `/api/news`는 payload 절감 위해 content 제외 유지). 없는 link → 404.
+- **`web` 기사 모달(`pages/Collect.tsx` ArticleModal)**: 열릴 때 `news.detail` 조회 → LLM 요약을 리드 블록으로, **기사 본문 전체**를 스크롤 영역(max-h 340)으로 렌더. 본문 로딩 스켈레톤·미수집 시 안내·`keywords_llm` 칩·언론사 라벨 추가.
+- **`web/src/api/{client,types}.ts`**: `news.detail()` + `NewsArticle`에 content/keywords_llm/enriched_at/published_at/query 필드. OpenAPI 스냅샷·schema.ts 재생성(39 paths).
+- 테스트 2건(detail 본문 반환·404) 추가 → pytest 1038 passed.
+
 ### Changed (Render 무료 플랜 배포 구성) — `chore-render-free-plan`
 - **`render.yaml`**: `plan: free` 명시 + 영구 디스크(`disk:`) 블록 주석 처리 → 카드 등록 없이 무료 배포. `INSIGHTBOARD_DATA_ROOT`=`/app/data`(컨테이너 휘발 경로). 영구화 시 디스크 블록 복원 + `/data` 안내 주석.
 - **`Dockerfile`**: 기본 `INSIGHTBOARD_DATA_ROOT`=`/app/data`(무료·휘발), 영구화 오버라이드 주석.
