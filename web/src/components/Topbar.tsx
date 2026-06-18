@@ -7,9 +7,11 @@ import { navByPath } from "../nav";
 export default function Topbar({
   pathname,
   onSearch,
+  onMenu,
 }: {
   pathname: string;
   onSearch: (q: string) => void;
+  onMenu: () => void;
 }) {
   const nav = navByPath(pathname);
   const navigate = useNavigate();
@@ -26,6 +28,8 @@ export default function Topbar({
   return (
     <header className="topbar">
       <div className="topbar-l">
+        {/* 햄버거 — 모바일에서만 노출(CSS). 좌측 사이드바 오프캔버스 토글. */}
+        <button className="topbar-menu" title="메뉴" onClick={onMenu} aria-label="메뉴 열기">☰</button>
         <div className="topbar-eye">
           WORKFLOW <span className="topbar-eye-sep">/</span>{" "}
           <span className="topbar-eye-cur">{nav.name}</span>
