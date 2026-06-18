@@ -1,3 +1,11 @@
+## 2026-06-18 — SOLA 드로어 화면별 추천 프롬프트 복원 (`feat-drawer-suggestions`)
+
+**무엇을**: React 전환 중 축소·소실됐던 화면별 추천 질문을 `ui/chat_panel._AREA_INTROS` 기준으로 복원 — 화면당 5개 풍부한 프롬프트 + 안내 헤드라인 카드. 칩을 드로어 로그 상단 고정으로 바꿔 대화 시작 후에도 유지(메시지와 함께 스크롤). 회귀 수정.
+
+**조치**: web build OK, pytest 영향 없음(프런트 전용). 사용자 지적("추천 프롬프트 어디갔어") 대응.
+
+---
+
 ## 2026-06-17 — 엑셀 업로드 diff 미리보기 (`feat-taskdef-upload-diff`)
 
 **무엇을**: `roadmap.ingest.preview_excel`(dry-run 파싱+process_id 집합 diff) + `POST /api/taskdefs/upload/preview`. TaskDefs 업로드를 미리보기→확인 흐름으로 — diff 모달(신규/갱신/삭제) + 교체 시 삭제 경고. 파괴적 교체 안전장치.
