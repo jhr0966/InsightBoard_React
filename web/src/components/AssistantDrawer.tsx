@@ -17,14 +17,68 @@ function handoffPrefill(from: string, dept: string, lv3: string): string {
   return "";
 }
 
-// 화면별 추천질문 (클릭=즉시 전송) — ui/chat_panel 의 suggestion pills 승계.
-const SUGGEST: Record<string, string[]> = {
-  board: ["오늘 브리핑에서 우리 팀이 먼저 봐야 할 1건과 이유는?", "이번 주 가장 주목할 자동화 기회는?"],
-  insights: ["왜 이 키워드가 뜨고 있나요?", "우리 조선소 어디에 적용 가능한가요?", "추천 PoC 과제 3가지는?"],
-  collect: ["지금 화면 기사들 핵심만 3줄로 요약해줘", "이 중 우리 부서에 중요한 기사는?"],
-  taskdefs: ["부서별 작업 정의에서 미등록 공정을 찾아줘", "이 작업의 자동화 포인트는?"],
-  proposals: ["이 작업의 PoC 제안 초안을 만들어줘", "ROI·일정·위험요인을 정리해줘"],
-  persona: ["내 관심사에 맞는 공정을 추천해줘"],
+// 화면별 안내 헤드라인 + 추천질문 (클릭=즉시 전송) — ui/chat_panel `_AREA_INTROS` 승계.
+// 추천 질문 = "이 화면에서 SOLA 를 이렇게 쓰는 겁니다" 시연 — 화면 데이터를 실제로
+// 읽어야 답할 수 있는 구체적 행동(요약·비교·보고서 초안·다음 단계)으로 구성.
+interface Intro { headline: string; suggestions: string[]; }
+const INTROS: Record<string, Intro> = {
+  board: {
+    headline: "📊 오늘의 보드 — SOLA 가 이 화면 데이터를 알고 있어요",
+    suggestions: [
+      "오늘 브리핑 5건 중 우리 팀이 가장 먼저 봐야 할 1건과 그 이유는?",
+      "자동화 제안 1위를 PoC 로 시작한다면 다음 주 할 일 3가지 뽑아줘",
+      "트렌드에서 '신규' 표시된 키워드만 골라 왜 떴는지 설명해줘",
+      "오늘 화면 내용으로 팀장 보고용 3줄 요약 써줘",
+      "매트릭스 우상단 후보의 기대 효과와 리스크를 표로 비교해줘",
+    ],
+  },
+  insights: {
+    headline: "🔎 인사이트 분석 — 트렌드·매트릭스·공정 매핑을 알고 있어요",
+    suggestions: [
+      "트렌드 top 키워드의 추이를 해석하고 우리 작업과 연결해줘",
+      "신규 등장 키워드가 어떤 공정에 영향을 줄지 짚어줘",
+      "매트릭스 top 3 후보를 효과·난이도·근거 뉴스로 비교해줘",
+      "히트맵에서 가장 뜨거운 공정×기술 조합의 다음 단계는?",
+      "이 화면 내용으로 월간 기술 동향 보고 초안 써줘",
+    ],
+  },
+  proposals: {
+    headline: "🤖 자동화 제안 — 작업·매칭 뉴스·이전 대화를 컨텍스트로 써요",
+    suggestions: [
+      "지금 작업 중인 산출물의 약한 부분을 지적하고 보강안 줘",
+      "이 작업의 PoC 제안 초안을 ROI·일정·위험요인까지 정리해줘",
+      "이 제안서를 임원 보고용 1장으로 압축해줘",
+      "이전 thread 에서 결정된 사항만 모아 정리해줘",
+    ],
+  },
+  collect: {
+    headline: "🗞 뉴스 수집 — 지금 보이는 기사·수집 상태를 알고 있어요",
+    suggestions: [
+      "지금 화면에 보이는 기사들 핵심만 3줄로 요약해줘",
+      "오늘 수집분에서 우리 부서가 참고할 기사 3건 골라 이유와 함께",
+      "출처별 7일 수집량을 보고 수집이 줄어든 출처와 원인 추정해줘",
+      "지금 키워드에 추가하면 좋을 검색어 3개를 근거와 함께 추천해줘",
+      "이번 주 수집 현황을 주간 리포트 초안으로 정리해줘",
+    ],
+  },
+  taskdefs: {
+    headline: "📋 작업 정의 — 등록된 작업 정의·부서 분포를 알고 있어요",
+    suggestions: [
+      "부서별 작업 정의 분포에서 빈 곳(미등록 공정)을 찾아줘",
+      "등록된 작업 중 자동화 효과가 클 것 같은 3건과 이유는?",
+      "최근 추가된 작업 정의를 한 줄씩 요약해줘",
+      "작업 정의를 더 채우려면 어떤 항목부터 보강해야 할까?",
+      "엑셀 업로드 형식(필수 컬럼)을 알려줘",
+    ],
+  },
+  persona: {
+    headline: "👤 페르소나 설정 — 더 좋은 컨텍스트 설정을 도와드려요",
+    suggestions: [
+      "내 부서·직무 기준으로 관심 공정을 추천해줘",
+      "지금 설정에서 비어 있는 항목과 채우면 좋아지는 점은?",
+      "뉴스가 더 잘 잡히도록 관심 키워드 5개 제안해줘",
+    ],
+  },
 };
 
 export default function AssistantDrawer({ screen, onClose }: { screen: string; onClose: () => void }) {
@@ -105,7 +159,7 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
-  const pills = SUGGEST[screen] ?? [];
+  const intro = INTROS[screen] ?? INTROS.board;
 
   return (
     <section className="drawer">
@@ -118,14 +172,16 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
         </span>
       </div>
       <div className="drawer-log">
-        {messages.length === 0 && (
-          <div>
-            <div className="muted" style={{ marginBottom: 10 }}>이 화면에 대해 무엇이든 물어보세요.</div>
-            <div className="drawer-pills">
-              {pills.map((p) => <button key={p} className="drawer-pill" disabled={busy} onClick={() => send(p)}>{p}</button>)}
-            </div>
-          </div>
-        )}
+        {/* 안내 헤드라인 + 추천 질문 — 대화가 쌓여도 상단에 남아 함께 스크롤(ui/chat_panel 승계). */}
+        <div className="drawer-intro">
+          <div className="drawer-intro-h">{intro.headline}</div>
+          <div className="drawer-intro-sub">아래 입력창에 직접 적거나, 추천 질문을 누르면 바로 전송됩니다.</div>
+        </div>
+        <div className="drawer-pills">
+          {intro.suggestions.map((p) => (
+            <button key={p} className="drawer-pill" disabled={busy} onClick={() => send(p)}>{p}</button>
+          ))}
+        </div>
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
             {m.content || (busy && i === messages.length - 1 ? "…" : "")}

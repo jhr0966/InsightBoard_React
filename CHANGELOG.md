@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (SOLA 드로어 화면별 추천 프롬프트 복원) — `feat-drawer-suggestions`
+- **`web` AssistantDrawer**: 화면별 추천 질문이 React 전환 중 **2~3개로 축소·대화 시작 후 사라지던** 회귀 복원. `ui/chat_panel._AREA_INTROS` 의 **화면당 5개 풍부한 추천 질문**(보드·인사이트·자동화제안·뉴스수집·작업정의·페르소나) 전부 포팅 + **안내 헤드라인 카드**("이 화면 데이터를 알고 있어요") 추가.
+- **항상 노출**: 칩이 `messages.length===0` 일 때만 뜨던 것을 **드로어 로그 상단 고정**으로 변경 — 대화가 쌓여도 추천 질문이 메시지와 함께 위로 스크롤(원본 동작 승계). 인계(`?from=`) 자동 prefill 후에도 칩이 유지된다.
+- `app.css` `.drawer-intro*` 스타일 추가. 빌드 green.
+
 ### Added (엑셀 업로드 diff 미리보기) — `feat-taskdef-upload-diff`
 - **`roadmap/ingest.py` `preview_excel`**: 저장 없이(dry-run) 파싱·검증 후 기존 데이터셋과 **process_id 집합 diff** — 신규/갱신/삭제(=교체 시 사라질 항목). 검증 실패 시 errors.
 - **`api/routers/taskdefs.py`**: `POST /api/taskdefs/upload/preview` — diff 반환(저장 안 함), 검증 실패 422.
