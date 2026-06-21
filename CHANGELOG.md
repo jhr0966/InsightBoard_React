@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Removed (Streamlit 은퇴 — React/FastAPI 단일화) — `chore-retire-streamlit`
+- **Streamlit 앱 전면 제거**: `app.py`, `ui/`(18개 모듈), `assets/v2/`(streamlit CSS·HTML 템플릿) 삭제. React(`web/`) + FastAPI(`api/`)만 남김. React 전환(PR #1~#29)이 실데이터로 검증 완료된 뒤 마지막 단계로 실행.
+- **테스트/스크립트 정리**: streamlit·ui 의존 테스트 44개(`test_v2_screens`·`test_chat_panel`·`test_onboarding`·`test_template_placeholders` 등)와 streamlit 전용 스크립트 4개(`analyze_screens`·`verify_screens`·`inline_svg_to_img`·`bump_screen_fonts`) 삭제. 백엔드 커버리지는 `test_api_*` 스위트가 병행 보유 → **pytest 462 passed**.
+- **의존성·CI**: `requirements.txt` 에서 `streamlit>=1.32` 제거. `ci.yml` 의 `on_click` 금지패턴 스텝(streamlit 전용) 제거. `scripts/dev_setup.sh` 실행 안내를 `uvicorn`+`npm run dev` 로 갱신.
+- **보존**: `config.py` 의 streamlit secrets fallback(try/except — streamlit 미설치 시 빈 값 반환), `test_config_secrets.py`(fake 모듈 주입). `CLAUDE.md`·`docs/REACT_STATUS.md` React/FastAPI 기준으로 갱신.
+
 ### Added (반응형 셸 — 태블릿·모바일) — `style-responsive-shell`
 - **`web` 셸 레이아웃**: 고정 `248px 1fr 380px` 그리드가 좁은 화면에서 넘치던 문제 해결. **태블릿(≤1100px)** 에선 SOLA 드로어를 본문 위 **오버레이**로 띄워(본문 폭 안 줄임), **모바일(≤820px)** 에선 좌측 사이드바를 **오프캔버스**(햄버거 토글·백드롭 탭으로 닫기)로, 본문은 전체폭. **초협소(≤560px)** 에선 상단 검색창 숨김.
 - **`Layout.tsx`**: `sidebarOpen` 상태 + 라우트 이동 시 자동 닫힘, 드로어 기본값을 화면폭 기준(좁으면 접힘)으로 — 모바일 첫 방문에 드로어가 본문을 가리지 않게. 백드롭 엘리먼트 추가.

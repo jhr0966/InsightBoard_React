@@ -6,7 +6,7 @@
 ## 한 줄 요약
 Streamlit 앱(`app.py`·`ui/`)을 **FastAPI(`api/`) + React(`web/`)** 로 전환. 코드 작업
 (토대→P0→P1→P2 7화면→P3→P4 호스팅설정)은 **모두 완료·main 머지**(PR #1~#17).
-남은 건 **실행**: 백엔드 배포 → 폴리시 → Streamlit 은퇴.
+남은 건 **실행**: 백엔드 배포 → 폴리시 → Streamlit 은퇴. **2026-06 기준 셋 다 완료** — 백엔드 Render 배포·검증, 폴리시(추천프롬프트·반응형 등), **Streamlit 은퇴 완료**(`app.py`·`ui/`·`assets/v2`·관련 테스트/스크립트 제거).
 
 ## 완료 (PR #1~#17, main)
 - **토대**: `store/_audit.py`(식별·감사 5필드), `sola/providers/`(OpenAI/anthropic 추상화, `LLM_PROVIDER`), `store/repository.py`(스토리지 seam).
@@ -35,9 +35,11 @@ Streamlit 앱(`app.py`·`ui/`)을 **FastAPI(`api/`) + React(`web/`)** 로 전환
 ### ② 디테일 폴리시 (실데이터 위에서)
 - 반응형(좌nav·중앙·우채팅 3컬럼 축소), 다크/오션/선셋 화면별 점검, 기사 본문(content) 상세(현재 모달은 요약만 — `/api/news` content 제외), 카드 밀도·줄바꿈·차트 스케일.
 
-### ③ Streamlit 은퇴 (검증 완료 후)
-- `app.py`·`ui/`·`assets/v2`·streamlit 관련 테스트(test_v2_screens·test_chat_panel·test_onboarding 등) 제거. requirements에서 streamlit 제거. README/CLAUDE 갱신.
-- ⚠ 대량 삭제 + 테스트 영향 → 한 번에 하지 말고 단계적, 반드시 백엔드 검증 후.
+### ③ Streamlit 은퇴 — ✅ 완료 (2026-06, `chore-retire-streamlit`)
+- 삭제: `app.py`, `ui/`(18개 모듈), `assets/v2/`(streamlit CSS·HTML 템플릿), streamlit/ui 의존 테스트 44개(`test_v2_screens`·`test_chat_panel`·`test_onboarding`·`test_template_placeholders` 등), streamlit 전용 스크립트 4개(`analyze_screens`·`verify_screens`·`inline_svg_to_img`·`bump_screen_fonts`).
+- `requirements.txt` 에서 `streamlit>=1.32` 제거. CI(`ci.yml`)의 `on_click` 금지패턴 스텝(streamlit 전용) 제거.
+- 보존: `config.py` 의 streamlit secrets fallback(try/except — streamlit 없으면 빈 값), `test_config_secrets.py`(fake 모듈 주입이라 streamlit 불필요). 백엔드 커버리지는 `test_api_*` 스위트가 병행 보유.
+- 검증: pytest **462 passed**(streamlit UI 테스트 ~582 제거), 전체 py_compile OK(135 .py), 잔여 ui import 0.
 
 ## 개발 메모
 - 화면=PR 1개 cadence. 매 PR: `npm run build`(web) + `python scripts/gen_openapi.py && cd web && npm run gen:types`(API 변경 시) + pytest. OpenAPI 스냅샷 테스트가 드리프트 가드.

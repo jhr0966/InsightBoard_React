@@ -27,13 +27,6 @@ jobs:
           mapfile -t files < <(git ls-files '*.py')
           python -m py_compile "${files[@]}"
 
-      - name: 금지 패턴 — on_click
-        run: |
-          if grep -rnE 'on_click\s*=' app.py ui/ 2>/dev/null; then
-            echo "::error::on_click= 사용 발견. CLAUDE.md §3 위반 (pending flag + st.rerun 사용)"
-            exit 1
-          fi
-
       - name: 금지 패턴 — requests 직접 호출
         run: |
           # scraping/http.py 의 build_session 내부만 예외.
