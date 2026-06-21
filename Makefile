@@ -1,4 +1,4 @@
-.PHONY: install run check test format clean verify-browser verify-scrape
+.PHONY: install run run-web check test format clean verify-scrape
 
 PY_FILES := $(shell git ls-files '*.py')
 
@@ -7,15 +7,14 @@ install:
 	pip install -r requirements.txt
 
 run:
-	streamlit run app.py
+	uvicorn api.main:app --reload
+
+run-web:
+	cd web && npm run dev
 
 check:
 	python -m py_compile $(PY_FILES)
-	@if rg -n 'on_click\s*=' app.py ui; then \
-		echo "on_click= 사용 발견. pending flag + st.rerun 패턴을 사용하세요."; \
-		exit 1; \
-	fi
-	@violations="$$(rg -n 'requests\.(get|post|Session)\(' app.py ui sola store roadmap persona scraping | rg -v '^scraping/http\.py:' || true)"; \
+	@violations="$$(rg -n 'requests\.(get|post|Session)\(' api sola store roadmap persona scraping | rg -v '^scraping/http\.py:' || true)"; \
 	if [ -n "$$violations" ]; then \
 		echo "requests.* 직접 호출 발견. scraping.http.build_session()을 사용하세요."; \
 		echo "$$violations"; \
@@ -30,10 +29,6 @@ check:
 
 test:
 	python -m pytest -q
-
-# Streamlit 이 떠 있는 상태에서 v2 화면 7개 스크린샷 검증 (Playwright)
-verify-browser:
-	python scripts/verify_browser.py http://127.0.0.1:8501
 
 # 크롤링 파이프라인 자체검증 — 로컬 fixture 서버, 외부망 불필요
 verify-scrape:

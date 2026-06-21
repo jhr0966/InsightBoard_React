@@ -1,3 +1,11 @@
+## 2026-06-18 — Streamlit 은퇴 (React/FastAPI 단일화) (`chore-retire-streamlit`)
+
+**무엇을**: 마이그레이션 최종 단계. `app.py`·`ui/`(18)·`assets/v2`·streamlit 의존 테스트 44개·streamlit 전용 스크립트 4개 삭제, `requirements.txt`·`ci.yml`·`dev_setup.sh` 정리. `config.py` secrets fallback + `test_config_secrets`(fake 주입)는 보존. CLAUDE.md·REACT_STATUS.md React/FastAPI 기준 갱신.
+
+**조치**: pytest **462 passed**(streamlit UI ~582 제거), py_compile 135 OK, 잔여 ui import 0. 사용자 명시 승인("마무리해"=Streamlit 은퇴 실행) 후 진행. ⚠ 비가역.
+
+---
+
 ## 2026-06-18 — 반응형 셸 (태블릿·모바일) (`style-responsive-shell`)
 
 **무엇을**: 고정 3컬럼 그리드를 반응형화 — 태블릿(≤1100)은 SOLA 드로어 오버레이, 모바일(≤820)은 사이드바 오프캔버스(햄버거+백드롭)·본문 전체폭, 초협소(≤560)는 검색 숨김. Layout `sidebarOpen` 상태·라우트 이동 자동닫힘·드로어 기본값 화면폭 기준. Topbar 햄버거.

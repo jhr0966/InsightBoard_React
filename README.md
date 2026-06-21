@@ -1,12 +1,14 @@
-# News
+# InsightBoard
 
-조선소 작업 정의를 이해하는 LLM 어시스턴트가 외부 기술 동향을 우리 작업에 어떻게 적용할지 번역해주는 Streamlit 시스템. 3대 축:
+조선소 작업 정의를 이해하는 LLM 어시스턴트가 외부 기술 동향을 우리 작업에 어떻게 적용할지 번역해주는 시스템. **React(`web/`) SPA + FastAPI(`api/`) 백엔드.** 3대 축:
 
 1. **🔍 수집·enrich** (`scraping/`) — 네이버 / 구글 RSS / AI Times / 오토메이션월드, 본문 fetch + LLM 키워드·요약.
 2. **🗂 로드맵·매칭** (`roadmap/`, `store/`) — 조선소 작업 정의 엑셀 → Parquet, 룰 기반 뉴스↔작업 매칭, 자동화 기회 매트릭스.
 3. **🤖 SOLA LLM** (`sola/`, `persona/`) — 요약·제안서·채팅·부서 인사이트, 페르소나 자동 주입.
 
-UI 는 업무 흐름형 5개 메뉴(`오늘의 보드 · 데이터 관리 · 인사이트 분석 · SOLA 작업실 · 산출물 보관함`) — **v2 디자인 시스템** 적용. 레이아웃은 `app.py` 가 소유 — 좌측 네이티브 `st.sidebar`(nav 단일 소스) + 본문 상단 in-flow 헤더(`app_shell.render_topbar`) + `st.columns([2.3, 1])`(중앙 콘텐츠 + 우측 SOLA 채팅 `chat_panel.render_side`, 모든 화면 동일). 각 화면 본문은 `ui/<name>_v2.py` 가 `assets/v2/screens/<name>_main.html` 템플릿에 실데이터를 치환해 그린다. 화면 간 인계는 `?app_area=...&from=<kind>` URL 패턴 단일 진입점(`docs/INVARIANTS.md` I-16). 디자인 토큰은 `assets/v2/*.css`, 라이트/다크 테마는 `ui/styles.py`.
+UI 는 업무 흐름형 메뉴(`오늘의 보드 · 인사이트 분석 · 자동화 제안 · 뉴스 수집 · 작업 정의`)로, React 페이지(`web/src/pages/*`) + 공통 셸(`web/src/components/{Layout,Sidebar,Topbar,AssistantDrawer}.tsx`) + SVG 차트(`web/src/components/charts/*`)로 구성. 프런트는 타입드 클라이언트(`web/src/api/client.ts`)로 `api/routers/*` 계약만 소비한다. 화면 간 인계는 `?from=&dept=&lv3=` 쿼리로 SOLA 드로어 자동 검토. 디자인 토큰·테마는 `web/src/styles/*`.
+
+> ⓘ 과거 Streamlit 앱(`app.py`·`ui/`)은 React 전환 완료 후 **2026-06 은퇴**(제거).
 
 ## 🚀 빠른 시작 (Groq 무료 API)
 
@@ -21,64 +23,44 @@ pip install -r requirements.txt
 cp .env.example .env
 # .env 파일을 열어 LLM_API_KEY=gsk_xxxxx... 한 줄만 채우면 OK
 
-# 3) 실행
-streamlit run app.py
+# 3) 백엔드 + 프런트 실행 (터미널 2개)
+uvicorn api.main:app --reload          # http://127.0.0.1:8000
+cd web && npm install && npm run dev   # http://127.0.0.1:5173 (vite proxy → 8000)
 ```
 
 사이드바 하단의 LLM 상태가 🟢로 바뀌면 키가 정상 인식된 것. 🟠면 `.env`의 `LLM_API_KEY`를 다시 확인.
 다른 백엔드(사내 OpenAI 호환 / 로컬 Ollama) 로 전환하려면 `.env.example`의 `LLM_BACKEND` / `LLM_BASE_URL` / `LLM_MODEL` 주석 참고.
 
-## ☁️ Streamlit Community Cloud 배포 (`share.streamlit.io`)
+## ☁️ 배포 (프런트 Vercel + 백엔드 Render)
 
-`.env` 파일은 **절대 GitHub 에 올리지 말 것**. 클라우드는 별도 Secrets 관리 메커니즘을 쓴다.
+상세 절차는 [`docs/DEPLOY.md`](./docs/DEPLOY.md). 요약:
 
-1. GitHub 에 코드 푸시 (private 레포 가능). `.env` 가 추적되어 있으면 먼저 `git rm --cached .env && git commit && git push` 로 제거.
-2. https://share.streamlit.io → **New app** → 본인 레포 / 브랜치 / `app.py` 선택.
-3. **Advanced settings → Secrets** 에 TOML 형식으로 입력:
+- **백엔드(Render)**: `render.yaml` 블루프린트(Docker) → env(`LLM_BACKEND`·`LLM_API_KEY`·`LLM_MODEL`·`INSIGHTBOARD_CORS_ORIGINS`=Vercel 도메인·`INSIGHTBOARD_DATA_ROOT`). 무료 플랜은 디스크 없음(ephemeral).
+- **프런트(Vercel)**: Root=`web`, build-time `VITE_API_BASE`=백엔드 URL.
+- 검증: `<backend>/api/health` → `{"status":"ok"}` → 프런트에서 `/api/*` 200.
 
-   ```toml
-   LLM_BACKEND = "groq"
-   LLM_API_KEY = "gsk_xxxxxxxxxxxxxxxxxxxxxxxxxx"
-   # 디폴트와 다르게 쓰려면 아래도 추가
-   # LLM_BASE_URL = "https://api.groq.com/openai/v1"
-   # LLM_MODEL = "llama-3.3-70b-versatile"
-   ```
-4. **Deploy**. `config.py` 가 환경변수를 먼저 확인하고 없으면 자동으로 `st.secrets` 를 fallback 으로 사용 (`_env_or_secret()`). 별도 코드 수정 불필요.
+`.env`/키는 **절대 커밋 금지**. 노출 시 Groq Console 에서 키 Delete 후 재발급.
 
-배포 후 사이드바 하단 LLM 상태가 🟢 로 바뀌면 키 인식 OK.
-
-> ⚠️ 만약 `.env` 가 이미 커밋되어 키가 git history 에 남았다면 **Groq Console → 해당 키 Delete → 새 키 발급** 후 위 Secrets 에 새 키 입력. 히스토리 정리는 `git filter-repo --path .env --invert-paths` 후 force push.
-
-## 실행
+## 실행 (요약)
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env       # LLM_API_KEY=... 채우기 (LLM 기능을 쓰려면 필수)
-streamlit run app.py
+cp .env.example .env                   # LLM_API_KEY=... 채우기
+uvicorn api.main:app --reload          # 백엔드
+cd web && npm install && npm run dev   # 프런트
 ```
 
-- Python ≥ 3.10
-- `lxml` 설치 실패 시 `html.parser` 로 자동 fallback.
-- LLM 미설정 상태에서도 수집·로드맵·매트릭스 표시는 정상 동작하며, LLM 결과만 graceful degrade.
+- Python ≥ 3.10, Node ≥ 18
+- LLM 미설정 상태에서도 수집·로드맵·매트릭스는 정상 동작하며, LLM 결과만 graceful degrade.
 
-
-## 빠른 개발 환경 세팅 (Streamlit)
+## 빠른 개발 환경 세팅
 
 ```bash
-./scripts/dev_setup.sh
+./scripts/dev_setup.sh                 # venv + pip install
 source .venv/bin/activate
-make run
 ```
 
-또는 수동 설치:
-
-```bash
-make install
-make run
-```
-
-- Streamlit 설정: `.streamlit/config.toml`
-- 개발 운영 청사진: `docs/VIBE_CODING_BLUEPRINT.md`
+- API 스키마 변경 시: `python scripts/gen_openapi.py && cd web && npm run gen:types`
 
 ## 개발 문서
 
@@ -97,7 +79,7 @@ make run
 
 ## 배포
 
-Streamlit Cloud 가 `main` 브랜치를 트래킹 — **`main` 머지 = 즉시 배포**.
+Vercel(프런트)·Render(백엔드)가 `main` 을 트래킹 — **`main` 머지 = 자동 배포**.
 작업은 반드시 브랜치에서:
 
 ```bash
@@ -110,12 +92,13 @@ git checkout -b <category>-<slug>    # fix|feat|refactor|style|docs|chore
 # 스테이지된 .py 만 compile (CI 가 모든 .py 를 자동 검사)
 python -m py_compile $(git diff --name-only --cached | grep '\.py$')
 
-grep -rnE 'on_click\s*=' app.py ui/                                # 0
+# requests 직접 호출 금지 (scraping/http.py 의 build_session 만 예외)
 grep -rnE 'requests\.(get|post|Session)\(' \
-     app.py ui/ sola/ store/ roadmap/ persona/ scraping/ \
+     api/ sola/ store/ roadmap/ persona/ scraping/ \
      | grep -v 'scraping/http\.py:'                                # 0
 
-pytest -q
+pytest -q                                                          # 백엔드
+cd web && npm run build                                            # 프런트(타입체크+빌드)
 ```
 
 > `.github/workflows/ci.yml` 이 PR 마다 동일 검증을 자동 실행합니다.
@@ -126,4 +109,4 @@ pytest -q
 pytest -q
 ```
 
-`tests/` 아래 단위 테스트 **720+건**(69개 파일)이 LLM 호출·HTTP·디스크 IO 를 모킹해 빠르게 돕니다.
+`tests/` 아래 백엔드 단위 테스트 **462건**이 LLM 호출·HTTP·디스크 IO 를 모킹해 빠르게 돕니다(Streamlit 은퇴로 UI 테스트는 제거). 프런트는 `cd web && npm run build` 로 타입체크.

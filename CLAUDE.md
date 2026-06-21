@@ -11,16 +11,16 @@
 2. **로드맵·매칭** (`roadmap/`, `store/`) — 조선소 작업 정의 엑셀 → Parquet, 룰 기반 뉴스↔작업 매칭, 자동화 기회 매트릭스.
 3. **SOLA LLM** (`sola/`, `persona/`) — 요약·제안서·채팅·부서 인사이트·매트릭스 코멘트, 페르소나 자동 주입.
 
-UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
+UI는 **React SPA**(`web/`, Vite+TS+Router+Query), 백엔드는 **FastAPI**(`api/`). 과거 Streamlit(`app.py`·`ui/`)은 **은퇴**(2026-06 제거)했다.
 
 ## 절대 규칙 (반드시 지킬 것)
 
 1. **토큰 절약**: 수정 대상 파일만 읽어라. UI 작업에 `sola/` 전체를 읽지 마라. (`DEV_GUIDELINES.md` §1)
-2. **평탄 스크립트**: `app.py`는 위→아래 실행 흐름. 마크업/state 헬퍼는 도메인 모듈(`ui/*_v2.py`, `ui/app_shell.py`, `ui/chat_panel.py` 등)로 빼라.
-3. **on_click 금지**: `if st.button():` → `_do_*` pending flag → `st.rerun()` 패턴만.
+2. **계층 분리**: 프런트(`web/`)는 `api/` 계약만 소비(`web/src/api/client.ts`). 도메인 로직은 백엔드(`store/`·`sola/`·`roadmap/`·`scraping/`)에 두고 라우터(`api/routers/*`)는 위임만.
+3. **API 타입 드리프트 가드**: `api/` 스키마를 바꾸면 `python scripts/gen_openapi.py && cd web && npm run gen:types` 로 `web/src/api/schema.ts` 재생성. OpenAPI 스냅샷 테스트가 검증.
 4. **HTTP 단일 진입점**: `scraping.http.build_session()` 외의 `requests.get/Session()` 금지.
-5. **XSS 방어**: 세션에 들어가거나 `st.markdown(unsafe_allow_html=True)`로 나가는 모든 사용자/외부 문자열은 `html.escape()`.
-6. **네임스페이스 분리**: `sc_*` (수집), `rm_*` (로드맵), `ins_*` (보드), `sola_*` (LLM), pending은 `_` prefix.
+5. **XSS 방어**: React는 기본 escape. `dangerouslySetInnerHTML` 사용 금지(불가피하면 sanitize). 백엔드에서 외부 문자열을 HTML로 합성하지 마라.
+6. **세션/인증 seam**: `api/deps.py`(`current_identity`·`Identity`)는 no-op 인증 = Phase 2 교체점. 식별·감사 5필드는 `store/_audit.py`.
 7. **main 직push 금지**: 모든 변경은 작업 브랜치 → PR → 머지.
 8. **작업 완료 보고 의무 (패치노트 형식)**: 모든 개발 지시가 끝나면 사용자에게 아래를 **반드시** 한 메시지로 정리한다 (생략 금지, 단순 정보 질문 응답은 제외).
    1. **무엇을 어떻게 수정했는지 — 패치노트처럼 항목별로 명확히 쭉 나열**. 각 항목은 `무엇을(파일·함수·기능) → 어떻게 바꿨고 왜(동작·효과)` 가 한눈에 보이게 쓴다. 기호·약어만 뭉쳐 나열하지 말고, 읽어서 이해되는 문장으로.
@@ -44,7 +44,8 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 
 ## 읽기 라우팅 (작업별 최소 파일)
 
-> v2 셸 기준. 화면 모듈은 모두 `ui/*_v2.py`. `ui/<name>_tab.py` 는 더 이상 존재하지 않는다.
+> UI는 React(`web/src/pages/*`, `web/src/components/*`), 백엔드는 FastAPI(`api/routers/*`).
+> 화면 작업은 보통 **React 페이지 + 대응 API 라우터** 두 곳을 함께 본다.
 
 | 작업 | 읽을 파일 |
 |---|---|
@@ -59,20 +60,18 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | LLM 호출·프롬프트 | `sola/client.py`(facade·`chat`/`chat_stream`), `sola/providers/*`(openai 내장·`anthropic`), `sola/prompts.py`. 교체: `LLM_PROVIDER`(openai/anthropic) |
 | 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
 | 페르소나 | `persona/{schema,store,context}.py` |
-| 📊 오늘의 보드 | `ui/board_v2.py` |
-| 🗞 뉴스 수집 | `ui/data_management_v2.py` → `render_collect` (카드뷰: 대분류 탭 키워드/포탈 + 출처칩 + 사진 카드 `_sc_*` + 기사 모달 `_news_modal_body`; `⚙ 수집 설정` 서브뷰 `_render_collect_settings`: 키워드·출처·이력. +`ui/data_management_render.py`=출처색 그라데이션·기사 나이 라벨 헬퍼만, `ui/data_health.py`) |
-| 📋 작업 정의 | `ui/data_management_v2.py` → `render_taskdef` (탭 없이 엑셀 업로드+관리, +`ui/task_def_manage.py`, `store/task_defs_db.py`) |
-| 🔎 인사이트 분석 | `ui/insights_v2.py` |
-| 🤖 SOLA 작업실 | `ui/sola_workshop_v2.py` |
-| 📦 산출물 보관함 | `ui/archive_v2.py` |
-| v2 셸 (topbar·좌측 nav·우측 SOLA 패널·⌘K) | `ui/app_shell.py` |
-| 사이드바 / 페르소나 모달 / 온보딩 | `ui/sidebar.py`, `ui/persona_page.py`, `ui/onboarding.py` |
-| 글로벌 채팅 패널 (우측 컬럼) | `ui/chat_panel.py` (`render_side`) |
-| CSS·스타일 | `ui/styles.py` (+ `assets/v2/*.css`: tokens·card·shell·sidebar·streamlit-overrides·scale + `screens/*.css`) |
-| HTML 컴포넌트 빌더 | `ui/components.py` |
-| 진입점·디스패치·세션 키 | `app.py` (+ `docs/INVARIANTS.md`) |
-| 백엔드 HTTP API (React 전환) | `api/main.py`(앱·CORS·health), `api/deps.py`(no-op 인증=Phase2 교체점), `api/schemas.py`(식별필드), `api/routers/*`(`taskdefs` CRUD+엑셀upload·`bookmarks`·`news`·`trends`·`opportunities`·`proposals`·`collect`(scraping 지연)·`threads`+메시지·`assistant` SSE챗+context·`board` 브리프 — `store`/`sola` 위임) |
-| React 프런트엔드 | `web/`(Vite+React+TS+Router+Query). `web/src/api/client.ts`(타입드 fetch+SSE), `web/src/components/{Layout,AssistantDrawer}.tsx`, `web/src/pages/*`, `web/src/styles/tokens.css`(assets/v2 승계). dev: `uvicorn api.main:app` + `npm run dev` |
+| 📊 오늘의 보드 | `web/src/pages/Board.tsx` (+ `api/routers/board.py`·`trends.py`) |
+| 🗞 뉴스 수집 | `web/src/pages/Collect.tsx` (카드/설정·기사모달·수집 SSE; + `api/routers/news.py`·`collect.py`·`sources.py`) |
+| 📋 작업 정의 | `web/src/pages/TaskDefs.tsx` (엑셀 업로드·diff 미리보기·풀편집폼·이력; + `api/routers/taskdefs.py`, `roadmap/ingest.py`, `store/task_defs_db.py`) |
+| 🔎 인사이트 분석 | `web/src/pages/Insights.tsx` (트렌드 라인·BubbleMatrix·Heatmap+셀매칭; + `api/routers/insights.py`·`trends.py`·`opportunities.py`) |
+| 🤖 자동화 제안 (제안 생성 + 보관함) | `web/src/pages/Proposals.tsx` (+ `api/routers/proposals.py`·`bookmarks.py`) |
+| 👤 페르소나 / 온보딩 | `web/src/pages/Persona.tsx`, `web/src/components/Onboarding.tsx` (+ `api/routers/persona.py`·`prefs.py`) |
+| 앱 셸 (좌 nav·topbar·우 SOLA 드로어·반응형) | `web/src/components/{Layout,Sidebar,Topbar,AssistantDrawer}.tsx`, `web/src/nav.ts` |
+| SOLA 채팅(SSE)·화면별 추천질문·핸드오프 | `web/src/components/AssistantDrawer.tsx` (+ `api/routers/assistant.py`·`threads.py`) |
+| CSS·스타일·테마 | `web/src/styles/{app.css,tokens.css,themes.css,ui.css,screens/*.css}` |
+| 공통 컴포넌트·차트 | `web/src/components/ui/*`, `web/src/components/charts/*`(SVG: Line·Bar·Sparkline·BubbleMatrix·Heatmap) |
+| 타입드 API 클라이언트 | `web/src/api/client.ts`(fetch+SSE), `web/src/api/types.ts`, `web/src/api/schema.ts`(openapi-typescript 자동생성) |
+| 백엔드 HTTP API | `api/main.py`(앱·CORS·health), `api/deps.py`(no-op 인증=Phase2 교체점), `api/schemas.py`(식별필드), `api/routers/*` — `store`/`sola` 위임 |
 | 식별·감사 필드 표준 | `store/_audit.py` (`stamp`/`backfill`/`now_iso`) |
 | 영구화 백엔드 seam (Phase 2 교체점) | `store/repository.py` (`Repository`·`JsonlRepository`·`get_repository`, `INSIGHTBOARD_STORAGE`). bookmarks 적용 |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
@@ -83,7 +82,7 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 | 배포(프런트 Vercel + 백엔드 Render) | `docs/DEPLOY.md` |
 | React 전환 준비물 실측 카탈로그 (세션키·라우팅·컴포넌트·식별필드) | `docs/REACT_PREP_INVENTORY.md` |
 
-> ⚠ 데드 (건드리기 전 `REFACTOR_PLAN` 확인): `sola/side_context.py`(orphan·보존 — 사이드 채팅 컨텍스트 연결 대상). `propose`/`summarize` 는 부활(SOLA 작업실 연결). Phase 3 에서 `ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`app_shell.render_app_side/sola`(+패널 토글)·`chat_panel.render`·`task_defs_db.upsert_many`·`sola_main.html` 삭제됨.
+> ⚠ Streamlit 은퇴(2026-06): `app.py`·`ui/`·`assets/v2`·streamlit 의존 테스트 44개·streamlit 전용 스크립트 4개 삭제, `requirements.txt` 에서 streamlit 제거. `config.py` 의 streamlit secrets fallback 만 try/except 로 보존(백엔드는 streamlit 없이 동작). `sola/side_context.py` 는 여전히 orphan·보존.
 
 전체 라우팅 표는 [`DEV_GUIDELINES.md §3`](./DEV_GUIDELINES.md#3-라우팅-표).
 
@@ -93,12 +92,13 @@ UI는 `ui/` 패키지의 탭 모듈로 분리, `app.py`는 평탄 디스패처.
 # 스테이지된 .py 만 compile (CI 가 모든 .py 를 자동 검사)
 python -m py_compile $(git diff --name-only --cached | grep '\.py$')
 
-grep -rnE 'on_click\s*=' app.py ui/                                # 0
+# requests 직접 호출 금지(scraping/http.py 의 build_session 만 예외)
 grep -rnE 'requests\.(get|post|Session)\(' \
-     app.py ui/ sola/ store/ roadmap/ persona/ scraping/ \
+     api/ sola/ store/ roadmap/ persona/ scraping/ \
      | grep -v 'scraping/http\.py:'                                # 0
 
-pytest -q
+pytest -q                                                          # 백엔드
+cd web && npm run build                                            # 프런트(타입체크+빌드)
 ```
 
 > GitHub Actions(`.github/workflows/ci.yml`)이 동일 검증을 PR 마다 자동 실행한다.
