@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed / Added (인사이트 히트맵 일관화 + LLM 그레이스풀 처리) — `fix-insights-llm-hardening`
+- **히트맵 토큰 매칭 통일** (`api/routers/insights.py`): `/heatmap`·`/heatmap-cell` 의 공정↔뉴스 연결을 공정명(lv3) **문자열 substring** 검색에서 `store.match.score_matches`(토큰/의미유사도) **재사용**으로 교체. 실데이터의 공정명이 다단어(`용접 작업`·`절단작업`·`LUG 제거 작업`)라 본문에 전체 문자열이 안 나와 히트맵이 **전부 0** 으로 비어 보이던 문제 해결(자동화 기회 매트릭스는 토큰 매칭이라 강하게 뜨는데 히트맵만 0 → 불일치 제거). 드릴다운도 같은 매칭을 써 **불 켜진 셀을 누르면 반드시 근거 기사**가 나온다. 응답 스키마 불변(프런트 무수정).
+- **제안서/요약 LLM 오류 변환** (`api/routers/proposals.py`): `_llm_or_http()` 헬퍼로 `generate`·`summarize` 를 감싸 LLM **미설정=503**, 호출 실패(호스트 차단·키 오류 등)=**502** + 안내 메시지로 변환. 과거엔 룰 폴백이 없어 그대로 **500**(예: `api.groq.com` egress 차단) 노출되던 것을 하드닝. (어시스턴트 챗은 이미 SSE error 프레임으로 처리됨 — 무변경.)
+- **진단 헬스체크 추가** (`api/main.py` `GET /api/health/deps`): LLM 설정/제공자·작업정의 건수·최근7일 뉴스 건수·`ready` 플래그를 표면화. `/api/health`(liveness)는 의존성과 무관하게 항상 단순 200 유지(배포 프로브 안정).
+- 검증: 신규 테스트 5건(히트맵 점등·드릴다운·502/503·deps) + 기존 히트맵 테스트 갱신 → **pytest 470**, 웹 빌드 OK, OpenAPI 스냅샷·web 타입 재생성(44 paths).
+
 ### Added (작업 정의 시드 — 영구 보존) — `feat-taskdef-seed`
 - **`roadmap/seed_data/task_defs.xlsx`**: 사용자 제공 작업 정의 원본(공정정의서_통합, 87건 — C팀 10·F팀 77)을 **리포에 커밋**. `data/` 는 `.gitignore` + 호스팅 디스크 휘발(무료 플랜)이라 세션·재배포마다 작업 정의가 사라지던 문제 해결.
 - **`roadmap/seed.py` `seed_if_empty()`**: DB 가 비어 있을 때만 시드 엑셀을 `ingest_excel(replace=True)` 로 적재(idempotent — 데이터 있으면 건너뜀 → 영구 디스크/사용자 편집 보존). 실패해도 부팅을 막지 않음.
