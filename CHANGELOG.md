@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed (수집 — 빈 키워드 시 네이버·구글 누락) — `fix-collect-default-keywords`
+- **`api/routers/collect.py`**: UI '지금 수집'(빈 키워드)·페르소나 관심 키워드 미설정으로 키워드가 비면 naver/google 이 **통째로 건너뛰어** AI Times·오토메이션월드(tech)만 수집되던 문제 수정. 수집 API(`POST /api/collect`·`/stream`)가 키워드가 비면 **도메인 기본 키워드(`config.DEFAULT_DAILY_KEYWORDS` 8개: 조선소 자동화·용접 로봇·디지털 트윈·스마트팩토리·산업용 로봇·협동 로봇·제조 AI·선박 건조)** 로 폴백(`_keywords_or_default`). tech 는 키워드 무관이라 영향 없음. cron(daily_scrape)은 자체 기본값을 직접 넘기므로 불변.
+- 효과: 메인 '지금 수집' 버튼·보드 '지금 수집' 으로도 **네이버·구글·AI Times·오토메이션월드 4종이 각각** 수집된다. 테스트 1건 추가(빈 키워드→기본 폴백 검증) → pytest 462.
+
 ### Fixed (보드 무한 로딩 방어 — 요청 타임아웃·에러 안내) — `fix-board-loading-resilience`
 - **`web/src/api/client.ts`**: `req()` 에 **60초 AbortController 타임아웃** 추가. 타임아웃 없던 탓에 백엔드가 연결만 잡고 응답을 안 주면(예: Render 무료 콜드스타트/무응답) 쿼리가 **영원히 pending** → 브리핑·탑스토리 스켈레톤이 끝없이 남던 문제 방어. 초과 시 "서버 응답이 너무 늦어요(콜드스타트일 수 있어요)" 에러로 전환.
 - **`web/src/pages/Board.tsx`**: SOLA 브리핑·탑스토리에 **에러 상태 분기** 추가 — 실패 시 빈칸/스켈레톤 대신 사유 안내(+탑스토리는 "다시 시도" 버튼)를 보여줘 멈춘 것처럼 보이지 않게. `LoadError` 헬퍼 추가.
