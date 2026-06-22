@@ -1,6 +1,7 @@
 """api.routers.news / trends / proposals — store·sola 위임."""
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -10,14 +11,17 @@ from store import news_db
 
 client = TestClient(app)
 
+# 오늘 날짜로 시드 — trends/volume 의 N일 윈도우 안에 항상 들도록(하드코딩 날짜는 시간이 지나면 윈도우 밖으로 썩는다).
+_TODAY = date.today().isoformat()
+
 
 def _seed():
     news_db.save_articles(
         [
             {"title": "조선소 용접 자동화", "link": "l1", "source": "naver",
-             "keywords": "용접, 자동화", "date": "2026-06-15"},
+             "keywords": "용접, 자동화", "date": _TODAY},
             {"title": "강재 절단 효율화", "link": "l2", "source": "google",
-             "keywords": "절단, 자동화", "date": "2026-06-15"},
+             "keywords": "절단, 자동화", "date": _TODAY},
         ],
         source="naver",
     )

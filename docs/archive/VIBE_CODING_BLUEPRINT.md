@@ -1,3 +1,5 @@
+> 📜 **아카이브 (완료·히스토리)** — React 전환 과정의 계획/기록 문서. 현재 코드와 다를 수 있다. 현행 기준은 `CLAUDE.md` · `docs/ARCHITECTURE.md` 를 보라.
+
 # VIBE CODING BLUEPRINT — Streamlit 기반 뉴스+자동화 과제 시스템
 
 > ⚠️ **역사적 기록** — 초기 비전·블루프린트(2026-05 이전). 현재 진행 중인 정리·정합 작업의 source-of-truth 는

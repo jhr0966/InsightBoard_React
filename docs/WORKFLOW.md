@@ -1,8 +1,7 @@
 # WORKFLOW — 작업 진행 규칙
 
-> ⚠️ **역사적 기록** — 작업 진행 규칙(현재는 CLAUDE.md 가 권위 문서). 현재 진행 중인 정리·정합 작업의 source-of-truth 는
-> [`docs/REFACTOR_PLAN.md`](./REFACTOR_PLAN.md). 새 작업을 시작하기 전 이 파일이 아니라
-> `REFACTOR_PLAN.md` 와 `CLAUDE.md` 를 먼저 확인할 것.
+> 권위 문서는 `CLAUDE.md`. 새 작업 시작 전 `CLAUDE.md`(규칙·라우팅)와 `DEV_GUIDELINES.md`(요약)를 먼저 본다.
+> 이 파일은 멀티에이전트/머지 워크플로의 일반 절차만 담는다.
 
 
 > 여러 에이전트/사람이 겹쳐 작업할 때 어떤 순서로 움직이는지.
@@ -33,11 +32,11 @@ git checkout -b <category>-<slug>
 └──────┬──────┘
        ▼
 ┌─────────────┐
-│   수정       │ ← app.py는 평탄, on_click 금지, HTTP는 _build_session
+│   수정       │ ← 계층 분리(web→api 계약), HTTP는 build_session, LLM은 sola.client
 └──────┬──────┘
        ▼
 ┌─────────────┐
-│ 로컬 검증    │ ← streamlit run app.py + py_compile
+│ 로컬 검증    │ ← pytest -q + (web) npm run build + py_compile
 └──────┬──────┘
        ▼
 ┌─────────────┐
@@ -73,8 +72,8 @@ git checkout -b <category>-<slug>
 
 ## 5. PR / 머지
 
-- Streamlit Cloud 미리보기 또는 로컬 검증 스크린샷 1장 PR에 첨부.
-- `main` 머지 = 즉시 배포. 따라서 **검증 실패 시 머지 금지**.
+- Vercel 프리뷰(프런트) 또는 로컬 검증 결과를 PR에 남긴다.
+- `main` 머지 = Vercel/Render 자동 배포. 따라서 **검증 실패 시 머지 금지**.
 - 머지 후 `docs/SESSIONS.md`의 해당 세션에 "merged" 표시.
 
 ## 6. 롤백

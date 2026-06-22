@@ -1,6 +1,7 @@
-# News 개발 지침
+# InsightBoard 개발 지침
 
 > CLAUDE.md의 규칙을 정리한 개발자용 요약 문서.
+> 스택: **React SPA(`web/`) + FastAPI(`api/`)** + 도메인 백엔드(`scraping`·`roadmap`·`store`·`sola`·`persona`).
 > 3대 축: **수집·enrich · 로드맵·매칭 · SOLA LLM**
 
 ## 1. 토큰 절약 규칙 (최우선)
@@ -15,87 +16,65 @@
 
 | 파일/패키지 | 역할 | 언제 읽나 |
 |---|---|---|
-| `app.py` | Streamlit 엔트리 (평탄 스크립트, 3영역 디스패치) | 영역/탭/네비게이션/세션 상태 작업 시 |
-| `scraping/` | 네이버·구글RSS·AI Times·오토메이션월드 + HTTP 단일 진입점 + 본문 enrich | 크롤링·파서·셀렉터·본문 enrich 작업 시 |
-| `roadmap/` | 조선소 작업 정의 엑셀 → snake_case 정규화 → Parquet | 로드맵 스키마/적재/쿼리 작업 시 |
-| `store/` | 뉴스 Parquet · 매칭 · 트렌드 · 캐시 · 채팅·북마크 영구화 | 데이터 저장·조회·집계 작업 시 |
-| `sola/` | LLM 호출 · 프롬프트 · 요약·제안서·채팅·인사이트·자동화 기회 | LLM 호출·프롬프트·결과 포맷 작업 시 |
-| `persona/` | 사용자 부서·직무·관심 공정 (JSON 영구화) | 페르소나 UI/컨텍스트 주입 작업 시 |
-| `ui/` | v2 셸(`app_shell`·`sidebar`·`chat_panel`·`styles`) + 5영역 화면(`*_v2.py`) + 보조(`onboarding`·`persona_page`·`task_def_manage`·`data_health`) | UI 변경 시 (해당 v2 파일만 읽기) |
+| `api/` | FastAPI 백엔드 — React 가 소비하는 HTTP 계약(`routers/*` 위임) | API 엔드포인트·스키마 작업 시 |
+| `web/` | React SPA(pages·components·charts·styles·타입드 client) | 화면/UI 작업 시 (해당 페이지·컴포넌트만) |
+| `scraping/` | 네이버·구글RSS·AI Times·오토메이션월드 + HTTP 단일 진입점 + 본문 enrich | 크롤링·파서·셀렉터·enrich 작업 시 |
+| `roadmap/` | 작업 정의 엑셀 → snake_case 정규화 → Parquet + SQLite | 로드맵 스키마/적재/쿼리 작업 시 |
+| `store/` | 뉴스 Parquet · 매칭 · 트렌드 · 캐시 · 채팅·북마크 영구화 · 식별/감사 | 데이터 저장·조회·집계 작업 시 |
+| `sola/` | LLM 호출 · 프롬프트 · 요약·제안서·인사이트·자동화 기회 (provider 추상화) | LLM 호출·프롬프트·결과 포맷 작업 시 |
+| `persona/` | 사용자 부서·직무·관심 공정 (JSON 영구화) | 페르소나 컨텍스트 주입 작업 시 |
 | `config.py` | `.env` 로딩 · LLM 백엔드 라우팅 · 데이터 경로 상수 | 환경/백엔드/경로 작업 시 |
-| `assets/styles.css` | 전역 CSS 토큰·컴포넌트 스타일 | CSS 수정 시에만 |
-| `docs/INVARIANTS.md` | state/위젯 불변식 | state·widget·세션키 작업 시에만 |
 | `docs/ARCHITECTURE.md` | 모듈 경계·데이터 플로우 | 아키텍처 이해 필요 시에만 |
-| `docs/WORKFLOW.md` | 멀티에이전트 워크플로 | 에이전트 협업 시에만 |
+| `docs/INVARIANTS.md` | 백엔드/계층 불변식 | 계약·식별필드·seam 작업 시에만 |
+| `docs/DEPLOY.md` | Vercel(프런트)+Render(백엔드) 배포 | 배포 작업 시에만 |
 | `docs/SESSIONS.md` | 세션 로그 | 이전 세션 복원 시 (상단 1개만) |
 | `CHANGELOG.md` | 릴리스 이력 | 릴리스/버전 작업 시에만 |
 
 ## 3. 라우팅 표
 
-> v2 셸 기준. CLAUDE.md 의 라우팅 표와 동일. 화면 모듈은 모두 `ui/*_v2.py`.
+> **단일 소스는 `CLAUDE.md` 의 "읽기 라우팅" 표다.** 화면 작업은 보통 **React 페이지 + 대응 API 라우터** 두 곳을 함께 본다.
+> 여기엔 자주 쓰는 것만 발췌:
 
-| 작업 | 읽을 파일 (이것만) |
+| 작업 | 읽을 파일 |
 |---|---|
 | 스크래퍼 셀렉터·HTTP 버그 | `scraping/<source>.py` (+ `scraping/http.py`) |
-| 새 사이트 추가 (도메인 휴리스틱) | `scraping/tech_sites.py` |
 | 본문 enrich / 키워드·요약 | `scraping/enrich.py` |
-| 일일 cron 수집 | `scraping/run_daily.py`, `scripts/daily_scrape.py` |
 | 로드맵 엑셀 스키마/적재 | `roadmap/{schema,ingest}.py` |
 | 작업 정의 CRUD (SQLite) | `store/task_defs_db.py`, `roadmap/{task_def_form,task_def_json}.py` |
-| 로드맵 조회 (SQLite→Parquet) | `roadmap/{query,sqlite_sync}.py` |
-| 뉴스↔작업 매칭 | `store/match.py` |
-| 자동화 기회 매트릭스 | `sola/opportunity.py` |
-| 트렌드·캐시·북마크·채팅 영구화 | `store/{trends,cache,bookmarks,chat_log,sola_threads,sources}.py` |
-| LLM 호출·프롬프트 | `sola/client.py` + `sola/prompts.py` |
-| 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
-| 페르소나 | `persona/{schema,store,context}.py` |
-| 📊 오늘의 보드 화면 | `ui/board_v2.py` |
-| 🧱 데이터 관리 화면 | `ui/data_management_v2.py` (+ `ui/task_def_manage.py`, `ui/data_health.py`) |
-| 🔎 인사이트 분석 화면 | `ui/insights_v2.py` |
-| 🤖 SOLA 작업실 화면 | `ui/sola_workshop_v2.py` |
-| 📦 산출물 보관함 화면 | `ui/archive_v2.py` |
-| v2 셸 (topbar·좌측 nav·우측 SOLA 패널·⌘K) | `ui/app_shell.py` |
-| 사이드바 / 페르소나 모달 / 온보딩 | `ui/sidebar.py`, `ui/persona_page.py`, `ui/onboarding.py` |
-| 글로벌 채팅 패널 (본문 끝) | `ui/chat_panel.py` |
-| 영역/디스패치/세션 상태 | `app.py` + `docs/INVARIANTS.md` |
-| CSS만 수정 | `ui/styles.py`, `assets/styles.css` |
-| HTML 컴포넌트 빌더 | `ui/components.py` |
+| 뉴스↔작업 매칭 / 자동화 기회 | `store/match.py`, `sola/opportunity.py` |
+| LLM 호출·프롬프트 | `sola/client.py` + `sola/providers/*` + `sola/prompts.py` |
+| 📊 오늘의 보드 | `web/src/pages/Board.tsx` (+ `api/routers/board.py`·`trends.py`) |
+| 🗞 뉴스 수집 | `web/src/pages/Collect.tsx` (+ `api/routers/news.py`·`collect.py`·`sources.py`) |
+| 📋 작업 정의 | `web/src/pages/TaskDefs.tsx` (+ `api/routers/taskdefs.py`, `roadmap/ingest.py`) |
+| 🔎 인사이트 분석 | `web/src/pages/Insights.tsx` (+ `api/routers/insights.py`·`trends.py`·`opportunities.py`) |
+| 🤖 자동화 제안 | `web/src/pages/Proposals.tsx` (+ `api/routers/proposals.py`·`bookmarks.py`) |
+| 👤 페르소나 / 온보딩 | `web/src/pages/Persona.tsx`, `web/src/components/Onboarding.tsx` (+ `api/routers/persona.py`·`prefs.py`) |
+| 앱 셸 · SOLA 드로어 | `web/src/components/{Layout,Sidebar,Topbar,AssistantDrawer}.tsx` (+ `api/routers/assistant.py`·`threads.py`) |
+| 타입드 API 클라이언트 | `web/src/api/{client,types,schema}.ts` |
+| CSS·테마 | `web/src/styles/{app,tokens,themes,ui}.css` · `screens/*.css` |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
-| 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
 | 이전 세션 복원 | `docs/SESSIONS.md` (상단 1개) |
-| 릴리스/버전 | `CHANGELOG.md` |
 | 단순 문답 | **CLAUDE.md 만으로 충분** |
-
-> ⚠ 데드 (`docs/REFACTOR_PLAN.md` Phase 4 에서 정리): `ui/layout.py`, `ui/task_tree.py`, `sola/{propose,summarize,insight,chat_ctx}.py`, `store/task_defs_db.upsert_many`.
 
 ## 4. 불변 규칙 요약
 
 자세한 내용: [`docs/INVARIANTS.md`](./docs/INVARIANTS.md)
 
-- **I-1** 스크래핑 결과 쓰기는 `_search_pending` 플래그로 다음 run 최상단에서만.
-- **I-2** 위젯 state 쓰기는 최상단 pending-flag 핸들러에서만.
-- **I-3** `on_click=` 금지. `if st.button():` + `_do_*` 플래그 + `st.rerun()`.
-- **I-4** `app.py`는 평탄 스크립트. 마크업/state 헬퍼는 `ui/*_tab.py`로 이전.
-- **I-5** 스크래핑 결과는 도메인 필터 통과 후에만 state에 저장.
-- **I-6** 외부 HTTP는 항상 `scraping.http.build_session()` 사용.
-- **I-7** 본문 enrich는 `scraping.enrich.enrich_articles` 진입점만 사용.
-- **I-8** HTML을 세션에 넣거나 `unsafe_allow_html=True`로 렌더 시 `html.escape()` 필수.
-- **I-9** 네임스페이스: 수집 `sc_`, 로드맵 `rm_`, 보드 `ins_`, SOLA `sola_`, pending은 `_` prefix.
-- **I-10** LLM 호출은 `sola.client.chat()` 단일 진입점, 프롬프트는 `sola/prompts.py` 상수만 사용.
+- **계층 분리**: 프런트(`web/`)는 `api/` 계약만 소비(`web/src/api/client.ts`). 도메인 로직은 백엔드, `api/routers/*` 는 위임만.
+- **API 타입 드리프트 가드**: `api/` 스키마 변경 시 `python scripts/gen_openapi.py && cd web && npm run gen:types`. OpenAPI 스냅샷 테스트가 검증.
+- **HTTP 단일 진입점**: 외부 HTTP 는 항상 `scraping.http.build_session()`. 다른 곳의 `requests.get/post/Session()` 금지.
+- **enrich 단일 진입점**: 본문 enrich 는 `scraping.enrich` 진입점만.
+- **LLM 단일 진입점**: `sola.client.chat/chat_stream`, 프롬프트는 `sola/prompts.py` 상수. provider 는 `LLM_PROVIDER` 로 교체.
+- **XSS**: React 기본 escape. `dangerouslySetInnerHTML` 금지. 백엔드에서 외부 문자열 HTML 합성 금지.
+- **인증/식별 seam**: `api/deps.py`(no-op 인증=Phase 2 교체점), 식별·감사 5필드 `store/_audit.py`.
 
 ## 5. 브랜치 전략
 
 - **`main`**: 안정 코드만. 직접 push 금지. 머지만 허용.
-- **작업 브랜치**: 수정 요청마다 최신 `main`에서 별도 브랜치를 만든다. 이미 PR을 만든 브랜치를 다음 작업에 재사용하지 않는다.
-- **PR 올리기 전**: 가능한 환경에서는 `git fetch` 후 최신 `main`에 rebase/merge해 충돌을 먼저 확인한다.
-- **고충돌 파일**: `CHANGELOG.md`, `docs/SESSIONS.md`는 여러 PR이 상단을 동시에 수정하므로 `.gitattributes`에서 `merge=union`을 적용한다. 충돌은 줄어들지만 머지 후 중복/순서는 리뷰어가 확인한다.
-- **네이밍**: `<카테고리>-<설명>` (슬래시 금지, 하이픈 구분)
-  - `fix-scraper-selector`
-  - `feat-insight-trend`
-  - `feat-cardnews-export`
-  - `style-unify-cards`
-  - `refactor-session-keys`
-  - `docs-invariants`
+- **작업 브랜치**: 수정 요청마다 최신 `main`에서 별도 브랜치. 이미 PR 올린 브랜치 재사용 금지.
+- **PR 올리기 전**: 가능한 환경에서 최신 `main`에 rebase/merge 로 충돌 먼저 확인.
+- **고충돌 파일**: `CHANGELOG.md`, `docs/SESSIONS.md`는 `.gitattributes` `merge=union`. 머지 후 중복/순서만 리뷰.
+- **네이밍**: `<카테고리>-<설명>` (슬래시 금지, 하이픈) — `fix`/`feat`/`refactor`/`style`/`docs`/`chore`.
 
 ## 6. 검증 (커밋 전 필수)
 
@@ -103,12 +82,13 @@
 # 스테이지된 .py 만 compile (CI 가 모든 .py 를 자동 검사)
 python -m py_compile $(git diff --name-only --cached | grep '\.py$')
 
-grep -rnE 'on_click\s*=' app.py ui/                                # 0
+# requests 직접 호출 금지 (scraping/http.py 의 build_session 만 예외)
 grep -rnE 'requests\.(get|post|Session)\(' \
-     app.py ui/ sola/ store/ roadmap/ persona/ scraping/ \
+     api/ sola/ store/ roadmap/ persona/ scraping/ \
      | grep -v 'scraping/http\.py:'                                # 0
 
-pytest -q
+pytest -q                                                          # 백엔드
+cd web && npm run build                                            # 프런트(타입체크+빌드)
 ```
 
 > `.github/workflows/ci.yml` 이 PR 마다 동일 검증을 자동 실행한다.
@@ -123,11 +103,10 @@ pytest -q
 
 ## 8. 스택
 
-- **Streamlit** ≥ 1.32 · `app.py` 단일 평탄 스크립트 + `ui/` 탭 모듈
-- **BeautifulSoup4 + lxml** (fallback: `html.parser`) · `scraping/`
-- **Pandas + PyArrow** · 뉴스/로드맵 Parquet (`store/`, `roadmap/`)
-- **openpyxl** · 로드맵 엑셀 적재 (`roadmap/ingest.py`)
-- **OpenAI SDK ≥ 1.40** · `LLM_BACKEND` 스위치 (`sola/client.py`) — Groq / 사내 / Ollama
-- **python-dotenv** · `.env` 자동 로드 (`config.py`)
-- **`assets/styles.css`** · Noto Serif KR · IBM Plex Sans KR
-- **배포**: Streamlit Cloud → `main` 브랜치 추적
+- **프런트**: React 18 + Vite + TypeScript + React Router + TanStack Query (`web/`). SVG 차트 직접 구현. openapi-typescript 로 타입 생성.
+- **백엔드**: FastAPI + uvicorn (`api/`). Pydantic 스키마. OpenAPI 스냅샷 테스트.
+- **수집**: BeautifulSoup4 + lxml (fallback `html.parser`) + curl_cffi (`scraping/`).
+- **데이터**: Pandas + PyArrow (Parquet) · SQLite(task_defs) · openpyxl(엑셀).
+- **LLM**: OpenAI SDK(groq 호환)·anthropic SDK. `LLM_PROVIDER`/`LLM_BACKEND` 스위치(`sola/`).
+- **환경**: python-dotenv (`.env`).
+- **배포**: 프런트 Vercel + 백엔드 Render (`main` 추적). → `docs/DEPLOY.md`.

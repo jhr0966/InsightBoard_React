@@ -1,216 +1,66 @@
 # INVARIANTS — 깨뜨리면 버그가 나는 규칙
 
-> Streamlit 재실행 모델과 스크래핑 계층에서 반복 발견된 함정들.
-> 새로운 버그/해결책이 나오면 여기에 I-N으로 추가한다.
-
-## 기본 원칙
-
-Streamlit은 위→아래로 스크립트를 매번 재실행한다. 위젯을 생성한 **후**에 해당 위젯의 state key를 쓰면 `StreamlitAPIException` 또는 silent desync가 난다. 따라서 **모든 state 쓰기는 run 최상단**, 위젯 인스턴스화 이전에 끝내야 한다.
+> React(`web/`) + FastAPI(`api/`) 스택의 계층·계약 불변식. 새 함정이 나오면 I-N으로 추가.
+> (은퇴한 Streamlit 런타임 불변식은 `docs/archive/INVARIANTS_STREAMLIT.md`.)
 
 ---
 
-## I-1 — 스크래핑 결과는 pending flag 경유
+## I-1 — 계층 분리: 프런트는 `api/` 계약만 소비
 
-검색 버튼 핸들러에서 직접 `st.session_state.sc_articles = [...]` 하지 마라. 이미 한 번 렌더된 위젯의 state가 덮어써지면서 값이 튕긴다.
+React(`web/`)는 도메인 로직을 직접 호출하지 않는다. **유일한 데이터 경로는 `web/src/api/client.ts`(fetch+SSE) → `api/routers/*`** 다. 라우터는 검증·직렬화만 하고 도메인 로직은 `store`/`sola`/`roadmap`/`scraping`/`persona` 에 위임한다. 라우터에 비즈니스 로직을 쌓지 마라.
 
-**✅ 올바른 패턴**
-```python
-# 최상단
-if st.session_state.get("_search_pending"):
-    kw = st.session_state["_search_pending"]
-    st.session_state.sc_articles = scraper.search_naver_news(kw)
-    del st.session_state["_search_pending"]
+## I-2 — API 타입 드리프트 가드
 
-# 나중에 (버튼)
-if st.button("검색"):
-    st.session_state["_search_pending"] = st.session_state.sc_keyword
-    st.rerun()
+`api/` 의 Pydantic 스키마/엔드포인트를 바꾸면 **반드시** 재생성:
+
+```bash
+python scripts/gen_openapi.py && cd web && npm run gen:types
 ```
 
-## I-2 — 위젯 state 쓰기는 최상단 pending-flag 핸들러에서만
+`web/src/api/schema.ts` 는 openapi-typescript 자동생성물이라 **손으로 고치지 않는다**. `tests/test_openapi_snapshot.py` 가 스냅샷 드리프트를 차단한다. dict 를 그대로 반환하는 엔드포인트(named schema 없음)만 `web/src/api/types.ts` 에 손수 유지.
 
-`text_input`, `selectbox` 등의 `key=`로 묶인 state는 위젯이 렌더된 뒤에는 쓸 수 없다. 쓰고 싶다면 pending flag로 다음 run의 최상단에 처리.
+## I-3 — 외부 HTTP 는 `scraping.http.build_session()` 경유
 
-## I-3 — `on_click=` 금지
+재시도·백오프·UA 로테이션·타임아웃이 한 곳에 모여야 한다. `api`·`sola`·`store`·`roadmap`·`persona`·`scraping` 어디서도 `requests.get/post/Session()` 직접 호출 금지(예외: `scraping/http.py` 내부). CI 가 grep 으로 검사.
 
-콜백은 Streamlit 내부적으로 state 쓰기 타이밍이 불투명하다. 반드시:
-```python
-if st.button("액션", key="sc_btn_search"):
-    st.session_state["_do_search"] = True
-    st.rerun()
-```
+## I-4 — 본문 enrich 는 `scraping.enrich` 단일 진입점
 
-## I-4 — `app.py`는 평탄 스크립트
+개별 기사 본문 fetch 로직이 여러 곳에 퍼지면 병렬도·캐시·예외 처리가 엇갈린다. `scraping.enrich.enrich_articles_parallel` 만 사용.
 
-카드/배지/템플릿 등 **마크업 생성** 헬퍼는 `cardnews.py`나 `components/`로. `app.py` 내부에 `render_*` 이름 헬퍼를 두면 숨은 state 변이와 조건 분기가 섞여 추적 불가.
+## I-5 — LLM 호출은 `sola.client` facade, 프롬프트는 `sola/prompts.py`
 
-유일한 예외: `_show_debug()`처럼 **state를 읽기만** 하고 출력하는 순수 함수.
+- 모든 LLM 호출은 `sola.client.chat(...)` / `chat_stream(...)` 단일 진입점.
+- provider 는 `sola/providers/*`(`openai`·`anthropic`), `LLM_PROVIDER` 로 교체. base_url 라우팅은 `LLM_BACKEND`(groq/internal/ollama).
+- 인라인 문자열 프롬프트 금지 — `sola/prompts.py` 상수만.
 
-## I-5 — 도메인 필터 통과 후에만 state에 저장
+## I-6 — LLM/경로 설정은 `config.*` 헬퍼 경유
 
-`fetch_latest_tech_news`의 결과에 다른 도메인(예: 구글 광고 리다이렉트) URL이 섞이면 enrich 단계에서 외부 사이트로 대량 요청이 나간다. `_same_root_domain` + `_is_plausible_article_link`를 통과한 결과만 `sc_articles`에 저장한다.
+`LLM_PROVIDER`·`LLM_BACKEND`·`LLM_API_KEY`·`LLM_BASE_URL`·`LLM_MODEL`·`INSIGHTBOARD_DATA_ROOT`·`INSIGHTBOARD_CORS_ORIGINS` 는 `config.py` 헬퍼로 읽는다. 우선순위: ① OS 환경변수(`.env`, python-dotenv 자동 로드) → ② (과거 streamlit `st.secrets` fallback, 미설치 시 빈 값) → ③ 디폴트(Groq). 라우터·도메인 코드에서 `os.getenv` 직접 추가 금지. `.env` 는 **절대 commit 금지**(`.gitignore`).
 
-## I-6 — 외부 HTTP는 `_build_session()` 경유
+## I-7 — 식별·감사 5필드는 `store/_audit.py` 표준
 
-- 재시도·백오프 정책이 한 곳에 모여 있어야 변경이 쉽다.
-- UA 로테이션과 타임아웃도 마찬가지.
-- 새 코드에서 `requests.get(...)` 직접 호출은 리뷰에서 거부.
+영구화되는 레코드(bookmarks·threads 등)는 `store._audit.stamp/backfill` 로 `user_id·workspace_id·created_by·created_at·updated_at` 를 채운다. 식별 주체는 `api/deps.current_identity`(현재 no-op = Phase 2 인증 교체점) 가 제공. 라우터가 식별 필드를 손으로 조립하지 마라.
 
-## I-7 — 본문 enrich는 `enrich_articles_parallel`만
+## I-8 — 영구화는 `store/repository.py` seam 경유 (Phase 2 교체점)
 
-개별 기사 본문을 fetch하는 로직이 여러 곳에 퍼지면 병렬도·캐시·예외 처리가 엇갈린다. 단일 진입점만 사용.
+JSONL 기반 영구화는 `store.repository.get_repository()`(`Repository`·`JsonlRepository`, `INSIGHTBOARD_STORAGE`)를 통한다 — 향후 DB 백엔드 교체점. 직접 파일 경로를 열어 쓰지 말고 repository API 를 쓴다(현재 bookmarks 적용).
 
-## I-8 — HTML 출력 전 `html.escape()`
+## I-9 — `chat_log` 는 `chat_key` 별 파일
 
-세션에 넣는 title/press/summary는 이미 scraper에서 escape된다는 가정이지만, **새 필드를 추가할 때**는 항상 escape를 확인. `st.markdown(..., unsafe_allow_html=True)`로 나가는 조각에 raw 문자열 삽입 금지.
+`store.chat_log.{save_history,load_history,reset}` 는 모두 `chat_key` 인자를 받는다. 새 키는 `data/sola/chat/{slug}.jsonl` 에 저장되며 `_safe_key()` 가 파일명 슬러그를 강제(디렉토리 traversal 차단). 인자 생략 시 `default` 후방 호환.
 
-## I-9 — 네임스페이스 prefix
+## I-10 — XSS: React 기본 escape, `dangerouslySetInnerHTML` 금지
 
-| prefix | 의미 |
-|---|---|
-| `sc_*` | 스크래핑 state (e.g. `sc_articles`, `sc_keyword`, `sc_debug`) |
-| `ins_*` | 인사이트 state (e.g. `ins_selected_press`, `ins_date_range`) |
-| `cn_*` | 카드뉴스 state (e.g. `cn_selected_article`, `cn_template`) |
-| `_*_pending` | 다음 run 최상단에서 처리할 이벤트 |
-| `_do_*` | 버튼 클릭 플래그 |
+React 는 기본적으로 텍스트를 escape 한다. `dangerouslySetInnerHTML` 사용 금지(불가피하면 sanitize). 백엔드에서 외부 문자열을 HTML 로 합성해 내려보내지 마라(프런트가 데이터로 받아 렌더).
 
-다른 도메인의 state를 직접 읽/쓰지 마라 (예: insights가 `sc_articles`를 복사해 `ins_df`로 파생시키는 것은 OK, 원본을 수정하는 것은 금지).
+## I-11 — 화면 인계 URL 패턴 `?from=<kind>&dept=&lv3=`
 
-## I-10 — 카드뉴스 이미지 합성은 `cardnews.render_png()` 단일 진입점
+보드/인사이트/매트릭스 카드 → SOLA 드로어 인계는 `?from=` 쿼리 단일 패턴. `web/src/components/Layout.tsx` 가 `?from=` 감지 시 드로어 자동 오픈, `AssistantDrawer` 의 `handoffPrefill(from, dept, lv3)` 이 prefill 을 1회 자동 전송(sessionStorage 시그니처로 중복 차단). 지원 kind: `brief`/`board`·`opp`/`matrix`·`insights`/`ia_map`·`edit`. 새 인계는 이 경로를 재사용.
 
-- Pillow 로드, 폰트 경로, 여백 상수는 `cardnews.py` 상단에 한 번만.
-- 다른 곳에서 `PIL.ImageDraw`를 import해 직접 합성하면 폰트 경로 오차로 서버/로컬 불일치 발생.
+## I-12 — SSE 프레임 규약 `data: {json}\n\n`
 
-## I-11 — DataFrame 컬럼 고정
+스트리밍 엔드포인트(`/api/assistant/chat`·`/api/collect/stream`)는 `f"data: {json}\n\n"` 프레임을 yield 한다. 프런트는 `fetch` + `res.body.getReader()` 로 `\n\n` 분할 파싱(`streamChat`·`streamCollect`). 새 스트리밍 기능은 동일 프레임/파서 패턴을 따른다(keep-alive ping 포함).
 
-`articles_to_dataframe`이 반환하는 컬럼 순서는 CSV/엑셀 export 스키마와 동일해야 한다. 컬럼 추가 시:
+## I-13 — CORS 는 정확 일치
 
-1. `scraper.articles_to_dataframe` 수정
-2. `app.py`의 `_table_column_config` 동기화
-3. `CHANGELOG.md`에 schema change 명시
-
-## I-12 — 레거시 예외 (마이그레이션 전까지 유지)
-
-아래는 현행 코드에 남아 있는 규칙 위반이지만, **개별 브랜치에서 이관하기 전에는 건드리지 않는다** (한 번에 대규모 리팩터링 금지).
-
-### L-1. `app.py` 세션 키 prefix 미적용
-현행:
-```
-articles_naver, articles_tech, keyword_naver, debug_log
-```
-I-9 요구: `sc_*` prefix. → **신규 state 키는 반드시 prefix 적용.** 기존 4개는 `refactor-session-keys` 브랜치에서 일괄 rename 예정.
-
-### L-2. `app.py` 내 `render_cards_html`, `render_results` 함수
-I-4(`app.py`는 평탄 스크립트, 마크업 헬퍼 금지) 위반. 하지만 스크래퍼 탭의 카드/테이블 렌더가 이 두 함수에 의존. → **`feat-cardnews-migrate` 브랜치에서 `cardnews.render_html`/`cardnews.render_deck` 로 이관 예정.** 이관 전에는 두 함수를 그대로 호출해도 된다. **단, 새 render_* 함수 추가는 금지.**
-
-### L-3. CSS 인라인 vs `assets/styles.css` 이중화
-현행 `app.py` 상단 `st.markdown("<style>...")` 블록이 아직 살아 있다. `assets/styles.css` 는 `.cn-*` / `.ins-*` 신규 네임스페이스만 담당. → **CSS 수정 작업은 라우팅 표의 "CSS만 수정" 항목을 참조하되, 기존 `.news-*` / `.card-*` 토큰은 app.py 상단에서 고친다.** 전체 이관은 `refactor-css-extract` 브랜치.
-
-### 검증에서 예외 처리
-
-커밋 전 체크의 `grep -nE '^def render_' app.py` 는 현재 2건이 정상. 새로 추가되면 안 되므로 **증가 여부**만 감시한다.
-
-
-
-## I-13 — 글로벌 채팅 패널은 `ui/chat_panel.py` 단일 진입점 (Phase A: 우측 컬럼)
-
-v2 셸의 레이아웃은 **`app.py` 가 소유**한다: 좌측 네이티브 `st.sidebar`(nav) + `st.columns([2.3, 1])` 의 메인/채팅 2-컬럼. 우측 채팅 컬럼은 `ui/chat_panel.render_side(persona, area_key=...)` 단 한 곳에서 마운트한다. 채팅 전송(`_do_sola_send` pending)의 소비자는 `chat_panel.consume_send_if_any(persona)` **단일 구현**이지만, 호출 지점은 **2곳(이중 소비 설계)** 이다:
-
-1. **app.py 최상단** (`scope="app"`, 기본) — SOLA 작업실 form 전송과 인계 자동 전송(`sw._consume_prefill_ask_if_any`)처럼 **앱 전체 rerun 으로 도착하는** send 를 본문 렌더 **전에** 처리한다(작업실 중앙 캔버스 '현재 산출물'이 같은 런에서 답변을 반영).
-2. **`chat_panel._render_side_fragment` 최상단** (`scope="fragment"`) — 그 외 area 의 form 전송을 **채팅 컬럼 부분 rerun 안에서** 처리(앱 전체 재실행 없음).
-
-같은 pending 키를 `session_state.pop` 으로 소비(**pop-once**)하므로 이중 처리는 구조적으로 불가 — 풀런에서는 app.py 가 먼저 pop 해 fragment 쪽은 no-op 이고, fragment rerun 중에는 fragment 쪽만 실행된다. (구 `sola_workshop_v2._consume_send_if_any` 는 끝에서 전체 `st.rerun()` 을 고정 호출해 부분 rerun 을 깨므로 chat_panel 재구현으로 대체·삭제됨, 2026-06-10.)
-
-- **app.py 규약**: 5개 area **전부(SOLA 작업실 포함)** 를 `with main_col:` 안에서 렌더하고, `with chat_col:` 안에서 `chat_panel.render_side(_persona, area_key=...)` 호출 — 모든 화면이 동일한 `[좌 사이드바 │ 중앙 │ 우 채팅]`. 작업실 중앙은 산출물 작업대(스레드 + composer), 우측은 글로벌 채팅(통일 설계). *(작업실에서 우측 채팅을 억제하려면 코드 변경 필요 — 현재는 의도적으로 미억제.)*
-- **우측 채팅 구현**: `st.chat_input` 은 뷰포트 하단 전폭 고정이라 컬럼에 담기지 않는다 → `render_side` 는 `st.form`(text_area + form_submit_button) 으로 송신하고 `_do_sola_send` pending 을 세팅한다. 컬럼 sticky 패널화는 `.side-chat-marker` 훅 + `streamlit-overrides.css` 의 `[data-testid="stColumn"]:has(.side-chat-marker)`.
-- **금지**: 화면별 고정 HTML 우측 패널(구 `app_shell.render_app_sola` 의 disabled 목업)을 부활시키지 말 것. 우측 LLM 채팅은 `render_side` 단일 경로(**모든 area 동일** — 작업실 예외 없음).
-- **area_key 네임스페이스**: area 슬러그(이모지 포함)가 chat_key 로 사용된다. `store.chat_log` 가 `_safe_key()` 로 슬러그를 강제해 `data/sola/chat/{slug}.jsonl` 분리 저장 (I-15).
-- **컨텍스트 핸드오프**: 각 area 의 `chat_context_block(persona)` 결과가 `session_state["_chat_context_for_sola"]` 에 저장돼 다음 send 에서 사용된다.
-- **SOLA 작업실 = 채팅 단일 진입점**: 작업대 액션(제안서 생성·뉴스 요약·새 대화)은 중앙 버튼이 아니라 우측 채팅 상단 **빠른 작업** 칩(`chat_panel._render_quick_action_chips`, SOLA area 한정)으로 노출된다. 칩은 `st.button` — 클릭 시 `_sola_action_pending` 세션 플래그 + `st.rerun(scope="app")`(소비자가 fragment 밖이므로 승격 필수). `sola_workshop_v2._consume_sola_action_from_query_if_any` 가 이 pending 을 **`?sola_action=` 쿼리(딥링크 호환 유지)보다 먼저** 소비해 기존 pending flag(`_do_generate_proposal` 등)로 매핑하고, 같은 run 의 후속 consumer 가 LLM 호출·rerun 을 위임받는다. `sola_action` 만 소비하고 `dept`/`lv3`/`from` 인계 컨텍스트는 보존한다(제안서 생성이 인계 작업을 그대로 사용).
-- **fragment rerun scope 규약**: 우측 채팅 패널 본체는 `@st.fragment`(`_render_side_fragment`) — 패널 안에서 끝나는 상호작용(일반 area 전송·추천 질문 pill)은 `st.rerun(scope="fragment")` 로 **채팅 컬럼만** 부분 rerun. **효과가 fragment 밖(중앙 컬럼)에 보여야 하는 상호작용은 `scope="app"` 으로 승격**한다 — SOLA 작업실 form 전송(중앙 작업대 캔버스 갱신), 빠른 작업 칩(소비자 = `sola_workshop_v2.render` 최상단). Streamlit 1.58 제약: `scope="fragment"` rerun 은 fragment rerun 중에만 허용 — 풀런 경로의 send 를 app.py 가 먼저 pop 해 두는 이유이기도 하다.
-- **인계 자동 실행**: `?from=brief/opp/matrix/ia_map/edit` 인계는 `_auto_run_handoff_if_any` 가 prefill 이 있을 때 **1회 자동 전송**한다(`_handoff_signature` 로 같은 인계 재전송 차단, 빈 prefill 무시). 배너는 자동검토 confirm 줄을 덧붙인다.
-- **데드 정리 완료 (Phase 3)**: 좌측은 네이티브 `st.sidebar`, 우측 LLM 채팅은 `chat_panel.render_side` 단일 경로. 구 고정 HTML 패널 `app_shell.render_app_side`/`render_app_sola`(no-op)·패널 토글 클러스터·`chat_panel.render`(구 bottom expander)·`ui/layout.py`·`ui/task_tree.py`·`sola/{insight,chat_ctx}.py`·`task_defs_db.upsert_many` 모두 삭제됨.
-
-## I-14 — LLM 설정은 `config._env_or_secret()` 경유
-
-`LLM_BACKEND` / `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` 4개 모두 `_env_or_secret(name, default)` 를 통해 읽는다. 우선순위:
-
-1. OS 환경변수 (`.env` 파일 포함, `python-dotenv` 자동 로드)
-2. `st.secrets` (Streamlit Cloud 배포 시 App settings → Secrets)
-3. 디폴트 (Groq 기준)
-
-`os.getenv` 를 직접 새로 추가하지 말 것. 또한 `.env` 파일은 **절대 commit 금지** (`.gitignore` 에 등록되어 있음).
-
-## I-15 — `chat_log` 는 `chat_key` 별 파일
-
-`store.chat_log.{save_history,load_history,reset}` 가 모두 `chat_key` 인자를 받는다. 인자 생략 시 `default` 로 매핑되어 기존 `data/sola/chat_history.jsonl` 경로 유지 (후방 호환). 새 `chat_key` 는 `data/sola/chat/{slug}.jsonl` 에 저장되며 `_safe_key()` 가 파일명 슬러그를 강제 (디렉토리 traversal 차단).
-
-## I-16 — v2 화면 인계 URL 패턴 `?app_area=...&from=<kind>&dept=&lv3=`
-
-보드/인사이트의 카드 CTA 는 모두 `ui/board_v2._sola_handoff_href(from_kind, **payload)` 한 줄로 만든다. SOLA 작업실은 `?from` 값을 보고 composer prefill 과 handoff banner 를 동시 결정.
-
-- **단일 진입점**: `_sola_handoff_href` (board_v2) / `_edit_handoff_href` (archive_v2) 외 직접 `?app_area=...` 문자열 조립 금지. payload 자동 quote.
-- **지원 from kind**: `brief` (보드 ② SOLA 브리핑), `opp` (보드 ④ 자동화 기회), `matrix` (보드 ⑥ 매트릭스 detail), `ia_map` (인사이트 공정 매핑), `edit` (산출물 보관함 카드 "수정" → `bm_id`+`title` 전달).
-- **brief 만 session_state**: 3건 뉴스 제목 리스트는 `st.session_state["_board_brief_items"]` 에 저장 (URL 길이 제한 회피). 보드 진입마다 갱신/삭제.
-- **opp/matrix/ia_map/edit**: 모두 stateless — URL 만으로 prefill 재현 가능.
-- **1회-소비 액션 패턴**: 산출물 보관함 `?action=adopt|reject|restore&bm_id=...` (`_consume_action_if_any` → `bookmarks_store.set_status` → 캐시 invalidate → query strip) + 데이터관리 `?refresh=now` (`_consume_refresh_if_any` → 캐시 clear → toast flag). 둘 다 render 첫 단계에서 소비 후 query 제거 → 새로고침/재방문 시 재실행 방지.
-
-## I-17 — v2 sticky banner stacking 규칙
-
-`.app-llm-banner` (LLM 미설정 안내) 와 `.ws-brief-handoff` (SOLA 인계) 가 동시 노출되면 둘 다 `position: sticky` 라 stacking 됨. 다음 분기 규칙으로 위치 결정:
-
-- 단독 LLM: `top: 76px`
-- 단독 handoff: `top: 76px`
-- 둘 다 노출: handoff 가 `top: 132px` (LLM 56px + margin)
-  - CSS 분기: `body:has(.app-llm-banner) .ws-brief-handoff { top: 132px; }`
-
-새 sticky 안내 배너 추가 시 동일 패턴으로 `body:has(...)` 조건부 offset 누적.
-
-## I-18 — v2 매트릭스 dept 색상은 `board_v2.MATRIX_DEPT_COLORS` 공유
-
-보드 ⑥ + 인사이트 SECTION B 매트릭스가 같은 dept 색을 쓰도록 단일 dict (`MATRIX_DEPT_COLORS` + `MATRIX_DEPT_FALLBACK`) 공유. 새 dept 추가는 한 곳만 갱신. 두 매트릭스의 시각 일관성 보장.
-
-## I-19 — v2 CTA `<button disabled>` → `<a href>` 전환 시 CSS 회복 필수
-
-`<a>` 는 기본 `text-decoration: underline` + `color: blue/purple (visited)`. `.db-prop-discuss` / `.db-mx-cta` / `.db-act{-primary}` / `.ia-pc-detail` 처럼 button 전제 CSS 를 a 에도 적용할 때:
-
-```css
-.foo { text-decoration: none; }
-.foo:hover { text-decoration: none; }
-a.foo, a.foo:visited { color: <원래색>; }
-```
-
-세 가지 모두 빠지면 미세한 시각 회귀 (밑줄/자주색 visited) 발생.
-
-## I-20 — (제거됨) 메인 헤더 스크롤 고정
-
-메인 헤더(`.db-topbar`)를 스크롤 시 상단 고정하던 sticky 처리는 **되돌렸다**(사용자 요청, 2026-06-05). `.db-topbar` 는 다시 `position:static`(in-flow) — 본문과 함께 스크롤된다. 우측 채팅 패널 고정(I-21)은 별개로 유지. 다시 고정이 필요하면 '감싼 element-container 에 sticky' 방식이 출발점이었다(`.db-topbar` 직접 sticky 는 `stHtml` shrink-wrap 으로 무력화).
-
-## I-21 — sticky 채팅 패널 높이는 row 밖 padding 을 고려해 충분히 낮춰야 한다
-
-우측 채팅 패널(`[data-testid="stColumn"]:has(.side-chat-marker)`)은 `position:sticky; top:12px` 에 높이 `calc(100vh - 72px)`. sticky 가 끝까지 고정되려면 **이동 여유**(`row_height − panel_height − top`)가 **페이지 최대 스크롤**보다 커야 한다. 그런데 `block-container` 하단 padding(36px)·`stMain` 상단 padding(8px)은 패널의 컨테이닝 블록(컬럼 row) **밖**에서 스크롤을 추가하므로, 패널이 row 와 비슷한 높이(`100vh-24px`)면 본문이 짧은 화면(SOLA·산출물 보관함) 바닥에서 패널이 row 끝에 닿아 ~32px 같이 밀린다. 패널을 `100vh-72px` 로 낮춰 여유를 확보(72 − 12 − 44 ≈ 16px 슬랙)했다. 본문 컬럼 `min-height: calc(100vh-4px)`(짧은 탭에서 sticky baseline 안정화, #122)와 함께 유지. **이 두 값(72/min-height)·row 밖 padding 을 바꾸면 playwright 로 5개 화면 채팅 ΔY=0 재검증.**
-
-## I-22 — 사이드바 5-nav 는 `st.button` 위젯 (흰 깜빡임 없는 소켓 rerun)
-
-좌측 업무 흐름 메뉴(`sidebar._render_sidebar_nav`)는 `st.button` 5개다. `.st-key-sidebar_nav` 스코프 CSS 가 인덱스(CSS counter)+제목(라벨 `**strong**`)+설명(`*em*`)으로 기존 `.sidebar-nav-item` 룩을 복제하고, 활성은 `button[kind="primary"]`. 클릭 = **소켓 rerun**(`st.session_state["app_area"]=…` + `st.rerun()`, `on_click` 금지 — CLAUDE.md #3) → 화면 전환에 문서 reload(흰 깜빡임)가 없다. 컨텍스트 딥링크(`?app_area=` from 보드/히트맵/알림)는 `_consume_area_query` 가 그대로 소비(둘 다 지원).
-
-**이력**: 2026-06-05 위젯→앵커 되돌림(사용자 환경에서 메뉴 깨짐 보고, 원인 미재현) → **2026-06-08 재위젯화**(사용자 요청). 재위젯화 근거: `.st-key-*` 스코프 CSS 는 데이터관리 필터·수집 버튼 등에서 동일 방식으로 정상 동작 중(사용자 환경 포함 확인)이라 직전 깨짐은 일시적 CSS FOUC 로 추정. playwright 실측: 클릭 시 `window` 플래그 생존(문서 reload 0)·URL `?app_area=` 없음·활성 전환·라이트/다크 룩 동일. **단, `.st-key-sidebar_nav` CSS 가 안 먹는 환경에선 회색 기본 버튼으로 보일 수 있으니 실배포 렌더는 한 번 확인할 것.**
-
-## I-23 — 흰 깜빡임 없는 화면/액션 전환: 앵커 대신 `st.button` + 세션/`st.query_params`
-
-화면 전환·액션을 거는 `<a href="?param=…">` 앵커는 클릭 시 **브라우저 문서 전체 reload**(흰 깜빡임)다. 같은 결과를 reload 없이 내려면 **`st.button`** 으로 바꾸고 클릭 핸들러에서 상태를 세팅한 뒤 `st.rerun()` 한다(`on_click` 금지 — CLAUDE.md #3):
-
-- **같은 화면 액션**(예: 산출물 채택/기각, 출처 토글, 수집): `st.session_state["_do_…"] = payload` pending → 다음 run 의 `_consume_…` 가 처리. 기존 `?param=` 소비 경로는 **레거시 호환으로 남겨** 둘 다 받게 한다(북마크/딥링크 + 기존 테스트).
-- **pending 우선 + 쿼리 폴백 (이중 소비 순서 규약)**: 같은 의미의 버튼 pending 과 `?param=` 딥링크가 공존하면 소비 함수는 **반드시 pending flag 를 쿼리보다 먼저** 소비한다(최신 클릭 승, 둘 다 pop/strip — 1회 처리 보장). 위젯 인스턴스화 전(render/consume 최상단)에서 처리. 현행 등록부:
-
-  | pending flag | 쿼리 폴백 | 소비 함수 |
-  |---|---|---|
-  | `_kw_action_pending` | `?kw_action=&keyword=` | `board_v2.consume_kw_action_if_any` |
-  | `_opp_action_pending` | `?opp_action=&dept=&lv3=&title=` | `board_v2.consume_opp_action_if_any` |
-  | `_td_nav_pending` | `?td_*=` 스위트 | `task_def_manage._consume_td_nav_pending` (pending 을 쿼리로 **번역** — td_* 전체 교체) |
-  | `_sola_action_pending` | `?sola_action=` | `sola_workshop_v2._consume_sola_action_from_query_if_any` |
-  | `_switch_thread_pending` | `?switch_thread=` | `sola_workshop_v2._switch_thread_from_query_if_any` (pending 경로는 rerun 없이 같은 run 계속, 쿼리 경로만 strip+rerun) |
-  | `_do_sola_send` | (쿼리 없음) | `chat_panel.consume_send_if_any` — app 최상단 + fragment 최상단 2곳, pop-once (I-13) |
-- **컨텍스트 딥링크**(예: 산출물 수정 → SOLA, dept/lv3/from 인계): 핸들러에서 `st.session_state["app_area"]=…` + **`st.query_params[k]=v`** 를 세팅하고 `st.rerun()`. **`st.query_params` 할당은 문서 reload 없이 URL 만 갱신**하므로, 소비자(SOLA 등)가 `st.query_params` 를 읽는 기존 경로를 **그대로 둬도** 된다(소비자 코드 변경 0) — 이게 딥링크 위젯화의 핵심 레버.
-- **레이아웃 함정**: 위젯은 `st.html` 블록 안에 못 넣는다. HTML 카드/그리드에 박힌 액션은 ① 카드를 **표시 전용 HTML** 로 두고 ② 컬럼/행을 `st.container`+`st.columns` 로 감싸 **컨테이너에 기존 룩(테두리·배경)** 을 주고 ③ 액션만 `st.button` 으로 그 안/옆에 배치한다(`.st-key-*` 스코프 CSS). SVG 시각화 셀(히트맵·매트릭스)은 위젯화하면 시각화가 깨지므로 제외.
-- **드리프트 주의**: 템플릿 일부만 쓰게 되면 `test_template_placeholders`·`test_*_cleanup` 가 미소비 `{{TOKEN}}` 을 잡는다 → 죽은 section 은 템플릿에서 **삭제**.
+`api/main.py` 의 `allow_origins` 는 `INSIGHTBOARD_CORS_ORIGINS`(프런트 도메인) 와 **정확히** 일치해야 한다(trailing slash 무관용). 프런트 배포 도메인이 바뀌면 백엔드 env 도 갱신.

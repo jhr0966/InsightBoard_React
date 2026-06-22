@@ -1,7 +1,7 @@
 # REACT_STATUS — React 전환 진행 현황 & 핸드오프 (2026-06-16)
 
 > 대화 압축 후에도 이어갈 수 있도록 현황·결정·다음 단계를 박제. 전체 계획은
-> `docs/REACT_PARITY_PLAN.md`, 준비물 카탈로그는 `docs/REACT_PREP_INVENTORY.md`.
+> `docs/archive/REACT_PARITY_PLAN.md`, 준비물 카탈로그는 `docs/archive/REACT_PREP_INVENTORY.md` (둘 다 아카이브).
 
 ## 한 줄 요약
 Streamlit 앱(`app.py`·`ui/`)을 **FastAPI(`api/`) + React(`web/`)** 로 전환. 코드 작업
