@@ -27,5 +27,6 @@ ENV INSIGHTBOARD_DATA_ROOT=/app/data
 ENV PORT=8000
 EXPOSE 8000
 
-# PORT 환경변수(Render/Railway 가 주입) 사용
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# PORT 환경변수(Render/Railway 가 주입) 사용.
+# 부팅 시 작업 정의 시드 적재(DB 비어 있을 때만) — data/ 휘발(무료 플랜)이라 매 부팅 재시드.
+CMD ["sh", "-c", "python -m roadmap.seed; uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
