@@ -7,7 +7,7 @@ import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
 import BarChart from "../components/charts/BarChart";
 import { useGlobalSearch } from "../search";
-import { newsCategory, newsSummary, sourceMeta } from "../lib/news";
+import { articleChannel, newsCategory, newsSummary, sourceMeta } from "../lib/news";
 import { ageLabel } from "../lib/time";
 import type { NewsArticle } from "../api/types";
 
@@ -26,9 +26,9 @@ export default function Collect() {
   const all = news.data ?? [];
 
   const cats = useMemo(() => all.filter((a) => newsCategory(a.source) === cat), [all, cat]);
-  const channels = useMemo(() => ["전체", ...Array.from(new Set(cats.map((a) => sourceMeta(a.source).label)))], [cats]);
+  const channels = useMemo(() => ["전체", ...Array.from(new Set(cats.map((a) => articleChannel(a).label)))], [cats]);
   const items = cats.filter((a) =>
-    (chan === "전체" || sourceMeta(a.source).label === chan) &&
+    (chan === "전체" || articleChannel(a).label === chan) &&
     (!q || `${a.title} ${newsSummary(a)} ${a.keywords ?? ""}`.toLowerCase().includes(q)));
 
   const [prog, setProg] = useState<CollectProgress | null>(null);
@@ -62,7 +62,7 @@ export default function Collect() {
     }
   }
 
-  const activeSources = new Set(all.map((a) => sourceMeta(a.source).label)).size;
+  const activeSources = new Set(all.map((a) => articleChannel(a).label)).size;
   const lastUpdate = all[0]?.collected_at || all[0]?.date;
 
   return (
@@ -188,7 +188,7 @@ function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClo
     staleTime: 5 * 60 * 1000,
   });
   if (!article) return null;
-  const m = sourceMeta(article.source);
+  const m = articleChannel(article);
   const full = detail.data ?? article;
   const summary = newsSummary(full);
   const body = (full.content || "").trim();

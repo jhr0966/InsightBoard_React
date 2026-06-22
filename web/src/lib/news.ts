@@ -1,15 +1,30 @@
 import type { NewsArticle } from "../api/types";
 
 // 출처 라벨·색 (ui/data_management_render 승계, 토큰 기반 정리).
+// tech 묶음은 'press'(사이트명)로 더 세분 — AI Times·오토메이션월드를 구분해 표시.
 const SOURCE_META: Record<string, { label: string; color: string }> = {
   naver: { label: "네이버", color: "#03C75A" },
   google: { label: "구글", color: "#4285F4" },
-  tech: { label: "AI Times", color: "#7C3AED" },
+  "오토메이션월드": { label: "오토메이션월드", color: "#EA580C" },
+  automation: { label: "오토메이션월드", color: "#EA580C" },
+  "ai times": { label: "AI Times", color: "#7C3AED" },
+  aitimes: { label: "AI Times", color: "#7C3AED" },
+  tech: { label: "기술", color: "#7C3AED" },
 };
 export function sourceMeta(source?: string): { label: string; color: string } {
   const s = (source || "").toLowerCase();
   for (const k of Object.keys(SOURCE_META)) if (s.includes(k)) return SOURCE_META[k];
   return { label: source || "기타", color: "#64748B" };
+}
+
+// 기사 채널(라벨·색) — 포탈(tech)은 source 가 전부 "tech" 라 구분이 안 되므로
+// 사이트명(press)으로 라벨링(AI Times vs 오토메이션월드). 키워드 뉴스는 press 가
+// 개별 언론사라 source(네이버/구글)를 쓴다.
+export function articleChannel(a: { source?: string; press?: string }): { label: string; color: string } {
+  if (newsCategory(a.source) === "portal" && (a.press || "").trim()) {
+    return sourceMeta(a.press);
+  }
+  return sourceMeta(a.source);
 }
 
 // http→https 승격, 비http면 빈 문자열(그라데이션 폴백).

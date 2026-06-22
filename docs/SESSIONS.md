@@ -1,3 +1,11 @@
+## 2026-06-22 — tech 출처 라벨 뭉침(오토메이션월드 채널 누락) (`fix-tech-channel-press-label`)
+
+**무엇을**: 실수집 결과 보고(진행 모달 "AI Times · 오토메이션월드", 카드에 오토메이션월드 채널 없음). 원인: 모든 tech 기사가 source="tech" → `sourceMeta("tech")` 단일 라벨 "AI Times" 로 뭉침. `lib/news.ts` 에 `articleChannel(a)` 추가 — 포탈(tech)은 press(사이트명)로 라벨/색 구분, tech 기본 라벨 "AI Times"→"기술". Collect/NewsCard 가 이를 사용. 표시 전용이라 기존 데이터도 재수집 없이 오토메이션월드 채널이 보인다.
+
+**조치**: 웹 빌드 통과. (앞 #36 RSS 수집 + #37 enrich/진행표시 + 이 PR 라벨 수정으로 오토메이션월드가 수집·표시·구분 모두 정상.)
+
+---
+
 ## 2026-06-22 — 수집 본문 누락 + tech 사이트별 진행 가시성 (`fix-collect-tech-visibility-enrich`)
 
 **무엇을**: 사용자 보고('지금 수집' 시 오토메이션월드 시도조차 안 함 + 본문 안 보임) 추가 점검. ① 프런트 `streamCollect` 가 `do_enrich:false` 라 본문/이미지 fetch 스킵 → content 빈 채 저장(본문 미표시 근본 원인) → `true` 로. ② `tech_sites.search_all` 에 `on_site(site,count)` 추가, `run_daily` tech 분기가 사이트별 on_step 발화 → 진행 모달에 AI Times·오토메이션월드 개별 표시(실패도 0건 통보). 끝의 단일 tech on_step 제거.
