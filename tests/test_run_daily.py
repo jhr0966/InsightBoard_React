@@ -73,6 +73,23 @@ def test_collect_batch_enriches_body_and_image(monkeypatch):
     assert (df["keywords"].astype(str).str.len() > 0).all()        # 빈도 키워드도 채워짐
 
 
+def test_collect_batch_emits_per_tech_site_step(monkeypatch):
+    """tech 수집이 사이트별로 on_step 을 발화 — 진행 모달에 AI Times·오토메이션월드가
+    개별 표시된다(과거엔 tech 묶음 1줄뿐이라 오토메이션월드가 시도조차 안 되는 듯 보였다)."""
+    def fake_site(name, url, max_results=10):
+        n = 2 if name == "AI Times" else 1
+        return [{"title": f"{name}{i}", "link": f"{url}/{i}", "source": "tech",
+                 "press": name, "query": name} for i in range(n)]
+
+    monkeypatch.setattr(run_daily.tech_sites, "search_site", fake_site)
+    monkeypatch.setattr(_enrich, "enrich_parallel", lambda arts, **k: arts)
+    steps: list[tuple] = []
+    run_daily.collect_batch([], sources=("tech",), max_results=5, do_enrich=True,
+                            on_step=lambda s, k, f: steps.append((s, k, f)))
+    assert ("tech", "AI Times", 2) in steps
+    assert ("tech", "오토메이션월드", 1) in steps
+
+
 def test_collect_batch_can_disable_enrich(monkeypatch):
     """do_enrich=False 면 enrich 를 건너뛴다(검색 결과 그대로 저장)."""
     called = {"n": 0}

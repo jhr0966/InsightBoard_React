@@ -1,3 +1,11 @@
+## 2026-06-22 — 수집 본문 누락 + tech 사이트별 진행 가시성 (`fix-collect-tech-visibility-enrich`)
+
+**무엇을**: 사용자 보고('지금 수집' 시 오토메이션월드 시도조차 안 함 + 본문 안 보임) 추가 점검. ① 프런트 `streamCollect` 가 `do_enrich:false` 라 본문/이미지 fetch 스킵 → content 빈 채 저장(본문 미표시 근본 원인) → `true` 로. ② `tech_sites.search_all` 에 `on_site(site,count)` 추가, `run_daily` tech 분기가 사이트별 on_step 발화 → 진행 모달에 AI Times·오토메이션월드 개별 표시(실패도 0건 통보). 끝의 단일 tech on_step 제거.
+
+**조치**: 신규 테스트 2건 → pytest 473, 웹 빌드 OK. (앞 PR #36 의 RSS 우선 수집과 합쳐 오토메이션월드 수집·표시·본문이 모두 정상화.)
+
+---
+
 ## 2026-06-22 — 수집 안정화: tech RSS 우선 + 기본 키워드 축소 (`feat-collect-rss-keywords`)
 
 **무엇을**: 사용자 보고(오토메이션월드 수집 안 됨·기본 키워드 과다·카드 본문 안 보임) 전수 점검. ① `tech_sites.search_site` 를 RSS 우선(`/rss/allArticle.xml`)+homepage 폴백으로 — 오토메이션월드 0건 해결. ② `DEFAULT_DAILY_KEYWORDS` 8→2개(AI·자동화). ③ 본문/이미지/상세API/모달 파이프라인 점검 — 코드는 정상, 본문 미표시는 수집 0건(또는 enrich fetch 차단)이 원인이라 ①이 근본 해결. 오프라인 종합 시뮬(RSS→enrich→저장→detail content)으로 전 구간 검증.

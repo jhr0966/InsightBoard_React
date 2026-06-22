@@ -40,7 +40,7 @@ export default function Collect() {
     runningRef.current = true;
     setProg({ running: true, steps: [], total: 0 });
     try {
-      await streamCollect({ keywords: kw, do_enrich: false }, (e: CollectEvent) => {
+      await streamCollect({ keywords: kw, do_enrich: true }, (e: CollectEvent) => {
         if (e.type === "step") {
           const label = sourceMeta(e.source).label + (e.keyword ? ` · ${e.keyword}` : "");
           setProg((p) => (p ? { ...p, steps: [...p.steps, { label, found: e.found ?? 0 }], total: p.total + (e.found ?? 0) } : p));

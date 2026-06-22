@@ -159,19 +159,30 @@ def search_all(
     max_results_per_site: int = 10,
     *,
     on_error: Callable[[str, str], None] | None = None,
+    on_site: Callable[[str, int], None] | None = None,
 ) -> list[dict]:
     """등록된 모든 기술 사이트에서 수집. 사이트별 실패는 격리하고 계속.
 
     `on_error(site_name, message)` 콜백이 주어지면 사이트별 실패를 통보한다
     (collect_batch 가 이를 report.errors 로 받아 '수집 헬스' 에 노출). 콜백이 없으면
     기존처럼 조용히 건너뛴다(후방 호환).
+
+    `on_site(site_name, count)` 콜백은 사이트 1곳을 마칠 때마다 호출 — 수집 진행
+    모달이 'AI Times'·'오토메이션월드'를 사이트별로 표시하게 한다(과거엔 tech 묶음
+    1줄만 떠서 오토메이션월드가 시도조차 안 되는 것처럼 보였다). 실패한 사이트도
+    0건으로 통보해 '시도했음'이 보이게 한다.
     """
     bag: list[dict] = []
     for name, url in TECH_SITES.items():
         try:
-            bag.extend(search_site(name, url, max_results=max_results_per_site))
+            found = search_site(name, url, max_results=max_results_per_site)
+            bag.extend(found)
+            if on_site:
+                on_site(name, len(found))
         except RuntimeError as e:
             if on_error:
                 on_error(name, str(e))
+            if on_site:
+                on_site(name, 0)  # 실패해도 '시도했음'을 진행표시에 남긴다
             continue
     return bag
