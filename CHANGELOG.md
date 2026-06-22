@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed (tech 출처 라벨이 'AI Times' 로 뭉침 — 오토메이션월드 채널 누락) — `fix-tech-channel-press-label`
+- **포탈(tech) 기사를 사이트명(`press`)으로 채널 구분** (`web/src/lib/news.ts` `articleChannel()` + `Collect.tsx`·`NewsCard.tsx`): 모든 tech 기사가 `source="tech"` 라 `sourceMeta("tech")` 의 단일 라벨(`AI Times`)로 뭉쳐, ① 진행 모달이 **"AI Times · 오토메이션월드"** 처럼 AI Times 를 상위 카테고리로 잘못 표기하고 ② 카드 채널 필터에 **오토메이션월드가 아예 안 뜨던**(수집은 됐는데 AI Times 로 묶임) 문제. 이제 포탈 기사는 `press`(AI Times/오토메이션월드)로 라벨·색을 구분하고, tech 기본 라벨은 `기술` 로 바꿔 진행 모달이 **"기술 · AI Times" / "기술 · 오토메이션월드"** 로 표시된다. (표시 전용 수정 — 이미 수집된 데이터도 재수집 없이 채널이 보인다.)
+- 검증: 웹 빌드(tsc) 통과.
+
 ### Fixed (수집 본문 누락 + tech 사이트별 진행 가시성) — `fix-collect-tech-visibility-enrich`
 - **'지금 수집' 본문/이미지 미수집 해결** (`web/src/pages/Collect.tsx`): 수동 수집이 `do_enrich: false` 로 호출돼 본문·대표이미지 fetch 를 통째로 건너뛰고 있었다 → 저장 기사 content 가 비어 **카드를 눌러도 본문이 안 보이던** 근본 원인. `do_enrich: true` 로 변경(cron 일일수집과 동일하게 본문·이미지 채움).
 - **tech 사이트별 진행 표시** (`scraping/tech_sites.py` `search_all` + `scraping/run_daily.py`): `on_site(site, count)` 콜백을 추가해 수집 진행 모달이 **AI Times·오토메이션월드를 사이트별로 표시**(keyword 슬롯에 사이트명). 과거엔 tech 묶음 1줄만 떠서 **오토메이션월드가 시도조차 안 되는 것처럼** 보였다. 실패한 사이트도 0건으로 통보해 '시도했음'이 보인다. 끝부분 단일 `on_step("tech","",total)` 은 제거(사이트별 step 으로 대체).
