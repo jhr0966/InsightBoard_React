@@ -13,6 +13,7 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 
+from scraping import rss
 from scraping.extract import soup_of
 from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 
@@ -20,6 +21,14 @@ from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 TECH_SITES: dict[str, str] = {
     "AI Times": "https://www.aitimes.com",
     "오토메이션월드": "https://automation-world.co.kr",
+}
+
+# 모우/모비 계열 CMS(AI Times·오토메이션월드)의 표준 전체기사 RSS 피드.
+# homepage <a> 휴리스틱은 사이트마다 마크업이 달라 취약(오토메이션월드처럼 통째로
+# 0건이 되기도) → RSS 를 1순위로 쓰고, 실패/빈손일 때만 homepage 스크래핑으로 폴백.
+TECH_RSS: dict[str, str] = {
+    "AI Times": "https://www.aitimes.com/rss/allArticle.xml",
+    "오토메이션월드": "https://automation-world.co.kr/rss/allArticle.xml",
 }
 
 
@@ -79,7 +88,30 @@ def _image_from_link(a, site_url: str) -> str:
 
 
 def search_site(site_name: str, site_url: str, max_results: int = 10) -> list[dict]:
-    """단일 사이트 메인 페이지 → 최근 기사 리스트."""
+    """단일 기술 사이트 → 최근 기사 리스트. RSS 우선, homepage 스크래핑 폴백.
+
+    RSS 가 기사를 주면 그대로 쓰고(`source`/`press`/`query` 만 tech 규격으로 보정),
+    RSS 실패(요청·파싱 오류)나 0건이면 기존 homepage 휴리스틱(`_search_site_html`)로
+    폴백한다. 둘 다 실패하면 RuntimeError 전파(상위 search_all 의 on_error 가 캡처).
+    """
+    rss_url = TECH_RSS.get(site_name) or urljoin(site_url.rstrip("/") + "/", "rss/allArticle.xml")
+    try:
+        items = rss.fetch(rss_url, site_name, max_results=max_results)
+    except RuntimeError:
+        items = []
+    if items:
+        for it in items:
+            it["press"] = site_name
+            it["source"] = "tech"
+            it["query"] = site_name
+            if not str(it.get("date") or "").strip():
+                it["date"] = "최신 동향"
+        return items
+    return _search_site_html(site_name, site_url, max_results)
+
+
+def _search_site_html(site_name: str, site_url: str, max_results: int = 10) -> list[dict]:
+    """폴백 — 사이트 메인 페이지 <a> 휴리스틱으로 기사 링크 추출."""
     session = build_session()
     site_host = urlparse(site_url).netloc
     try:

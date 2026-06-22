@@ -1,3 +1,11 @@
+## 2026-06-22 — 수집 안정화: tech RSS 우선 + 기본 키워드 축소 (`feat-collect-rss-keywords`)
+
+**무엇을**: 사용자 보고(오토메이션월드 수집 안 됨·기본 키워드 과다·카드 본문 안 보임) 전수 점검. ① `tech_sites.search_site` 를 RSS 우선(`/rss/allArticle.xml`)+homepage 폴백으로 — 오토메이션월드 0건 해결. ② `DEFAULT_DAILY_KEYWORDS` 8→2개(AI·자동화). ③ 본문/이미지/상세API/모달 파이프라인 점검 — 코드는 정상, 본문 미표시는 수집 0건(또는 enrich fetch 차단)이 원인이라 ①이 근본 해결. 오프라인 종합 시뮬(RSS→enrich→저장→detail content)으로 전 구간 검증.
+
+**조치**: tech_sites 테스트 갱신+RSS테스트 추가 → pytest 471. 외부 egress 차단 환경이라 HTTP 모킹으로 시뮬. (naver/google 은 데이터센터 IP 403 — 호스팅 인프라 제약, 코드 무관.)
+
+---
+
 ## 2026-06-22 — 작업 정의 시드 영구 보존 (`feat-taskdef-seed`)
 
 **무엇을**: 사용자 제공 작업 정의 원본(87건)을 `roadmap/seed_data/task_defs.xlsx` 로 리포에 커밋 + `roadmap/seed.py seed_if_empty()`(DB 비면 ingest, idempotent). Dockerfile CMD·Procfile 부팅 커맨드에 `python -m roadmap.seed` 추가. `data/` gitignore+휘발로 작업정의가 매 세션·재배포 사라지던 문제 해결(앱 startup 아닌 시작커맨드라 테스트 무영향).

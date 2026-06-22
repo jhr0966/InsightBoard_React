@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed / Changed (수집 안정화 — tech RSS + 기본 키워드 축소) — `feat-collect-rss-keywords`
+- **기술 사이트 수집 RSS 우선** (`scraping/tech_sites.py`): AI Times·오토메이션월드를 homepage `<a>` 휴리스틱 대신 모우CMS 표준 RSS 피드(`/rss/allArticle.xml`)로 먼저 수집. 사이트마다 다른 마크업 탓에 **오토메이션월드가 통째로 0건**이 되던 문제 해결. RSS 실패/0건이면 기존 homepage 스크래핑(`_search_site_html`)으로 폴백(무회귀). RSS 결과는 `source=tech`·`press=사이트명`으로 보정.
+- **기본 키워드 2종으로 축소** (`config.py`): `DEFAULT_DAILY_KEYWORDS` 를 8개(조선소 자동화·용접 로봇 등)에서 **`AI`·`자동화`** 2개로 단순화 — 너무 많은 키워드가 수집을 느리게/노이즈를 키우던 문제. cron 일일수집·'지금 수집'(빈 키워드) 폴백 모두 적용.
+- 검증: tech_sites 테스트 갱신(RSS 우선·HTML 폴백·실패 전파) + 오프라인 종합 시뮬레이션(RSS 수집→enrich 본문/이미지→저장→`/api/news/detail` 본문 노출)으로 파이프라인 전 구간 확인 → pytest 통과. (이 환경은 외부 사이트 egress 차단이라 라이브 대신 HTTP 모킹으로 검증.)
+
 ### Added (작업 정의 시드 — 영구 보존) — `feat-taskdef-seed`
 - **`roadmap/seed_data/task_defs.xlsx`**: 사용자 제공 작업 정의 원본(공정정의서_통합, 87건 — C팀 10·F팀 77)을 **리포에 커밋**. `data/` 는 `.gitignore` + 호스팅 디스크 휘발(무료 플랜)이라 세션·재배포마다 작업 정의가 사라지던 문제 해결.
 - **`roadmap/seed.py` `seed_if_empty()`**: DB 가 비어 있을 때만 시드 엑셀을 `ingest_excel(replace=True)` 로 적재(idempotent — 데이터 있으면 건너뜀 → 영구 디스크/사용자 편집 보존). 실패해도 부팅을 막지 않음.
