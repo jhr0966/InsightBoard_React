@@ -1,3 +1,11 @@
+## 2026-06-22 — 보드 무한 로딩 방어 (`fix-board-loading-resilience`)
+
+**무엇을**: `client.ts req()` 에 60초 타임아웃(AbortController) 추가 — 타임아웃 없어 백엔드 무응답(Render 무료 콜드스타트) 시 쿼리가 영원히 pending → 브리핑·탑스토리 스켈레톤 무한. Board 에 브리핑·탑스토리 에러 분기(+재시도) 추가. 무한 로딩은 로직 버그가 아니라(빈 데이터면 백엔드가 즉시 폴백/EmptyState 반환) 백엔드 무응답 신호였음을 진단.
+
+**조치**: web build OK. 사용자 보고("브리핑·탑스토리 계속 로딩") 대응.
+
+---
+
 ## 2026-06-22 — 전환 후 문서·코드 정리 (`chore-docs-cleanup`)
 
 **무엇을**: 현행 문서(ARCHITECTURE·DEV_GUIDELINES·INVARIANTS·WORKFLOW·README·web/README)를 React/FastAPI 기준으로 재작성. 역할 다한 전환 계획·히스토리 문서 10개 + streamlit 불변식을 `docs/archive/`(배너) 로 이동. `.streamlit/config.toml`·dead `test_html_rendering.py` 제거, `run_log.py` 주석 갱신. `test_api_news_trends._seed` 하드코딩 날짜→`date.today()` 로 고쳐 trends/volume 윈도우 날짜 버그 영구 수정.
