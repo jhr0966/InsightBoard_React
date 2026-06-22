@@ -1,3 +1,11 @@
+## 2026-06-22 — 작업 정의 시드 영구 보존 (`feat-taskdef-seed`)
+
+**무엇을**: 사용자 제공 작업 정의 원본(87건)을 `roadmap/seed_data/task_defs.xlsx` 로 리포에 커밋 + `roadmap/seed.py seed_if_empty()`(DB 비면 ingest, idempotent). Dockerfile CMD·Procfile 부팅 커맨드에 `python -m roadmap.seed` 추가. `data/` gitignore+휘발로 작업정의가 매 세션·재배포 사라지던 문제 해결(앱 startup 아닌 시작커맨드라 테스트 무영향).
+
+**조치**: 시드 테스트 3건 추가 → pytest 465. 로컬 87건 적재 확인. 사용자 요청("작업정의 데이터 저장돼있나 → 전체 재제공→시드").
+
+---
+
 ## 2026-06-22 — 수집 빈 키워드 시 네이버·구글 누락 수정 (`fix-collect-default-keywords`)
 
 **무엇을**: 수집 API(`/api/collect`·`/stream`)가 키워드 비면 `config.DEFAULT_DAILY_KEYWORDS`(8개)로 폴백(`_keywords_or_default`). UI '지금 수집'(빈 키워드)·보드 버튼(페르소나 키워드 미설정)으로는 naver/google 이 건너뛰어 tech(AI Times·오토메이션월드)만 수집되던 회귀 수정. cron·collect_batch 계약 불변.

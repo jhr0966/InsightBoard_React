@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (작업 정의 시드 — 영구 보존) — `feat-taskdef-seed`
+- **`roadmap/seed_data/task_defs.xlsx`**: 사용자 제공 작업 정의 원본(공정정의서_통합, 87건 — C팀 10·F팀 77)을 **리포에 커밋**. `data/` 는 `.gitignore` + 호스팅 디스크 휘발(무료 플랜)이라 세션·재배포마다 작업 정의가 사라지던 문제 해결.
+- **`roadmap/seed.py` `seed_if_empty()`**: DB 가 비어 있을 때만 시드 엑셀을 `ingest_excel(replace=True)` 로 적재(idempotent — 데이터 있으면 건너뜀 → 영구 디스크/사용자 편집 보존). 실패해도 부팅을 막지 않음.
+- **부팅 자동 적재**: `Dockerfile` CMD·`Procfile` 시작 커맨드에 `python -m roadmap.seed` 추가(uvicorn 직전). 앱 startup 이벤트가 아니라 시작 커맨드라 테스트/일반 import 엔 영향 없음. 무료 플랜은 매 콜드스타트 재시드 → 작업 정의가 항상 존재.
+- 검증: 시드 테스트 3건(파일 존재·빈 DB 적재·idempotent) → pytest 465. 로컬 적재 87건 확인.
+
 ### Fixed (수집 — 빈 키워드 시 네이버·구글 누락) — `fix-collect-default-keywords`
 - **`api/routers/collect.py`**: UI '지금 수집'(빈 키워드)·페르소나 관심 키워드 미설정으로 키워드가 비면 naver/google 이 **통째로 건너뛰어** AI Times·오토메이션월드(tech)만 수집되던 문제 수정. 수집 API(`POST /api/collect`·`/stream`)가 키워드가 비면 **도메인 기본 키워드(`config.DEFAULT_DAILY_KEYWORDS` 8개: 조선소 자동화·용접 로봇·디지털 트윈·스마트팩토리·산업용 로봇·협동 로봇·제조 AI·선박 건조)** 로 폴백(`_keywords_or_default`). tech 는 키워드 무관이라 영향 없음. cron(daily_scrape)은 자체 기본값을 직접 넘기므로 불변.
 - 효과: 메인 '지금 수집' 버튼·보드 '지금 수집' 으로도 **네이버·구글·AI Times·오토메이션월드 4종이 각각** 수집된다. 테스트 1건 추가(빈 키워드→기본 폴백 검증) → pytest 462.
