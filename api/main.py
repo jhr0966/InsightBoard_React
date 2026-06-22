@@ -50,8 +50,49 @@ app.add_middleware(
 
 @app.get("/api/health", tags=["meta"])
 def health() -> dict[str, str]:
-    """헬스체크 — 배포 readiness 프로브용."""
+    """헬스체크 — 배포 readiness 프로브용. 의존성과 무관하게 항상 200(liveness)."""
     return {"status": "ok", "phase": "1"}
+
+
+@app.get("/api/health/deps", tags=["meta"])
+def health_deps() -> dict:
+    """진단용 — 핵심 의존성(LLM·작업정의·뉴스) 상태를 표면화.
+
+    `/api/health`(liveness)와 분리: 여기서 LLM 미설정/뉴스 0 이어도 200 을 반환하되
+    `ready` 플래그로 운영 점검을 돕는다(배포 프로브가 이 결과로 흔들리지 않게).
+    """
+    llm = {"configured": False, "provider": None}
+    try:
+        from config import llm_provider
+        from sola import client as _llm
+
+        llm = {"configured": _llm.is_configured(), "provider": llm_provider()}
+    except Exception as exc:  # noqa: BLE001 — 진단은 부분 실패해도 200
+        llm = {"configured": False, "provider": None, "error": str(exc)}
+
+    taskdefs_n = None
+    try:
+        from store import task_defs_db
+
+        taskdefs_n = len(task_defs_db.list_all())
+    except Exception as exc:  # noqa: BLE001
+        taskdefs_n = f"error: {exc}"
+
+    news_n = None
+    try:
+        from store import news_db
+
+        news_n = int(len(news_db.load_news_for_days(7)))
+    except Exception as exc:  # noqa: BLE001
+        news_n = f"error: {exc}"
+
+    return {
+        "status": "ok",
+        "ready": bool(isinstance(taskdefs_n, int) and taskdefs_n > 0),
+        "llm": llm,
+        "taskdefs": taskdefs_n,
+        "news_7d": news_n,
+    }
 
 
 app.include_router(board.router)

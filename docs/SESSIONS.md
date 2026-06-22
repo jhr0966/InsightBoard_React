@@ -1,3 +1,11 @@
+## 2026-06-22 — 인사이트 히트맵 일관화 + LLM 그레이스풀 처리 (`fix-insights-llm-hardening`)
+
+**무엇을**: 뉴스×작업정의 기능 종합 시뮬레이션(샘플 뉴스 주입 + TestClient 전 엔드포인트 구동) 결과 발견한 2건 수정. ① 히트맵(`insights.py`)을 공정명 substring → `score_matches` 토큰 매칭으로 통일 — 다단어 공정명(`용접 작업` 등)이라 히트맵만 0으로 비던 불일치 해결, 드릴다운도 동일 매칭. ② 제안서/요약(`proposals.py`)을 `_llm_or_http` 로 감싸 LLM 미설정=503·실패=502(과거 500). ③ `GET /api/health/deps` 진단 엔드포인트 추가(LLM·작업정의·뉴스 상태), `/api/health` liveness 유지.
+
+**조치**: 신규 테스트 5건 + 히트맵 테스트 갱신 → pytest 470. OpenAPI/web 타입 재생성(44 paths), 웹 빌드 OK. (이 환경은 외부 뉴스 403·LLM 호스트 차단으로 실수집/실LLM 불가 — 결정형 기능은 전부 동작 확인.)
+
+---
+
 ## 2026-06-22 — 작업 정의 시드 영구 보존 (`feat-taskdef-seed`)
 
 **무엇을**: 사용자 제공 작업 정의 원본(87건)을 `roadmap/seed_data/task_defs.xlsx` 로 리포에 커밋 + `roadmap/seed.py seed_if_empty()`(DB 비면 ingest, idempotent). Dockerfile CMD·Procfile 부팅 커맨드에 `python -m roadmap.seed` 추가. `data/` gitignore+휘발로 작업정의가 매 세션·재배포 사라지던 문제 해결(앱 startup 아닌 시작커맨드라 테스트 무영향).

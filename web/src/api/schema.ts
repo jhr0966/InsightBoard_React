@@ -261,9 +261,32 @@ export interface paths {
         };
         /**
          * Health
-         * @description 헬스체크 — 배포 readiness 프로브용.
+         * @description 헬스체크 — 배포 readiness 프로브용. 의존성과 무관하게 항상 200(liveness).
          */
         get: operations["health_api_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/health/deps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Deps
+         * @description 진단용 — 핵심 의존성(LLM·작업정의·뉴스) 상태를 표면화.
+         *
+         *     `/api/health`(liveness)와 분리: 여기서 LLM 미설정/뉴스 0 이어도 200 을 반환하되
+         *     `ready` 플래그로 운영 점검을 돕는다(배포 프로브가 이 결과로 흔들리지 않게).
+         */
+        get: operations["health_deps_api_health_deps_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -298,7 +321,10 @@ export interface paths {
         };
         /**
          * Heatmap Cell
-         * @description 선택 셀(공정 × 기술)에 동시 출현하는 매칭 뉴스 — 상세 strip 미리보기용.
+         * @description 선택 셀(공정 × 기술)의 근거 뉴스 — 상세 strip 미리보기용.
+         *
+         *     `/heatmap` 과 동일한 매칭(공정→뉴스)을 써서, 불 켜진 셀을 누르면 반드시 그 기사가
+         *     나온다(과거 공정명 substring 방식은 다단어 공정명에서 빈 결과를 줬다).
          */
         get: operations["heatmap_cell_api_insights_heatmap_cell_get"];
         put?: never;
@@ -1767,6 +1793,28 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    health_deps_api_health_deps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
                     };
                 };
             };
