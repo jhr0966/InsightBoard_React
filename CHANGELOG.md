@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (전환 후 문서·코드 정리) — `chore-docs-cleanup`
+- **현행 문서 React/FastAPI 재작성**: `docs/ARCHITECTURE.md`(streamlit 5영역 디스패치 → React 페이지↔라우터 매핑·디렉토리·데이터플로우·계약), `DEV_GUIDELINES.md`(§2 역할·§3 라우팅·§4 불변식·§6 검증·§8 스택), `docs/INVARIANTS.md`(I-1~I-23 streamlit 런타임 함정 → 계층분리·OpenAPI 드리프트·HTTP/enrich/LLM 단일진입점·식별필드·SSE·CORS 13개로 신규 작성), `docs/WORKFLOW.md`·`README.md`·`web/README.md` 스테일 부분.
+- **히스토리 문서 아카이브**: 역할을 다한 전환 계획·진행 문서 10개(REACT_MIGRATION_PLAN·REACT_PARITY_PLAN·REACT_PREP_INVENTORY·UX_REDESIGN_PLAN·DEVELOPMENT_PHASES·MILESTONE_1·TASK_DEF_PLAN·UX_QA_CHECKLIST·VIBE_CODING_BLUEPRINT·REFACTOR_PLAN) + streamlit 불변식(INVARIANTS_STREAMLIT)을 `docs/archive/` 로 이동, 상단 아카이브 배너 추가.
+- **잔재 제거**: `.streamlit/config.toml`(dead) 삭제, `tests/test_html_rendering.py`(삭제된 ui/ 스캔하던 dead streamlit XSS 가드) 제거, `store/run_log.py` 주석을 React 수집 화면 기준으로 갱신.
+- **테스트 날짜 버그 수정**: `test_api_news_trends._seed` 의 하드코딩 published date(`2026-06-15`)가 시간이 지나 `trends/volume` 7일 윈도우 밖으로 썩던 것을 `date.today()` 상대 날짜로 교체 → 영구 안정. pytest **461 passed**.
+
 ### Removed (Streamlit 은퇴 — React/FastAPI 단일화) — `chore-retire-streamlit`
 - **Streamlit 앱 전면 제거**: `app.py`, `ui/`(18개 모듈), `assets/v2/`(streamlit CSS·HTML 템플릿) 삭제. React(`web/`) + FastAPI(`api/`)만 남김. React 전환(PR #1~#29)이 실데이터로 검증 완료된 뒤 마지막 단계로 실행.
 - **테스트/스크립트 정리**: streamlit·ui 의존 테스트 44개(`test_v2_screens`·`test_chat_panel`·`test_onboarding`·`test_template_placeholders` 등)와 streamlit 전용 스크립트 4개(`analyze_screens`·`verify_screens`·`inline_svg_to_img`·`bump_screen_fonts`) 삭제. 백엔드 커버리지는 `test_api_*` 스위트가 병행 보유 → **pytest 462 passed**.

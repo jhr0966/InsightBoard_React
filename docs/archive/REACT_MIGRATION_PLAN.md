@@ -1,3 +1,5 @@
+> 📜 **아카이브 (완료·히스토리)** — React 전환 과정의 계획/기록 문서. 현재 코드와 다를 수 있다. 현행 기준은 `CLAUDE.md` · `docs/ARCHITECTURE.md` 를 보라.
+
 # REACT_MIGRATION_PLAN — React 전환 전 정리 계획
 
 > 목적: Streamlit → React 전환에 앞서 **화면 역할을 재정의**하고, 불필요한 중복을

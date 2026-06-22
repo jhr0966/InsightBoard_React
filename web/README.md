@@ -1,12 +1,12 @@
 # InsightBoard Web (React)
 
-FastAPI(`api/`) 계약을 소비하는 React 프런트엔드. `REACT_MIGRATION_PLAN §4`.
+FastAPI(`api/`) 계약을 소비하는 React 프런트엔드.
 
 ## 스택
 - Vite + React 18 + TypeScript
 - React Router (5 라우트: `/`, `/insights`, `/proposals`, `/collect`, `/taskdefs`)
-- TanStack Query (서버 데이터 — `REACT_PREP_INVENTORY` (S) 분류)
-- 디자인 토큰 `src/styles/tokens.css` = `assets/v2/tokens.css` 승계
+- TanStack Query (서버 데이터)
+- 디자인 토큰 `src/styles/tokens.css`
 
 ## 구조
 ```
@@ -61,7 +61,5 @@ cd web && npm run gen:types     # schema.ts 재생성
 - Project Root = `web/`. `web/vercel.json` 이 SPA rewrite 처리.
 - 빌드 환경변수 `VITE_API_BASE = https://<백엔드-도메인>` 로 API 위치 지정(비우면 동일 출처 `/api`).
 
-## 남은 일
-- 화면 데이터 패리티(보드 다이제스트·기회 매트릭스·작업정의 업로드 폼)
-- openapi-typescript 로 `types.ts` 자동 생성
-- 폰트(`public/fonts/`) · 칸반·모달 등 컴포넌트 확장
+## 화면
+Board · Insights · Proposals · Collect · TaskDefs + 페르소나/온보딩. 앱 셸은 좌 nav · topbar · 우 SOLA 드로어(반응형: 태블릿 오버레이·모바일 오프캔버스). 차트는 SVG 직접 구현(`components/charts/*`).

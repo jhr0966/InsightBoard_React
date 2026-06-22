@@ -75,14 +75,12 @@ UI는 **React SPA**(`web/`, Vite+TS+Router+Query), 백엔드는 **FastAPI**(`api
 | 식별·감사 필드 표준 | `store/_audit.py` (`stamp`/`backfill`/`now_iso`) |
 | 영구화 백엔드 seam (Phase 2 교체점) | `store/repository.py` (`Repository`·`JsonlRepository`·`get_repository`, `INSIGHTBOARD_STORAGE`). bookmarks 적용 |
 | 아키텍처 파악 | `docs/ARCHITECTURE.md` |
-| 리팩토링 로드맵·결정 | `docs/REFACTOR_PLAN.md` |
-| React 전환 계획·Phase | `docs/REACT_MIGRATION_PLAN.md` |
-| React UI/UX 완전 패리티 실행계획 | `docs/REACT_PARITY_PLAN.md` (화면별 명세·API공백·차트·Phase) |
-| React 전환 진행 현황·핸드오프 | `docs/REACT_STATUS.md` (완료 PR·결정·다음 단계 배포→폴리시→은퇴) |
+| 계층·계약 불변식 | `docs/INVARIANTS.md` |
 | 배포(프런트 Vercel + 백엔드 Render) | `docs/DEPLOY.md` |
-| React 전환 준비물 실측 카탈로그 (세션키·라우팅·컴포넌트·식별필드) | `docs/REACT_PREP_INVENTORY.md` |
+| 전환 현황·핸드오프 (완료) | `docs/REACT_STATUS.md` |
+| 전환 계획·리팩토링·UX 등 히스토리 (완료) | `docs/archive/*` (REACT_MIGRATION_PLAN·REACT_PARITY_PLAN·REACT_PREP_INVENTORY·REFACTOR_PLAN·UX_REDESIGN_PLAN·INVARIANTS_STREAMLIT 등) |
 
-> ⚠ Streamlit 은퇴(2026-06): `app.py`·`ui/`·`assets/v2`·streamlit 의존 테스트 44개·streamlit 전용 스크립트 4개 삭제, `requirements.txt` 에서 streamlit 제거. `config.py` 의 streamlit secrets fallback 만 try/except 로 보존(백엔드는 streamlit 없이 동작). `sola/side_context.py` 는 여전히 orphan·보존.
+> ⚠ Streamlit 은퇴(2026-06): `app.py`·`ui/`·`assets/v2`·streamlit 의존 테스트·전용 스크립트 삭제, `requirements.txt` 에서 streamlit 제거. `config.py` 의 streamlit secrets fallback 만 try/except 로 보존(백엔드는 streamlit 없이 동작). `sola/side_context.py` 는 orphan·보존(향후 AssistantDrawer 컨텍스트 연결점).
 
 전체 라우팅 표는 [`DEV_GUIDELINES.md §3`](./DEV_GUIDELINES.md#3-라우팅-표).
 

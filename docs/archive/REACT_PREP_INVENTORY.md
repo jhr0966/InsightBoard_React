@@ -1,3 +1,5 @@
+> 📜 **아카이브 (완료·히스토리)** — React 전환 과정의 계획/기록 문서. 현재 코드와 다를 수 있다. 현행 기준은 `CLAUDE.md` · `docs/ARCHITECTURE.md` 를 보라.
+
 # REACT_PREP_INVENTORY — React 전환 준비물 실측 카탈로그
 
 > 계획문서 [`REACT_MIGRATION_PLAN.md §0.5`](./REACT_MIGRATION_PLAN.md)의 **상세 부속서**.

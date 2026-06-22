@@ -2,7 +2,7 @@
 
 `scraping.run_daily.collect_batch` 가 돌려주는 `CollectionReport` 를 run_id·시각·
 트리거·소스별 건수·오류로 구조화해 `data/logs/runs.jsonl` 에 append 한다.
-데이터 관리의 '수집 헬스' 가 최근 런을 읽어 노출한다 (조용한 실패 감지용).
+React 수집 화면(Collect)의 '수집 런 타임라인'(`/api/collect/runs`)이 최근 런을 읽어 노출한다 (조용한 실패 감지용).
 
 엔트리 스키마:
     run_id        "20260602-054612-ab12"  (시각 + 4hex)

@@ -1,3 +1,11 @@
+## 2026-06-22 — 전환 후 문서·코드 정리 (`chore-docs-cleanup`)
+
+**무엇을**: 현행 문서(ARCHITECTURE·DEV_GUIDELINES·INVARIANTS·WORKFLOW·README·web/README)를 React/FastAPI 기준으로 재작성. 역할 다한 전환 계획·히스토리 문서 10개 + streamlit 불변식을 `docs/archive/`(배너) 로 이동. `.streamlit/config.toml`·dead `test_html_rendering.py` 제거, `run_log.py` 주석 갱신. `test_api_news_trends._seed` 하드코딩 날짜→`date.today()` 로 고쳐 trends/volume 윈도우 날짜 버그 영구 수정.
+
+**조치**: pytest **461 passed**(date 버그 수정 포함), py_compile 133 OK. CLAUDE.md 라우팅 표를 archive 경로로 정리. 사용자 지시("전체 코드·문서 정리").
+
+---
+
 ## 2026-06-18 — Streamlit 은퇴 (React/FastAPI 단일화) (`chore-retire-streamlit`)
 
 **무엇을**: 마이그레이션 최종 단계. `app.py`·`ui/`(18)·`assets/v2`·streamlit 의존 테스트 44개·streamlit 전용 스크립트 4개 삭제, `requirements.txt`·`ci.yml`·`dev_setup.sh` 정리. `config.py` secrets fallback + `test_config_secrets`(fake 주입)는 보존. CLAUDE.md·REACT_STATUS.md React/FastAPI 기준 갱신.

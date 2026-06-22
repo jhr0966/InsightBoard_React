@@ -68,14 +68,14 @@ source .venv/bin/activate
 |---|---|
 | [`CLAUDE.md`](./CLAUDE.md) | 작업 시작 전 **항상** (단일 참조점) |
 | [`DEV_GUIDELINES.md`](./DEV_GUIDELINES.md) | 라우팅 표 · 검증 명령 |
-| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 모듈 계약 · article 스키마 |
-| [`docs/INVARIANTS.md`](./docs/INVARIANTS.md) | state/위젯 불변식 |
+| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 모듈 경계 · 데이터 플로우 (React+FastAPI) |
+| [`docs/INVARIANTS.md`](./docs/INVARIANTS.md) | 계층·계약 불변식 |
+| [`docs/DEPLOY.md`](./docs/DEPLOY.md) | Vercel(프런트)+Render(백엔드) 배포 |
 | [`docs/WORKFLOW.md`](./docs/WORKFLOW.md) | 브랜치 → 커밋 → 머지 루프 |
 | [`docs/SESSIONS.md`](./docs/SESSIONS.md) | 이전 세션 복원 (상단 1개만) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 릴리스 이력 |
-| [`docs/VIBE_CODING_BLUEPRINT.md`](./docs/VIBE_CODING_BLUEPRINT.md) | 제품/아키텍처/개발전략 청사진 |
-| [`docs/UX_REDESIGN_PLAN.md`](./docs/UX_REDESIGN_PLAN.md) | 인사이트보드 UI/UX 전면 개편 계획 |
-| [`docs/DEVELOPMENT_PHASES.md`](./docs/DEVELOPMENT_PHASES.md) | Streamlit + Local First 단계별 실행 계획 |
+| [`docs/REACT_STATUS.md`](./docs/REACT_STATUS.md) | React 전환 현황(완료) |
+| `docs/archive/` | 전환 계획·리팩토링·UX·Streamlit 시절 문서 (히스토리) |
 
 ## 배포
 
