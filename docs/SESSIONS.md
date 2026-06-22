@@ -1,3 +1,8 @@
+## 2026-06-22 — 수집 안정화: tech RSS 우선 + 기본 키워드 축소 (`feat-collect-rss-keywords`)
+
+**무엇을**: 사용자 보고(오토메이션월드 수집 안 됨·기본 키워드 과다·카드 본문 안 보임) 전수 점검. ① `tech_sites.search_site` 를 RSS 우선(`/rss/allArticle.xml`)+homepage 폴백으로 — 오토메이션월드 0건 해결. ② `DEFAULT_DAILY_KEYWORDS` 8→2개(AI·자동화). ③ 본문/이미지/상세API/모달 파이프라인 점검 — 코드는 정상, 본문 미표시는 수집 0건(또는 enrich fetch 차단)이 원인이라 ①이 근본 해결. 오프라인 종합 시뮬(RSS→enrich→저장→detail content)으로 전 구간 검증.
+
+**조치**: tech_sites 테스트 갱신+RSS테스트 추가 → pytest 471. 외부 egress 차단 환경이라 HTTP 모킹으로 시뮬. (naver/google 은 데이터센터 IP 403 — 호스팅 인프라 제약, 코드 무관.)
 ## 2026-06-22 — 인사이트 히트맵 일관화 + LLM 그레이스풀 처리 (`fix-insights-llm-hardening`)
 
 **무엇을**: 뉴스×작업정의 기능 종합 시뮬레이션(샘플 뉴스 주입 + TestClient 전 엔드포인트 구동) 결과 발견한 2건 수정. ① 히트맵(`insights.py`)을 공정명 substring → `score_matches` 토큰 매칭으로 통일 — 다단어 공정명(`용접 작업` 등)이라 히트맵만 0으로 비던 불일치 해결, 드릴다운도 동일 매칭. ② 제안서/요약(`proposals.py`)을 `_llm_or_http` 로 감싸 LLM 미설정=503·실패=502(과거 500). ③ `GET /api/health/deps` 진단 엔드포인트 추가(LLM·작업정의·뉴스 상태), `/api/health` liveness 유지.

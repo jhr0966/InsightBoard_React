@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed / Changed (수집 안정화 — tech RSS + 기본 키워드 축소) — `feat-collect-rss-keywords`
+- **기술 사이트 수집 RSS 우선** (`scraping/tech_sites.py`): AI Times·오토메이션월드를 homepage `<a>` 휴리스틱 대신 모우CMS 표준 RSS 피드(`/rss/allArticle.xml`)로 먼저 수집. 사이트마다 다른 마크업 탓에 **오토메이션월드가 통째로 0건**이 되던 문제 해결. RSS 실패/0건이면 기존 homepage 스크래핑(`_search_site_html`)으로 폴백(무회귀). RSS 결과는 `source=tech`·`press=사이트명`으로 보정.
+- **기본 키워드 2종으로 축소** (`config.py`): `DEFAULT_DAILY_KEYWORDS` 를 8개(조선소 자동화·용접 로봇 등)에서 **`AI`·`자동화`** 2개로 단순화 — 너무 많은 키워드가 수집을 느리게/노이즈를 키우던 문제. cron 일일수집·'지금 수집'(빈 키워드) 폴백 모두 적용.
+- 검증: tech_sites 테스트 갱신(RSS 우선·HTML 폴백·실패 전파) + 오프라인 종합 시뮬레이션(RSS 수집→enrich 본문/이미지→저장→`/api/news/detail` 본문 노출)으로 파이프라인 전 구간 확인 → pytest 통과. (이 환경은 외부 사이트 egress 차단이라 라이브 대신 HTTP 모킹으로 검증.)
 ### Fixed / Added (인사이트 히트맵 일관화 + LLM 그레이스풀 처리) — `fix-insights-llm-hardening`
 - **히트맵 토큰 매칭 통일** (`api/routers/insights.py`): `/heatmap`·`/heatmap-cell` 의 공정↔뉴스 연결을 공정명(lv3) **문자열 substring** 검색에서 `store.match.score_matches`(토큰/의미유사도) **재사용**으로 교체. 실데이터의 공정명이 다단어(`용접 작업`·`절단작업`·`LUG 제거 작업`)라 본문에 전체 문자열이 안 나와 히트맵이 **전부 0** 으로 비어 보이던 문제 해결(자동화 기회 매트릭스는 토큰 매칭이라 강하게 뜨는데 히트맵만 0 → 불일치 제거). 드릴다운도 같은 매칭을 써 **불 켜진 셀을 누르면 반드시 근거 기사**가 나온다. 응답 스키마 불변(프런트 무수정).
 - **제안서/요약 LLM 오류 변환** (`api/routers/proposals.py`): `_llm_or_http()` 헬퍼로 `generate`·`summarize` 를 감싸 LLM **미설정=503**, 호출 실패(호스트 차단·키 오류 등)=**502** + 안내 메시지로 변환. 과거엔 룰 폴백이 없어 그대로 **500**(예: `api.groq.com` egress 차단) 노출되던 것을 하드닝. (어시스턴트 챗은 이미 SSE error 프레임으로 처리됨 — 무변경.)
