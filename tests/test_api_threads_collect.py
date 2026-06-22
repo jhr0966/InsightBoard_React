@@ -69,6 +69,31 @@ def test_collect_delegates(monkeypatch):
     assert captured["max_results"] == 5
 
 
+def test_collect_empty_keywords_falls_back_to_defaults(monkeypatch):
+    """키워드 없이 '지금 수집' 하면 도메인 기본 키워드로 폴백 — naver/google 이
+    빈손이 되지 않게(tech 만 수집되던 회귀 방어)."""
+    import scraping.run_daily as rd
+    from config import DEFAULT_DAILY_KEYWORDS
+
+    class _Report:
+        total_articles = 0
+        total_files = 0
+        saved: list = []
+        errors: list = []
+
+    captured = {}
+
+    def _fake_batch(keywords, **kw):
+        captured["keywords"] = list(keywords)
+        return _Report()
+
+    monkeypatch.setattr(rd, "collect_batch", _fake_batch)
+    r = client.post("/api/collect", json={"keywords": [], "do_enrich": False})
+    assert r.status_code == 200
+    assert captured["keywords"] == list(DEFAULT_DAILY_KEYWORDS)
+    assert captured["keywords"]  # 비어있지 않음
+
+
 def test_collect_stream_emits_step_and_done(monkeypatch):
     import scraping.run_daily as rd
 

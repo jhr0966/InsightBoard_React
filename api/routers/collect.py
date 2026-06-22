@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from api.deps import Identity, current_identity
+from config import DEFAULT_DAILY_KEYWORDS
 
 router = APIRouter(prefix="/api/collect", tags=["collect"])
 # 스키마 기본값 — top-level 에서 scraping 을 import 하지 않기 위해 로컬 상수.
@@ -28,6 +29,17 @@ _DEFAULT_SOURCES = ("naver", "google", "tech")
 
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def _keywords_or_default(keywords: list[str]) -> list[str]:
+    """키워드가 비면 도메인 기본 키워드(`config.DEFAULT_DAILY_KEYWORDS`)로 폴백.
+
+    naver/google 은 키워드가 있어야 검색하므로, UI '지금 수집'(빈 키워드)·페르소나
+    관심 키워드 미설정 시 두 소스가 통째로 비던 문제 방어. tech(AI Times·오토메이션
+    월드)는 키워드 무관이라 영향 없음. cron(daily_scrape)은 자체 기본값을 직접 넘긴다.
+    """
+    cleaned = [k.strip() for k in keywords if k and k.strip()]
+    return cleaned or list(DEFAULT_DAILY_KEYWORDS)
 
 
 class CollectIn(BaseModel):
@@ -48,7 +60,7 @@ def run_collect(body: CollectIn, _identity: Identity = Depends(current_identity)
         ) from exc
 
     report = collect_batch(
-        body.keywords,
+        _keywords_or_default(body.keywords),
         sources=body.sources if body.sources is not None else SOURCE_IDS,
         max_results=body.max_results,
         do_enrich=body.do_enrich,
@@ -78,6 +90,7 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
         ) from exc
 
     sources = list(body.sources) if body.sources is not None else list(SOURCE_IDS)
+    keywords = _keywords_or_default(body.keywords)
     events: queue.Queue = queue.Queue()
     _SENTINEL = object()
 
@@ -88,7 +101,7 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
         t0 = time.monotonic()
         try:
             report = collect_batch(
-                body.keywords, sources=sources, max_results=body.max_results,
+                keywords, sources=sources, max_results=body.max_results,
                 do_enrich=body.do_enrich, on_step=_on_step,
             )
             try:  # 런 로그 — '수집 이력/헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.

@@ -1,3 +1,11 @@
+## 2026-06-22 — 수집 빈 키워드 시 네이버·구글 누락 수정 (`fix-collect-default-keywords`)
+
+**무엇을**: 수집 API(`/api/collect`·`/stream`)가 키워드 비면 `config.DEFAULT_DAILY_KEYWORDS`(8개)로 폴백(`_keywords_or_default`). UI '지금 수집'(빈 키워드)·보드 버튼(페르소나 키워드 미설정)으로는 naver/google 이 건너뛰어 tech(AI Times·오토메이션월드)만 수집되던 회귀 수정. cron·collect_batch 계약 불변.
+
+**조치**: pytest 462(+1 폴백 검증), py_compile OK. 사용자 질문("4종 각각 제대로 수집되나") 대응.
+
+---
+
 ## 2026-06-22 — 보드 무한 로딩 방어 (`fix-board-loading-resilience`)
 
 **무엇을**: `client.ts req()` 에 60초 타임아웃(AbortController) 추가 — 타임아웃 없어 백엔드 무응답(Render 무료 콜드스타트) 시 쿼리가 영원히 pending → 브리핑·탑스토리 스켈레톤 무한. Board 에 브리핑·탑스토리 에러 분기(+재시도) 추가. 무한 로딩은 로직 버그가 아니라(빈 데이터면 백엔드가 즉시 폴백/EmptyState 반환) 백엔드 무응답 신호였음을 진단.
