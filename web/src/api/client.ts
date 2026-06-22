@@ -20,11 +20,28 @@ import type {
 
 const BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
 
+// 무한 pending 방지 — Render 무료 콜드스타트(~50s)는 살리되, 그 이상 멈추면 에러로 전환.
+// (타임아웃이 없으면 백엔드가 연결만 잡고 응답을 안 줄 때 쿼리가 영원히 로딩 상태로 남는다.)
+const REQ_TIMEOUT_MS = 60_000;
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQ_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...init,
+      signal: ctrl.signal,
+    });
+  } catch (err) {
+    if (ctrl.signal.aborted) {
+      throw new Error("서버 응답이 너무 늦어요 (무료 서버 콜드스타트일 수 있어요). 잠시 후 새로고침 해주세요.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`);

@@ -21,6 +21,15 @@ function deltaClass(s: TrendSeriesItem): string {
   return "badge-default";
 }
 
+function LoadError({ msg, onRetry }: { msg: string; onRetry: () => void }) {
+  return (
+    <div className="card" style={{ margin: 0, display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
+      <span className="muted" style={{ fontSize: "var(--fs-caption)" }}>⚠️ {msg}</span>
+      <button className="btn" onClick={onRetry}>다시 시도</button>
+    </div>
+  );
+}
+
 function Section({ title, note, cta, children }: {
   title: string; note?: string; cta?: React.ReactNode; children: React.ReactNode;
 }) {
@@ -97,6 +106,7 @@ export default function Board() {
         <div className="bd-brief">
           <span className="bd-brief-tag">요약</span>
           {brief.isLoading ? <div className="skel" style={{ height: 40, marginTop: 12 }} />
+            : brief.isError ? <div className="bd-brief-text muted">브리핑을 불러오지 못했어요 — {(brief.error as Error).message}</div>
             : <div className="bd-brief-text">{brief.data?.brief}</div>}
           {news.length > 0 && (
             <div className="bd-carousel" style={{ marginTop: "var(--space-4)" }}>
@@ -109,6 +119,7 @@ export default function Board() {
       {/* ③ 탑 스토리 */}
       <Section title="탑 스토리" note="최근 수집 주요 기사">
         {today.isLoading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
+          : today.isError ? <LoadError msg={(today.error as Error).message} onRetry={() => today.refetch()} />
           : news.length === 0 ? <EmptyState icon="🗞" title="아직 수집된 뉴스가 없어요" hint="아래 키워드 관리에서 수집을 시작하세요." />
           : <div className="bd-grid">{news.slice(0, 6).map((a) => <NewsCard key={a.link} article={a} />)}</div>}
       </Section>

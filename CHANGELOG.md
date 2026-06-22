@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (보드 무한 로딩 방어 — 요청 타임아웃·에러 안내) — `fix-board-loading-resilience`
+- **`web/src/api/client.ts`**: `req()` 에 **60초 AbortController 타임아웃** 추가. 타임아웃 없던 탓에 백엔드가 연결만 잡고 응답을 안 주면(예: Render 무료 콜드스타트/무응답) 쿼리가 **영원히 pending** → 브리핑·탑스토리 스켈레톤이 끝없이 남던 문제 방어. 초과 시 "서버 응답이 너무 늦어요(콜드스타트일 수 있어요)" 에러로 전환.
+- **`web/src/pages/Board.tsx`**: SOLA 브리핑·탑스토리에 **에러 상태 분기** 추가 — 실패 시 빈칸/스켈레톤 대신 사유 안내(+탑스토리는 "다시 시도" 버튼)를 보여줘 멈춘 것처럼 보이지 않게. `LoadError` 헬퍼 추가.
+- 참고: 데이터가 실제로 0건일 때 백엔드는 즉시 폴백("오늘 매칭된 뉴스가 없습니다")·EmptyState 를 반환하므로 무한 로딩은 로직 버그가 아니라 백엔드 무응답(무료 플랜 콜드스타트/휘발) 신호였음.
+
 ### Changed (전환 후 문서·코드 정리) — `chore-docs-cleanup`
 - **현행 문서 React/FastAPI 재작성**: `docs/ARCHITECTURE.md`(streamlit 5영역 디스패치 → React 페이지↔라우터 매핑·디렉토리·데이터플로우·계약), `DEV_GUIDELINES.md`(§2 역할·§3 라우팅·§4 불변식·§6 검증·§8 스택), `docs/INVARIANTS.md`(I-1~I-23 streamlit 런타임 함정 → 계층분리·OpenAPI 드리프트·HTTP/enrich/LLM 단일진입점·식별필드·SSE·CORS 13개로 신규 작성), `docs/WORKFLOW.md`·`README.md`·`web/README.md` 스테일 부분.
 - **히스토리 문서 아카이브**: 역할을 다한 전환 계획·진행 문서 10개(REACT_MIGRATION_PLAN·REACT_PARITY_PLAN·REACT_PREP_INVENTORY·UX_REDESIGN_PLAN·DEVELOPMENT_PHASES·MILESTONE_1·TASK_DEF_PLAN·UX_QA_CHECKLIST·VIBE_CODING_BLUEPRINT·REFACTOR_PLAN) + streamlit 불변식(INVARIANTS_STREAMLIT)을 `docs/archive/` 로 이동, 상단 아카이브 배너 추가.
