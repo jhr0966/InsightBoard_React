@@ -136,6 +136,9 @@ def collect_batch(
                     on_error=lambda site, msg: report.errors.append(
                         {"source": "tech", "keyword": site, "error": msg}
                     ),
+                    # 사이트별 진행 — 모달에 'AI Times'·'오토메이션월드'를 개별 표시
+                    # (keyword 슬롯에 사이트명). 과거엔 tech 묶음 1줄뿐이었다.
+                    on_site=(lambda site, n: on_step("tech", site, n)) if on_step else None,
                 )
                 if do_enrich:
                     _enrich.enrich_parallel(articles, with_llm=False)
@@ -156,8 +159,6 @@ def collect_batch(
                         "sites": sites,
                     }
                 )
-                if on_step:
-                    on_step("tech", "", len(articles))
             except Exception as e:  # noqa: BLE001
                 report.errors.append(
                     {"source": "tech", "keyword": "", "error": str(e)}

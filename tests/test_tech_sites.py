@@ -127,6 +127,23 @@ def test_search_site_raises_on_bad_status():
             tech_sites.search_site("AI Times", "https://www.aitimes.com")
 
 
+def test_search_all_reports_each_site_via_on_site():
+    """on_site 콜백이 사이트마다(성공=건수, 실패=0) 호출 — 진행표시 가시성."""
+    def _fake_search(name, url, max_results=10):
+        if name == "AI Times":
+            return [{"title": "a", "link": url + "/a", "source": "tech"},
+                    {"title": "b", "link": url + "/b", "source": "tech"}]
+        raise RuntimeError("403")  # 오토메이션월드 실패 시뮬
+
+    sites: list[tuple] = []
+    with patch.object(tech_sites, "search_site", _fake_search):
+        out = tech_sites.search_all(on_site=lambda n, c: sites.append((n, c)))
+    assert len(out) == 2
+    # 두 사이트 모두 통보됨 — 실패한 오토메이션월드도 0건으로 '시도했음'이 보인다.
+    assert ("AI Times", 2) in sites
+    assert ("오토메이션월드", 0) in sites
+
+
 def test_search_all_surfaces_errors_via_on_error():
     """on_error 콜백이 있으면 사이트별 실패를 통보 → 수집 헬스 노출용."""
     def _fake_search(name, url, max_results=10):

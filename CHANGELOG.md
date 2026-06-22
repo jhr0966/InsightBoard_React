@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (수집 본문 누락 + tech 사이트별 진행 가시성) — `fix-collect-tech-visibility-enrich`
+- **'지금 수집' 본문/이미지 미수집 해결** (`web/src/pages/Collect.tsx`): 수동 수집이 `do_enrich: false` 로 호출돼 본문·대표이미지 fetch 를 통째로 건너뛰고 있었다 → 저장 기사 content 가 비어 **카드를 눌러도 본문이 안 보이던** 근본 원인. `do_enrich: true` 로 변경(cron 일일수집과 동일하게 본문·이미지 채움).
+- **tech 사이트별 진행 표시** (`scraping/tech_sites.py` `search_all` + `scraping/run_daily.py`): `on_site(site, count)` 콜백을 추가해 수집 진행 모달이 **AI Times·오토메이션월드를 사이트별로 표시**(keyword 슬롯에 사이트명). 과거엔 tech 묶음 1줄만 떠서 **오토메이션월드가 시도조차 안 되는 것처럼** 보였다. 실패한 사이트도 0건으로 통보해 '시도했음'이 보인다. 끝부분 단일 `on_step("tech","",total)` 은 제거(사이트별 step 으로 대체).
+- 검증: 신규 테스트 2건(`search_all` on_site·collect_batch 사이트별 step) → pytest 473, 웹 빌드 OK.
+
 ### Fixed / Changed (수집 안정화 — tech RSS + 기본 키워드 축소) — `feat-collect-rss-keywords`
 - **기술 사이트 수집 RSS 우선** (`scraping/tech_sites.py`): AI Times·오토메이션월드를 homepage `<a>` 휴리스틱 대신 모우CMS 표준 RSS 피드(`/rss/allArticle.xml`)로 먼저 수집. 사이트마다 다른 마크업 탓에 **오토메이션월드가 통째로 0건**이 되던 문제 해결. RSS 실패/0건이면 기존 homepage 스크래핑(`_search_site_html`)으로 폴백(무회귀). RSS 결과는 `source=tech`·`press=사이트명`으로 보정.
 - **기본 키워드 2종으로 축소** (`config.py`): `DEFAULT_DAILY_KEYWORDS` 를 8개(조선소 자동화·용접 로봇 등)에서 **`AI`·`자동화`** 2개로 단순화 — 너무 많은 키워드가 수집을 느리게/노이즈를 키우던 문제. cron 일일수집·'지금 수집'(빈 키워드) 폴백 모두 적용.
