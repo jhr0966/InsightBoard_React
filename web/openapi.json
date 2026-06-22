@@ -1683,7 +1683,7 @@
     },
     "/api/health": {
       "get": {
-        "description": "헬스체크 — 배포 readiness 프로브용.",
+        "description": "헬스체크 — 배포 readiness 프로브용. 의존성과 무관하게 항상 200(liveness).",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {
@@ -1702,6 +1702,30 @@
           }
         },
         "summary": "Health",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/health/deps": {
+      "get": {
+        "description": "진단용 — 핵심 의존성(LLM·작업정의·뉴스) 상태를 표면화.\n\n`/api/health`(liveness)와 분리: 여기서 LLM 미설정/뉴스 0 이어도 200 을 반환하되\n`ready` 플래그로 운영 점검을 돕는다(배포 프로브가 이 결과로 흔들리지 않게).",
+        "operationId": "health_deps_api_health_deps_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Deps Api Health Deps Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Deps",
         "tags": [
           "meta"
         ]
@@ -1768,7 +1792,7 @@
     },
     "/api/insights/heatmap-cell": {
       "get": {
-        "description": "선택 셀(공정 × 기술)에 동시 출현하는 매칭 뉴스 — 상세 strip 미리보기용.",
+        "description": "선택 셀(공정 × 기술)의 근거 뉴스 — 상세 strip 미리보기용.\n\n`/heatmap` 과 동일한 매칭(공정→뉴스)을 써서, 불 켜진 셀을 누르면 반드시 그 기사가\n나온다(과거 공정명 substring 방식은 다단어 공정명에서 빈 결과를 줬다).",
         "operationId": "heatmap_cell_api_insights_heatmap_cell_get",
         "parameters": [
           {
