@@ -30,6 +30,8 @@ function Generate() {
   const hoDept = params.get("dept") ?? "";
   const hoLv3 = params.get("lv3") ?? "";
   const [selected, setSelected] = useState("");
+  const [draft, setDraft] = useState("");   // 현재 제안서 MD(생성/다듬기로 갱신)
+  const [instr, setInstr] = useState("");    // 다듬기 지시
   const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
 
   // 핸드오프(dept/lv3)면 매칭되는 작업정의를 자동 선택.
@@ -50,6 +52,13 @@ function Generate() {
       const t = await api.taskdefs.get(pid);
       return api.proposals.generate((t.json as Record<string, unknown>) ?? { process_id: pid });
     },
+    onSuccess: (d) => setDraft(d.proposal),
+  });
+  // 다듬기 — 현재 draft + 지시 → 새 draft (처음부터 재생성 없이 반복 개선).
+  const refine = useMutation({
+    mutationFn: (instruction: string) => api.proposals.refine(draft, instruction),
+    onSuccess: (d) => { setDraft(d.proposal); setInstr(""); toast.push("✨ 제안서를 다듬었어요", "success"); },
+    onError: (e) => toast.push((e as Error).message, "danger"),
   });
   const save = useMutation({
     mutationFn: (text: string) => api.bookmarks.create({
@@ -78,9 +87,16 @@ function Generate() {
           <button className="btn primary" disabled={!selected || gen.isPending} onClick={() => gen.mutate(selected)}>
             {gen.isPending ? "생성 중…" : "제안서 생성"}</button>
         </div>
-        {gen.data && <>
-          <div className="pr-output">{gen.data.proposal}</div>
-          <button className="btn primary" style={{ marginTop: 10 }} disabled={save.isPending} onClick={() => save.mutate(gen.data!.proposal)}>
+        {draft && <>
+          <div className="pr-output">{draft}</div>
+          <div className="pr-refine" style={{ display: "flex", gap: 6, marginTop: 10 }}>
+            <input style={{ flex: 1 }} value={instr} onChange={(e) => setInstr(e.target.value)}
+              placeholder="다듬기 지시 예: 리스크 섹션 강화 · 더 짧게 · 보수적 톤으로"
+              onKeyDown={(e) => { if (e.key === "Enter" && instr.trim() && !refine.isPending) refine.mutate(instr.trim()); }} />
+            <button className="btn" disabled={!instr.trim() || refine.isPending} onClick={() => refine.mutate(instr.trim())}>
+              {refine.isPending ? "다듬는 중…" : "✨ 다듬기"}</button>
+          </div>
+          <button className="btn primary" style={{ marginTop: 10 }} disabled={save.isPending} onClick={() => save.mutate(draft)}>
             📦 보관함에 저장</button>
         </>}
         {gen.error && <div style={{ color: "var(--semantic-danger)", marginTop: 8 }}>{(gen.error as Error).message}</div>}

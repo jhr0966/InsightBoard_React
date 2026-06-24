@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 1순위 — 미연결 SOLA 기능 연결) — `feat-wire-sola-refine-summarize-title`
+Streamlit→React 마이그레이션 전수점검에서 **백엔드는 있으나 UI 미연결**이던 기능 4건 연결.
+- **제안서 다듬기(refine)**: `sola/refine.py`(고아) → `POST /api/proposals/refine` 신설 + `Proposals.tsx` 에 지시 입력 + "✨ 다듬기" 버튼. 처음부터 재생성 없이 기존 제안서를 반복 개선. LLM 오류는 502/503.
+- **채팅 스레드 자동 제목**: `sola/thread_title.py`(고아) → `POST /api/threads` 가 `first_message` 받으면 LLM 으로 제목 생성(캐시+룰 fallback). `AssistantDrawer` 가 36자 자르기 대신 첫 메시지를 보냄.
+- **뉴스 요약 UI**: `/api/proposals/summarize`(연결돼 있으나 호출 UI 없던 것) → `Collect.tsx` "📰 최근 뉴스 요약" 버튼 + 결과 모달.
+- **기사 모달 사진**: `ArticleModal` 이 `image_url` 을 받고도 안 그리던 것 → 상단에 대표 이미지 렌더(로드 실패 시 숨김).
+- 검증: 신규 백엔드 테스트 5건 → pytest 478. OpenAPI/web 타입 재생성(45 paths), 웹 빌드 OK.
 ### Fixed (구글 뉴스 본문·사진 전부 누락 — URL 디코드 깨짐) — `fix-google-news-url-decode`
 - **`scraping/google.py` `_decode_google_url`**: 신 CBM 토큰(`\x08\x13\x22<len><url>…`)의 원문 URL 은 **length-delimited** 필드인데, 과거엔 정규식 `https?://[^\s...]+` 으로 뽑아 **URL 뒤 protobuf 바이트까지 끌어와 깨진 URL**(예: `…/ABCDEF/2\x05ko-KR`)을 반환했다. 이 깨진 URL 이 비어있지 않다고 `_resolve_link` 가 그대로 반환 → 신뢰성 높은 리디렉트 추적을 건너뜀 → enrich 가 깨진 URL fetch 에 실패 → **구글 뉴스 기사 본문·대표사진이 통째로 비던** 핵심 버그. 이제 protobuf varint 길이로 URL 을 정확히 잘라내고(`_read_varint`), 제어문자/비ASCII 가 섞이면 신뢰하지 않아 batchexecute/리디렉트 폴백이 돌게 했다. (InsightBoard_Streamlit·News_Proto 참고 — News_Proto 는 디코드 없이 리디렉트만 써서 회피했던 것.)
 - 검증: CBM 정확추출·불투명토큰 빈문자열·google 호스트 거부 회귀 테스트 3건 + 기존 google 파서 테스트 → 통과.

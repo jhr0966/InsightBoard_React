@@ -171,6 +171,12 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ task, ...opts }),
       }),
+    // 현재 제안서 MD + 지시 → 다듬은 MD (처음부터 재생성 없이 반복 개선).
+    refine: (proposal: string, instruction: string) =>
+      req<{ proposal: string }>("/api/proposals/refine", {
+        method: "POST",
+        body: JSON.stringify({ proposal, instruction }),
+      }),
   },
 
   assistant: {
@@ -181,8 +187,12 @@ export const api = {
 
   threads: {
     list: () => req<Thread[]>("/api/threads"),
-    create: (title = "") =>
-      req<Thread>("/api/threads", { method: "POST", body: JSON.stringify({ title }) }),
+    // 문자열 title 또는 {first_message}(서버가 LLM 으로 제목 자동 생성) 둘 다 허용.
+    create: (arg: string | { title?: string; first_message?: string } = "") =>
+      req<Thread>("/api/threads", {
+        method: "POST",
+        body: JSON.stringify(typeof arg === "string" ? { title: arg } : arg),
+      }),
     get: (id: string) => req<Thread>(`/api/threads/${encodeURIComponent(id)}`),
     update: (id: string, body: { title?: string; pinned?: boolean }) =>
       req<Thread>(`/api/threads/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) }),

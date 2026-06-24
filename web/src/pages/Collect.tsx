@@ -7,7 +7,7 @@ import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
 import BarChart from "../components/charts/BarChart";
 import { useGlobalSearch } from "../search";
-import { articleChannel, newsCategory, newsSummary, sourceMeta } from "../lib/news";
+import { articleChannel, httpsImg, newsCategory, newsSummary, sourceMeta } from "../lib/news";
 import { ageLabel } from "../lib/time";
 import type { NewsArticle } from "../api/types";
 
@@ -34,6 +34,12 @@ export default function Collect() {
   const [prog, setProg] = useState<CollectProgress | null>(null);
   const running = !!prog?.running;
   const runningRef = useRef(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const summarize = useMutation({
+    mutationFn: () => api.proposalsExtra.summarize(3),
+    onSuccess: (d) => setSummary(d.summary?.trim() || "요약할 최근 뉴스가 없어요."),
+    onError: (e) => toast.push((e as Error).message, "danger"),
+  });
 
   async function runCollect(kw: string[]) {
     if (runningRef.current) return;
@@ -78,6 +84,8 @@ export default function Collect() {
         <Tabs items={[{ key: "browse", label: "🃏 카드" }, { key: "settings", label: "⚙ 수집 설정" }]}
           value={view} onChange={(v) => setView(v as "browse" | "settings")} />
         <span className="cl-grow" />
+        <button className="btn" disabled={summarize.isPending} onClick={() => summarize.mutate()}>
+          {summarize.isPending ? "요약 중…" : "📰 최근 뉴스 요약"}</button>
         <CollectButton pending={running} onRun={() => runCollect([])} />
       </div>
 
@@ -91,6 +99,11 @@ export default function Collect() {
 
       <ArticleModal article={open} onClose={() => setOpen(null)} />
       <CollectProgressModal prog={prog} onClose={() => { if (!running) setProg(null); }} />
+      {summary !== null && (
+        <Modal open onClose={() => setSummary(null)} title="📰 최근 뉴스 요약 (3일)" width={600}>
+          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: "var(--fs-body)" }}>{summary}</div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -193,8 +206,14 @@ function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClo
   const summary = newsSummary(full);
   const body = (full.content || "").trim();
   const kws = (full.keywords_llm || full.keywords || "").trim();
+  const img = httpsImg(full.image_url);
   return (
     <Modal open onClose={onClose} title={<span style={{ color: m.color }}>{m.label}</span>} width={640}>
+      {img && (
+        <img src={img} alt="" loading="lazy"
+          style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 8, marginBottom: 12 }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+      )}
       <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>
         {full.press ? `${full.press} · ` : ""}{ageLabel(full.collected_at || full.date)}
       </div>
