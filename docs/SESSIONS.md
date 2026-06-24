@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 2순위: 수집 출처별 헬스 + 데이터표 뷰 (`feat-collect-health-table`)
+
+**무엇을**: `GET /api/sources/health`(출처별 7일 건수·마지막수집·정상/무수집/비활성 — 표시명→source/press 매핑) + Collect 출처 설정 행 배지. BrowseView 카드↔데이터표 토글. flaky `test_heatmap_lights_up` 견고화(top-N 행 가정 → ≥1 셀 점등).
+
+**조치**: 신규 테스트 → pytest 482(결정·랜덤 모두). OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 1순위: 미연결 SOLA 기능 연결 (`feat-wire-sola-refine-summarize-title`)
 
 **무엇을**: InsightBoard_Streamlit→React 전수점검(서브에이전트 5)에서 발견한 "백엔드는 있는데 UI 미연결" 4건 연결. ① 제안서 다듬기 — `sola/refine.py` 고아 → `POST /api/proposals/refine` + Proposals.tsx 다듬기 UI. ② 스레드 자동제목 — `sola/thread_title.py` 고아 → `POST /api/threads` first_message 자동제목, AssistantDrawer 연결. ③ 뉴스 요약 — `/api/proposals/summarize` 호출 UI 없던 것 → Collect.tsx 버튼+모달. ④ 기사 모달 사진 — image_url 안 그리던 것 → 렌더.

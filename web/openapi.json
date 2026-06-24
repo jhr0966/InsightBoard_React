@@ -654,6 +654,44 @@
         "title": "ProposalRefineIn",
         "type": "object"
       },
+      "SourceHealth": {
+        "properties": {
+          "count_7d": {
+            "default": 0,
+            "title": "Count 7D",
+            "type": "integer"
+          },
+          "custom": {
+            "default": false,
+            "title": "Custom",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "last_collected": {
+            "default": "",
+            "title": "Last Collected",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "정상",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "enabled"
+        ],
+        "title": "SourceHealth",
+        "type": "object"
+      },
       "SourceItem": {
         "properties": {
           "custom": {
@@ -2498,6 +2536,54 @@
           }
         },
         "summary": "Add Source",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/sources/health": {
+      "get": {
+        "description": "출처별 최근 N일 수집 건수·마지막 수집·상태 배지(수집 설정 화면).\n\nStreamlit `_src_status_html` 이식 — 출처 행에 OK/무수집/비활성을 표시.",
+        "operationId": "sources_health_api_sources_health_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceHealth"
+                  },
+                  "title": "Response Sources Health Api Sources Health Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sources Health",
         "tags": [
           "sources"
         ]

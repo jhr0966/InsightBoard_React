@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, streamCollect } from "../api/client";
 import type { CollectEvent } from "../api/client";
-import { KPIStatGrid, Tabs, EmptyState, Modal } from "../components/ui";
+import { KPIStatGrid, Tabs, EmptyState, Modal, Badge } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
 import BarChart from "../components/charts/BarChart";
@@ -168,10 +168,16 @@ function BrowseView({ cat, setCat, channels, chan, setChan, items, q, onOpen, lo
   channels: string[]; chan: string; setChan: (c: string) => void;
   items: NewsArticle[]; q: string; onOpen: (a: NewsArticle) => void; loading: boolean;
 }) {
+  const [mode, setMode] = useState<"card" | "table">("card");
   return (
     <>
-      <Tabs items={[{ key: "keyword", label: "🔑 키워드 뉴스" }, { key: "portal", label: "🏛 뉴스 포탈" }]}
-        value={cat} onChange={(c) => setCat(c as "keyword" | "portal")} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Tabs items={[{ key: "keyword", label: "🔑 키워드 뉴스" }, { key: "portal", label: "🏛 뉴스 포탈" }]}
+          value={cat} onChange={(c) => setCat(c as "keyword" | "portal")} />
+        <span style={{ flex: 1 }} />
+        <Tabs items={[{ key: "card", label: "🃏 카드" }, { key: "table", label: "📋 데이터 표" }]}
+          value={mode} onChange={(m) => setMode(m as "card" | "table")} />
+      </div>
       <div className="cl-chips">
         {channels.map((c) => {
           const m = c === "전체" ? { color: "var(--text-muted)" } : sourceMeta(c);
@@ -185,10 +191,35 @@ function BrowseView({ cat, setCat, channels, chan, setChan, items, q, onOpen, lo
       {q && <div className="muted" style={{ marginBottom: 8 }}>검색: "{q}" — {items.length}건</div>}
       {loading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
         : items.length === 0 ? <EmptyState icon="🗞" title="기사가 없어요" hint="‘지금 수집’으로 수집을 시작하세요." />
+        : mode === "table" ? <NewsTable items={items} onOpen={onOpen} />
         : <div className="bd-grid">{items.slice(0, 48).map((a) => (
             <div key={a.link} onClick={(e) => { e.preventDefault(); onOpen(a); }}><NewsCard article={a} /></div>
           ))}</div>}
     </>
+  );
+}
+
+function NewsTable({ items, onOpen }: { items: NewsArticle[]; onOpen: (a: NewsArticle) => void }) {
+  return (
+    <div className="cl-table-wrap">
+      <table className="cl-table">
+        <thead><tr><th>출처</th><th>제목</th><th>요약</th><th>키워드</th><th>수집</th></tr></thead>
+        <tbody>
+          {items.slice(0, 200).map((a) => {
+            const m = articleChannel(a);
+            return (
+              <tr key={a.link} onClick={() => onOpen(a)} style={{ cursor: "pointer" }}>
+                <td><span className="cl-chip-dot" style={{ background: m.color }} /> {m.label}</td>
+                <td className="cl-td-title">{a.title}</td>
+                <td className="cl-td-sum">{newsSummary(a)}</td>
+                <td className="cl-td-kw">{(a.keywords_llm || a.keywords || "").split(",").slice(0, 3).join(", ")}</td>
+                <td className="muted" style={{ whiteSpace: "nowrap" }}>{ageLabel(a.collected_at || a.date)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -269,6 +300,8 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
   const [name, setName] = useState(""); const [url, setUrl] = useState("");
   const [diagUrl, setDiagUrl] = useState(""); const [kw, setKw] = useState("");
   const sources = useQuery({ queryKey: ["sources"], queryFn: () => api.sources.list() });
+  const srcHealth = useQuery({ queryKey: ["sources", "health"], queryFn: () => api.sources.health(7) });
+  const hmap = new Map((srcHealth.data ?? []).map((h) => [h.name, h] as const));
   const status = useQuery({ queryKey: ["collect", "status"], queryFn: () => api.collect.status() });
   const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
   const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
@@ -317,6 +350,17 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
           <div className="cl-src" key={s.name}>
             <span className="cl-chip-dot" style={{ background: sourceMeta(s.name).color }} />
             <span className="cl-src-name">{s.name}{s.custom && <span className="cl-src-url"> · {s.url}</span>}</span>
+            {(() => {
+              const h = hmap.get(s.name);
+              if (!h) return null;
+              const tone = h.status === "정상" ? "success" : h.status === "무수집" ? "warning" : "default";
+              return <>
+                <span className="muted" style={{ fontSize: "var(--fs-micro)", marginLeft: "auto" }}>
+                  {h.count_7d}건/7일{h.last_collected ? ` · ${ageLabel(h.last_collected)}` : ""}
+                </span>
+                <Badge tone={tone}>{h.status}</Badge>
+              </>;
+            })()}
             {s.custom && <button className="btn" onClick={() => remove.mutate(s.name)}>제거</button>}
             <button className={`cl-toggle${s.enabled ? " on" : ""}`} onClick={() => toggle.mutate(s.name)} aria-label="toggle" />
           </div>

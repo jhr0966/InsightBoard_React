@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 2순위 — 수집 출처별 헬스 + 데이터표 뷰) — `feat-collect-health-table`
+- **출처별 헬스** (`GET /api/sources/health` + `Collect.tsx` 출처 설정): 출처마다 최근 7일 수집 건수·마지막 수집 시각·상태 배지(정상/무수집/비활성). 표시명(네이버 뉴스·AI Times·오토메이션월드)을 기사 `source`/`press` 로 매핑. Streamlit `_src_status_html` 이식.
+- **뉴스 데이터 표 뷰** (`Collect.tsx` BrowseView): 카드 ↔ "📋 데이터 표" 토글. 출처·제목·요약·키워드·수집시각 표(상위 200행, 행 클릭→상세 모달). Streamlit `_SC_MODES` 표 뷰 이식.
+- **flaky 테스트 견고화** (`tests/test_api_insights.py`): `test_heatmap_lights_up` 가 '특정 공정이 top-N 행에 든다'를 가정해 순서 의존 간헐 실패하던 것을 '≥1 셀 점등'으로 변경(회귀 의도 보존).
+- 검증: 신규 테스트(출처 헬스) → pytest 482(결정·랜덤 순서 모두). OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
+
 ### Added (마이그레이션 갭 1순위 — 미연결 SOLA 기능 연결) — `feat-wire-sola-refine-summarize-title`
 Streamlit→React 마이그레이션 전수점검에서 **백엔드는 있으나 UI 미연결**이던 기능 4건 연결.
 - **제안서 다듬기(refine)**: `sola/refine.py`(고아) → `POST /api/proposals/refine` 신설 + `Proposals.tsx` 에 지시 입력 + "✨ 다듬기" 버튼. 처음부터 재생성 없이 기존 제안서를 반복 개선. LLM 오류는 502/503.
