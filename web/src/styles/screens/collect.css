@@ -67,3 +67,14 @@
 /* 수집 완료 모달 — 출처별 건수 */
 .cl-done-srcs { display: grid; gap: 3px; padding: 8px 10px; background: var(--surface-soft); border-radius: var(--r-sm); }
 .cl-done-src { display: flex; justify-content: space-between; font-size: var(--fs-caption); }
+
+/* 진단 결과 구조화 리포트 */
+.cl-diagr { margin-top: 10px; display: grid; gap: 8px; }
+.cl-diagr-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cl-diagr-steps { display: grid; gap: 3px; }
+.cl-diagr-step { display: grid; grid-template-columns: 18px 130px 1fr; gap: 6px; align-items: baseline; font-size: var(--fs-caption); }
+.cl-diagr-step-l { font-weight: var(--fw-medium); }
+.cl-diagr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 12px;
+  padding: 8px 10px; background: var(--surface-soft); border-radius: var(--r-sm); font-size: var(--fs-caption); }
+.cl-diagr-prev { font-size: var(--fs-micro); line-height: 1.5; color: var(--text-secondary);
+  max-height: 80px; overflow-y: auto; padding: 6px 8px; border: 1px solid var(--surface-divider); border-radius: var(--r-sm); }

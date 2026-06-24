@@ -411,9 +411,53 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
           <input className="cl-search" value={diagUrl} onChange={(e) => setDiagUrl(e.target.value)} placeholder="기사 URL" />
           <button className="btn" disabled={!diagUrl || diag.isPending} onClick={() => diag.mutate()}>{diag.isPending ? "진단 중…" : "진단"}</button>
         </div>
-        {diag.data && <div className="cl-diag">{JSON.stringify(diag.data, null, 2)}</div>}
+        {diag.data && <DiagResult d={diag.data as unknown as DiagReport} />}
         {diag.error && <div style={{ color: "var(--semantic-danger)", marginTop: 8 }}>{(diag.error as Error).message}</div>}
       </div>
+    </div>
+  );
+}
+
+interface DiagStep { name: string; label: string; status: number | null; length: number; ok: boolean; skipped: boolean; error: string | null; }
+interface DiagReport {
+  url: string; curl_cffi_available: boolean; fetched: boolean; all_blocked: boolean;
+  soft_block_suspect: boolean; soft_block_reasons: string[];
+  steps: DiagStep[];
+  meta_images: { selector: string; url: string; junk: boolean }[];
+  body_images: { selector: string; url: string; junk: boolean }[];
+  content_selector: { selector: string; length: number; preview: string } | null;
+  structured: { ldjson_len: number; fusion_len: number };
+  final: { content_len: number; content_preview: string; image_url: string };
+}
+
+// 진단 결과 — raw JSON 대신 단계별 구조화 리포트(Streamlit _render_diag_result 이식).
+function DiagResult({ d }: { d: DiagReport }) {
+  const headTone = d.all_blocked ? "danger" : d.soft_block_suspect ? "warning" : d.fetched ? "success" : "default";
+  const headText = d.all_blocked ? "전부 차단(IP 대역 의심)" : d.soft_block_suspect ? "200 위장 차단 의심" : d.fetched ? "HTML 확보" : "미확보";
+  const imgs = [...(d.meta_images ?? []), ...(d.body_images ?? [])];
+  return (
+    <div className="cl-diagr">
+      <div className="cl-diagr-head">
+        <Badge tone={headTone}>{headText}</Badge>
+        {d.soft_block_reasons?.map((r, i) => <span key={i} className="muted" style={{ fontSize: "var(--fs-micro)" }}>· {r}</span>)}
+      </div>
+      <div className="cl-diagr-steps">
+        {(d.steps ?? []).map((s) => (
+          <div key={s.name} className="cl-diagr-step">
+            <span>{s.ok ? "✅" : s.skipped ? "⏭" : "❌"}</span>
+            <span className="cl-diagr-step-l">{s.label}</span>
+            <span className="muted">{s.skipped ? "건너뜀" : `HTTP ${s.status ?? "-"} · ${s.length}자`}{s.error ? ` · ${s.error}` : ""}</span>
+          </div>
+        ))}
+      </div>
+      <div className="cl-diagr-grid">
+        <div><span className="muted">본문 셀렉터</span> {d.content_selector ? `${d.content_selector.selector} (${d.content_selector.length}자)` : "미매칭"}</div>
+        <div><span className="muted">최종 본문</span> {d.final?.content_len ?? 0}자</div>
+        <div><span className="muted">구조화</span> ld+json {d.structured?.ldjson_len ?? 0} · fusion {d.structured?.fusion_len ?? 0}</div>
+        <div><span className="muted">이미지 후보</span> {imgs.length}개{imgs.length ? ` (junk ${imgs.filter((x) => x.junk).length})` : ""}</div>
+      </div>
+      {d.final?.image_url && <div className="muted" style={{ fontSize: "var(--fs-micro)", wordBreak: "break-all" }}>🖼 {d.final.image_url}</div>}
+      {d.final?.content_preview && <div className="cl-diagr-prev">{d.final.content_preview}</div>}
     </div>
   );
 }

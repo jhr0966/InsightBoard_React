@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 3순위: 진단 결과 구조화 렌더 (`feat-diagnose-render`)
+
+**무엇을**: Collect 기사 진단 결과를 raw JSON → 단계별 구조화 리포트(DiagResult): 차단 배지·①②③ 단계·본문셀렉터·최종본문·구조화·이미지후보·미리보기. Streamlit _render_diag_result 이식. 프런트 전용.
+
+**조치**: 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 2순위: 온보딩 첫 수집 단계 (`feat-onboarding-collect-step`)
 
 **무엇을**: Onboarding 페르소나 저장 후 step 5(첫 수집 제안) 추가 — "지금 첫 수집"(관심 키워드 collect.run + board 갱신)/"건너뛰기". Streamlit 온보딩 step5/6 이식. 프런트 전용.
