@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 2순위 — 수집 출처별 헬스 + 데이터표 뷰) — `feat-collect-health-table`
+- **출처별 헬스** (`GET /api/sources/health` + `Collect.tsx` 출처 설정): 출처마다 최근 7일 수집 건수·마지막 수집 시각·상태 배지(정상/무수집/비활성). 표시명(네이버 뉴스·AI Times·오토메이션월드)을 기사 `source`/`press` 로 매핑. Streamlit `_src_status_html` 이식.
+- **뉴스 데이터 표 뷰** (`Collect.tsx` BrowseView): 카드 ↔ "📋 데이터 표" 토글. 출처·제목·요약·키워드·수집시각 표(상위 200행, 행 클릭→상세 모달). Streamlit `_SC_MODES` 표 뷰 이식.
+- **flaky 테스트 견고화** (`tests/test_api_insights.py`): `test_heatmap_lights_up` 가 '특정 공정이 top-N 행에 든다'를 가정해 순서 의존 간헐 실패하던 것을 '≥1 셀 점등'으로 변경(회귀 의도 보존).
+- 검증: 신규 테스트(출처 헬스) → pytest 482(결정·랜덤 순서 모두). OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
 ### Added (마이그레이션 갭 2순위 — 인사이트 트렌드→공정 매핑) — `feat-insights-process-map`
 Streamlit `_ia_process_map_html`(인사이트 최대 누락 섹션) 이식.
 - **`GET /api/insights/process-map?keyword=&days=&top=`** (`api/routers/insights.py`): 선택 트렌드 키워드를 언급한 최근 뉴스만으로 `score_cells` → 연결 공정(Lv3) 상위 N. 카드별 `dept·lv3·적합도(fit 0~1)·근거뉴스 수·샘플작업·목표·근거뉴스·PoC/관찰 태그`.

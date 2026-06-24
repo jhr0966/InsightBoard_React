@@ -1,3 +1,8 @@
+## 2026-06-22 — 마이그레이션 갭 2순위: 수집 출처별 헬스 + 데이터표 뷰 (`feat-collect-health-table`)
+
+**무엇을**: `GET /api/sources/health`(출처별 7일 건수·마지막수집·정상/무수집/비활성 — 표시명→source/press 매핑) + Collect 출처 설정 행 배지. BrowseView 카드↔데이터표 토글. flaky `test_heatmap_lights_up` 견고화(top-N 행 가정 → ≥1 셀 점등).
+
+**조치**: 신규 테스트 → pytest 482(결정·랜덤 모두). OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
 ## 2026-06-22 — 마이그레이션 갭 2순위: 인사이트 트렌드→공정 매핑 (`feat-insights-process-map`)
 
 **무엇을**: 전수점검 최대 갭(Streamlit `_ia_process_map_html`) 이식. `GET /api/insights/process-map`(키워드 언급 뉴스로 score_cells → 연결 공정 카드: 적합도·근거뉴스·샘플작업·PoC태그). Insights.tsx 키워드 목록 클릭 가능 + 연결 공정 카드 섹션. CSS(.ia-pmap) 추가.

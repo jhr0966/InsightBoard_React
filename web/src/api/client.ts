@@ -162,6 +162,7 @@ export const api = {
 
   sources: {
     list: () => req<{ items: { name: string; enabled: boolean; custom: boolean; url: string | null }[] }>("/api/sources"),
+    health: (days = 7) => req<{ name: string; enabled: boolean; custom: boolean; count_7d: number; last_collected: string; status: string }[]>(`/api/sources/health${qs({ days })}`),
     toggle: (name: string) => req(`/api/sources/${encodeURIComponent(name)}/toggle`, { method: "POST" }),
     add: (name: string, url: string) =>
       req("/api/sources", { method: "POST", body: JSON.stringify({ name, url }) }),

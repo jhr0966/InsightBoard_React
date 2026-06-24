@@ -43,6 +43,25 @@ def test_create_thread_auto_titles_from_first_message():
     m.assert_called_once()
 
 
+# ── 출처별 헬스 (/api/sources/health) ────────────────────────────────
+def test_sources_health_reports_status_per_source():
+    from store import news_db
+    news_db.save_articles([
+        {"title": "n1", "source": "naver", "press": "전자신문", "keywords": "",
+         "content": "x", "date": "2026-06-15", "collected_at": "2026-06-15T09:00:00Z",
+         "link": "https://e.com/1"},
+        {"title": "t1", "source": "tech", "press": "AI Times", "keywords": "",
+         "content": "x", "date": "2026-06-15", "collected_at": "2026-06-15T09:00:00Z",
+         "link": "https://e.com/2"},
+    ], source="naver")
+    rows = client.get("/api/sources/health", params={"days": 30}).json()
+    by = {r["name"]: r for r in rows}
+    assert by["네이버 뉴스"]["count_7d"] == 1 and by["네이버 뉴스"]["status"] == "정상"
+    assert by["AI Times"]["count_7d"] == 1
+    # 수집 없는 출처는 무수집
+    assert by["오토메이션월드"]["status"] == "무수집"
+
+
 def test_create_thread_explicit_title_skips_llm():
     with patch("sola.thread_title.generate") as m:
         r = client.post("/api/threads", json={"title": "내 제목", "first_message": "무시됨"})
