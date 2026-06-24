@@ -240,3 +240,34 @@ def test_cli_default_keywords_used(monkeypatch):
     assert rc == 0
     assert captured["keywords"] == list(DEFAULT_DAILY_KEYWORDS)
     assert captured["sources"] == tuple(run_daily.SOURCE_IDS)
+
+
+def test_collect_batch_runs_sources_concurrently(monkeypatch):
+    """소스(naver/google/tech)가 동시 실행되는지 — 겹치는 구간이 있어야 함."""
+    import threading
+    import time as _t
+
+    active = {"n": 0, "max": 0}
+    lock = threading.Lock()
+
+    def _slow(label):
+        def _fn(*a, **k):
+            with lock:
+                active["n"] += 1
+                active["max"] = max(active["max"], active["n"])
+            _t.sleep(0.25)
+            with lock:
+                active["n"] -= 1
+            return [{"title": f"{label}1", "link": f"http://x/{label}/1",
+                     "source": label, "summary": "s", "content": "본문 " * 30}]
+        return _fn
+
+    monkeypatch.setattr(run_daily.naver_news, "search", _slow("naver"))
+    monkeypatch.setattr(run_daily.google_news, "search", _slow("google"))
+    monkeypatch.setattr(run_daily.tech_sites, "search_all",
+                        lambda **k: _slow("tech")())
+    monkeypatch.setattr(run_daily._enrich, "enrich_parallel", lambda arts, **k: arts)
+
+    run_daily.collect_batch(["로봇"], sources=("naver", "google", "tech"), max_results=3)
+    # 최소 2개 소스가 동시에 활성 — 순차였다면 max 는 1
+    assert active["max"] >= 2

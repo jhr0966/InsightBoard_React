@@ -98,97 +98,109 @@ def collect_batch(
     selected = tuple(s for s in sources if s in SOURCE_IDS)
     keyword_list = [k.strip() for k in keywords if k and k.strip()]
 
-    for src in selected:
-        if src in KEYWORD_SOURCES:
-            bucket: list[dict] = []
-            used_keywords: list[str] = []
-            for kw in keyword_list:
-                try:
-                    articles = _run_keyword_source(src, kw, max_results)
-                    for art in articles:
-                        art.setdefault("query", kw)
-                    bucket.extend(articles)
-                    used_keywords.append(kw)
-                    if on_step:
-                        on_step(src, kw, len(articles))
-                except Exception as e:  # noqa: BLE001 — 개별 실패 격리
-                    report.errors.append(
-                        {"source": src, "keyword": kw, "error": str(e)}
-                    )
-            if bucket:
-                if do_enrich:
-                    # 검색 결과는 content 가 비어 있다 → 링크에서 본문·og:image 를 병렬 fetch.
-                    _enrich.enrich_parallel(bucket, with_llm=False)
-                path = save_articles(bucket, source=src)
-                report.saved.append(
-                    {
-                        "source": src,
-                        "keywords": used_keywords,
-                        "count": len(bucket),
-                        "path": str(path) if path else "",
-                    }
-                )
-        elif src == "tech":
+    # 소스별 처리를 (saved, errors) 를 돌려주는 순수 클로저로 분리 — 공유 report 를
+    # 직접 건드리지 않으므로 스레드에서 동시 실행해도 안전(파일명은 source 별로 달라
+    # 동시 저장 충돌 없음). 결과는 제출 순서대로 병합해 결정적 순서를 보존한다.
+    def _do_keyword_source(src: str) -> tuple[list[dict], list[dict]]:
+        saved: list[dict] = []
+        errors: list[dict] = []
+        bucket: list[dict] = []
+        used_keywords: list[str] = []
+        for kw in keyword_list:
             try:
-                # 사이트별 HTTP 실패를 report.errors 로 표면화 → '수집 헬스' 가 감지.
-                articles = tech_sites.search_all(
-                    max_results_per_site=max_results,
-                    on_error=lambda site, msg: report.errors.append(
-                        {"source": "tech", "keyword": site, "error": msg}
-                    ),
-                    # 사이트별 진행 — 모달에 'AI Times'·'오토메이션월드'를 개별 표시
-                    # (keyword 슬롯에 사이트명). 과거엔 tech 묶음 1줄뿐이었다.
-                    on_site=(lambda site, n: on_step("tech", site, n)) if on_step else None,
-                )
+                articles = _run_keyword_source(src, kw, max_results)
+                for art in articles:
+                    art.setdefault("query", kw)
+                bucket.extend(articles)
+                used_keywords.append(kw)
+                if on_step:
+                    on_step(src, kw, len(articles))
+            except Exception as e:  # noqa: BLE001 — 개별 실패 격리
+                errors.append({"source": src, "keyword": kw, "error": str(e)})
+        if bucket:
+            if do_enrich:
+                # 검색 결과는 content 가 비어 있다 → 링크에서 본문·og:image 를 병렬 fetch.
+                _enrich.enrich_parallel(bucket, with_llm=False)
+            path = save_articles(bucket, source=src)
+            saved.append({
+                "source": src, "keywords": used_keywords,
+                "count": len(bucket), "path": str(path) if path else "",
+            })
+        return saved, errors
+
+    def _do_tech() -> tuple[list[dict], list[dict]]:
+        saved: list[dict] = []
+        errors: list[dict] = []
+        try:
+            # 사이트별 HTTP 실패를 errors 로 표면화 → '수집 헬스' 가 감지.
+            articles = tech_sites.search_all(
+                max_results_per_site=max_results,
+                on_error=lambda site, msg: errors.append(
+                    {"source": "tech", "keyword": site, "error": msg}
+                ),
+                # 사이트별 진행 — 모달에 'AI Times'·'오토메이션월드'를 개별 표시.
+                on_site=(lambda site, n: on_step("tech", site, n)) if on_step else None,
+            )
+            if do_enrich:
+                _enrich.enrich_parallel(articles, with_llm=False)
+            path = save_articles(articles, source="tech")
+            # 사이트별 건수 — UI 가 press(사이트명) 기준으로 나눠 표시.
+            sites: dict[str, int] = {}
+            for art in articles:
+                site = str(art.get("press", "") or "").strip()
+                if site:
+                    sites[site] = sites.get(site, 0) + 1
+            saved.append({
+                "source": "tech", "keywords": [], "count": len(articles),
+                "path": str(path) if path else "", "sites": sites,
+            })
+        except Exception as e:  # noqa: BLE001
+            errors.append({"source": "tech", "keyword": "", "error": str(e)})
+        return saved, errors
+
+    def _do_feed(name: str, url: str) -> tuple[list[dict], list[dict]]:
+        saved: list[dict] = []
+        errors: list[dict] = []
+        from scraping import rss as _rss
+        try:
+            articles = _rss.fetch(url, source_name=name, max_results=max_results)
+            if articles:
                 if do_enrich:
                     _enrich.enrich_parallel(articles, with_llm=False)
-                path = save_articles(articles, source="tech")
-                # 사이트별 건수 — UI 가 'tech' 묶음 대신 AI Times/오토메이션월드로
-                # 나눠 표시할 수 있게 press(사이트명) 기준 분해를 함께 기록.
-                sites: dict[str, int] = {}
-                for art in articles:
-                    site = str(art.get("press", "") or "").strip()
-                    if site:
-                        sites[site] = sites.get(site, 0) + 1
-                report.saved.append(
-                    {
-                        "source": "tech",
-                        "keywords": [],
-                        "count": len(articles),
-                        "path": str(path) if path else "",
-                        "sites": sites,
-                    }
-                )
-            except Exception as e:  # noqa: BLE001
-                report.errors.append(
-                    {"source": "tech", "keyword": "", "error": str(e)}
-                )
+                path = save_articles(articles, source=name)
+                saved.append({
+                    "source": name, "keywords": [], "count": len(articles),
+                    "path": str(path) if path else "",
+                })
+            if on_step:
+                on_step(name, "", len(articles))
+        except Exception as e:  # noqa: BLE001
+            errors.append({"source": name, "keyword": "", "error": str(e)})
+        return saved, errors
 
-    # 커스텀 RSS 피드 — 키워드 무관 (피드 자체가 콘텐츠 큐레이션)
-    if extra_feeds:
-        from scraping import rss as _rss
-        # 소스 ID 가 같은 파일에 저장되도록 source 별로 별도 호출 (stamp 충돌 회피
-        # — save_articles 가 초 단위 stamp 라 한 번에 여러 source 면 덮어쓰기 위험).
-        for name, url in extra_feeds:
-            try:
-                articles = _rss.fetch(url, source_name=name, max_results=max_results)
-                if articles:
-                    if do_enrich:
-                        _enrich.enrich_parallel(articles, with_llm=False)
-                    path = save_articles(articles, source=name)
-                    report.saved.append(
-                        {
-                            "source": name,
-                            "keywords": [],
-                            "count": len(articles),
-                            "path": str(path) if path else "",
-                        }
-                    )
-                if on_step:
-                    on_step(name, "", len(articles))
-            except Exception as e:  # noqa: BLE001
-                report.errors.append(
-                    {"source": name, "keyword": "", "error": str(e)}
-                )
+    # 작업 목록 — 소스(naver/google/tech) + 커스텀 RSS 피드. 제출 순서 = 병합 순서.
+    tasks: list[Callable[[], tuple[list[dict], list[dict]]]] = []
+    for src in selected:
+        if src in KEYWORD_SOURCES:
+            tasks.append(lambda s=src: _do_keyword_source(s))
+        elif src == "tech":
+            tasks.append(_do_tech)
+    for name, url in (extra_feeds or ()):
+        tasks.append(lambda n=name, u=url: _do_feed(n, u))
+
+    if not tasks:
+        return report
+
+    # 소스 동시 실행 — 각 소스는 검색+본문 enrich 가 네트워크 대기라, 순차로 돌면
+    # naver 끝나야 google 시작했다. 동시에 돌려 전체 wall-clock 을 가장 느린 소스
+    # 1개 수준으로 줄인다. future 를 제출 순서대로 result() 해 순서 결정성 유지.
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=min(8, len(tasks))) as ex:
+        futures = [ex.submit(fn) for fn in tasks]
+        for fut in futures:
+            saved, errors = fut.result()
+            report.saved.extend(saved)
+            report.errors.extend(errors)
 
     return report

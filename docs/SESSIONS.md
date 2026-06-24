@@ -1,3 +1,11 @@
+## 2026-06-22 — perf: 뉴스 수집 소스 동시 실행 (`perf-collect-parallel-sources`)
+
+**무엇을**: collect_batch 가 naver/google/tech 를 순차 실행하던 것을 소스별 클로저로 분리해 ThreadPoolExecutor 동시 실행. wall-clock 을 가장 느린 소스 1개 수준으로 단축. 제출 순서 result() 로 결과 순서 결정성 유지. 파일명에 source 포함이라 동시 저장 충돌 없음.
+
+**조치**: 신규 동시성 테스트 포함 pytest 500 passed, 금지패턴 0.
+
+---
+
 ## 2026-06-22 — fix: 페르소나 '지금 분석' 입력 손실 (`fix-persona-derive-loses-input`)
 
 **무엇을**: Persona.tsx — 저장 안 한 폼 입력 상태에서 '지금 분석' 누르면 서버 저장본(옛 데이터)으로 분석되고 setP(서버결과)가 입력을 덮어써 날아가던 버그. derive 전에 현재 폼 save 선행으로 수정. 프런트 전용.

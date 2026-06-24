@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Performance (뉴스 수집 소스 동시 실행) — `perf-collect-parallel-sources`
+- **`scraping/run_daily.collect_batch` 소스 병렬화**: 기존엔 naver→google→tech 를 순차 실행(naver 가 끝나야 google 시작). 각 소스 처리를 `(saved, errors)` 를 돌려주는 순수 클로저로 분리해 `ThreadPoolExecutor` 로 **동시 실행** → 전체 wall-clock 을 가장 느린 소스 1개 수준으로 단축. future 를 제출 순서대로 `result()` 해 결과 순서는 결정적으로 보존. 파일명이 `{source}_{시각}` 이라 서로 다른 소스의 동시 저장은 충돌 없음.
+- 검증: 신규 동시성 테스트(소스 2개+ 동시 활성 확인) 포함 pytest 500 passed · 금지패턴 0.
+
 ### Fixed (페르소나 '지금 분석' 입력 손실) — `fix-persona-derive-loses-input`
 - **`web/src/pages/Persona.tsx`**: 페르소나 폼에 입력만 하고 저장하지 않은 상태에서 "지금 분석/다시 분석"을 누르면 ①서버에 저장된 옛 페르소나로 분석이 돌고 ②`onSuccess`의 `setP(서버결과)`가 입력값을 덮어써 **입력이 전부 날아가던 버그** 수정. derive 전에 현재 폼을 먼저 `save` → 입력 기준으로 분석되고 입력도 보존(서버 `derive` 는 저장된 페르소나를 읽으므로 save 선행이 필수).
 - 검증: 웹 빌드 OK. 프런트 전용.
