@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 3순위 — 앱셸 LLM 배너·아바타·신선도) — `feat-appshell-llm-banner`
+- **LLM 미설정 상단 배너** (`Topbar.tsx`): `assistant.status` 가 미설정이면 상단바 위에 경고 배너(제안서·요약·채팅 제한 안내 + 환경변수 힌트). Streamlit `render_setup_banner_if_needed` 이식 — 과거엔 사이드바 작은 텍스트만.
+- **아바타 개인화**: 하드코딩 "?" → 페르소나 이름/부서 첫 글자(클릭 시 페르소나로).
+- **신선도 배지 동적화**: 고정 "LIVE" → 오늘 수집 최신 시각 기준 LIVE(≤6h)/최신(≤24h)/오래됨/수집 전.
+- 검증: 웹 빌드(tsc) OK. 프런트 전용(백엔드/OpenAPI 무변경).
+
 ### Added (마이그레이션 갭 3순위 — 수집 결과 상세 + 본문 확보율) — `feat-collect-result-detail`
 - **수집 완료 모달 출처별·오류 상세** (`collect.py` done SSE + `Collect.tsx`): done 이벤트에 `saved`(출처별 건수·tech 사이트 분해) 추가. 완료 모달이 출처별 건수 + 오류 목록(top 8, 접기)을 표시(과거엔 총계만). Streamlit `_collect_result_summary_html` 이식.
 - **본문 확보율 헬스 카드** (`GET /api/news/content-rate` + Collect 헬스 그리드): 최근 7일 기사 중 본문(content ≥ 50자) 비율. Streamlit data_health `enrich_percent` 이식 — enrich/fetch 정상 여부를 한눈에.
