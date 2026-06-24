@@ -1,3 +1,13 @@
+## 2026-06-22 — 작업정의 컨텍스트 주입 Phase A: 공용 선별 모듈 + 제안서 (`feat-taskdef-context-proposals`)
+
+**무엇을**: 신규 `sola/task_context.py` — 페르소나 matched_processes 로 관심 작업정의를 선별해 to_chat_context_lines 로 캡(3공정×2작업×2500자) 주입. `propose._format_task` 가 구조화 작업정의(작업흐름·품질리스크·자동화영역 등) 주입(과거 이름만). first_objective objectives 빈값→description 첫 문장 폴백.
+
+**조치**: 신규 테스트 10건, pytest 495 passed, 금지패턴 0.
+
+**다음**: Phase B(채팅 컨텍스트: persona baseline + mentioned-task + 화면 풍부화), Phase C(인사이트/기회 브리프 주입).
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 3순위: 진단 결과 구조화 렌더 (`feat-diagnose-render`)
 
 **무엇을**: Collect 기사 진단 결과를 raw JSON → 단계별 구조화 리포트(DiagResult): 차단 배지·①②③ 단계·본문셀렉터·최종본문·구조화·이미지후보·미리보기. Streamlit _render_diag_result 이식. 프런트 전용.

@@ -231,10 +231,18 @@ def flatten_for_match(json_text: str | None) -> str:
 
 
 def first_objective(json_text: str | None) -> str:
-    """JSON 정의서의 첫 objective 한 줄 — 보드 카드 tagline 등에 노출."""
+    """JSON 정의서의 첫 objective 한 줄 — 보드 카드 tagline 등에 노출.
+
+    objectives 가 비면(flat-column 엑셀은 이 필드를 만들지 않음) process_description
+    첫 문장으로 폴백한다 — 카드 부제목이 항상 비던 회귀를 막는다.
+    """
     t = parse(json_text)
     if t.objectives:
         return t.objectives[0]
+    if t.process_description:
+        # 첫 문장(마침표/줄바꿈 기준) — 너무 길면 120자에서 자른다.
+        head = re.split(r"[.\n]", t.process_description, maxsplit=1)[0].strip()
+        return head[:120] if head else t.process_description[:120]
     return ""
 
 
