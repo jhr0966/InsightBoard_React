@@ -115,3 +115,31 @@ def test_google_search_blanks_summary_that_only_echoes_title():
     assert echo["summary"] == ""                        # 제목+언론사뿐 → 비움
     assert "자동화율" in real["summary"]                 # 본문 스니펫 있는 건 유지
     assert real["summary"] != real["title"]
+
+
+def _cbm_token(url: str) -> str:
+    """신 CBM 포맷 토큰 합성: \\x08\\x13\\x22<len><url>\\x32<len><lang>."""
+    import base64
+    body = b"\x08\x13\x22" + bytes([len(url)]) + url.encode() + b"\x32\x05ko-KR\x9a\x01\x06KR:ko"
+    return base64.urlsafe_b64encode(body).decode().rstrip("=")
+
+
+def test_decode_google_url_new_cbm_format_clean():
+    """신 CBM 토큰을 길이만큼 정확히 잘라 **깨끗한** 원문 URL 반환(과거엔 뒤에 protobuf
+    바이트가 붙어 깨진 URL → enrich fetch 실패 → 구글 뉴스 본문·사진 전부 비던 버그)."""
+    url = "https://www.chosun.com/economy/2026/06/22/ABCDEF/"
+    got = google._decode_google_url(f"https://news.google.com/rss/articles/{_cbm_token(url)}?oc=5")
+    assert got == url  # 트레일링 garbage 없이 정확히 일치
+
+
+def test_decode_google_url_opaque_returns_empty():
+    """URL 이 없는 불투명 토큰은 빈 문자열 → 상위가 batchexecute/리디렉트로 폴백."""
+    import base64
+    opaque = base64.urlsafe_b64encode(b"\x08\x13\x12\x10" + bytes(range(16))).decode().rstrip("=")
+    assert google._decode_google_url(f"https://news.google.com/rss/articles/{opaque}") == ""
+
+
+def test_decode_google_url_rejects_google_host():
+    """디코드 결과가 google.com 이면(자기참조) 빈 문자열."""
+    got = google._decode_google_url(f"https://news.google.com/rss/articles/{_cbm_token('https://news.google.com/x')}")
+    assert got == ""

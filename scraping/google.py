@@ -38,11 +38,28 @@ def _media_image(item) -> str:
     return ""
 
 
-def _decode_google_url(google_url: str) -> str:
-    """`news.google.com/rss/articles/<base64>` 토큰을 디코드해 원문 URL 추출(구 포맷).
+def _read_varint(data: bytes, i: int) -> tuple[int, int]:
+    """protobuf varint 디코드 → (값, 다음 인덱스)."""
+    val = 0
+    shift = 0
+    while i < len(data):
+        b = data[i]
+        i += 1
+        val |= (b & 0x7F) << shift
+        if not (b & 0x80):
+            return val, i
+        shift += 7
+    return val, i
 
-    구 포맷 토큰은 base64 안에 원문 URL 이 들어있다 → 추가 요청 없이 복원.
-    신 포맷(불투명 ID)은 URL 이 없어 빈 문자열(=실패)을 반환한다.
+
+def _decode_google_url(google_url: str) -> str:
+    """`news.google.com/rss/articles/<base64>` 토큰을 디코드해 원문 URL 추출.
+
+    신 CBM 포맷(`\\x08\\x13\\x22<len><url>…`)은 원문 URL 이 **length-delimited** 필드라,
+    길이만큼 정확히 잘라야 한다. 과거엔 정규식이 URL 뒤 protobuf 바이트(`\\x32…`)까지
+    끌어와 **깨진 URL**(예: `…/ABCDEF/2\\x05ko-KR`)을 반환 → enrich fetch 가 실패해 구글
+    뉴스 본문·사진이 통째로 비던 핵심 버그였다. 신 포맷은 길이로, 구 포맷은 엄격 문자셋
+    정규식으로 추출. URL 이 없으면(불투명 토큰) 빈 문자열 → 상위가 batchexecute/리디렉트로 폴백.
     """
     m = re.search(r"/articles/([A-Za-z0-9_\-]+)", google_url or "")
     if not m:
@@ -52,11 +69,22 @@ def _decode_google_url(google_url: str) -> str:
         raw = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
     except Exception:  # noqa: BLE001 — 잘못된 패딩/문자
         return ""
-    text = raw.decode("latin-1", "ignore")
-    m2 = re.search(r"https?://[^\s\"'<>\\)]+", text)
-    if not m2:
+
+    url = ""
+    # 신 CBM 포맷: 0x08 0x13 0x22 <varint len> <url bytes> … (field 4 = 원문 URL)
+    if raw[:3] == b"\x08\x13\x22":
+        length, idx = _read_varint(raw, 3)
+        if 0 < length <= len(raw) - idx:
+            url = raw[idx:idx + length].decode("utf-8", "ignore")
+    # 폴백(구 포맷): 평문에 박힌 http URL — 엄격 URL 문자셋(제어문자에서 끊겨 garbage 방지).
+    if not url.startswith("http"):
+        text = raw.decode("latin-1", "ignore")
+        m2 = re.search(r"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%\-\[\]]+", text)
+        url = m2.group(0) if m2 else ""
+
+    # 제어문자/비ASCII 가 섞였으면(잔여 garbage) 신뢰하지 않는다 → 상위가 다른 경로로 폴백.
+    if not url.startswith("http") or re.search(r"[\x00-\x20\x7f-\xff]", url):
         return ""
-    url = m2.group(0)
     host = urlparse(url).netloc
     return url if (host and "google.com" not in host) else ""
 

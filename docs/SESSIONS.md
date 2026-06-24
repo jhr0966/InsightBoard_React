@@ -3,6 +3,11 @@
 **무엇을**: InsightBoard_Streamlit→React 전수점검(서브에이전트 5)에서 발견한 "백엔드는 있는데 UI 미연결" 4건 연결. ① 제안서 다듬기 — `sola/refine.py` 고아 → `POST /api/proposals/refine` + Proposals.tsx 다듬기 UI. ② 스레드 자동제목 — `sola/thread_title.py` 고아 → `POST /api/threads` first_message 자동제목, AssistantDrawer 연결. ③ 뉴스 요약 — `/api/proposals/summarize` 호출 UI 없던 것 → Collect.tsx 버튼+모달. ④ 기사 모달 사진 — image_url 안 그리던 것 → 렌더.
 
 **조치**: 신규 테스트 5건 → pytest 478. OpenAPI 45 paths·web 타입 재생성, 웹 빌드 OK. 백엔드 100% 이식 확인, 나머지 갭은 후속 배치로 순차 처리.
+## 2026-06-22 — 구글 뉴스 본문·사진 누락: URL 디코드 깨짐 (`fix-google-news-url-decode`)
+
+**무엇을**: 구글 뉴스 본문/사진 전부 미수집. 원인: `_decode_google_url` 이 신 CBM 토큰을 정규식으로 뽑아 URL 뒤 protobuf 바이트까지 끌어와 깨진 URL 반환 → `_resolve_link` 가 이를 리디렉트보다 먼저 반환 → enrich fetch 실패. protobuf varint 길이 기반 정확 추출 + garbage 검증으로 수정. InsightBoard_Streamlit 도 같은 버그였고(News_Proto 는 디코드 없이 리디렉트만 써서 회피), 참고해 개선. 회귀 테스트 3건 추가.
+
+**조치**: pytest google 8/8 통과.
 
 ---
 
