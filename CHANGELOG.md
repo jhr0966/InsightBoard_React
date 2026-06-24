@@ -10,6 +10,11 @@
 - **뉴스 데이터 표 뷰** (`Collect.tsx` BrowseView): 카드 ↔ "📋 데이터 표" 토글. 출처·제목·요약·키워드·수집시각 표(상위 200행, 행 클릭→상세 모달). Streamlit `_SC_MODES` 표 뷰 이식.
 - **flaky 테스트 견고화** (`tests/test_api_insights.py`): `test_heatmap_lights_up` 가 '특정 공정이 top-N 행에 든다'를 가정해 순서 의존 간헐 실패하던 것을 '≥1 셀 점등'으로 변경(회귀 의도 보존).
 - 검증: 신규 테스트(출처 헬스) → pytest 482(결정·랜덤 순서 모두). OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
+### Added (마이그레이션 갭 2순위 — 인사이트 트렌드→공정 매핑) — `feat-insights-process-map`
+Streamlit `_ia_process_map_html`(인사이트 최대 누락 섹션) 이식.
+- **`GET /api/insights/process-map?keyword=&days=&top=`** (`api/routers/insights.py`): 선택 트렌드 키워드를 언급한 최근 뉴스만으로 `score_cells` → 연결 공정(Lv3) 상위 N. 카드별 `dept·lv3·적합도(fit 0~1)·근거뉴스 수·샘플작업·목표·근거뉴스·PoC/관찰 태그`.
+- **`Insights.tsx`**: '트렌드 → 공정 연결' 섹션의 키워드 목록을 **클릭 가능**하게(선택 토글·하이라이트), 선택 키워드의 **연결 공정 카드** 표시(적합도 바·태그·근거). 카드 클릭 시 매트릭스 셀 선택과 연동.
+- 검증: 신규 테스트(키워드 필터·빈 결과) → pytest 482. OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
 
 ### Added (마이그레이션 갭 1순위 — 미연결 SOLA 기능 연결) — `feat-wire-sola-refine-summarize-title`
 Streamlit→React 마이그레이션 전수점검에서 **백엔드는 있으나 UI 미연결**이던 기능 4건 연결.

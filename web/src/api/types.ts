@@ -74,6 +74,17 @@ export interface OpportunityCell {
   sample_news?: string;
 }
 
+export interface ProcessMapCard {
+  dept: string;
+  lv3: string;
+  fit: number;          // 0~1 상대 적합도
+  matched_news: number;
+  sample_task: string;
+  objective: string;
+  signal: string;
+  tag: string;          // "PoC 후보" | "관찰 대상"
+}
+
 export interface IngestResult {
   ok: boolean;
   errors: string[];
