@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 3순위 — 수집 결과 상세 + 본문 확보율) — `feat-collect-result-detail`
+- **수집 완료 모달 출처별·오류 상세** (`collect.py` done SSE + `Collect.tsx`): done 이벤트에 `saved`(출처별 건수·tech 사이트 분해) 추가. 완료 모달이 출처별 건수 + 오류 목록(top 8, 접기)을 표시(과거엔 총계만). Streamlit `_collect_result_summary_html` 이식.
+- **본문 확보율 헬스 카드** (`GET /api/news/content-rate` + Collect 헬스 그리드): 최근 7일 기사 중 본문(content ≥ 50자) 비율. Streamlit data_health `enrich_percent` 이식 — enrich/fetch 정상 여부를 한눈에.
+- 검증: 신규 테스트(content-rate) + collect-stream 테스트 보강 → pytest 485. OpenAPI 48 paths·web 타입 재생성, 웹 빌드 OK.
+
 ### Fixed (마이그레이션 갭 3순위 — 작업정의 편집 폼 누락 필드) — `feat-taskdef-form-fields`
 - **`TaskDefs.tsx` EditForm**: Streamlit 폼에선 편집되던 **`process_domain`(도메인)·`process_category`(분류)·`task_def_text`(줄글 정의)** 가 React 폼엔 없어 편집 불가하던 데이터 편집성 회귀 해소. 도메인·분류는 JSON 최상위 입력으로, 줄글 정의는 `upsert` 의 `task_def_text` 파라미터로 저장(이미 백엔드 지원). 라운드트립 회귀 테스트 추가.
 - 검증: pytest 484, 웹 빌드 OK.

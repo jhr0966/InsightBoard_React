@@ -100,6 +100,7 @@ def test_collect_stream_emits_step_and_done(monkeypatch):
     class _Report:
         total_articles = 2
         total_files = 1
+        saved: list = []
         errors: list = []
 
     def _fake_batch(keywords, *, on_step=None, **kw):

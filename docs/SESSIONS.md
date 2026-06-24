@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 3순위: 수집 결과 상세 + 본문 확보율 (`feat-collect-result-detail`)
+
+**무엇을**: 수집 done SSE 에 `saved`(출처별·tech 사이트 분해) 추가 → 완료 모달이 출처별 건수+오류 목록 표시. `GET /api/news/content-rate`(본문 ≥50자 비율) + Collect 헬스 그리드에 본문확보율 카드. Streamlit `_collect_result_summary_html`·`enrich_percent` 이식.
+
+**조치**: 신규 테스트(content-rate)+collect-stream 보강 → pytest 485. OpenAPI 48 paths·web 타입 재생성, 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 3순위: 작업정의 편집 폼 누락 필드 (`feat-taskdef-form-fields`)
 
 **무엇을**: TaskDefs.tsx EditForm 에 process_domain·process_category(JSON 최상위)·task_def_text(별도) 입력 추가 — Streamlit 에선 편집되나 React 에선 불가하던 회귀 해소. 라운드트립 테스트 추가.

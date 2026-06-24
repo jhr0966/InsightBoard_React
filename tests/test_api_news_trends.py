@@ -45,6 +45,19 @@ def test_news_empty_ok():
     assert client.get("/api/news").json() == []
 
 
+def test_news_content_rate():
+    """본문 확보율 — content ≥ 50자 비율(수집 설정 헬스 카드)."""
+    news_db.save_articles([
+        {"title": "긴 본문", "link": "cr1", "source": "naver", "date": "2026-06-15",
+         "content": "이것은 충분히 긴 본문입니다. " * 5},
+        {"title": "빈 본문", "link": "cr2", "source": "naver", "date": "2026-06-15", "content": ""},
+    ], source="naver")
+    r = client.get("/api/news/content-rate", params={"days": 30}).json()
+    assert r["total"] == 2 and r["ready"] == 1 and r["pct"] == 50
+    # 뉴스 없으면 0
+    assert client.get("/api/news/content-rate").json()["total"] >= 0
+
+
 def test_news_detail_returns_content():
     news_db.save_articles(
         [{"title": "본문 있는 기사", "link": "ld1", "source": "naver",
