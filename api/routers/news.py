@@ -1,8 +1,8 @@
 """뉴스 API — `store.news_db` 위임 (수집된 기사 조회).
 
 Parquet 합본 DataFrame 을 레코드로 변환해 노출. Phase 1 read-only(수집 실행은
-후속 `/api/collect`). 목록 응답은 경량 필드 셋만 — 본문(content)은 `/detail` 상세
-조회로 분리(payload 절감).
+후속 `/api/collect`). 목록 응답은 카드·데이터표가 본문을 보여줄 수 있도록 본문
+(content)을 길이 제한(_LIST_CONTENT_MAX)해서 포함하고, 전체 본문은 `/detail` 로 조회.
 """
 from __future__ import annotations
 
@@ -12,20 +12,32 @@ from store import news_db
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 
-# 목록 응답 경량 필드 (content 제외 — payload 절감).
+# 목록 응답에 실을 본문 최대 길이 — 카드 발췌·데이터표 본문 표시에 충분하면서
+# payload 가 과대해지지 않게 절단(전체 본문은 /detail). 한국어 기사 대부분 포함.
+_LIST_CONTENT_MAX = 4000
+
+# 목록 응답 필드. content 는 카드·표가 본문을 보여주도록 포함(길이 제한 절단).
 _LIST_FIELDS = (
     "title", "press", "date", "published_at", "link", "summary",
     "keywords", "source", "query", "image_url", "summary_llm", "collected_at",
+    "content",
 )
-# 상세 응답 — 목록 + 본문/enrich 필드.
-_DETAIL_FIELDS = _LIST_FIELDS + ("content", "keywords_llm", "enriched_at")
+# 상세 응답 — 목록 + 전체 본문/enrich 필드.
+_DETAIL_FIELDS = _LIST_FIELDS + ("keywords_llm", "enriched_at")
 
 
-def _records(df, fields=_LIST_FIELDS) -> list[dict]:
+def _records(df, fields=_LIST_FIELDS, *, content_max: int | None = None) -> list[dict]:
     if df.empty:
         return []
     cols = [c for c in fields if c in df.columns]
-    return df[cols].to_dict(orient="records")
+    rows = df[cols].to_dict(orient="records")
+    # 목록은 본문을 절단(payload 절감). content_max=None 이면 원문 그대로(상세).
+    if content_max is not None:
+        for r in rows:
+            c = r.get("content")
+            if isinstance(c, str) and len(c) > content_max:
+                r["content"] = c[:content_max].rstrip() + "…"
+    return rows
 
 
 @router.get("")
@@ -39,7 +51,7 @@ def list_news(
         df = df[df["source"] == source]
     if limit and not df.empty:
         df = df.head(limit)
-    return _records(df)
+    return _records(df, content_max=_LIST_CONTENT_MAX)
 
 
 @router.get("/detail")
@@ -54,12 +66,13 @@ def news_detail(
     match = df[df["link"] == link]
     if match.empty:
         raise HTTPException(status_code=404, detail="기사를 찾을 수 없습니다.")
-    return _records(match.head(1), _DETAIL_FIELDS)[0]
+    # 상세는 전체 본문(content_max=None).
+    return _records(match.head(1), _DETAIL_FIELDS, content_max=None)[0]
 
 
 @router.get("/today")
 def list_today() -> list[dict]:
-    return _records(news_db.load_all_today())
+    return _records(news_db.load_all_today(), content_max=_LIST_CONTENT_MAX)
 
 
 @router.get("/content-rate")

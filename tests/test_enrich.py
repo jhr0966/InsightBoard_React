@@ -703,3 +703,18 @@ def test_enrich_timeout_read_is_generous_enough():
     connect, read = ENRICH_TIMEOUT
     assert read >= 15, f"read 타임아웃 {read}s 는 너무 짧다(본문 잘림 위험)"
     assert connect >= 8
+
+
+def test_enrich_parallel_reuses_one_session(monkeypatch):
+    """배치 enrich 가 기사마다 새 세션을 만들지 않고 1개를 공유(연결 재사용)."""
+    builds = {"n": 0}
+
+    def _counting_build(**kw):
+        builds["n"] += 1
+        return _fake_session()
+
+    monkeypatch.setattr(enrich, "build_session", _counting_build)
+    arts = [{"title": f"t{i}", "link": f"https://ex.com/{i}"} for i in range(5)]
+    enrich.enrich_parallel(arts, with_llm=False)
+    # 5개 기사여도 세션 생성은 1회(배치 공유)
+    assert builds["n"] == 1

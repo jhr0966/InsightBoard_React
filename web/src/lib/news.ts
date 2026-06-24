@@ -48,6 +48,12 @@ export function newsSummary(a: NewsArticle): string {
   return (a.summary_llm || a.summary || "").trim();
 }
 
+// 카드·표에 보일 본문 텍스트 — 수집된 본문(content) 우선, 없으면 검색 스니펫.
+// 수집은 LLM 요약을 만들지 않으므로 summary_llm 은 최후 폴백(과거 데이터 대비).
+export function newsBody(a: NewsArticle): string {
+  return (a.content || a.summary || a.summary_llm || "").trim();
+}
+
 // 대분류 — 키워드 뉴스(naver/google) vs 뉴스 포탈(tech/AI Times/오토메이션월드).
 export function newsCategory(source?: string): "keyword" | "portal" {
   const s = (source || "").toLowerCase();
