@@ -1,3 +1,11 @@
+## 2026-06-22 — fix: Google·AI Times 본문·사진 누락 회귀 (enrich 타임아웃 과축소) (`fix-enrich-timeout-too-short`)
+
+**무엇을**: #52에서 ENRICH_TIMEOUT read를 8s로 과축소 → 느린/큰 페이지(Google·AI Times)에서 ReadTimeout으로 본문·사진 통째 누락. (10,20)으로 복원(read≥기존 15s), _FETCH_BUDGET_S 18→25. 꼬리지연 억제는 재시도1·예산·워커·소스병렬이 계속 담당. read≥15s 회귀 가드 테스트 추가.
+
+**조치**: pytest 505 passed, 금지패턴 0.
+
+---
+
 ## 2026-06-22 — perf: 뉴스 수집 소스 동시 실행 (`perf-collect-parallel-sources`)
 
 **무엇을**: collect_batch 가 naver/google/tech 를 순차 실행하던 것을 소스별 클로저로 분리해 ThreadPoolExecutor 동시 실행. wall-clock 을 가장 느린 소스 1개 수준으로 단축. 제출 순서 result() 로 결과 순서 결정성 유지. 파일명에 source 포함이라 동시 저장 충돌 없음.

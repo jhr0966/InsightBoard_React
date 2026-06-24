@@ -692,3 +692,14 @@ def test_enrich_parallel_default_workers_raised():
     import inspect
     sig = inspect.signature(enrich.enrich_parallel)
     assert sig.parameters["max_workers"].default >= 10
+
+
+def test_enrich_timeout_read_is_generous_enough():
+    """read 타임아웃이 너무 짧으면 느린/큰 기사(Google·AI Times)에서 ReadTimeout 으로
+    본문·사진이 통째로 비는 회귀가 난다 — read 는 기존 검증값(15s) 이상 유지."""
+    from scraping.http import ENRICH_TIMEOUT
+
+    assert isinstance(ENRICH_TIMEOUT, tuple) and len(ENRICH_TIMEOUT) == 2
+    connect, read = ENRICH_TIMEOUT
+    assert read >= 15, f"read 타임아웃 {read}s 는 너무 짧다(본문 잘림 위험)"
+    assert connect >= 8

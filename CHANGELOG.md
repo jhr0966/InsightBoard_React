@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (Google·AI Times 본문·사진 누락 회귀 — enrich 타임아웃 과축소) — `fix-enrich-timeout-too-short`
+- **`scraping/http.py` `ENRICH_TIMEOUT`**: `(5,8)` → `(10,20)`. 직전 성능 PR(#52)에서 read 타임아웃을 8초로 너무 줄인 탓에, 응답이 느리거나 큰 페이지(Google 퍼블리셔·AI Times)에서 본문 다운로드가 `ReadTimeout` 으로 끊겨 **본문·대표사진이 통째로 비던 회귀** 수정. read 를 검증값(15s) 이상(20s)으로, connect 도 5→10s 로 복원.
+- **`scraping/enrich.py` `_FETCH_BUDGET_S`**: 18→25s. read(20s) 보다 커서 차단 사이트의 폴백 복구(워밍업→재요청, TLS 위장)가 한 단계만에 잘리지 않게.
+- 꼬리지연 억제는 그대로 유지 — 재시도 1회(#52 B)·폴백 예산(C)·워커 10(D)·소스 동시 실행(#53)이 담당. 즉 "느림"의 주범(재시도×4·폴백×3)은 그대로 잡으면서, 부작용만 컸던 타임아웃 축소만 되돌림.
+- 검증: read 타임아웃 하한(≥15s) 회귀 가드 테스트 추가, pytest 505 passed · 금지패턴 0.
+
 ### Performance (뉴스 수집 소스 동시 실행) — `perf-collect-parallel-sources`
 - **`scraping/run_daily.collect_batch` 소스 병렬화**: 기존엔 naver→google→tech 를 순차 실행(naver 가 끝나야 google 시작). 각 소스 처리를 `(saved, errors)` 를 돌려주는 순수 클로저로 분리해 `ThreadPoolExecutor` 로 **동시 실행** → 전체 wall-clock 을 가장 느린 소스 1개 수준으로 단축. future 를 제출 순서대로 `result()` 해 결과 순서는 결정적으로 보존. 파일명이 `{source}_{시각}` 이라 서로 다른 소스의 동시 저장은 충돌 없음.
 - 검증: 신규 동시성 테스트(소스 2개+ 동시 활성 확인) 포함 pytest 500 passed · 금지패턴 0.
