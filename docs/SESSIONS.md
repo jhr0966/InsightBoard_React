@@ -1,3 +1,11 @@
+## 2026-06-22 — 구글 뉴스 본문·사진 누락: URL 디코드 깨짐 (`fix-google-news-url-decode`)
+
+**무엇을**: 구글 뉴스 본문/사진 전부 미수집. 원인: `_decode_google_url` 이 신 CBM 토큰을 정규식으로 뽑아 URL 뒤 protobuf 바이트까지 끌어와 깨진 URL 반환 → `_resolve_link` 가 이를 리디렉트보다 먼저 반환 → enrich fetch 실패. protobuf varint 길이 기반 정확 추출 + garbage 검증으로 수정. InsightBoard_Streamlit 도 같은 버그였고(News_Proto 는 디코드 없이 리디렉트만 써서 회피), 참고해 개선. 회귀 테스트 3건 추가.
+
+**조치**: pytest google 8/8 통과.
+
+---
+
 ## 2026-06-22 — tech 출처 라벨 뭉침(오토메이션월드 채널 누락) (`fix-tech-channel-press-label`)
 
 **무엇을**: 실수집 결과 보고(진행 모달 "AI Times · 오토메이션월드", 카드에 오토메이션월드 채널 없음). 원인: 모든 tech 기사가 source="tech" → `sourceMeta("tech")` 단일 라벨 "AI Times" 로 뭉침. `lib/news.ts` 에 `articleChannel(a)` 추가 — 포탈(tech)은 press(사이트명)로 라벨/색 구분, tech 기본 라벨 "AI Times"→"기술". Collect/NewsCard 가 이를 사용. 표시 전용이라 기존 데이터도 재수집 없이 오토메이션월드 채널이 보인다.
