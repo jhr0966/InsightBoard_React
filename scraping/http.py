@@ -12,6 +12,9 @@ from urllib3.util.retry import Retry
 
 
 REQUEST_TIMEOUT = 15
+# 본문 enrich 는 "있으면 좋은" best-effort — 검색(REQUEST_TIMEOUT)보다 짧은
+# (connect, read) 타임아웃으로 느린/죽은 호스트가 워커를 오래 점유하지 못하게 한다.
+ENRICH_TIMEOUT: tuple[int, int] = (5, 8)
 
 _UA_POOL = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -59,12 +62,19 @@ def fetch_impersonated(url: str, *, referer: str | None = None,
         return None
 
 
-def build_session() -> requests.Session:
-    """429/5xx 지수 백오프 + 풀 사이즈 고정."""
+def build_session(*, total_retries: int = 3, backoff_factor: float = 1.0) -> requests.Session:
+    """429/5xx 지수 백오프 + 풀 사이즈 고정.
+
+    Args:
+        total_retries: 재시도 횟수. 검색(목록)은 기본 3, 본문 enrich 처럼 best-effort
+            인 호출은 1 로 낮춰 느린/죽은 호스트의 타임아웃×재시도 누적(예: 15s×4)을
+            줄인다.
+        backoff_factor: 재시도 간 지수 백오프 계수.
+    """
     session = requests.Session()
     retry = Retry(
-        total=3,
-        backoff_factor=1.0,
+        total=total_retries,
+        backoff_factor=backoff_factor,
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["GET", "HEAD"],
         raise_on_status=False,

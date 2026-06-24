@@ -1,3 +1,13 @@
+## 2026-06-22 — perf: 뉴스 수집 본문 fetch 꼬리지연 단축 (`perf-collect-enrich-timeouts`)
+
+**무엇을**: 본문 enrich fetch의 느린/차단 호스트 꼬리지연 단축. ENRICH_TIMEOUT(5,8) 분리 타임아웃, build_session total_retries 파라미터화(fetch_article retries=1), 기사당 18s 예산 초과 시 폴백 생략, enrich 워커 6→10. 최악 ~180s→~16~32s/기사. 검색 retry는 유지.
+
+**조치**: 신규 효율 테스트 4건, pytest 503 passed, 금지패턴 0.
+
+**다음**: E(소스 naver/google/tech 동시 실행) 별도 PR.
+
+---
+
 ## 2026-06-22 — fix: 페르소나 '지금 분석' 입력 손실 (`fix-persona-derive-loses-input`)
 
 **무엇을**: Persona.tsx — 저장 안 한 폼 입력 상태에서 '지금 분석' 누르면 서버 저장본(옛 데이터)으로 분석되고 setP(서버결과)가 입력을 덮어써 날아가던 버그. derive 전에 현재 폼 save 선행으로 수정. 프런트 전용.
