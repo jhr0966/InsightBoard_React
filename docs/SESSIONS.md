@@ -1,3 +1,13 @@
+## 2026-06-22 — 작업정의 컨텍스트 주입 Phase C: 보드 인사이트 브리프 (`feat-taskdef-context-insights`)
+
+**무엇을**: board_brief.brief() 에 task_context 옵션 추가(관심 공정 작업정의를 LLM 페이로드 주입 + 안정적 md5 캐시키). board /brief 라우터가 persona_task_context 계산해 전달 → 보드 다이제스트가 뉴스를 내 공정 맥락에 연결.
+
+**조치**: 신규 테스트 1건, pytest 499 passed, 금지패턴 0. 백엔드 전용.
+
+**완료**: 작업정의 컨텍스트 주입 A(제안서)·B(채팅)·C(보드 인사이트) 3단계 완료.
+
+---
+
 ## 2026-06-22 — 작업정의 컨텍스트 주입 Phase B: SOLA 채팅 (`feat-taskdef-context-chat`)
 
 **무엇을**: `/api/assistant/context` 확장 — 화면 다이제스트(뉴스 키워드 + proposals 보관함/taskdefs 수) + 페르소나 관심 작업정의 baseline + query 언급 작업정의 주입, labels[] 반환. AssistantDrawer 가 입력 텍스트를 query 로 전달 + 📎 주입 라벨 노출.

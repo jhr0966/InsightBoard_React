@@ -34,5 +34,13 @@ def board_brief(
 
     persona = persona_store.load()
     label = persona.label()
-    text = _brief(items, persona_label=label if persona.is_set() else "", force=force)
+    # 페르소나 관심 공정 작업정의를 브리핑에 주입 — 뉴스를 내 공정 맥락에 연결.
+    from sola import task_context
+    tctx, _ = task_context.persona_task_context(persona)
+    text = _brief(
+        items,
+        persona_label=label if persona.is_set() else "",
+        task_context=tctx,
+        force=force,
+    )
     return {"brief": text, "item_count": len(items), "persona_label": label}

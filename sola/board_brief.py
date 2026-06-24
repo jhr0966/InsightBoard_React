@@ -61,22 +61,39 @@ def _format_items(items: Sequence[dict]) -> str:
     return "\n".join(lines)
 
 
-def _cache_signature(items: Sequence[dict], persona_label: str) -> str:
-    """캐시 키 — 제목 + 출처 + persona 라벨."""
+def _cache_signature(items: Sequence[dict], persona_label: str, task_context: str = "") -> str:
+    """캐시 키 — 제목 + 출처 + persona 라벨 (+ 관심 작업정의 길이/해시).
+
+    task_context 가 주입되면 다른 관심 공정의 페르소나가 같은 라벨이어도 다른
+    브리핑을 받도록 시그니처에 포함한다(짧은 해시로 키 폭증 방지).
+    """
     parts = []
     for it in items:
         t = str(it.get("title", "") or "")[:80]
         s = str(it.get("source", "") or "")[:40]
         parts.append(f"{t}@{s}")
-    return f"{persona_label}|" + "||".join(parts)
+    tc = ""
+    if task_context:
+        import hashlib
+        tc = "#" + hashlib.md5(task_context.encode("utf-8")).hexdigest()[:8]  # noqa: S324 — 캐시 키용
+    return f"{persona_label}{tc}|" + "||".join(parts)
 
 
-def brief(items: Sequence[dict], persona_label: str = "", *, force: bool = False) -> str:
+def brief(
+    items: Sequence[dict],
+    persona_label: str = "",
+    *,
+    task_context: str = "",
+    force: bool = False,
+) -> str:
     """매칭 뉴스 items 를 LLM 1~2문장 평문으로 압축. 캐시 우선.
 
     Args:
         items: 각 element = {"title": str, "source": str, "when": str, "summary"?: str}.
         persona_label: 사용자 부서/직무 라벨 (예: "도장1팀 · 검사관"). 빈 문자열 OK.
+        task_context: 페르소나 관심 공정 작업정의 블록(sola.task_context). 주입되면
+            브리핑이 뉴스를 사용자 공정 맥락(작업흐름·품질리스크·자동화영역)에
+            연결해 시사점을 낸다. 빈 문자열 OK.
         force: 캐시 무시.
 
     Returns:
@@ -86,7 +103,7 @@ def brief(items: Sequence[dict], persona_label: str = "", *, force: bool = False
     if not items:
         return _rule_based_fallback(items, persona_label)
 
-    sig = _cache_signature(items, persona_label)
+    sig = _cache_signature(items, persona_label, task_context)
     # v2: 형식이 '헤드라인+불릿' 으로 바뀜 — 구버전 1문장 캐시와 키 분리.
     key = cache.make_key("board_brief_v2", sig, llm_model() or "")
     if not force:
@@ -97,6 +114,7 @@ def brief(items: Sequence[dict], persona_label: str = "", *, force: bool = False
     user = (
         f"[부서] {persona_label or '(미설정)'}\n"
         f"[매칭 뉴스 {len(items)}건]\n{_format_items(items)}"
+        + (f"\n\n{task_context}" if task_context else "")
     )
     try:
         reply = chat(
