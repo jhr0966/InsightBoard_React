@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 2순위 — 온보딩 첫 수집 단계) — `feat-onboarding-collect-step`
+- **`Onboarding.tsx`**: 페르소나 저장(+derive) 후 닫지 않고 **"첫 수집" 제안 단계(step 5)** 추가 — "📡 지금 첫 수집"(관심 키워드 기준 `collect.run`, 수집 후 board 갱신) / "건너뛰기". Streamlit 온보딩 step5/6(설정 후 수집) 이식. 수집 실패해도 온보딩은 완료.
+- 검증: 웹 빌드(tsc) OK. 프런트 전용.
+
 ### Added (마이그레이션 갭 3순위 — 앱셸 LLM 배너·아바타·신선도) — `feat-appshell-llm-banner`
 - **LLM 미설정 상단 배너** (`Topbar.tsx`): `assistant.status` 가 미설정이면 상단바 위에 경고 배너(제안서·요약·채팅 제한 안내 + 환경변수 힌트). Streamlit `render_setup_banner_if_needed` 이식 — 과거엔 사이드바 작은 텍스트만.
 - **아바타 개인화**: 하드코딩 "?" → 페르소나 이름/부서 첫 글자(클릭 시 페르소나로).

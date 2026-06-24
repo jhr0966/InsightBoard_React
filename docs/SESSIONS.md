@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 2순위: 온보딩 첫 수집 단계 (`feat-onboarding-collect-step`)
+
+**무엇을**: Onboarding 페르소나 저장 후 step 5(첫 수집 제안) 추가 — "지금 첫 수집"(관심 키워드 collect.run + board 갱신)/"건너뛰기". Streamlit 온보딩 step5/6 이식. 프런트 전용.
+
+**조치**: 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 3순위: 앱셸 LLM 배너·아바타·신선도 (`feat-appshell-llm-banner`)
 
 **무엇을**: Topbar — LLM 미설정 시 상단 경고 배너(Streamlit render_setup_banner_if_needed 이식), 아바타 "?"→페르소나 첫 글자, 신선도 배지 고정 LIVE→오늘 최신 수집 기준 동적(LIVE/최신/오래됨/수집 전). 프런트 전용.
