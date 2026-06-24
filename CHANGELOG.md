@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Changed (마이그레이션 갭 3순위 — 진단 결과 구조화 렌더) — `feat-diagnose-render`
+- **`Collect.tsx` 기사 진단 결과**: raw `JSON.stringify` 덤프 → **단계별 구조화 리포트**(`DiagResult`). 차단 상태 배지(전부차단/200위장/HTML확보), ①②③ 단계별 HTTP·길이·오류, 본문 셀렉터·최종 본문 길이·구조화(ld+json/fusion)·이미지 후보 수·대표이미지·본문 미리보기. Streamlit `_render_diag_result` 이식.
+- 검증: 웹 빌드(tsc) OK. 프런트 전용.
+
 ### Added (마이그레이션 갭 2순위 — 온보딩 첫 수집 단계) — `feat-onboarding-collect-step`
 - **`Onboarding.tsx`**: 페르소나 저장(+derive) 후 닫지 않고 **"첫 수집" 제안 단계(step 5)** 추가 — "📡 지금 첫 수집"(관심 키워드 기준 `collect.run`, 수집 후 board 갱신) / "건너뛰기". Streamlit 온보딩 step5/6(설정 후 수집) 이식. 수집 실패해도 온보딩은 완료.
 - 검증: 웹 빌드(tsc) OK. 프런트 전용.
