@@ -63,6 +63,48 @@ def _matched_news_by_lv3(news_df: pd.DataFrame, roadmap_df: pd.DataFrame) -> dic
     return out
 
 
+@router.get("/process-map")
+def process_map(
+    keyword: str = Query("", description="트렌드 키워드(빈 값=전체 뉴스)"),
+    days: int = Query(default=30, ge=1, le=90),
+    top: int = Query(default=3, ge=1, le=10),
+) -> list[dict]:
+    """선택한 트렌드 키워드 → 연결되는 상위 공정(Lv3) 카드.
+
+    그 키워드를 언급한 최근 뉴스만으로 `score_cells` 를 돌려, 키워드가 어떤 공정에
+    자동화 기회로 이어지는지(적합도·샘플작업·근거뉴스 수·목표·PoC 태그)를 낸다.
+    Streamlit `_ia_process_map_html` 의 React 이식 — '트렌드 → 공정 연결' 섹션 본체.
+    """
+    news = news_db.load_news_for_days(days)
+    if news.empty:
+        return []
+    if keyword.strip():
+        kw = keyword.strip().lower()
+        news = news[news.apply(lambda r: kw in _row_text(r), axis=1)]
+        if news.empty:
+            return []
+    roadmap = roadmap_query.load_latest()
+    cells = score_cells(news, roadmap).head(top)
+    if cells.empty:
+        return []
+    scores = [float(s or 0) for s in cells["cell_score"].tolist()]
+    top_score = max(scores) or 1.0
+    out: list[dict] = []
+    for _, c in cells.iterrows():
+        score = float(c.get("cell_score") or 0)
+        out.append({
+            "dept": str(c.get("dept", "") or ""),
+            "lv3": str(c.get("lv3", "") or ""),
+            "fit": round(min(1.0, score / top_score), 3),     # 0~1 상대 적합도
+            "matched_news": int(c.get("matched_news") or 0),
+            "sample_task": str(c.get("sample_tasks", "") or ""),
+            "objective": str(c.get("sample_objectives", "") or ""),
+            "signal": str(c.get("sample_news", "") or ""),
+            "tag": "PoC 후보" if score >= top_score * 0.6 else "관찰 대상",
+        })
+    return out
+
+
 @router.get("/heatmap")
 def heatmap(
     days: int = Query(default=30, ge=1, le=90),

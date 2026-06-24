@@ -11,6 +11,7 @@ import type {
   KeywordSeries,
   NewsArticle,
   OpportunityCell,
+  ProcessMapCard,
   Persona,
   Prefs,
   SourceCount,
@@ -155,6 +156,8 @@ export const api = {
       req<{ rows: string[]; cols: string[]; data: number[][] }>(`/api/insights/heatmap${qs({ days })}`),
     heatmapCell: (row: string, col: string, days = 30) =>
       req<NewsArticle[]>(`/api/insights/heatmap-cell${qs({ row, col, days })}`),
+    processMap: (keyword: string, days = 30, top = 3) =>
+      req<ProcessMapCard[]>(`/api/insights/process-map${qs({ keyword, days, top })}`),
   },
 
   sources: {

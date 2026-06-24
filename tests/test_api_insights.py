@@ -46,6 +46,28 @@ def test_heatmap_cell_matches_news():
     assert client.get("/api/insights/heatmap-cell", params={"row": "없는공정zzz", "col": "AI"}).json() == []
 
 
+def test_process_map_returns_processes_for_keyword():
+    """트렌드 키워드 → 그 키워드를 언급한 뉴스로 score_cells → 상위 공정 카드."""
+    from store import news_db
+
+    _seed_and_pick_weld_process()
+    news_db.save_articles([
+        {"title": "용접 협동 로봇 라인 확대", "link": "p1", "source": "naver",
+         "keywords": "용접, 협동 로봇", "content": "조선 용접 협동로봇 비전 검사", "date": "2026-06-15"},
+        {"title": "회계 무관 기사", "link": "p2", "source": "naver",
+         "keywords": "회계", "content": "회계 결산", "date": "2026-06-15"},
+    ], source="naver")
+
+    rows = client.get("/api/insights/process-map", params={"keyword": "용접", "days": 30}).json()
+    assert isinstance(rows, list) and len(rows) >= 1
+    r0 = rows[0]
+    assert "용접" in r0["lv3"] or r0["matched_news"] >= 1
+    assert 0 <= r0["fit"] <= 1
+    assert r0["tag"] in ("PoC 후보", "관찰 대상")
+    # 매칭 안 되는 키워드 → 빈 목록
+    assert client.get("/api/insights/process-map", params={"keyword": "존재안함zzz"}).json() == []
+
+
 def test_heatmap_lights_up_with_matched_news():
     """다단어 공정명이어도 토큰 매칭으로 셀이 켜진다(과거엔 substring 미스로 0)."""
     from store import news_db

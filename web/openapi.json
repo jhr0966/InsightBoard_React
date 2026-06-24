@@ -1902,6 +1902,81 @@
         ]
       }
     },
+    "/api/insights/process-map": {
+      "get": {
+        "description": "선택한 트렌드 키워드 → 연결되는 상위 공정(Lv3) 카드.\n\n그 키워드를 언급한 최근 뉴스만으로 `score_cells` 를 돌려, 키워드가 어떤 공정에\n자동화 기회로 이어지는지(적합도·샘플작업·근거뉴스 수·목표·PoC 태그)를 낸다.\nStreamlit `_ia_process_map_html` 의 React 이식 — '트렌드 → 공정 연결' 섹션 본체.",
+        "operationId": "process_map_api_insights_process_map_get",
+        "parameters": [
+          {
+            "description": "트렌드 키워드(빈 값=전체 뉴스)",
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "트렌드 키워드(빈 값=전체 뉴스)",
+              "title": "Keyword",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 10,
+              "minimum": 1,
+              "title": "Top",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Process Map Api Insights Process Map Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Process Map",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
     "/api/matches": {
       "get": {
         "operationId": "matches_api_matches_get",

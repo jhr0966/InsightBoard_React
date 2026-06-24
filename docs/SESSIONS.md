@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 2순위: 인사이트 트렌드→공정 매핑 (`feat-insights-process-map`)
+
+**무엇을**: 전수점검 최대 갭(Streamlit `_ia_process_map_html`) 이식. `GET /api/insights/process-map`(키워드 언급 뉴스로 score_cells → 연결 공정 카드: 적합도·근거뉴스·샘플작업·PoC태그). Insights.tsx 키워드 목록 클릭 가능 + 연결 공정 카드 섹션. CSS(.ia-pmap) 추가.
+
+**조치**: 신규 테스트 → pytest 482. OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 1순위: 미연결 SOLA 기능 연결 (`feat-wire-sola-refine-summarize-title`)
 
 **무엇을**: InsightBoard_Streamlit→React 전수점검(서브에이전트 5)에서 발견한 "백엔드는 있는데 UI 미연결" 4건 연결. ① 제안서 다듬기 — `sola/refine.py` 고아 → `POST /api/proposals/refine` + Proposals.tsx 다듬기 UI. ② 스레드 자동제목 — `sola/thread_title.py` 고아 → `POST /api/threads` first_message 자동제목, AssistantDrawer 연결. ③ 뉴스 요약 — `/api/proposals/summarize` 호출 UI 없던 것 → Collect.tsx 버튼+모달. ④ 기사 모달 사진 — image_url 안 그리던 것 → 렌더.
