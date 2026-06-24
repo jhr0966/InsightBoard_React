@@ -42,7 +42,7 @@ def _fake_session(text: str = _HTML_WITH_BODY):
 
 
 def test_fetch_content_extracts_article_body():
-    with patch.object(enrich, "build_session", lambda: _fake_session()):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()):
         text = enrich.fetch_content("https://example.com/article/1")
     assert "비전 AI" in text
     assert "noise()" not in text  # script stripped
@@ -50,7 +50,7 @@ def test_fetch_content_extracts_article_body():
 
 
 def test_fetch_article_extracts_representative_image():
-    with patch.object(enrich, "build_session", lambda: _fake_session()):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()):
         article = enrich.fetch_article("https://example.com/article/1")
     assert article["content"] and "비전 AI" in article["content"]
     assert article["image_url"] == "https://example.com/photo.jpg"
@@ -81,7 +81,7 @@ def test_fetch_article_takes_fullest_body():
         f'<html><body><div class="article_view">{lead}</div>'
         f'<div class="zzz-custom-body">{full}</div></body></html>'
     )
-    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session(html)):
         art = enrich.fetch_article("https://example.com/a")
     assert "전체 본문 핵심 내용" in art["content"]
     assert len(art["content"]) > len(lead) + 200            # 리드가 아닌 전체 본문
@@ -107,7 +107,7 @@ _HTML_PORTAL_CHROME = """
 def test_fetch_article_strips_portal_chrome_keeps_body():
     """포털(다음 스타일) 기사 — 본문 컨테이너만 취하고 TTS/글자크기/번역/관련기사/저작권
     chrome 은 제외한다(셀렉터 신뢰 + 노이즈 제거)."""
-    with patch.object(enrich, "build_session", lambda: _fake_session(_HTML_PORTAL_CHROME)):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session(_HTML_PORTAL_CHROME)):
         art = enrich.fetch_article("https://v.daum.net/v/123")
     body = art["content"]
     assert "시리 AI" in body and "대화의 맥락" in body        # 실제 본문 포함
@@ -120,7 +120,7 @@ def test_fetch_article_strips_portal_chrome_keeps_body():
 
 def test_fetch_article_largest_block_fallback():
     """표준 셀렉터·<p> 가 없어도 링크 적은 최대 텍스트 블록을 폴백으로 추출(참고 스크래퍼 패턴)."""
-    with patch.object(enrich, "build_session", lambda: _fake_session(_HTML_NO_SELECTORS_NO_P)):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session(_HTML_NO_SELECTORS_NO_P)):
         article = enrich.fetch_article("https://example.com/x")
     assert "도장 로봇" in article["content"]
     assert "막두께" in article["content"]
@@ -140,7 +140,7 @@ def test_enrich_one_uses_llm_when_with_llm_true():
     def _fake_sum(content):
         return "비전 AI 기반 용접 검사로 시간을 단축한다."
 
-    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()), \
          patch.object(enrich, "_llm_keywords", _fake_kw), \
          patch.object(enrich, "_llm_summary", _fake_sum):
         out = enrich.enrich_one(article, with_llm=True)
@@ -165,7 +165,7 @@ def test_enrich_one_caches_llm_results():
         calls["n"] += 1
         return "요약"
 
-    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()), \
          patch.object(enrich, "_llm_keywords", _fake_kw), \
          patch.object(enrich, "_llm_summary", _fake_sum):
         enrich.enrich_one(article1, with_llm=True)
@@ -178,7 +178,7 @@ def test_enrich_one_caches_llm_results():
 def test_enrich_one_skips_llm_when_with_llm_false():
     cache.clear()
     article = {"link": "https://example.com/a", "source": "naver"}
-    with patch.object(enrich, "build_session", lambda: _fake_session()):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()):
         out = enrich.enrich_one(article, with_llm=False)
     assert out["content"]
     assert out["image_url"].endswith("/photo.jpg")
@@ -193,7 +193,7 @@ def test_enrich_one_refetches_code_filled_existing_content():
         "source": "naver",
         "content": "window.dataLayer.push({});\nfunction ad(){return document.cookie;}\nvar slot = googletag.defineSlot();",
     }
-    with patch.object(enrich, "build_session", lambda: _fake_session()):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()):
         out = enrich.enrich_one(article, with_llm=False)
     assert "비전 AI" in out["content"]
     assert "dataLayer" not in out["content"]
@@ -211,7 +211,7 @@ def test_enrich_articles_calls_progress_cb():
     def _cb(done, total, _art):
         progress.append((done, total))
 
-    with patch.object(enrich, "build_session", lambda: _fake_session()):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()):
         enrich.enrich_articles(articles, with_llm=False, progress_cb=_cb)
 
     assert progress == [(1, 2), (2, 2)]
@@ -240,7 +240,7 @@ def test_extract_image_url_picks_picture_source_srcset():
       </article>
     </body></html>
     """
-    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session(html)):
         article = enrich.fetch_article("https://example.com/p")
     assert article["image_url"] == "https://cdn.example.com/a-1x.webp"
 
@@ -255,7 +255,7 @@ def test_extract_image_url_uses_lazy_data_src():
       </article>
     </body></html>
     """
-    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session(html)):
         article = enrich.fetch_article("https://example.com/p")
     assert article["image_url"] == "https://cdn.example.com/photo.jpg"
 
@@ -278,7 +278,7 @@ def test_fetch_content_cleans_code_noise_and_keeps_full_body():
     </body></html>
     """
 
-    with patch.object(enrich, "build_session", lambda: _fake_session(html)):
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session(html)):
         text = enrich.fetch_content("https://example.com/article/full")
 
     assert "첫 번째 문단" in text
@@ -334,7 +334,7 @@ def test_fetch_article_returns_empty_on_parse_exception():
     def _boom(*_a, **_kw):
         raise AttributeError("boom")
 
-    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()), \
          patch.object(enrich, "_strip_noise", _boom):
         result = enrich.fetch_article("https://example.com/p")
     assert result == {"content": "", "image_url": ""}
@@ -359,7 +359,7 @@ def test_enrich_articles_skips_failing_article(monkeypatch):
             return {"content": "", "image_url": ""}
         return real_fetch(url, session=session)
 
-    with patch.object(enrich, "build_session", lambda: _fake_session()), \
+    with patch.object(enrich, "build_session", lambda *a, **k: _fake_session()), \
          patch.object(enrich, "fetch_article", _maybe_fail):
         out = enrich.enrich_articles(articles, with_llm=False, progress_cb=_cb)
 
@@ -638,3 +638,57 @@ def test_is_junk_image_flags_ui_icons_and_banners():
     assert is_junk_image("https://image.thebell.co.kr/banner/20260602163419032.gif")
     assert is_junk_image("https://image.thebell.co.kr/thebell10/img/2025//share_icon.png")
     assert not is_junk_image("https://image.thebell.co.kr/news/photo/2026/06/10/1_n.jpg")
+
+
+# ── 수집 효율(타임아웃·재시도·예산) ──────────────────────────
+
+def test_get_article_response_uses_short_enrich_timeout():
+    """본문 fetch 는 ENRICH_TIMEOUT(짧음) 으로 GET — 느린 호스트가 워커를 덜 점유."""
+    from scraping.http import ENRICH_TIMEOUT
+
+    calls = []
+
+    class RecSession:
+        def get(self, *a, **kw):
+            calls.append(kw.get("timeout"))
+            return _FakeResp(_HTML_WITH_BODY)
+
+    enrich._get_article_response(RecSession(), "https://example.com/a")
+    assert calls and calls[0] == ENRICH_TIMEOUT  # 15(REQUEST_TIMEOUT) 아님
+
+
+def test_get_article_response_skips_fallback_when_over_budget(monkeypatch):
+    """예산 초과면 차단 폴백(워밍업+위장) 생략 — 1건이 배치를 끌지 않게."""
+    gets = []
+
+    class BlockSession:
+        def get(self, url, *a, **kw):
+            gets.append(url)
+            return _FakeResp("blocked", status=403)  # 항상 차단
+
+    # 첫 GET 직후 예산을 이미 초과한 것처럼 시간 흐름 조작
+    t = {"v": 0.0}
+    seq = iter([0.0, 999.0, 999.0, 999.0])
+    monkeypatch.setattr(enrich.time, "monotonic", lambda: next(seq, 999.0))
+    enrich._get_article_response(BlockSession(), "https://example.com/a")
+    # 본 요청 1번만 — 워밍업/재요청 생략(예산 초과)
+    assert len(gets) == 1
+
+
+def test_fetch_article_uses_low_retry_session():
+    """fetch_article 은 best-effort → build_session(total_retries=1)."""
+    captured = {}
+
+    def _fake_build(**kw):
+        captured.update(kw)
+        return _fake_session()
+
+    with patch.object(enrich, "build_session", _fake_build):
+        enrich.fetch_article("https://example.com/a")
+    assert captured.get("total_retries") == 1
+
+
+def test_enrich_parallel_default_workers_raised():
+    import inspect
+    sig = inspect.signature(enrich.enrich_parallel)
+    assert sig.parameters["max_workers"].default >= 10

@@ -21,7 +21,18 @@ import requests
 from bs4 import Comment
 
 from scraping.extract import is_junk_image, soup_of
-from scraping.http import REQUEST_TIMEOUT, build_session, default_headers, fetch_impersonated
+from scraping.http import (
+    ENRICH_TIMEOUT,
+    REQUEST_TIMEOUT,
+    build_session,
+    default_headers,
+    fetch_impersonated,
+)
+
+# 본문 fetch 1건의 전체 시간 예산(초). 차단 시 3단계 폴백(기본→워밍업→TLS위장)이
+# 누적되는데, 이미 예산을 넘겼으면 남은 (가장 비싼) 단계를 건너뛴다 — 한 기사가
+# 배치 전체를 끌지 않게 하는 deadline.
+_FETCH_BUDGET_S = 18.0
 from store import cache
 
 logger = logging.getLogger(__name__)
@@ -301,22 +312,28 @@ def _get_article_response(sess, url: str):
     """
     # 같은 출처(origin)를 referer 로 — 브라우저가 사이트 내에서 클릭한 것처럼 보이게.
     # 네이버 기사(n.news.naver.com)처럼 referer 없으면 403 주는 사이트 대응.
+    start = time.monotonic()
     origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}/"
-    resp = sess.get(url, headers=default_headers(referer=origin), timeout=REQUEST_TIMEOUT)
+    resp = sess.get(url, headers=default_headers(referer=origin), timeout=ENRICH_TIMEOUT)
     if resp.status_code not in _BLOCKED_STATUSES:
         return resp
+    # 예산 초과면 폴백(워밍업+위장) 생략 — 차단 1건이 배치를 끌지 않게.
+    if time.monotonic() - start > _FETCH_BUDGET_S:
+        return resp
     try:
-        sess.get(origin, headers=_full_browser_headers(), timeout=REQUEST_TIMEOUT)
+        sess.get(origin, headers=_full_browser_headers(), timeout=ENRICH_TIMEOUT)
     except requests.RequestException:
         pass  # 워밍업 실패는 무시 — 본 요청 재시도가 본질
     time.sleep(random.uniform(0.3, 0.7))
     resp = sess.get(url, headers=_full_browser_headers(referer="https://search.naver.com/"),
-                    timeout=REQUEST_TIMEOUT)
+                    timeout=ENRICH_TIMEOUT)
     if resp.status_code not in _BLOCKED_STATUSES:
         return resp
     # 헤더로도 안 풀리면 TLS 지문(JA3) 검사 WAF — 실제 Chrome TLS 로 위장(curl_cffi,
-    # 선택 의존성)해 최후 재시도. 미설치/실패면 기존 응답으로 폴백.
-    imp = fetch_impersonated(url, referer="https://search.naver.com/")
+    # 선택 의존성)해 최후 재시도. 가장 비싼 단계라 예산 초과면 건너뛴다.
+    if time.monotonic() - start > _FETCH_BUDGET_S:
+        return resp
+    imp = fetch_impersonated(url, referer="https://search.naver.com/", timeout=ENRICH_TIMEOUT[1])
     if imp is not None and getattr(imp, "status_code", 599) < 400:
         return imp
     return resp
@@ -375,7 +392,8 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
     """기사 URL → 정제된 본문과 대표 이미지 URL."""
     if not url or not url.startswith("http"):
         return {"content": "", "image_url": ""}
-    sess = session or build_session()
+    # 본문 fetch 는 best-effort — 재시도 1회·짧은 백오프로 느린 호스트 누적시간 억제.
+    sess = session or build_session(total_retries=1, backoff_factor=0.3)
     try:
         time.sleep(random.uniform(0.2, 0.5))
         resp = _get_article_response(sess, url)
@@ -567,7 +585,7 @@ def enrich_parallel(
     articles: list[dict],
     *,
     with_llm: bool = False,
-    max_workers: int = 6,
+    max_workers: int = 10,
     progress_cb: Callable[[int, int, dict | None], None] | None = None,
 ) -> list[dict]:
     """여러 기사의 본문/대표이미지/키워드를 **병렬**로 채운다(ThreadPoolExecutor).

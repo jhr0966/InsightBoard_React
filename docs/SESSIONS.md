@@ -3,6 +3,13 @@
 **무엇을**: collect_batch 가 naver/google/tech 를 순차 실행하던 것을 소스별 클로저로 분리해 ThreadPoolExecutor 동시 실행. wall-clock 을 가장 느린 소스 1개 수준으로 단축. 제출 순서 result() 로 결과 순서 결정성 유지. 파일명에 source 포함이라 동시 저장 충돌 없음.
 
 **조치**: 신규 동시성 테스트 포함 pytest 500 passed, 금지패턴 0.
+## 2026-06-22 — perf: 뉴스 수집 본문 fetch 꼬리지연 단축 (`perf-collect-enrich-timeouts`)
+
+**무엇을**: 본문 enrich fetch의 느린/차단 호스트 꼬리지연 단축. ENRICH_TIMEOUT(5,8) 분리 타임아웃, build_session total_retries 파라미터화(fetch_article retries=1), 기사당 18s 예산 초과 시 폴백 생략, enrich 워커 6→10. 최악 ~180s→~16~32s/기사. 검색 retry는 유지.
+
+**조치**: 신규 효율 테스트 4건, pytest 503 passed, 금지패턴 0.
+
+**다음**: E(소스 naver/google/tech 동시 실행) 별도 PR.
 
 ---
 
