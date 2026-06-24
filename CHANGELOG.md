@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (작업정의 컨텍스트 주입 Phase A — 공용 선별 모듈 + 제안서) — `feat-taskdef-context-proposals`
+- **신규 `sola/task_context.py`**: 페르소나 관심 작업정의를 LLM 컨텍스트로 **선별·주입**하는 단일 진입점. 전체 작업정의를 다 넣으면 과부하 → `persona.matched_processes`(derive 산출)로 **상위 N공정만 좁히고**, 해당 작업정의만 `to_chat_context_lines` 로 포매팅, **공정·작업 수·총 글자수 캡**(기본 3공정×2작업×2500자). `persona_task_context`(관심 공정 baseline) / `mentioned_task_context`(질의에 등장한 작업명 역매칭) / `format_rows`(공용 포매터·캡).
+- **`sola/propose.py` `_format_task`**: 제안서 `[작업]` 블록에 구조화 작업정의(설명·작업흐름·품질리스크·자동화영역·안전·장비·공정연결) 주입. 과거엔 이름·줄글정의만 넘겨 일반론에 그쳤음 — 이제 공정 맥락에 맞는 제안 가능.
+- **`roadmap/task_def_json.first_objective`**: objectives 가 비면(flat-column 엑셀) `process_description` 첫 문장 폴백 → 보드 기회카드 부제목이 항상 비던 회귀 해소.
+- 검증: 신규 `tests/test_task_context.py` 10건 포함 pytest 495 passed · 금지패턴 0.
+
 ### Changed (마이그레이션 갭 3순위 — 진단 결과 구조화 렌더) — `feat-diagnose-render`
 - **`Collect.tsx` 기사 진단 결과**: raw `JSON.stringify` 덤프 → **단계별 구조화 리포트**(`DiagResult`). 차단 상태 배지(전부차단/200위장/HTML확보), ①②③ 단계별 HTTP·길이·오류, 본문 셀렉터·최종 본문 길이·구조화(ld+json/fusion)·이미지 후보 수·대표이미지·본문 미리보기. Streamlit `_render_diag_result` 이식.
 - 검증: 웹 빌드(tsc) OK. 프런트 전용.
