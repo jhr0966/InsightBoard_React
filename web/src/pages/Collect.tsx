@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, streamCollect } from "../api/client";
-import type { CollectEvent } from "../api/client";
+import type { CollectEvent, CollectSaved, CollectErr } from "../api/client";
 import { KPIStatGrid, Tabs, EmptyState, Modal, Badge } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
@@ -51,7 +51,7 @@ export default function Collect() {
           const label = sourceMeta(e.source).label + (e.keyword ? ` · ${e.keyword}` : "");
           setProg((p) => (p ? { ...p, steps: [...p.steps, { label, found: e.found ?? 0 }], total: p.total + (e.found ?? 0) } : p));
         } else if (e.type === "done") {
-          setProg((p) => (p ? { ...p, running: false, done: { articles: e.total_articles ?? 0, files: e.total_files ?? 0, errors: (e.errors ?? []).length } } : p));
+          setProg((p) => (p ? { ...p, running: false, done: { articles: e.total_articles ?? 0, files: e.total_files ?? 0, saved: e.saved ?? [], errors: e.errors ?? [] } } : p));
           toast.push(`✅ ${e.total_articles ?? 0}건 수집했어요`, "success");
           qc.invalidateQueries({ queryKey: ["news"] });
           qc.invalidateQueries({ queryKey: ["collect"] });
@@ -112,7 +112,7 @@ interface CollectProgress {
   running: boolean;
   steps: { label: string; found: number }[];
   total: number;
-  done?: { articles: number; files: number; errors: number };
+  done?: { articles: number; files: number; saved: CollectSaved[]; errors: CollectErr[] };
   error?: string;
 }
 
@@ -136,9 +136,34 @@ function CollectProgressModal({ prog, onClose }: { prog: CollectProgress | null;
       ) : prog.done ? (
         <div style={{ lineHeight: 1.7 }}>
           <div style={{ fontSize: "var(--fs-headline)", marginBottom: 6 }}>✅ {prog.done.articles}건 수집 완료</div>
-          <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>
-            파일 {prog.done.files}개 저장{prog.done.errors > 0 ? ` · 오류 ${prog.done.errors}건` : ""}
+          <div className="muted" style={{ fontSize: "var(--fs-caption)", marginBottom: 8 }}>
+            파일 {prog.done.files}개 저장{prog.done.errors.length > 0 ? ` · 오류 ${prog.done.errors.length}건` : ""}
           </div>
+          {prog.done.saved.length > 0 && (
+            <div className="cl-done-srcs">
+              {prog.done.saved.flatMap((s) =>
+                s.sites && Object.keys(s.sites).length
+                  ? Object.entries(s.sites).map(([site, n]) => ({ label: site, n }))
+                  : [{ label: sourceMeta(s.source).label, n: s.count }],
+              ).map((row, i) => (
+                <div key={i} className="cl-done-src">
+                  <span>{row.label}</span><b>{row.n}건</b>
+                </div>
+              ))}
+            </div>
+          )}
+          {prog.done.errors.length > 0 && (
+            <details style={{ marginTop: 8 }}>
+              <summary className="muted" style={{ fontSize: "var(--fs-caption)", cursor: "pointer" }}>오류 {prog.done.errors.length}건 보기</summary>
+              <div style={{ marginTop: 6, maxHeight: 120, overflowY: "auto", display: "grid", gap: 4 }}>
+                {prog.done.errors.slice(0, 8).map((er, i) => (
+                  <div key={i} className="muted" style={{ fontSize: "var(--fs-micro)", lineHeight: 1.4 }}>
+                    <b>{er.source ?? ""}{er.keyword ? `·${er.keyword}` : ""}</b> — {er.error}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       ) : null}
       {prog.steps.length > 0 && (
@@ -306,8 +331,10 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
   const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
   const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
   const llm = useQuery({ queryKey: ["assistant", "status"], queryFn: () => api.assistant.status() });
+  const crate = useQuery({ queryKey: ["news", "content-rate"], queryFn: () => api.news.contentRate(7) });
   const health = [
     { label: "오늘 뉴스", ok: (today.data?.length ?? 0) > 0, val: `${today.data?.length ?? 0}건` },
+    { label: "본문 확보율", ok: (crate.data?.pct ?? 0) >= 50, val: crate.data ? `${crate.data.pct}%` : "…" },
     { label: "정의된 작업", ok: (taskdefs.data?.length ?? 0) > 0, val: `${taskdefs.data?.length ?? 0}개` },
     { label: "활성 출처", ok: (sources.data?.items.filter((s) => s.enabled).length ?? 0) > 0, val: `${sources.data?.items.filter((s) => s.enabled).length ?? 0}개` },
     { label: "LLM", ok: !!llm.data?.configured, val: llm.data?.configured ? "Ready" : "키 미설정" },

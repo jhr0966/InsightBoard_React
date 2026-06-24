@@ -2178,6 +2178,54 @@
         ]
       }
     },
+    "/api/news/content-rate": {
+      "get": {
+        "description": "본문 확보율 — 최근 N일 기사 중 본문(content ≥ 50자)이 채워진 비율.\n\nStreamlit data_health 의 `enrich_percent`/`content_ready_count` 이식 —\n수집 설정 화면 헬스 카드가 소비(enrich/fetch 가 제대로 도는지 한눈에).",
+        "operationId": "content_rate_api_news_content_rate_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Content Rate Api News Content Rate Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Content Rate",
+        "tags": [
+          "news"
+        ]
+      }
+    },
     "/api/news/detail": {
       "get": {
         "description": "단건 기사 상세 — 본문(content)·enrich 필드 포함. 목록의 link 로 조회.",

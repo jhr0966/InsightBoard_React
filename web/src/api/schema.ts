@@ -393,6 +393,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/news/content-rate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Content Rate
+         * @description 본문 확보율 — 최근 N일 기사 중 본문(content ≥ 50자)이 채워진 비율.
+         *
+         *     Streamlit data_health 의 `enrich_percent`/`content_ready_count` 이식 —
+         *     수집 설정 화면 헬스 카드가 소비(enrich/fetch 가 제대로 도는지 한눈에).
+         */
+        get: operations["content_rate_api_news_content_rate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/news/detail": {
         parameters: {
             query?: never;
@@ -2107,6 +2130,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    content_rate_api_news_content_rate_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

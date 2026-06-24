@@ -113,7 +113,8 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
                 "type": "done",
                 "total_articles": report.total_articles,
                 "total_files": report.total_files,
-                "errors": report.errors,
+                "saved": report.saved,      # 출처별 건수(+tech 사이트 분해)
+                "errors": report.errors,    # {source, keyword, error}
             })
         except Exception as exc:  # noqa: BLE001 — 네트워크 차단 등 흡수해 프런트에 전달
             events.put({"type": "error", "error": str(exc)})

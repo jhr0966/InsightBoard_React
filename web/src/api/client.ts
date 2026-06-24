@@ -132,6 +132,7 @@ export const api = {
     list: (q?: { days?: number; source?: string; limit?: number }) =>
       req<NewsArticle[]>(`/api/news${qs(q ?? {})}`),
     today: () => req<NewsArticle[]>("/api/news/today"),
+    contentRate: (days = 7) => req<{ total: number; ready: number; pct: number }>(`/api/news/content-rate${qs({ days })}`),
     detail: (link: string, days = 30) =>
       req<NewsArticle>(`/api/news/detail${qs({ link, days })}`),
   },
@@ -246,6 +247,8 @@ export const api = {
 };
 
 // 수집 SSE 이벤트 — start | step | ping | done | error.
+export interface CollectSaved { source: string; count: number; keywords?: string[]; sites?: Record<string, number>; }
+export interface CollectErr { source?: string; keyword?: string; error: string; }
 export interface CollectEvent {
   type: "start" | "step" | "ping" | "done" | "error";
   source?: string;
@@ -253,7 +256,8 @@ export interface CollectEvent {
   found?: number;
   total_articles?: number;
   total_files?: number;
-  errors?: unknown[];
+  saved?: CollectSaved[];
+  errors?: CollectErr[];
   error?: string;
 }
 

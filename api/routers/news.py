@@ -60,3 +60,18 @@ def news_detail(
 @router.get("/today")
 def list_today() -> list[dict]:
     return _records(news_db.load_all_today())
+
+
+@router.get("/content-rate")
+def content_rate(days: int = Query(default=7, ge=1, le=90)) -> dict:
+    """본문 확보율 — 최근 N일 기사 중 본문(content ≥ 50자)이 채워진 비율.
+
+    Streamlit data_health 의 `enrich_percent`/`content_ready_count` 이식 —
+    수집 설정 화면 헬스 카드가 소비(enrich/fetch 가 제대로 도는지 한눈에).
+    """
+    df = news_db.load_news_for_days(days)
+    total = int(len(df))
+    if total == 0 or "content" not in df.columns:
+        return {"total": total, "ready": 0, "pct": 0}
+    ready = int((df["content"].astype(str).str.len() >= 50).sum())
+    return {"total": total, "ready": ready, "pct": round(ready / total * 100)}
