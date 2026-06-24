@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Performance (뉴스 수집 본문 fetch 꼬리지연 단축) — `perf-collect-enrich-timeouts`
+- **본문 fetch 분리 타임아웃**(`scraping/http.py` `ENRICH_TIMEOUT=(5,8)`): enrich 본문 fetch는 best-effort라 검색(`REQUEST_TIMEOUT=15`)보다 짧은 connect 5s·read 8s 적용. 느린/죽은 호스트가 워커를 60초씩 점유하던 문제 완화.
+- **본문 fetch 저재시도 세션**(`build_session(total_retries=, backoff_factor=)` 파라미터화): `fetch_article`이 `total_retries=1`로 호출 → 타임아웃×재시도 누적(15s×4=60s/GET)을 대폭 축소. 검색 호출은 기존 재시도 3 유지.
+- **기사당 시간 예산**(`enrich._FETCH_BUDGET_S=18s`): 차단 3단계 폴백(기본→워밍업→TLS위장) 중 예산 초과 시 남은 비싼 단계 생략 → 차단 1건이 배치 전체를 끌지 않게.
+- **enrich 병렬 워커 6→10**: I/O 바운드라 꼬리 기사 배수 감소.
+- 효과: 차단/응답없는 기사 1건 최악 ~180초 → ~16~32초로 축소. 검증: 신규 효율 테스트 4건 포함 pytest 503 passed · 금지패턴 0.
+
 ### Fixed (페르소나 '지금 분석' 입력 손실) — `fix-persona-derive-loses-input`
 - **`web/src/pages/Persona.tsx`**: 페르소나 폼에 입력만 하고 저장하지 않은 상태에서 "지금 분석/다시 분석"을 누르면 ①서버에 저장된 옛 페르소나로 분석이 돌고 ②`onSuccess`의 `setP(서버결과)`가 입력값을 덮어써 **입력이 전부 날아가던 버그** 수정. derive 전에 현재 폼을 먼저 `save` → 입력 기준으로 분석되고 입력도 보존(서버 `derive` 는 저장된 페르소나를 읽으므로 save 선행이 필수).
 - 검증: 웹 빌드 OK. 프런트 전용.
