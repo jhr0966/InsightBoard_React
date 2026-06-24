@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 3순위: 앱셸 LLM 배너·아바타·신선도 (`feat-appshell-llm-banner`)
+
+**무엇을**: Topbar — LLM 미설정 시 상단 경고 배너(Streamlit render_setup_banner_if_needed 이식), 아바타 "?"→페르소나 첫 글자, 신선도 배지 고정 LIVE→오늘 최신 수집 기준 동적(LIVE/최신/오래됨/수집 전). 프런트 전용.
+
+**조치**: 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 3순위: 수집 결과 상세 + 본문 확보율 (`feat-collect-result-detail`)
 
 **무엇을**: 수집 done SSE 에 `saved`(출처별·tech 사이트 분해) 추가 → 완료 모달이 출처별 건수+오류 목록 표시. `GET /api/news/content-rate`(본문 ≥50자 비율) + Collect 헬스 그리드에 본문확보율 카드. Streamlit `_collect_result_summary_html`·`enrich_percent` 이식.
