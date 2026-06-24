@@ -1,3 +1,11 @@
+## 2026-06-22 — fix: 페르소나 '지금 분석' 입력 손실 (`fix-persona-derive-loses-input`)
+
+**무엇을**: Persona.tsx — 저장 안 한 폼 입력 상태에서 '지금 분석' 누르면 서버 저장본(옛 데이터)으로 분석되고 setP(서버결과)가 입력을 덮어써 날아가던 버그. derive 전에 현재 폼 save 선행으로 수정. 프런트 전용.
+
+**조치**: 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 작업정의 컨텍스트 주입 Phase C: 보드 인사이트 브리프 (`feat-taskdef-context-insights`)
 
 **무엇을**: board_brief.brief() 에 task_context 옵션 추가(관심 공정 작업정의를 LLM 페이로드 주입 + 안정적 md5 캐시키). board /brief 라우터가 persona_task_context 계산해 전달 → 보드 다이제스트가 뉴스를 내 공정 맥락에 연결.

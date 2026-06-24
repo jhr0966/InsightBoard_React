@@ -21,7 +21,12 @@ export default function PersonaPage() {
     onSuccess: (d) => { qc.setQueryData(["persona"], d); setP(d); toast.push("✅ 페르소나를 저장했어요", "success"); },
   });
   const derive = useMutation({
-    mutationFn: () => api.persona.derive(),
+    // 분석 전 현재 폼 입력을 먼저 저장 — 저장 안 한 입력이 날아가고 옛 데이터로
+    // 분석되던 버그 방지. 서버 derive 는 저장된 페르소나를 읽으므로 save 가 선행해야 함.
+    mutationFn: async () => {
+      if (p) await api.persona.save(p);
+      return api.persona.derive();
+    },
     onSuccess: (d) => { qc.setQueryData(["persona"], d); setP(d); toast.push("🤖 SOLA 분석 완료", "success"); },
     onError: (e) => toast.push(`분석 실패: ${(e as Error).message}`, "danger"),
   });
