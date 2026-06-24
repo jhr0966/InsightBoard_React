@@ -12,9 +12,12 @@ from urllib3.util.retry import Retry
 
 
 REQUEST_TIMEOUT = 15
-# 본문 enrich 는 "있으면 좋은" best-effort — 검색(REQUEST_TIMEOUT)보다 짧은
-# (connect, read) 타임아웃으로 느린/죽은 호스트가 워커를 오래 점유하지 못하게 한다.
-ENRICH_TIMEOUT: tuple[int, int] = (5, 8)
+# 본문 enrich 의 (connect, read) 타임아웃. read 는 기사 다운로드가 잘리지 않게
+# 넉넉히(20s) — 너무 짧으면(8s) Google 퍼블리셔·AI Times 처럼 응답이 느리거나
+# 큰 페이지에서 ReadTimeout 으로 본문·사진이 통째로 비었다. 꼬리지연은 read 가
+# 아니라 재시도 횟수(build_session total_retries)·폴백 예산(enrich._FETCH_BUDGET_S)
+# 으로 억제한다. connect 는 죽은 호스트를 적당히 빨리 거르되 느린 TLS 도 통과(10s).
+ENRICH_TIMEOUT: tuple[int, int] = (10, 20)
 
 _UA_POOL = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",

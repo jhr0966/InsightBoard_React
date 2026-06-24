@@ -31,8 +31,9 @@ from scraping.http import (
 
 # 본문 fetch 1건의 전체 시간 예산(초). 차단 시 3단계 폴백(기본→워밍업→TLS위장)이
 # 누적되는데, 이미 예산을 넘겼으면 남은 (가장 비싼) 단계를 건너뛴다 — 한 기사가
-# 배치 전체를 끌지 않게 하는 deadline.
-_FETCH_BUDGET_S = 18.0
+# 배치 전체를 끌지 않게 하는 deadline. read 타임아웃(20s)보다 커서, 정상이지만
+# 느린 사이트의 폴백 복구(워밍업→재요청, 위장)가 한 단계만에 잘리지 않게 한다.
+_FETCH_BUDGET_S = 25.0
 from store import cache
 
 logger = logging.getLogger(__name__)
