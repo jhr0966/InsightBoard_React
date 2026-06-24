@@ -109,6 +109,7 @@ export interface UploadPreview {
 export interface AssistantContext {
   screen: string;
   context: string;
+  labels?: string[];
   news_count: number;
 }
 

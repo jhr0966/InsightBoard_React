@@ -35,8 +35,13 @@ export interface paths {
          * Context
          * @description 현재 화면 컨텍스트를 system 메시지용 문자열로 패키징.
          *
-         *     React 드로어가 이 문자열을 `/api/assistant/chat` 의 system 메시지로 넣으면,
-         *     챗이 화면 데이터(페르소나 + 최근 뉴스/키워드 다이제스트)에 근거해 답한다.
+         *     포함(과부하 방지 캡 적용):
+         *       1. 페르소나 안내
+         *       2. 현재 화면 데이터 다이제스트(뉴스 키워드 + 화면별 요약)
+         *       3. 페르소나 관심 공정 작업정의(matched_processes 로 좁힌 baseline)
+         *       4. 사용자 질의(query)에 언급된 작업의 작업정의
+         *
+         *     `labels` 는 드로어가 "📎 주입된 컨텍스트" 로 노출해 무엇이 들어갔는지 보이게 한다.
          */
         get: operations["context_api_assistant_context_get"];
         put?: never;
@@ -1482,6 +1487,7 @@ export interface operations {
             query?: {
                 screen?: string;
                 days?: number;
+                query?: string;
             };
             header?: never;
             path?: never;
