@@ -1,3 +1,11 @@
+## 2026-06-22 — fix: 뉴스 카드·표 본문 표시 + 수집 속도 (`fix-news-card-body-display`)
+
+**무엇을**: 목록 API가 content를 제외해 카드·표가 본문을 못 보여주던 문제 — 목록에 content 포함(4000자 절단, 전체는 /detail). 카드/표가 newsBody(content 우선) 표시: 카드 2줄 발췌, 데이터표 "요약"→"본문"(전체·스크롤). enrich_parallel 배치당 세션 1개 공유로 속도↑. 수집은 with_llm=False(LLM 요약 안 함) 확인.
+
+**조치**: 신규 테스트(content 포함·절단·세션 재사용) 포함 pytest 507, 금지패턴 0, 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — fix: Google·AI Times 본문·사진 누락 회귀 (enrich 타임아웃 과축소) (`fix-enrich-timeout-too-short`)
 
 **무엇을**: #52에서 ENRICH_TIMEOUT read를 8s로 과축소 → 느린/큰 페이지(Google·AI Times)에서 ReadTimeout으로 본문·사진 통째 누락. (10,20)으로 복원(read≥기존 15s), _FETCH_BUDGET_S 18→25. 꼬리지연 억제는 재시도1·예산·워커·소스병렬이 계속 담당. read≥15s 회귀 가드 테스트 추가.

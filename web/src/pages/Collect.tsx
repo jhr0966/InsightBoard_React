@@ -7,7 +7,7 @@ import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
 import BarChart from "../components/charts/BarChart";
 import { useGlobalSearch } from "../search";
-import { articleChannel, httpsImg, newsCategory, newsSummary, sourceMeta } from "../lib/news";
+import { articleChannel, httpsImg, newsBody, newsCategory, newsSummary, sourceMeta } from "../lib/news";
 import { ageLabel } from "../lib/time";
 import type { NewsArticle } from "../api/types";
 
@@ -228,7 +228,7 @@ function NewsTable({ items, onOpen }: { items: NewsArticle[]; onOpen: (a: NewsAr
   return (
     <div className="cl-table-wrap">
       <table className="cl-table">
-        <thead><tr><th>출처</th><th>제목</th><th>요약</th><th>키워드</th><th>수집</th></tr></thead>
+        <thead><tr><th>출처</th><th>제목</th><th>본문</th><th>키워드</th><th>수집</th></tr></thead>
         <tbody>
           {items.slice(0, 200).map((a) => {
             const m = articleChannel(a);
@@ -236,7 +236,7 @@ function NewsTable({ items, onOpen }: { items: NewsArticle[]; onOpen: (a: NewsAr
               <tr key={a.link} onClick={() => onOpen(a)} style={{ cursor: "pointer" }}>
                 <td><span className="cl-chip-dot" style={{ background: m.color }} /> {m.label}</td>
                 <td className="cl-td-title">{a.title}</td>
-                <td className="cl-td-sum">{newsSummary(a)}</td>
+                <td className="cl-td-sum">{newsBody(a) || <span className="muted">(본문 없음)</span>}</td>
                 <td className="cl-td-kw">{(a.keywords_llm || a.keywords || "").split(",").slice(0, 3).join(", ")}</td>
                 <td className="muted" style={{ whiteSpace: "nowrap" }}>{ageLabel(a.collected_at || a.date)}</td>
               </tr>

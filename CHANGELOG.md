@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Fixed (뉴스 카드·데이터표가 본문을 안 보여줌 + 수집 속도) — `fix-news-card-body-display`
+- **목록 API에 본문 포함** (`api/routers/news.py`): 목록 응답이 `content`(본문)를 제외해 카드·데이터표가 본문을 보여줄 수 없던 문제 수정. `content` 를 목록에 포함(payload 절감 위해 `_LIST_CONTENT_MAX=4000`자 절단, 전체는 `/detail`).
+- **카드 본문 발췌 표시** (`NewsCard`, `lib/news.newsBody`): 카드가 `summary`(검색 스니펫)만 보던 것을 **본문(content) 우선** 표시로 변경(2줄 클램프). 네이버·오토메이션월드처럼 본문은 있는데 카드 제목 밑이 비던 문제 해소. 수집은 LLM 요약을 만들지 않으므로 `summary_llm` 은 최후 폴백.
+- **데이터표 '본문' 칸** (`Collect.tsx`): "요약" 칸 → **"본문"**(content 전체, 최대높이+스크롤). 짧고 이상하게 보이던 요약 대신 본문 표시.
+- **수집 속도** (`enrich.enrich_parallel`): 기사마다 새 HTTP 세션을 만들던 것을 **배치당 1개 세션 공유**(같은 언론사 연결 keep-alive 재사용)로 변경.
+- 참고: 수집 경로는 이미 `with_llm=False` 로 **기사별 LLM 요약을 하지 않음**(확인). '최근 뉴스 요약'은 명시적 버튼 액션만.
+- 검증: 신규 테스트(content 포함·절단·세션 재사용) 포함 pytest 507 passed · 금지패턴 0 · 웹 빌드 OK.
+
 ### Fixed (Google·AI Times 본문·사진 누락 회귀 — enrich 타임아웃 과축소) — `fix-enrich-timeout-too-short`
 - **`scraping/http.py` `ENRICH_TIMEOUT`**: `(5,8)` → `(10,20)`. 직전 성능 PR(#52)에서 read 타임아웃을 8초로 너무 줄인 탓에, 응답이 느리거나 큰 페이지(Google 퍼블리셔·AI Times)에서 본문 다운로드가 `ReadTimeout` 으로 끊겨 **본문·대표사진이 통째로 비던 회귀** 수정. read 를 검증값(15s) 이상(20s)으로, connect 도 5→10s 로 복원.
 - **`scraping/enrich.py` `_FETCH_BUDGET_S`**: 18→25s. read(20s) 보다 커서 차단 사이트의 폴백 복구(워밍업→재요청, TLS 위장)가 한 단계만에 잘리지 않게.

@@ -499,8 +499,12 @@ def _llm_summary(content: str) -> str:
     ).strip()
 
 
-def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
-    """단일 기사 enrich. 부수효과로 article dict 갱신, 동일 dict 반환."""
+def enrich_one(article: dict, *, with_llm: bool = True, session=None) -> dict:
+    """단일 기사 enrich. 부수효과로 article dict 갱신, 동일 dict 반환.
+
+    session: 재사용할 HTTP 세션(배치 enrich 가 같은 언론사 연결을 keep-alive 로
+    재사용해 속도↑). None 이면 fetch_article 가 1회용 세션 생성.
+    """
     from datetime import datetime, timezone
 
     link = article.get("link", "")
@@ -516,7 +520,7 @@ def enrich_one(article: dict, *, with_llm: bool = True) -> dict:
     # 건너뛴다. 원문이 풀린 링크(퍼블리셔 도메인)만 본문·og:image 를 가져온다.
     fetchable = bool(link) and "news.google.com" not in link
     if fetchable and (content_needs_refresh(content) or not image_url):
-        fetched = fetch_article(link)
+        fetched = fetch_article(link, session=session)
         content = fetched.get("content") or content
         image_url = fetched.get("image_url") or image_url
     # wrapper 폴백 추출 시 제목이 본문 첫 줄로 반복되는 것 제거(모달 제목 이중 노출 방지).
@@ -604,9 +608,14 @@ def enrich_parallel(
     if total == 0:
         return articles
 
+    # 배치 전체가 1개 세션을 공유 — 같은 언론사로의 연결을 keep-alive 로 재사용해
+    # 매 기사 새 세션 생성·핸드셰이크 비용을 줄인다(requests.Session 은 GET 에 스레드
+    # 안전). best-effort 라 재시도 1회.
+    shared = build_session(total_retries=1, backoff_factor=0.3)
+
     def _work(art: dict) -> None:
         try:
-            enrich_one(art, with_llm=with_llm)
+            enrich_one(art, with_llm=with_llm, session=shared)
         except Exception:  # noqa: BLE001 — 단일 기사 enrich 실패가 배치를 막지 않게.
             logger.debug("기사 enrich 실패: %s", art.get("link"), exc_info=True)
 
