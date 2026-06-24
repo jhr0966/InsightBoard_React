@@ -194,11 +194,14 @@ function EditForm({ id, onDone }: { id: string; onDone: () => void }) {
   const isNew = id === "";
   const existing = useQuery({ queryKey: ["taskdef", id], queryFn: () => api.taskdefs.get(id), enabled: !isNew });
   const [f, setF] = useState<Json | null>(isNew ? blank() : null);
+  const [tdText, setTdText] = useState<string | null>(null);  // task_def_text(줄글 정의) — json 과 별도
   const cur = f ?? (existing.data?.json as Json) ?? null;
+  const curText = tdText ?? existing.data?.task_def_text ?? "";
 
   const save = useMutation({
-    mutationFn: (json: Json) => api.taskdefs.upsert(String(json.process_id), { json }),
-    onSuccess: (_d, json) => { toast.push(`✅ ${json.process_id} 저장`, "success"); onDone(); },
+    mutationFn: (p: { json: Json; text: string }) =>
+      api.taskdefs.upsert(String(p.json.process_id), { json: p.json, task_def_text: p.text }),
+    onSuccess: (_d, p) => { toast.push(`✅ ${p.json.process_id} 저장`, "success"); onDone(); },
     onError: (e) => toast.push(`⚠️ ${(e as Error).message}`, "danger"),
   });
 
@@ -211,7 +214,7 @@ function EditForm({ id, onDone }: { id: string; onDone: () => void }) {
 
   function submit() {
     if (!cur.process_id || !meta.team || !meta.dept) { toast.push("공정 ID·팀·부서는 필수예요", "danger"); return; }
-    save.mutate(cur);
+    save.mutate({ json: cur, text: curText });
   }
 
   const field = (label: string, value: string, on: (v: string) => void, full = false) => (
@@ -233,6 +236,8 @@ function EditForm({ id, onDone }: { id: string; onDone: () => void }) {
         <div className="td-form">
           {field("공정 ID *", cur.process_id, (v) => set({ process_id: v }))}
           {field("공정명", cur.process_name, (v) => set({ process_name: v }))}
+          {field("도메인", cur.process_domain, (v) => set({ process_domain: v }))}
+          {field("분류", cur.process_category, (v) => set({ process_category: v }))}
           {field("팀 *", meta.team, (v) => setMeta({ team: v }))}
           {field("부서 *", meta.dept, (v) => setMeta({ dept: v }))}
           {field("분과", meta.division, (v) => setMeta({ division: v }))}
@@ -249,6 +254,9 @@ function EditForm({ id, onDone }: { id: string; onDone: () => void }) {
           {area("main_equipment", "🛠 주요 장비")}
           {field("이전 공정", cur.previous_process, (v) => set({ previous_process: v }))}
           {field("다음 공정", cur.next_process, (v) => set({ next_process: v }))}
+          <div className="td-field full"><label>줄글 정의 (task_def_text)</label>
+            <textarea rows={3} value={curText} onChange={(e) => setTdText(e.target.value)}
+              placeholder="공정정의서 원문(줄글). 매칭·제안에 함께 쓰입니다." /></div>
         </div>
       </div>
     </div>
@@ -256,5 +264,5 @@ function EditForm({ id, onDone }: { id: string; onDone: () => void }) {
 }
 
 function blank(): Json {
-  return { process_id: "", process_name: "", org_meta: { team: "", dept: "", division: "", process: "", task: "", sub_task: "" }, objectives: [] };
+  return { process_id: "", process_name: "", process_domain: "", process_category: "", org_meta: { team: "", dept: "", division: "", process: "", task: "", sub_task: "" }, objectives: [] };
 }
