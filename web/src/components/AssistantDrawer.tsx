@@ -94,7 +94,8 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
     try {
       if (!threadRef.current) {
         const first = all.find((m) => m.role === "user")?.content ?? "";
-        const t = await api.threads.create(first.slice(0, 36));
+        // 첫 메시지를 서버로 보내 LLM 제목 자동 생성(미설정 시 룰 fallback).
+        const t = await api.threads.create({ first_message: first });
         threadRef.current = t.id;
       }
       const id = threadRef.current;

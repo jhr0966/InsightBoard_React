@@ -62,6 +62,30 @@ def generate(
     return ProposalOut(proposal=text, task_process_id=pid)
 
 
+class ProposalRefineIn(BaseModel):
+    proposal: str = Field(..., min_length=1, description="현재 제안서 MD")
+    instruction: str = Field(..., min_length=1, description="수정 지시(예: '리스크 강화', '더 짧게')")
+
+
+@router.post("/refine", response_model=ProposalOut)
+def refine(
+    body: ProposalRefineIn,
+    _identity: Identity = Depends(current_identity),
+) -> ProposalOut:
+    """현재 제안서 MD + 사용자 지시 → 다듬은 제안서 MD (`sola.refine` 위임).
+
+    SOLA 작업실의 '다시 생성/다듬기' — 처음부터 재생성 없이 기존 산출물을 반복 개선.
+    """
+    from sola.refine import refine_proposal
+
+    persona = persona_store.load()
+    text = _llm_or_http(
+        lambda: refine_proposal(body.proposal, body.instruction, persona=persona),
+        what="제안서 다듬기",
+    )
+    return ProposalOut(proposal=text)
+
+
 class SummarizeIn(BaseModel):
     days: int = Field(default=3, ge=1, le=30)
     max_items: int = Field(default=20, ge=1, le=50)

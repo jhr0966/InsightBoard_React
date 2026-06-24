@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 1순위 — 미연결 SOLA 기능 연결) — `feat-wire-sola-refine-summarize-title`
+Streamlit→React 마이그레이션 전수점검에서 **백엔드는 있으나 UI 미연결**이던 기능 4건 연결.
+- **제안서 다듬기(refine)**: `sola/refine.py`(고아) → `POST /api/proposals/refine` 신설 + `Proposals.tsx` 에 지시 입력 + "✨ 다듬기" 버튼. 처음부터 재생성 없이 기존 제안서를 반복 개선. LLM 오류는 502/503.
+- **채팅 스레드 자동 제목**: `sola/thread_title.py`(고아) → `POST /api/threads` 가 `first_message` 받으면 LLM 으로 제목 생성(캐시+룰 fallback). `AssistantDrawer` 가 36자 자르기 대신 첫 메시지를 보냄.
+- **뉴스 요약 UI**: `/api/proposals/summarize`(연결돼 있으나 호출 UI 없던 것) → `Collect.tsx` "📰 최근 뉴스 요약" 버튼 + 결과 모달.
+- **기사 모달 사진**: `ArticleModal` 이 `image_url` 을 받고도 안 그리던 것 → 상단에 대표 이미지 렌더(로드 실패 시 숨김).
+- 검증: 신규 백엔드 테스트 5건 → pytest 478. OpenAPI/web 타입 재생성(45 paths), 웹 빌드 OK.
+
 ### Fixed (tech 출처 라벨이 'AI Times' 로 뭉침 — 오토메이션월드 채널 누락) — `fix-tech-channel-press-label`
 - **포탈(tech) 기사를 사이트명(`press`)으로 채널 구분** (`web/src/lib/news.ts` `articleChannel()` + `Collect.tsx`·`NewsCard.tsx`): 모든 tech 기사가 `source="tech"` 라 `sourceMeta("tech")` 의 단일 라벨(`AI Times`)로 뭉쳐, ① 진행 모달이 **"AI Times · 오토메이션월드"** 처럼 AI Times 를 상위 카테고리로 잘못 표기하고 ② 카드 채널 필터에 **오토메이션월드가 아예 안 뜨던**(수집은 됐는데 AI Times 로 묶임) 문제. 이제 포탈 기사는 `press`(AI Times/오토메이션월드)로 라벨·색을 구분하고, tech 기본 라벨은 `기술` 로 바꿔 진행 모달이 **"기술 · AI Times" / "기술 · 오토메이션월드"** 로 표시된다. (표시 전용 수정 — 이미 수집된 데이터도 재수집 없이 채널이 보인다.)
 - 검증: 웹 빌드(tsc) 통과.

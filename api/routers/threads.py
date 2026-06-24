@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/threads", tags=["threads"])
 
 class ThreadCreateIn(BaseModel):
     title: str = ""
+    first_message: str = ""  # 주어지면 title 이 비었을 때 LLM 으로 제목 자동 생성
 
 
 class ThreadUpdateIn(BaseModel):
@@ -41,7 +42,18 @@ def list_threads() -> list[dict]:
 
 @router.post("")
 def create_thread(body: ThreadCreateIn) -> dict:
-    return _out(threads_store.create(body.title))
+    """스레드 생성. title 이 비고 first_message 가 있으면 LLM 으로 제목 자동 생성.
+
+    과거엔 프런트가 첫 메시지를 36자로 자른 제목을 보냈다 → 의미 없는 제목.
+    `sola.thread_title.generate` 는 캐시 + 룰 fallback 내장이라 LLM 미설정·실패에도
+    안전(예외 없음).
+    """
+    title = (body.title or "").strip()
+    if not title and (body.first_message or "").strip():
+        from sola.thread_title import generate as _gen_title
+
+        title = _gen_title(body.first_message)
+    return _out(threads_store.create(title))
 
 
 @router.get("/{thread_id}")

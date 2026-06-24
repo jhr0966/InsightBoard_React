@@ -492,6 +492,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/proposals/refine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refine
+         * @description 현재 제안서 MD + 사용자 지시 → 다듬은 제안서 MD (`sola.refine` 위임).
+         *
+         *     SOLA 작업실의 '다시 생성/다듬기' — 처음부터 재생성 없이 기존 산출물을 반복 개선.
+         */
+        post: operations["refine_api_proposals_refine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals/summarize": {
         parameters: {
             query?: never;
@@ -672,7 +694,14 @@ export interface paths {
         /** List Threads */
         get: operations["list_threads_api_threads_get"];
         put?: never;
-        /** Create Thread */
+        /**
+         * Create Thread
+         * @description 스레드 생성. title 이 비고 first_message 가 있으면 LLM 으로 제목 자동 생성.
+         *
+         *     과거엔 프런트가 첫 메시지를 36자로 자른 제목을 보냈다 → 의미 없는 제목.
+         *     `sola.thread_title.generate` 는 캐시 + 룰 fallback 내장이라 LLM 미설정·실패에도
+         *     안전(예외 없음).
+         */
         post: operations["create_thread_api_threads_post"];
         delete?: never;
         options?: never;
@@ -1156,6 +1185,19 @@ export interface components {
             /** Task Process Id */
             task_process_id?: string | null;
         };
+        /** ProposalRefineIn */
+        ProposalRefineIn: {
+            /**
+             * Instruction
+             * @description 수정 지시(예: '리스크 강화', '더 짧게')
+             */
+            instruction: string;
+            /**
+             * Proposal
+             * @description 현재 제안서 MD
+             */
+            proposal: string;
+        };
         /** SourceItem */
         SourceItem: {
             /**
@@ -1268,6 +1310,11 @@ export interface components {
         };
         /** ThreadCreateIn */
         ThreadCreateIn: {
+            /**
+             * First Message
+             * @default
+             */
+            first_message: string;
             /**
              * Title
              * @default
@@ -2159,6 +2206,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ProposalGenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refine_api_proposals_refine_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalRefineIn"];
             };
         };
         responses: {

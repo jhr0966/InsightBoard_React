@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 1순위: 미연결 SOLA 기능 연결 (`feat-wire-sola-refine-summarize-title`)
+
+**무엇을**: InsightBoard_Streamlit→React 전수점검(서브에이전트 5)에서 발견한 "백엔드는 있는데 UI 미연결" 4건 연결. ① 제안서 다듬기 — `sola/refine.py` 고아 → `POST /api/proposals/refine` + Proposals.tsx 다듬기 UI. ② 스레드 자동제목 — `sola/thread_title.py` 고아 → `POST /api/threads` first_message 자동제목, AssistantDrawer 연결. ③ 뉴스 요약 — `/api/proposals/summarize` 호출 UI 없던 것 → Collect.tsx 버튼+모달. ④ 기사 모달 사진 — image_url 안 그리던 것 → 렌더.
+
+**조치**: 신규 테스트 5건 → pytest 478. OpenAPI 45 paths·web 타입 재생성, 웹 빌드 OK. 백엔드 100% 이식 확인, 나머지 갭은 후속 배치로 순차 처리.
+
+---
+
 ## 2026-06-22 — tech 출처 라벨 뭉침(오토메이션월드 채널 누락) (`fix-tech-channel-press-label`)
 
 **무엇을**: 실수집 결과 보고(진행 모달 "AI Times · 오토메이션월드", 카드에 오토메이션월드 채널 없음). 원인: 모든 tech 기사가 source="tech" → `sourceMeta("tech")` 단일 라벨 "AI Times" 로 뭉침. `lib/news.ts` 에 `articleChannel(a)` 추가 — 포탈(tech)은 press(사이트명)로 라벨/색 구분, tech 기본 라벨 "AI Times"→"기술". Collect/NewsCard 가 이를 사용. 표시 전용이라 기존 데이터도 재수집 없이 오토메이션월드 채널이 보인다.

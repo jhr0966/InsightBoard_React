@@ -632,6 +632,28 @@
         "title": "ProposalOut",
         "type": "object"
       },
+      "ProposalRefineIn": {
+        "properties": {
+          "instruction": {
+            "description": "수정 지시(예: '리스크 강화', '더 짧게')",
+            "minLength": 1,
+            "title": "Instruction",
+            "type": "string"
+          },
+          "proposal": {
+            "description": "현재 제안서 MD",
+            "minLength": 1,
+            "title": "Proposal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal",
+          "instruction"
+        ],
+        "title": "ProposalRefineIn",
+        "type": "object"
+      },
       "SourceItem": {
         "properties": {
           "custom": {
@@ -928,6 +950,11 @@
       },
       "ThreadCreateIn": {
         "properties": {
+          "first_message": {
+            "default": "",
+            "title": "First Message",
+            "type": "string"
+          },
           "title": {
             "default": "",
             "title": "Title",
@@ -2330,6 +2357,48 @@
         ]
       }
     },
+    "/api/proposals/refine": {
+      "post": {
+        "description": "현재 제안서 MD + 사용자 지시 → 다듬은 제안서 MD (`sola.refine` 위임).\n\nSOLA 작업실의 '다시 생성/다듬기' — 처음부터 재생성 없이 기존 산출물을 반복 개선.",
+        "operationId": "refine_api_proposals_refine_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalRefineIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refine",
+        "tags": [
+          "proposals"
+        ]
+      }
+    },
     "/api/proposals/summarize": {
       "post": {
         "description": "최근 뉴스 요약 (SOLA 작업실 '뉴스 요약').",
@@ -2963,6 +3032,7 @@
         ]
       },
       "post": {
+        "description": "스레드 생성. title 이 비고 first_message 가 있으면 LLM 으로 제목 자동 생성.\n\n과거엔 프런트가 첫 메시지를 36자로 자른 제목을 보냈다 → 의미 없는 제목.\n`sola.thread_title.generate` 는 캐시 + 룰 fallback 내장이라 LLM 미설정·실패에도\n안전(예외 없음).",
         "operationId": "create_thread_api_threads_post",
         "requestBody": {
           "content": {
