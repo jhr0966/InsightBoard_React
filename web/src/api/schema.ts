@@ -335,6 +335,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights/process-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Process Map
+         * @description 선택한 트렌드 키워드 → 연결되는 상위 공정(Lv3) 카드.
+         *
+         *     그 키워드를 언급한 최근 뉴스만으로 `score_cells` 를 돌려, 키워드가 어떤 공정에
+         *     자동화 기회로 이어지는지(적합도·샘플작업·근거뉴스 수·목표·PoC 태그)를 낸다.
+         *     Streamlit `_ia_process_map_html` 의 React 이식 — '트렌드 → 공정 연결' 섹션 본체.
+         */
+        get: operations["process_map_api_insights_process_map_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches": {
         parameters: {
             query?: never;
@@ -1910,6 +1934,42 @@ export interface operations {
                 col: string;
                 days?: number;
                 limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    process_map_api_insights_process_map_get: {
+        parameters: {
+            query?: {
+                /** @description 트렌드 키워드(빈 값=전체 뉴스) */
+                keyword?: string;
+                days?: number;
+                top?: number;
             };
             header?: never;
             path?: never;

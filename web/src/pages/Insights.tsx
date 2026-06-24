@@ -54,6 +54,7 @@ export default function Insights() {
   const [days, setDays] = useState(30);
   const [sel, setSel] = useState<string | null>(null);
   const [hmSel, setHmSel] = useState<string | null>(null);
+  const [tkw, setTkw] = useState<string | null>(null);  // 선택한 트렌드 키워드(공정 매핑 필터)
 
   const keywords = useQuery({ queryKey: ["trends", "keywords", days], queryFn: () => api.trends.keywords(days, 12) });
   const volume = useQuery({ queryKey: ["trends", "volume", days], queryFn: () => api.trends.volume(days) });
@@ -61,6 +62,14 @@ export default function Insights() {
   const emergence = useQuery({ queryKey: ["trends", "emergence", days], queryFn: () => api.trends.emergence(days, 20) });
   const opps = useQuery({ queryKey: ["opportunities", days], queryFn: () => api.opportunities.list(days, 8) });
   const heatmap = useQuery({ queryKey: ["insights", "heatmap", days], queryFn: () => api.insights.heatmap(days) });
+
+  // 활성 트렌드 키워드 — 선택값 우선, 없으면 상위 1위 키워드.
+  const activeKw = tkw ?? keywords.data?.[0]?.keyword ?? "";
+  const pmap = useQuery({
+    queryKey: ["insights", "process-map", activeKw, days],
+    queryFn: () => api.insights.processMap(activeKw, days, 3),
+    enabled: !!activeKw,
+  });
 
   const newSet = new Set((emergence.data?.new ?? []).map((k) => k.keyword));
   const kwMax = Math.max(1, ...(keywords.data ?? []).map((k) => k.count));
@@ -115,8 +124,11 @@ export default function Insights() {
           </div>
           <div className="card" style={{ margin: 0 }}>
             <div className="card-title">트렌드 키워드 <span className="muted" style={{ fontWeight: 400 }}>· 상승순</span></div>
+            <div className="muted" style={{ fontSize: "var(--fs-micro)", marginBottom: 4 }}>키워드를 누르면 연결 공정이 바뀝니다</div>
             {(keywords.data ?? []).map((k, i) => (
-              <div className="ia-kw" key={k.keyword}>
+              <div className={`ia-kw${k.keyword === activeKw ? " on" : ""}`} key={k.keyword}
+                style={{ cursor: "pointer" }} role="button"
+                onClick={() => setTkw(k.keyword === activeKw ? null : k.keyword)}>
                 <span className="ia-kw-rank">{String(i + 1).padStart(2, "0")}</span>
                 <span className="ia-kw-name">{k.keyword} {newSet.has(k.keyword) && <Badge tone="success">NEW</Badge>}</span>
                 <span className="ia-kw-bar" style={{ width: `${(k.count / kwMax) * 90}px` }} />
@@ -126,6 +138,33 @@ export default function Insights() {
             {keywords.data?.length === 0 && <span className="muted">데이터 없음</span>}
           </div>
         </div>
+
+        {/* 트렌드 키워드 → 연결 공정 카드 */}
+        {activeKw && (
+          <div className="card" style={{ marginTop: 12 }}>
+            <div className="card-title">🔗 ‘{activeKw}’ 연결 공정 <span className="muted" style={{ fontWeight: 400 }}>· 적합도순 상위 3</span></div>
+            {pmap.isLoading ? <span className="muted">분석 중…</span>
+              : (pmap.data?.length ?? 0) === 0
+                ? <span className="muted">이 키워드에 매칭되는 공정이 없어요.</span>
+                : <div className="ia-pmap">
+                  {pmap.data!.map((p) => (
+                    <div className="ia-pmap-card" key={`${p.dept}||${p.lv3}`}
+                      onClick={() => { setSel(`${p.dept}||${p.lv3}`); }} style={{ cursor: "pointer" }}>
+                      <div className="ia-pmap-head">
+                        <span className="ia-pmap-proc">{p.dept} · {p.lv3}</span>
+                        <Badge tone={p.tag === "PoC 후보" ? "warning" : "default"}>{p.tag}</Badge>
+                      </div>
+                      <div className="ia-pmap-fit">
+                        <span className="ia-pmap-bar" style={{ width: `${Math.round(p.fit * 100)}%` }} />
+                        <span className="muted" style={{ fontSize: "var(--fs-micro)" }}>적합도 {Math.round(p.fit * 100)}% · 근거 {p.matched_news}건</span>
+                      </div>
+                      {p.objective && <div className="ia-pmap-obj">{p.objective}</div>}
+                      {p.signal && <div className="muted ia-pmap-sig">📰 {p.signal}</div>}
+                    </div>
+                  ))}
+                </div>}
+          </div>
+        )}
       </Section>
 
       {/* B. 매트릭스 + PoC 랭킹 */}

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (마이그레이션 갭 2순위 — 인사이트 트렌드→공정 매핑) — `feat-insights-process-map`
+Streamlit `_ia_process_map_html`(인사이트 최대 누락 섹션) 이식.
+- **`GET /api/insights/process-map?keyword=&days=&top=`** (`api/routers/insights.py`): 선택 트렌드 키워드를 언급한 최근 뉴스만으로 `score_cells` → 연결 공정(Lv3) 상위 N. 카드별 `dept·lv3·적합도(fit 0~1)·근거뉴스 수·샘플작업·목표·근거뉴스·PoC/관찰 태그`.
+- **`Insights.tsx`**: '트렌드 → 공정 연결' 섹션의 키워드 목록을 **클릭 가능**하게(선택 토글·하이라이트), 선택 키워드의 **연결 공정 카드** 표시(적합도 바·태그·근거). 카드 클릭 시 매트릭스 셀 선택과 연동.
+- 검증: 신규 테스트(키워드 필터·빈 결과) → pytest 482. OpenAPI 46 paths·web 타입 재생성, 웹 빌드 OK.
+
 ### Added (마이그레이션 갭 1순위 — 미연결 SOLA 기능 연결) — `feat-wire-sola-refine-summarize-title`
 Streamlit→React 마이그레이션 전수점검에서 **백엔드는 있으나 UI 미연결**이던 기능 4건 연결.
 - **제안서 다듬기(refine)**: `sola/refine.py`(고아) → `POST /api/proposals/refine` 신설 + `Proposals.tsx` 에 지시 입력 + "✨ 다듬기" 버튼. 처음부터 재생성 없이 기존 제안서를 반복 개선. LLM 오류는 502/503.
