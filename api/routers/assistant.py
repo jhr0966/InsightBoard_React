@@ -82,29 +82,95 @@ def status() -> dict:
 _SCREENS = ("board", "insights", "collect", "taskdefs", "proposals")
 
 
+def _screen_digest(screen: str, days: int) -> tuple[str, int]:
+    """화면별 데이터 다이제스트 — '현재 화면에 떠있는 것' Q&A 근거. (텍스트, 뉴스건수).
+
+    가벼운 소스만(뉴스 키워드 + 보관함 요약 + 작업정의 수). 무거운 기회 재계산은
+    매 전송마다 돌면 느려지므로 제외하고, 관심 작업정의(아래 task_context)가 보드/
+    인사이트 화면의 풍부한 근거를 대신한다.
+    """
+    from store import news_db, trends
+
+    df = news_db.load_news_for_days(days)
+    n = int(len(df))
+    lines = [
+        f"## 현재 화면: {screen}",
+        f"## 최근 {days}일 뉴스 {n}건",
+    ]
+    kw = trends.top_keywords(df, top_n=10)
+    kw_line = ", ".join(f"{r['keyword']}({r['count']})" for r in kw.to_dict("records"))
+    lines.append(f"## 상위 키워드: {kw_line or '없음'}")
+
+    if screen == "proposals":
+        from store import bookmarks
+        try:
+            sc = bookmarks.summary_counts()
+            ps = sc.get("proposal_status") if isinstance(sc, dict) else None
+            if isinstance(ps, dict):
+                lines.append(
+                    f"## 제안 보관함: 채택 {ps.get('adopted', 0)} · 대기 {ps.get('pending', 0)} · 보류 {ps.get('held', 0)}"
+                )
+        except Exception:  # noqa: BLE001
+            pass
+    elif screen == "taskdefs":
+        from store import task_defs_db
+        try:
+            lines.append(f"## 등록된 작업정의 {task_defs_db.count()}건")
+        except Exception:  # noqa: BLE001
+            pass
+    return "\n".join(lines), n
+
+
 @router.get("/context")
 def context(
     screen: str = "board",
     days: int = 7,
+    query: str = "",
 ) -> dict:
     """현재 화면 컨텍스트를 system 메시지용 문자열로 패키징.
 
-    React 드로어가 이 문자열을 `/api/assistant/chat` 의 system 메시지로 넣으면,
-    챗이 화면 데이터(페르소나 + 최근 뉴스/키워드 다이제스트)에 근거해 답한다.
+    포함(과부하 방지 캡 적용):
+      1. 페르소나 안내
+      2. 현재 화면 데이터 다이제스트(뉴스 키워드 + 화면별 요약)
+      3. 페르소나 관심 공정 작업정의(matched_processes 로 좁힌 baseline)
+      4. 사용자 질의(query)에 언급된 작업의 작업정의
+
+    `labels` 는 드로어가 "📎 주입된 컨텍스트" 로 노출해 무엇이 들어갔는지 보이게 한다.
     """
     from persona import context as persona_ctx
     from persona import store as persona_store
-    from store import news_db, trends
+    from sola import task_context
 
     persona = persona_store.load()
-    df = news_db.load_news_for_days(days)
-    kw = trends.top_keywords(df, top_n=10)
-    kw_line = ", ".join(f"{r['keyword']}({r['count']})" for r in kw.to_dict("records"))
-    parts = [persona_ctx.system_block(persona)]
-    parts.append(f"## 현재 화면: {screen}")
-    parts.append(f"## 최근 {days}일 뉴스 {len(df)}건 · 상위 키워드: {kw_line or '없음'}")
+    parts: list[str] = []
+    labels: list[str] = []
+
+    pblock = persona_ctx.system_block(persona)
+    if pblock:
+        parts.append(pblock)
+        if persona.is_set():
+            labels.append(f"페르소나·{persona.dept or '-'}")
+
+    digest, news_count = _screen_digest(screen, days)
+    parts.append(digest)
+    labels.append("현재 화면")
+
+    # 페르소나 관심 공정 작업정의 baseline (matched_processes → 캡 주입)
+    tctx, tlabels = task_context.persona_task_context(persona)
+    if tctx:
+        parts.append(tctx)
+        labels.append(f"관심 작업정의 {len(tlabels)}건")
+
+    # 질의에 언급된 작업의 작업정의 (특정 작업 질문 시)
+    if query.strip():
+        mctx, mlabels = task_context.mentioned_task_context(query)
+        if mctx:
+            parts.append(mctx)
+            labels.append("언급 작업·" + ", ".join(mlabels[:2]))
+
     return {
         "screen": screen if screen in _SCREENS else "board",
         "context": "\n\n".join(p for p in parts if p),
-        "news_count": int(len(df)),
+        "labels": labels,
+        "news_count": news_count,
     }

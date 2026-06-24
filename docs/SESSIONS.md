@@ -1,3 +1,13 @@
+## 2026-06-22 — 작업정의 컨텍스트 주입 Phase B: SOLA 채팅 (`feat-taskdef-context-chat`)
+
+**무엇을**: `/api/assistant/context` 확장 — 화면 다이제스트(뉴스 키워드 + proposals 보관함/taskdefs 수) + 페르소나 관심 작업정의 baseline + query 언급 작업정의 주입, labels[] 반환. AssistantDrawer 가 입력 텍스트를 query 로 전달 + 📎 주입 라벨 노출.
+
+**조치**: 신규 context 테스트 3건, pytest 498 passed, 금지패턴 0, OpenAPI 재생성·웹 빌드 OK.
+
+**다음**: Phase C(인사이트/기회 브리프에 관심 작업정의 주입).
+
+---
+
 ## 2026-06-22 — 작업정의 컨텍스트 주입 Phase A: 공용 선별 모듈 + 제안서 (`feat-taskdef-context-proposals`)
 
 **무엇을**: 신규 `sola/task_context.py` — 페르소나 matched_processes 로 관심 작업정의를 선별해 to_chat_context_lines 로 캡(3공정×2작업×2500자) 주입. `propose._format_task` 가 구조화 작업정의(작업흐름·품질리스크·자동화영역 등) 주입(과거 이름만). first_objective objectives 빈값→description 첫 문장 폴백.

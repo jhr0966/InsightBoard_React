@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (작업정의 컨텍스트 주입 Phase B — SOLA 채팅) — `feat-taskdef-context-chat`
+- **`/api/assistant/context` 확장**: ①페르소나 안내 ②**현재 화면 데이터 다이제스트**(뉴스 키워드 + 화면별 요약: proposals 보관함 채택/대기/보류, taskdefs 작업정의 수) ③**페르소나 관심 공정 작업정의 baseline**(`task_context.persona_task_context`, matched_processes 로 좁혀 캡 주입) ④**질의에 언급된 작업의 작업정의**(`mentioned_task_context`, `query` 파라미터). `labels[]` 반환으로 무엇이 주입됐는지 노출.
+- **`AssistantDrawer`**: 전송 시 입력 텍스트를 `query`로 전달 → 언급한 작업의 정의가 자동 주입. 입력창 위 "📎 주입된 컨텍스트" 라벨 칩 노출(`.drawer-ctx`).
+- 효과: 화면에 떠있는 것 + 내 관심 공정 + 내가 말한 작업 정의를 근거로 SOLA 가 답변.
+- 검증: 신규 context 테스트 3건 포함 pytest 498 passed · 금지패턴 0 · OpenAPI 재생성·웹 빌드 OK.
+
 ### Added (작업정의 컨텍스트 주입 Phase A — 공용 선별 모듈 + 제안서) — `feat-taskdef-context-proposals`
 - **신규 `sola/task_context.py`**: 페르소나 관심 작업정의를 LLM 컨텍스트로 **선별·주입**하는 단일 진입점. 전체 작업정의를 다 넣으면 과부하 → `persona.matched_processes`(derive 산출)로 **상위 N공정만 좁히고**, 해당 작업정의만 `to_chat_context_lines` 로 포매팅, **공정·작업 수·총 글자수 캡**(기본 3공정×2작업×2500자). `persona_task_context`(관심 공정 baseline) / `mentioned_task_context`(질의에 등장한 작업명 역매칭) / `format_rows`(공용 포매터·캡).
 - **`sola/propose.py` `_format_task`**: 제안서 `[작업]` 블록에 구조화 작업정의(설명·작업흐름·품질리스크·자동화영역·안전·장비·공정연결) 주입. 과거엔 이름·줄글정의만 넘겨 일반론에 그쳤음 — 이제 공정 맥락에 맞는 제안 가능.

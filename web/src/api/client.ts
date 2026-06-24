@@ -186,8 +186,8 @@ export const api = {
 
   assistant: {
     status: () => req<{ configured: boolean; provider: string }>("/api/assistant/status"),
-    context: (screen: string, days = 7) =>
-      req<AssistantContext>(`/api/assistant/context${qs({ screen, days })}`),
+    context: (screen: string, query = "", days = 7) =>
+      req<AssistantContext>(`/api/assistant/context${qs({ screen, query, days })}`),
   },
 
   threads: {

@@ -85,6 +85,7 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ctxLabels, setCtxLabels] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const threadRef = useRef<string | null>(null);
   const [params] = useSearchParams();
@@ -111,8 +112,10 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
 
     let system: ChatMessage[] = [];
     try {
-      const ctx = await api.assistant.context(screen);
+      // 입력 텍스트를 query 로 넘겨 — 언급한 작업의 작업정의가 컨텍스트에 주입된다.
+      const ctx = await api.assistant.context(screen, text);
       if (ctx.context) system = [{ role: "system", content: ctx.context }];
+      setCtxLabels(ctx.labels ?? []);
     } catch { /* 컨텍스트 없이 진행 */ }
 
     const history = [...messages, { role: "user", content: text } as ChatMessage];
@@ -189,6 +192,11 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
           </div>
         ))}
       </div>
+      {ctxLabels.length > 0 && (
+        <div className="drawer-ctx" title="이번 답변에 주입된 컨텍스트">
+          📎 {ctxLabels.join(" · ")}
+        </div>
+      )}
       <div className="drawer-input">
         <input value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()} placeholder="메시지 입력…" disabled={busy} />
