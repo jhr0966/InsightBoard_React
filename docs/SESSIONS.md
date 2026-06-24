@@ -1,3 +1,11 @@
+## 2026-06-22 — 마이그레이션 갭 3순위: 작업정의 편집 폼 누락 필드 (`feat-taskdef-form-fields`)
+
+**무엇을**: TaskDefs.tsx EditForm 에 process_domain·process_category(JSON 최상위)·task_def_text(별도) 입력 추가 — Streamlit 에선 편집되나 React 에선 불가하던 회귀 해소. 라운드트립 테스트 추가.
+
+**조치**: pytest 484, 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — 마이그레이션 갭 2순위: 수집 출처별 헬스 + 데이터표 뷰 (`feat-collect-health-table`)
 
 **무엇을**: `GET /api/sources/health`(출처별 7일 건수·마지막수집·정상/무수집/비활성 — 표시명→source/press 매핑) + Collect 출처 설정 행 배지. BrowseView 카드↔데이터표 토글. flaky `test_heatmap_lights_up` 견고화(top-N 행 가정 → ≥1 셀 점등).

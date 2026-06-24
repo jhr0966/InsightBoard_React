@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed (마이그레이션 갭 3순위 — 작업정의 편집 폼 누락 필드) — `feat-taskdef-form-fields`
+- **`TaskDefs.tsx` EditForm**: Streamlit 폼에선 편집되던 **`process_domain`(도메인)·`process_category`(분류)·`task_def_text`(줄글 정의)** 가 React 폼엔 없어 편집 불가하던 데이터 편집성 회귀 해소. 도메인·분류는 JSON 최상위 입력으로, 줄글 정의는 `upsert` 의 `task_def_text` 파라미터로 저장(이미 백엔드 지원). 라운드트립 회귀 테스트 추가.
+- 검증: pytest 484, 웹 빌드 OK.
+
 ### Added (마이그레이션 갭 2순위 — 수집 출처별 헬스 + 데이터표 뷰) — `feat-collect-health-table`
 - **출처별 헬스** (`GET /api/sources/health` + `Collect.tsx` 출처 설정): 출처마다 최근 7일 수집 건수·마지막 수집 시각·상태 배지(정상/무수집/비활성). 표시명(네이버 뉴스·AI Times·오토메이션월드)을 기사 `source`/`press` 로 매핑. Streamlit `_src_status_html` 이식.
 - **뉴스 데이터 표 뷰** (`Collect.tsx` BrowseView): 카드 ↔ "📋 데이터 표" 토글. 출처·제목·요약·키워드·수집시각 표(상위 200행, 행 클릭→상세 모달). Streamlit `_SC_MODES` 표 뷰 이식.

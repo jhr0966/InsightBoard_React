@@ -44,6 +44,20 @@ def test_put_creates_and_get_returns_with_identity():
     assert g.json()["process_id"] == "PNL-SEL-001"
 
 
+def test_upsert_roundtrips_domain_category_and_text():
+    """편집 폼 보강 — process_domain/category(JSON 최상위)·task_def_text(별도)가
+    저장·조회 라운드트립(과거 React 폼은 이 3개를 편집 못 해 데이터 편집성 회귀였음)."""
+    j = _make_json("DOM-1")
+    j["process_domain"] = "조선소 생산관리"
+    j["process_category"] = "판넬"
+    r = client.put("/api/taskdefs/DOM-1", json={"json": j, "task_def_text": "줄글 정의 본문"})
+    assert r.status_code == 200
+    g = client.get("/api/taskdefs/DOM-1").json()
+    assert g["json"]["process_domain"] == "조선소 생산관리"
+    assert g["json"]["process_category"] == "판넬"
+    assert g["task_def_text"] == "줄글 정의 본문"
+
+
 def test_get_missing_returns_404():
     assert client.get("/api/taskdefs/NOPE").status_code == 404
 
