@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed (페르소나 '지금 분석' 입력 손실) — `fix-persona-derive-loses-input`
+- **`web/src/pages/Persona.tsx`**: 페르소나 폼에 입력만 하고 저장하지 않은 상태에서 "지금 분석/다시 분석"을 누르면 ①서버에 저장된 옛 페르소나로 분석이 돌고 ②`onSuccess`의 `setP(서버결과)`가 입력값을 덮어써 **입력이 전부 날아가던 버그** 수정. derive 전에 현재 폼을 먼저 `save` → 입력 기준으로 분석되고 입력도 보존(서버 `derive` 는 저장된 페르소나를 읽으므로 save 선행이 필수).
+- 검증: 웹 빌드 OK. 프런트 전용.
+
 ### Added (작업정의 컨텍스트 주입 Phase C — 보드 인사이트 브리프) — `feat-taskdef-context-insights`
 - **`sola/board_brief.brief()`**: 옵션 `task_context` 추가 — 페르소나 관심 공정 작업정의(작업흐름·품질리스크·자동화영역)를 LLM user 페이로드에 주입. 캐시 시그니처에 작업정의 해시 포함(같은 부서 라벨이어도 관심 공정 다르면 다른 브리핑, 안정적 md5 해시로 재시작 후에도 캐시 유효).
 - **`api/routers/board.py /brief`**: `task_context.persona_task_context(persona)` 계산해 전달 → 오늘의 보드 다이제스트가 뉴스를 **내 공정 맥락에 연결**해 시사점 도출.
