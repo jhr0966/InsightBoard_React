@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (작업정의 컨텍스트 주입 Phase C — 보드 인사이트 브리프) — `feat-taskdef-context-insights`
+- **`sola/board_brief.brief()`**: 옵션 `task_context` 추가 — 페르소나 관심 공정 작업정의(작업흐름·품질리스크·자동화영역)를 LLM user 페이로드에 주입. 캐시 시그니처에 작업정의 해시 포함(같은 부서 라벨이어도 관심 공정 다르면 다른 브리핑, 안정적 md5 해시로 재시작 후에도 캐시 유효).
+- **`api/routers/board.py /brief`**: `task_context.persona_task_context(persona)` 계산해 전달 → 오늘의 보드 다이제스트가 뉴스를 **내 공정 맥락에 연결**해 시사점 도출.
+- 검증: 신규 board brief 주입 테스트 포함 pytest 499 passed · 금지패턴 0. 백엔드 전용(OpenAPI/웹 무변경).
+
 ### Added (작업정의 컨텍스트 주입 Phase B — SOLA 채팅) — `feat-taskdef-context-chat`
 - **`/api/assistant/context` 확장**: ①페르소나 안내 ②**현재 화면 데이터 다이제스트**(뉴스 키워드 + 화면별 요약: proposals 보관함 채택/대기/보류, taskdefs 작업정의 수) ③**페르소나 관심 공정 작업정의 baseline**(`task_context.persona_task_context`, matched_processes 로 좁혀 캡 주입) ④**질의에 언급된 작업의 작업정의**(`mentioned_task_context`, `query` 파라미터). `labels[]` 반환으로 무엇이 주입됐는지 노출.
 - **`AssistantDrawer`**: 전송 시 입력 텍스트를 `query`로 전달 → 언급한 작업의 정의가 자동 주입. 입력창 위 "📎 주입된 컨텍스트" 라벨 칩 노출(`.drawer-ctx`).
