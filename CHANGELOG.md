@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (뉴스 수집이 끝나지 않음 + 모달 중복 요약 블록) — `fix-collect-never-finishes`
+- **수집이 안 끝나는 현상 해결** (`scraping/enrich.py`): 검색은 끝났는데 본문 enrich 단계에서 무한 대기하던 문제. `requests` 의 read 타임아웃은 '바이트 간 간격'이라 데이터를 찔끔찔끔 흘리는 서버엔 안 걸려 수집이 영원히 안 끝날 수 있다 → `enrich_parallel` 에 **하드 wall-clock 데드라인**(`ENRICH_BATCH_DEADLINE=45s`) 추가. 초과 시 미완료 기사는 본문 없이 두고 즉시 반환(`ThreadPoolExecutor` 를 `shutdown(wait=False, cancel_futures=True)` 로 끊어 느린 스레드를 기다리지 않음). 소스 병렬이라 전체 수집 ≈ 가장 느린 소스 1개 ≈ 데드라인 수준에서 종료.
+- **모달 중복 '요약' 블록 제거** (`Collect.tsx` ArticleModal): 제목 밑 파란 블록은 LLM 요약이 아니라 `summary`(RSS/검색 스니펫)였고 본문 도입부와 중복돼 혼동을 줬다. 블록을 없애고 본문(content)만 표시(본문 없으면 스니펫을 본문 자리에 폴백). **수집은 LLM 요약을 생성하지 않음**(with_llm=False) 재확인.
+- 검증: 신규 데드라인 테스트(느린 기사 포기 후 즉시 반환) 포함 pytest 508 passed · 금지패턴 0 · 웹 빌드 OK.
+
 ### Fixed (뉴스 카드·데이터표가 본문을 안 보여줌 + 수집 속도) — `fix-news-card-body-display`
 - **목록 API에 본문 포함** (`api/routers/news.py`): 목록 응답이 `content`(본문)를 제외해 카드·데이터표가 본문을 보여줄 수 없던 문제 수정. `content` 를 목록에 포함(payload 절감 위해 `_LIST_CONTENT_MAX=4000`자 절단, 전체는 `/detail`).
 - **카드 본문 발췌 표시** (`NewsCard`, `lib/news.newsBody`): 카드가 `summary`(검색 스니펫)만 보던 것을 **본문(content) 우선** 표시로 변경(2줄 클램프). 네이버·오토메이션월드처럼 본문은 있는데 카드 제목 밑이 비던 문제 해소. 수집은 LLM 요약을 만들지 않으므로 `summary_llm` 은 최후 폴백.
