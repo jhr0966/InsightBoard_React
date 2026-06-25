@@ -259,8 +259,9 @@ function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClo
   if (!article) return null;
   const m = articleChannel(article);
   const full = detail.data ?? article;
-  const summary = newsSummary(full);
-  const body = (full.content || "").trim();
+  // 본문(content) 우선, 없으면 RSS/검색 스니펫(summary) 폴백. 수집은 LLM 요약을
+  // 만들지 않으므로 별도 '요약' 블록은 두지 않는다(본문만 보여줌).
+  const body = newsBody(full);
   const kws = (full.keywords_llm || full.keywords || "").trim();
   const img = httpsImg(full.image_url);
   return (
@@ -274,12 +275,6 @@ function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClo
         {full.press ? `${full.press} · ` : ""}{ageLabel(full.collected_at || full.date)}
       </div>
       <h2 style={{ margin: "8px 0 12px", fontSize: "var(--fs-headline)", lineHeight: 1.35 }}>{full.title}</h2>
-      {summary && (
-        <div style={{ padding: "10px 12px", marginBottom: 12, borderLeft: "3px solid var(--accent-primary)",
-          background: "var(--surface-soft)", borderRadius: 6, lineHeight: 1.55, fontSize: "var(--fs-body)" }}>
-          {summary}
-        </div>
-      )}
       {detail.isLoading ? (
         <div style={{ display: "grid", gap: 6 }}>{[0, 1, 2, 3].map((i) => <div key={i} className="skel" style={{ height: 14 }} />)}</div>
       ) : body ? (

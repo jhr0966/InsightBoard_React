@@ -1,3 +1,11 @@
+## 2026-06-22 — fix: 뉴스 수집이 끝나지 않음 + 모달 중복 요약 블록 (`fix-collect-never-finishes`)
+
+**무엇을**: 본문 enrich 단계에서 무한 대기(requests read 타임아웃은 바이트 간 간격이라 trickle 서버에 안 걸림) → enrich_parallel 에 하드 데드라인 45s(초과 시 미완료 본문 없이 즉시 반환, ThreadPoolExecutor shutdown(wait=False, cancel_futures=True)). 모달의 파란 '요약' 블록(=summary 스니펫, LLM 아님)이 본문과 중복돼 제거하고 본문만 표시. 수집은 with_llm=False(LLM 요약 안 함) 재확인.
+
+**조치**: 신규 데드라인 테스트 포함 pytest 508, 금지패턴 0, 웹 빌드 OK.
+
+---
+
 ## 2026-06-22 — fix: 뉴스 카드·표 본문 표시 + 수집 속도 (`fix-news-card-body-display`)
 
 **무엇을**: 목록 API가 content를 제외해 카드·표가 본문을 못 보여주던 문제 — 목록에 content 포함(4000자 절단, 전체는 /detail). 카드/표가 newsBody(content 우선) 표시: 카드 2줄 발췌, 데이터표 "요약"→"본문"(전체·스크롤). enrich_parallel 배치당 세션 1개 공유로 속도↑. 수집은 with_llm=False(LLM 요약 안 함) 확인.

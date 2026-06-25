@@ -34,6 +34,11 @@ from scraping.http import (
 # 배치 전체를 끌지 않게 하는 deadline. read 타임아웃(20s)보다 커서, 정상이지만
 # 느린 사이트의 폴백 복구(워밍업→재요청, 위장)가 한 단계만에 잘리지 않게 한다.
 _FETCH_BUDGET_S = 25.0
+
+# enrich 배치 1개의 하드 wall-clock 데드라인(초). 이 시간을 넘기면 미완료 기사는
+# 본문 없이 두고 즉시 반환 → '수집이 끝나지 않는' 현상 방지. 소스는 병렬이라
+# 전체 수집 ≈ 가장 느린 소스 1개 ≈ 이 값 수준에서 끝난다.
+ENRICH_BATCH_DEADLINE = 45.0
 from store import cache
 
 logger = logging.getLogger(__name__)
@@ -591,6 +596,7 @@ def enrich_parallel(
     *,
     with_llm: bool = False,
     max_workers: int = 10,
+    deadline_s: float = ENRICH_BATCH_DEADLINE,
     progress_cb: Callable[[int, int, dict | None], None] | None = None,
 ) -> list[dict]:
     """여러 기사의 본문/대표이미지/키워드를 **병렬**로 채운다(ThreadPoolExecutor).
@@ -599,10 +605,16 @@ def enrich_parallel(
     각 기사 링크에서 본문·og:image 를 가져와 채운다. 입력 리스트를 in-place 갱신하고
     동일 리스트 반환(순서 유지). 개별 기사 실패는 격리해 배치를 막지 않는다.
 
+    **하드 데드라인**(`deadline_s`): 배치 전체가 이 시간을 넘기면 미완료 기사는
+    본문 없이 두고 즉시 반환한다. requests 의 read 타임아웃은 '바이트 간 간격'이라
+    데이터를 찔끔찔끔 흘리는 서버엔 안 걸려 수집이 영원히 안 끝나는 일이 있다 →
+    소켓 타임아웃에만 의존하지 않고 배치 wall-clock 을 강제로 끊어 '수집이 끝나지
+    않는' 현상을 막는다.
+
     with_llm=False 가 기본(본문·이미지·빈도 키워드만, 빠름). LLM 요약/키워드가 필요하면
     True(느림) — collect 경로는 속도를 위해 False 로 호출한다.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FTimeout, as_completed
 
     total = len(articles)
     if total == 0:
@@ -620,13 +632,25 @@ def enrich_parallel(
             logger.debug("기사 enrich 실패: %s", art.get("link"), exc_info=True)
 
     done = 0
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = [ex.submit(_work, art) for art in articles]
-        for _ in as_completed(futures):
+    # 컨텍스트 매니저(with)를 쓰지 않는다 — __exit__ 의 shutdown(wait=True) 이 느린
+    # 스레드를 끝까지 기다려 데드라인이 무의미해지기 때문. 직접 생성/종료한다.
+    ex = ThreadPoolExecutor(max_workers=max_workers)
+    futures = [ex.submit(_work, art) for art in articles]
+    try:
+        for _ in as_completed(futures, timeout=deadline_s):
             done += 1
             if progress_cb:
                 try:
                     progress_cb(done, total, None)
                 except Exception:  # noqa: BLE001
                     pass
+    except _FTimeout:
+        logger.warning(
+            "enrich 배치 deadline %.0fs 초과 — %d/%d 완료, 나머지는 본문 없이 진행",
+            deadline_s, done, total,
+        )
+    finally:
+        # 남은 작업은 버린다(대기 X) — 큐 대기분은 취소, 실행 중인 건 백그라운드에서
+        # 소켓 타임아웃(≤read)으로 곧 종료. 수집은 즉시 다음 단계로.
+        ex.shutdown(wait=False, cancel_futures=True)
     return articles

@@ -718,3 +718,21 @@ def test_enrich_parallel_reuses_one_session(monkeypatch):
     enrich.enrich_parallel(arts, with_llm=False)
     # 5개 기사여도 세션 생성은 1회(배치 공유)
     assert builds["n"] == 1
+
+
+def test_enrich_parallel_honors_deadline(monkeypatch):
+    """느린 기사가 있어도 배치는 deadline 안에 반환(수집이 안 끝나는 현상 방지)."""
+    import time as _t
+
+    def _slow_enrich(art, **kw):
+        _t.sleep(30)  # 데드라인보다 훨씬 김
+
+    monkeypatch.setattr(enrich, "build_session", lambda *a, **k: _fake_session())
+    monkeypatch.setattr(enrich, "enrich_one", _slow_enrich)
+
+    arts = [{"title": f"t{i}", "link": f"https://ex.com/{i}"} for i in range(4)]
+    t0 = _t.monotonic()
+    out = enrich.enrich_parallel(arts, with_llm=False, deadline_s=0.5)
+    elapsed = _t.monotonic() - t0
+    assert out is arts          # 입력 리스트 그대로 반환
+    assert elapsed < 5          # 30초짜리들을 기다리지 않고 곧 반환
