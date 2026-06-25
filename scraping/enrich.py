@@ -654,7 +654,7 @@ def enrich_parallel(
     articles: list[dict],
     *,
     with_llm: bool = False,
-    max_workers: int = 10,
+    max_workers: int = 4,
     deadline_s: float = ENRICH_BATCH_DEADLINE,
     progress_cb: Callable[[int, int, dict | None], None] | None = None,
 ) -> list[dict]:
@@ -663,6 +663,11 @@ def enrich_parallel(
     수집(`run_daily.collect_batch`) 직후 호출 — 검색 결과는 content 가 비어 있으므로
     각 기사 링크에서 본문·og:image 를 가져와 채운다. 입력 리스트를 in-place 갱신하고
     동일 리스트 반환(순서 유지). 개별 기사 실패는 격리해 배치를 막지 않는다.
+
+    `max_workers` 기본 4 — 원형(News_Proto `MAX_CONTENT_WORKERS=4`)과 동일. 더 키우면
+    (이전 10) 느린 백엔드에서 동시 bs4 파싱이 CPU 를 경합해 기사당 처리가 오히려
+    느려지고, 데드라인에 걸려 본문·사진 누락이 늘었다. 소스가 병렬이라 실제 동시
+    fetch 는 (소스 수 × max_workers).
 
     **하드 데드라인**(`deadline_s`): 배치 전체가 이 시간을 넘기면 미완료 기사는
     본문 없이 두고 즉시 반환한다. requests 의 read 타임아웃은 '바이트 간 간격'이라
