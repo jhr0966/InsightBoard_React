@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Fixed (수집 본문·사진 누락 급증 회귀 재균형 + 반복수집 가속) — `fix-collect-completeness-rebalance`
+- 수집 파이프라인 전수점검 결과, 본문/이미지 추출 로직 자체는 견고했고 **직전 성능 PR들의 과최적화가 누락을 키운** 것으로 판단 → 완성도 우선으로 재균형:
+  - **enrich 배치 데드라인 45s → 90s** (`scraping/enrich.py`): 45s 는 느린 백엔드에서 정상 기사까지 abandon 해 본문·사진 누락을 늘렸다. 데드라인은 '무한 대기 방지 백스톱'이지 일상 컷오프가 아니므로 넉넉히. 정상 수집은 끝까지 완료, 무한 대기만 차단.
+  - **본문 fetch 재시도 1 → 2회**: 일시적 실패(5xx·연결 끊김) 복구율↑.
+- **반복 수집 가속 — 재fetch 회피 캐시** (`enrich.load_today_enriched_index`/`apply_cached`, `run_daily`): 오늘 이미 수집·enrich 한 기사(같은 RSS/검색 결과가 매번 다시 나옴)는 본문·이미지를 캐시에서 채워 **네트워크를 건너뛴다** → 반복 수집이 크게 빨라지고 데드라인 abandon 도 감소(속도+완성도 동시 개선).
+- 검증: 신규 테스트(캐시 채움·재fetch 스킵·빈약본문 제외·재시도2) 포함 pytest 511 passed · 금지패턴 0.
+
 ### Fixed (뉴스 수집이 끝나지 않음 + 모달 중복 요약 블록) — `fix-collect-never-finishes`
 - **수집이 안 끝나는 현상 해결** (`scraping/enrich.py`): 검색은 끝났는데 본문 enrich 단계에서 무한 대기하던 문제. `requests` 의 read 타임아웃은 '바이트 간 간격'이라 데이터를 찔끔찔끔 흘리는 서버엔 안 걸려 수집이 영원히 안 끝날 수 있다 → `enrich_parallel` 에 **하드 wall-clock 데드라인**(`ENRICH_BATCH_DEADLINE=45s`) 추가. 초과 시 미완료 기사는 본문 없이 두고 즉시 반환(`ThreadPoolExecutor` 를 `shutdown(wait=False, cancel_futures=True)` 로 끊어 느린 스레드를 기다리지 않음). 소스 병렬이라 전체 수집 ≈ 가장 느린 소스 1개 ≈ 데드라인 수준에서 종료.
 - **모달 중복 '요약' 블록 제거** (`Collect.tsx` ArticleModal): 제목 밑 파란 블록은 LLM 요약이 아니라 `summary`(RSS/검색 스니펫)였고 본문 도입부와 중복돼 혼동을 줬다. 블록을 없애고 본문(content)만 표시(본문 없으면 스니펫을 본문 자리에 폴백). **수집은 LLM 요약을 생성하지 않음**(with_llm=False) 재확인.

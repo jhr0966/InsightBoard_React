@@ -1,3 +1,11 @@
+## 2026-06-25 — fix: 수집 누락 급증 재균형 + 반복수집 가속 (`fix-collect-completeness-rebalance`)
+
+**무엇을**: 수집 전수점검 — 추출 로직은 견고, 직전 성능 과최적화가 누락 키움. enrich 데드라인 45→90s(정상기사 abandon 방지), 본문 재시도 1→2. 반복수집 재fetch 회피 캐시(load_today_enriched_index/apply_cached): 오늘 이미 enrich 한 기사는 네트워크 스킵 → 속도+완성도 동시 개선. 참고 레포(News_Proto/InsightBoard_Streamlit)는 세션 GitHub 범위 밖이라 직접 비교 불가.
+
+**조치**: 신규 테스트 포함 pytest 511, 금지패턴 0.
+
+---
+
 ## 2026-06-22 — fix: 뉴스 수집이 끝나지 않음 + 모달 중복 요약 블록 (`fix-collect-never-finishes`)
 
 **무엇을**: 본문 enrich 단계에서 무한 대기(requests read 타임아웃은 바이트 간 간격이라 trickle 서버에 안 걸림) → enrich_parallel 에 하드 데드라인 45s(초과 시 미완료 본문 없이 즉시 반환, ThreadPoolExecutor shutdown(wait=False, cancel_futures=True)). 모달의 파란 '요약' 블록(=summary 스니펫, LLM 아님)이 본문과 중복돼 제거하고 본문만 표시. 수집은 with_llm=False(LLM 요약 안 함) 재확인.

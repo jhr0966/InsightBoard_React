@@ -98,6 +98,17 @@ def collect_batch(
     selected = tuple(s for s in sources if s in SOURCE_IDS)
     keyword_list = [k.strip() for k in keywords if k and k.strip()]
 
+    # 오늘 이미 수집·enrich 한 기사 인덱스(스냅샷) — 같은 기사를 다시 fetch 하지 않게.
+    # 반복 수집을 크게 가속하고(네트워크 생략) 데드라인 abandon 도 줄인다.
+    enriched_index = _enrich.load_today_enriched_index() if do_enrich else {}
+
+    def _enrich_bucket(articles: list[dict]) -> None:
+        """캐시로 본문·이미지 채운 뒤, 남은(새) 기사만 실제 네트워크 enrich."""
+        if not do_enrich or not articles:
+            return
+        _enrich.apply_cached(articles, enriched_index)
+        _enrich.enrich_parallel(articles, with_llm=False)
+
     # 소스별 처리를 (saved, errors) 를 돌려주는 순수 클로저로 분리 — 공유 report 를
     # 직접 건드리지 않으므로 스레드에서 동시 실행해도 안전(파일명은 source 별로 달라
     # 동시 저장 충돌 없음). 결과는 제출 순서대로 병합해 결정적 순서를 보존한다.
@@ -118,9 +129,8 @@ def collect_batch(
             except Exception as e:  # noqa: BLE001 — 개별 실패 격리
                 errors.append({"source": src, "keyword": kw, "error": str(e)})
         if bucket:
-            if do_enrich:
-                # 검색 결과는 content 가 비어 있다 → 링크에서 본문·og:image 를 병렬 fetch.
-                _enrich.enrich_parallel(bucket, with_llm=False)
+            # 캐시 채움 + 새 기사만 본문·og:image 병렬 fetch.
+            _enrich_bucket(bucket)
             path = save_articles(bucket, source=src)
             saved.append({
                 "source": src, "keywords": used_keywords,
@@ -141,8 +151,7 @@ def collect_batch(
                 # 사이트별 진행 — 모달에 'AI Times'·'오토메이션월드'를 개별 표시.
                 on_site=(lambda site, n: on_step("tech", site, n)) if on_step else None,
             )
-            if do_enrich:
-                _enrich.enrich_parallel(articles, with_llm=False)
+            _enrich_bucket(articles)
             path = save_articles(articles, source="tech")
             # 사이트별 건수 — UI 가 press(사이트명) 기준으로 나눠 표시.
             sites: dict[str, int] = {}
@@ -165,8 +174,7 @@ def collect_batch(
         try:
             articles = _rss.fetch(url, source_name=name, max_results=max_results)
             if articles:
-                if do_enrich:
-                    _enrich.enrich_parallel(articles, with_llm=False)
+                _enrich_bucket(articles)
                 path = save_articles(articles, source=name)
                 saved.append({
                     "source": name, "keywords": [], "count": len(articles),

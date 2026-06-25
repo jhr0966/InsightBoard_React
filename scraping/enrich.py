@@ -35,10 +35,12 @@ from scraping.http import (
 # 느린 사이트의 폴백 복구(워밍업→재요청, 위장)가 한 단계만에 잘리지 않게 한다.
 _FETCH_BUDGET_S = 25.0
 
-# enrich 배치 1개의 하드 wall-clock 데드라인(초). 이 시간을 넘기면 미완료 기사는
-# 본문 없이 두고 즉시 반환 → '수집이 끝나지 않는' 현상 방지. 소스는 병렬이라
-# 전체 수집 ≈ 가장 느린 소스 1개 ≈ 이 값 수준에서 끝난다.
-ENRICH_BATCH_DEADLINE = 45.0
+# enrich 배치 1개의 하드 wall-clock 데드라인(초) — '수집이 끝나지 않는' 현상의
+# 안전망(trickle 서버 등). 일상적으로 자르는 컷오프가 아니라 **드물게만** 걸리는
+# 백스톱이어야 한다. 45s 처럼 빡빡하면 느린 백엔드에서 정상 기사까지 abandon 해
+# 본문·사진 누락이 늘었다 → 넉넉히(90s) 잡아 정상 수집은 끝까지 완료시키되,
+# 무한 대기는 막는다. 반복 수집은 apply_cached 로 대부분 네트워크를 건너뛰어 빠르다.
+ENRICH_BATCH_DEADLINE = 90.0
 from store import cache
 
 logger = logging.getLogger(__name__)
@@ -398,8 +400,9 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
     """기사 URL → 정제된 본문과 대표 이미지 URL."""
     if not url or not url.startswith("http"):
         return {"content": "", "image_url": ""}
-    # 본문 fetch 는 best-effort — 재시도 1회·짧은 백오프로 느린 호스트 누적시간 억제.
-    sess = session or build_session(total_retries=1, backoff_factor=0.3)
+    # 본문 fetch 세션 — 일시적 실패(5xx·끊김) 복구를 위해 재시도 2회(완성도 우선).
+    # 느린 호스트 누적시간은 짧은 백오프 + 배치 데드라인으로 억제.
+    sess = session or build_session(total_retries=2, backoff_factor=0.3)
     try:
         time.sleep(random.uniform(0.2, 0.5))
         resp = _get_article_response(sess, url)
@@ -502,6 +505,62 @@ def _llm_summary(content: str) -> str:
         temperature=0.2,
         max_tokens=240,
     ).strip()
+
+
+def load_today_enriched_index() -> dict[str, dict]:
+    """오늘 이미 수집·enrich 된 기사 인덱스 {link: {content,image_url,keywords}}.
+
+    반복 수집 시 같은 기사(같은 RSS/검색 결과)를 매번 다시 fetch 하는 낭비를 막는다 —
+    `apply_cached` 가 이 인덱스로 본문·이미지를 채우면 enrich 가 네트워크를 건너뛴다.
+    좋은 본문(`content_needs_refresh`==False)만 캐시한다.
+    """
+    from store import news_db
+
+    try:
+        df = news_db.load_all_today()
+    except Exception:  # noqa: BLE001
+        return {}
+    if df is None or df.empty or "link" not in df.columns:
+        return {}
+    idx: dict[str, dict] = {}
+    for rec in df.to_dict("records"):
+        link = str(rec.get("link") or "").strip()
+        content = str(rec.get("content") or "")
+        if link and link not in idx and not content_needs_refresh(content):
+            idx[link] = {
+                "content": content,
+                "image_url": str(rec.get("image_url") or ""),
+                "keywords": str(rec.get("keywords") or ""),
+            }
+    return idx
+
+
+def apply_cached(articles: list[dict], index: dict[str, dict]) -> int:
+    """index 에 좋은 본문이 있는 기사는 content/image/keywords 를 채워 넣는다.
+
+    이렇게 채워두면 `enrich_one` 의 재fetch 조건(`content_needs_refresh or not image_url`)
+    이 거짓이 되어 그 기사는 네트워크를 타지 않는다(반복 수집 가속). 채운 기사 수 반환.
+    """
+    if not index:
+        return 0
+    n = 0
+    for art in articles:
+        prior = index.get(str(art.get("link") or "").strip())
+        if not prior:
+            continue
+        filled = False
+        if not _clean_article_text(art.get("content") or ""):
+            art["content"] = prior["content"]
+            filled = True
+        cur_img = str(art.get("image_url") or "")
+        if prior.get("image_url") and (not cur_img or is_junk_image(cur_img)):
+            art["image_url"] = prior["image_url"]
+            filled = True
+        if prior.get("keywords") and not str(art.get("keywords") or "").strip():
+            art["keywords"] = prior["keywords"]
+        if filled:
+            n += 1
+    return n
 
 
 def enrich_one(article: dict, *, with_llm: bool = True, session=None) -> dict:
@@ -622,8 +681,8 @@ def enrich_parallel(
 
     # 배치 전체가 1개 세션을 공유 — 같은 언론사로의 연결을 keep-alive 로 재사용해
     # 매 기사 새 세션 생성·핸드셰이크 비용을 줄인다(requests.Session 은 GET 에 스레드
-    # 안전). best-effort 라 재시도 1회.
-    shared = build_session(total_retries=1, backoff_factor=0.3)
+    # 안전). 일시적 실패 복구로 재시도 2회.
+    shared = build_session(total_retries=2, backoff_factor=0.3)
 
     def _work(art: dict) -> None:
         try:
