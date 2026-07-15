@@ -1,3 +1,13 @@
+## 2026-07-15 — fix: 뉴스 조회 결정적 최신순 (최신 기사 잘림·출처 편향) (`fix-news-ordering`)
+
+**무엇을**: load_news_for_days/load_all_today 가 정렬 없이 과거→오늘 concat 만 해서, head(limit) 이 가장 오래된 기사를 취하고(30일 뷰에서 최신 날짜 통째 잘림) 탑 스토리가 파일명 사전순(출처 알파벳) 편향이던 구조 결함 수정. 혼재 포맷(ISO±offset·RFC822·date-only) published_at 을 UTC ISO 로 정규화한 파생 컬럼 sort_at(published→collected→일자 폴백)을 로드 시 계산하고, 모든 조회를 sort_at desc + link asc 결정적 정렬로 반환. 저장 스키마·API 응답 필드 무변경. 전면 개편(Step 0~13) 로드맵의 Step 1.
+
+**조치**: 신규 회귀 테스트 6건(tests/test_news_ordering.py) 포함 pytest 514 passed, 금지패턴 0, OpenAPI 스냅샷 무변경.
+
+**다음**: Step 2 `feat-article-identity`(URL 정규화·article_id·필드 단위 중복 병합) → Step 3 `feat-news-pagination`.
+
+---
+
 ## 2026-06-22 — fix: 뉴스 수집이 끝나지 않음 + 모달 중복 요약 블록 (`fix-collect-never-finishes`)
 
 **무엇을**: 본문 enrich 단계에서 무한 대기(requests read 타임아웃은 바이트 간 간격이라 trickle 서버에 안 걸림) → enrich_parallel 에 하드 데드라인 45s(초과 시 미완료 본문 없이 즉시 반환, ThreadPoolExecutor shutdown(wait=False, cancel_futures=True)). 모달의 파란 '요약' 블록(=summary 스니펫, LLM 아님)이 본문과 중복돼 제거하고 본문만 표시. 수집은 with_llm=False(LLM 요약 안 함) 재확인.

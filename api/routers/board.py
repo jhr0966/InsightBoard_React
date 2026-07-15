@@ -22,6 +22,8 @@ def board_brief(
     limit: int = Query(default=12, ge=1, le=50),
     force: bool = Query(default=False, description="캐시 무시 재생성"),
 ) -> dict:
+    # load_news_for_days 가 최신순을 보장하므로 head(limit) = 최신 limit 건
+    # (브리핑 입력이 그날 가장 최근 기사들로 구성된다).
     df = news_db.load_news_for_days(days)
     items: list[dict] = []
     if not df.empty:
