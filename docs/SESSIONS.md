@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 사례 라이브러리 — 뉴스의 자산화 (`feat-case-library`)
+
+**무엇을**: cases/case_sources 별도 엔터티(SQLite, 기사 다대다·evidence_type·검토상태) + sola/case_extract.py 추출 배치(cron 말미+관리자 API, 후보=본문+links 매칭 상위 N, 수치는 원문 구절 필수) + approved 사례만 제안서 "[승인 사례]" 주입 + 적용 사례(/cases) 메뉴(상태 탭·승인/제외). 개편 로드맵 Step 12.
+
+**조치**: 신규 테스트 6건 포함 pytest 586, OpenAPI 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 13 과제 추진 관리(Proposal 엔터티 분리·상태 확장·이력) — 개편 최종 단계.
+
+---
+
 ## 2026-07-15 — feat: IA 재편 — 오늘·뉴스 탐색·분석실·수집 관리 분리 (`feat-ia-restructure`)
 
 **무엇을**: nav 재구성(일반: 오늘/뉴스 탐색/자동화 과제/분석실 · 관리: 수집 관리/작업 정의). Feed.tsx 신설(뉴스 읽기를 Collect 에서 분리·승격), Collect 는 운영 전용, Board 는 5요소 3분 화면으로 다이어트(KPI·매트릭스·트렌드 제거 — 분석실과 중복), Insights 는 탭 구조(STEP 라벨 제거), Topbar 검색 → /feed. "부담 없이 심플하게 보고 인사이트를 얻는다" 원칙의 화면 반영. 개편 로드맵 Step 11.

@@ -15,13 +15,14 @@ export interface NavItem {
 export const NAV_MAIN: NavItem[] = [
   { to: "/", emoji: "📊", name: "오늘", sub: "맞춤 다이제스트", num: 1, end: true, screen: "board", label: "📊 오늘" },
   { to: "/feed", emoji: "🗞", name: "뉴스 탐색", sub: "전체 기사 · 검색", num: 2, screen: "feed", label: "🗞 뉴스 탐색" },
-  { to: "/proposals", emoji: "🤖", name: "자동화 과제", sub: "제안 생성 · 보관함", num: 3, screen: "proposals", label: "🤖 자동화 과제" },
-  { to: "/insights", emoji: "🔎", name: "분석실", sub: "트렌드 · 매트릭스 · 히트맵", num: 4, screen: "insights", label: "🔎 분석실" },
+  { to: "/cases", emoji: "📚", name: "적용 사례", sub: "정제된 AI·자동화 사례", num: 3, screen: "cases", label: "📚 적용 사례" },
+  { to: "/proposals", emoji: "🤖", name: "자동화 과제", sub: "제안 생성 · 보관함", num: 4, screen: "proposals", label: "🤖 자동화 과제" },
+  { to: "/insights", emoji: "🔎", name: "분석실", sub: "트렌드 · 매트릭스 · 히트맵", num: 5, screen: "insights", label: "🔎 분석실" },
 ];
 
 export const NAV_MANAGE: NavItem[] = [
-  { to: "/collect", emoji: "⚙️", name: "수집 관리", sub: "수집 실행 · 출처 · 진단", num: 5, screen: "collect", label: "⚙️ 수집 관리" },
-  { to: "/taskdefs", emoji: "📋", name: "작업 정의", sub: "엑셀 업로드 · 정의 관리", num: 6, screen: "taskdefs", label: "📋 작업 정의" },
+  { to: "/collect", emoji: "⚙️", name: "수집 관리", sub: "수집 실행 · 출처 · 진단", num: 6, screen: "collect", label: "⚙️ 수집 관리" },
+  { to: "/taskdefs", emoji: "📋", name: "작업 정의", sub: "엑셀 업로드 · 정의 관리", num: 7, screen: "taskdefs", label: "📋 작업 정의" },
 ];
 
 export const NAV_ALL: NavItem[] = [...NAV_MAIN, ...NAV_MANAGE];

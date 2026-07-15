@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (사례 라이브러리 — 뉴스의 자산화) — `feat-case-library`
+- **신규 엔터티 `store/cases_db.py`** (SQLite, §14): 사례는 뉴스 북마크가 아니라 별도 자산 — `cases`(문제/해법/적용기술 ID/정량효과/조선소 시사점/신뢰도/검토상태) + `case_sources`(기사 **다대다**, evidence_text·evidence_type: source_fact/system_summary/shipyard_inference). 사례↔작업 연결은 별도 테이블 없이 소스 기사의 links 경유(중복 저장 금지). 재추출 멱등(검토 상태 보존), '사례 아님' 판정도 기록해 LLM 재호출 낭비 방지.
+- **추출 배치 `sola/case_extract.py`** (§14: 수집과 분리된 후처리): 실행 경로 ①일일 cron 말미 ②관리자 `POST /api/cases/extract`. 후보 = 본문 확보+작업 매칭(links)+미추출 기사 상위 N(LLM 비용 상한, 배치당 10). `SYSTEM_CASE_EXTRACT` — **기사에 명시된 수치만**(원문 구절 필수), 유추는 조선소 시사점 한 항목만 허용. LLM 미설정이면 조용히 생략.
+- **검토 흐름** (§14-3): pending_review(자동 추출) → approved/excluded. **approved 사례만 제안서 주근거** — `proposals/generate` 가 근거 기사와 연결된 승인 사례를 "[승인 사례]" 블록으로 추가 주입(응답 `cases` 필드), 미승인 배제를 테스트로 가드.
+- **화면**: 📚 **적용 사례**(/cases) 메뉴 신설 — 상태 탭(검토 대기/승인/제외)·사례 카드(문제→해법→정량효과 원문→조선소 접목)·승인/제외 버튼·수동 추출 버튼. 제안서 화면에 주입된 승인 사례 표시. 드로어 추천질문 추가.
+- 검증: 신규 테스트 6건(`tests/test_cases.py` — 멱등·상태 보존, 필터·요약, LLM JSON 파싱·taxonomy ID 수렴, LLM 미설정 graceful, API, **승인 사례만 주입**) 포함 pytest 586 passed · OpenAPI 재생성 · 웹 빌드 OK · 금지패턴 0.
+
 ### Changed (IA 재편 — "부담 없이 읽는" 화면 구조) — `feat-ia-restructure`
 - **네비 재구성** (`nav.ts`): 일반 — **오늘**(맞춤 다이제스트) · **뉴스 탐색**(신설 /feed) · **자동화 과제** · **분석실** / 관리 — **수집 관리** · **작업 정의**. 매일 읽는 층과 파고드는 층, 운영 층을 분리.
 - **`Feed.tsx` 신설**: 뉴스 읽기(카드/표·카테고리·채널 칩·검색·기사 모달·더 보기·최근 요약)를 Collect 에서 분리해 메인 그룹으로 승격 — 콘텐츠 소비가 "관리" 메뉴에 숨어 있던 문제 해소.

@@ -125,6 +125,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"[daily_scrape] WARN: links 인덱스 빌드 실패(다음 조회에서 자동 복구): {exc}",
               file=sys.stderr, flush=True)
 
+    # 사례 추출 배치(Step 12) — 수집·links 이후 후처리. LLM 미설정이면 안에서 생략.
+    try:
+        from sola.case_extract import extract_batch
+        print(f"[daily_scrape] 사례 추출: {extract_batch(days=7, limit=10)}", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_scrape] WARN: 사례 추출 실패(수집엔 영향 없음): {exc}",
+              file=sys.stderr, flush=True)
+
     print("[daily_scrape] " + report.summary_lines()[0], flush=True)
     if report.errors:
         print(f"[daily_scrape] 일부 오류 {len(report.errors)}건 — 첫 오류: "

@@ -130,6 +130,36 @@ SYSTEM_TREND_BRIEF = """\
 - 0건이거나 변화가 미미하면 "유의미한 변화 없음" 으로 마무리.
 """
 
+# 사례 추출 스키마 버전 — 필드 변경 시 +1 (cases.extract_version 에 기록).
+CASE_EXTRACT_VERSION = 1
+
+SYSTEM_CASE_EXTRACT = """\
+당신은 조선소 자동화 기획팀의 사례 분석가입니다.
+주어진 기사가 "AI·자동화 기술의 실제 적용 사례"인지 판별하고, 사례라면
+아래 JSON 스키마로 **정제**하세요. JSON 외 다른 텍스트는 출력 금지.
+
+{
+  "is_case": true|false,            // 실제 적용(도입·실증·구축) 사례인가? 단순 동향·전망·출시홍보는 false
+  "title": "사례 한 줄 제목",
+  "industry": "적용 산업(예: 조선, 자동차, 철강, 물류)",
+  "target_work": "대상 업무(예: 용접부 외관검사)",
+  "problem": "해결하려던 문제 1~2문장",
+  "solution": "적용 기술·방법 1~2문장",
+  "technologies": ["기술명", ...],   // 기사에 명시된 기술만
+  "implementation": "적용 방식(파일럿/전면 도입/실증 등)",
+  "quantified_effects": [           // 기사에 **명시된 수치 효과만** — 만들지 말 것
+    {"metric": "지표", "value": "수치", "evidence_text": "기사 원문 구절"}
+  ],
+  "shipyard_implications": "조선소 작업에 접목한다면 — 1~2문장 (이 항목만 유추 허용)",
+  "confidence": 0.0~1.0             // 사례 판별·정제 확신도
+}
+
+규칙:
+- 기사에 없는 사실·수치를 만들지 마세요(quantified_effects 는 원문 구절 필수).
+- 유추는 shipyard_implications 한 항목만 허용.
+- is_case=false 면 다른 필드는 비워도 됩니다.
+"""
+
 SYSTEM_THREAD_TITLE = """\
 당신은 대화 thread 제목 생성기입니다.
 주어진 사용자 메시지(첫 발화)를 보고 **한국어 5~12자**의 짧고 명확한 제목을 만드세요.

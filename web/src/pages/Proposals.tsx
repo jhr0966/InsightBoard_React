@@ -34,6 +34,7 @@ function Generate() {
   const [instr, setInstr] = useState("");    // 다듬기 지시
   // 근거 기사(Step 8) — 생성 응답의 links 기반 근거. 보관 시 meta 로 함께 저장.
   const [evidence, setEvidence] = useState<Record<string, unknown>[]>([]);
+  const [injectedCases, setInjectedCases] = useState<Record<string, unknown>[]>([]);
   const [genMeta, setGenMeta] = useState<Record<string, unknown>>({});
   const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
 
@@ -58,7 +59,9 @@ function Generate() {
     onSuccess: (d, pid) => {
       setDraft(d.proposal);
       const ev = (d as unknown as { evidence?: Record<string, unknown>[] }).evidence ?? [];
+      const cs = (d as unknown as { cases?: Record<string, unknown>[] }).cases ?? [];
       setEvidence(ev);
+      setInjectedCases(cs);
       setGenMeta({
         task_id: pid,
         article_ids: ev.map((e) => e.article_id).filter(Boolean),
@@ -113,6 +116,11 @@ function Generate() {
                   <div className="muted" style={{ fontSize: "var(--fs-micro)" }}>{String(ev.reason ?? "")}</div>
                 </div>
               ))}
+            </div>
+          )}
+          {injectedCases.length > 0 && (
+            <div className="muted" style={{ fontSize: "var(--fs-caption)", margin: "4px 0" }}>
+              📚 승인 사례 {injectedCases.length}건이 함께 주입됨: {injectedCases.map((c) => String(c.title ?? "")).join(" · ")}
             </div>
           )}
           {evidence.length === 0 && (

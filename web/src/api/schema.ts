@@ -182,6 +182,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Cases */
+        get: operations["list_cases_api_cases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extract
+         * @description 관리자 배치 — 최근 기사에서 사례 추출(수집과 분리, LLM 미설정 시 생략).
+         *
+         *     (자동 경로는 일일 cron `scripts/daily_scrape.py` 말미 — §14 '별도 후처리 배치'.)
+         */
+        post: operations["extract_api_cases_extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cases Summary */
+        get: operations["cases_summary_api_cases_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Case Status
+         * @description 검토 상태 변경(§14-3) — approved 만 제안서 주근거가 된다.
+         */
+        post: operations["set_case_status_api_cases__case_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/collect": {
         parameters: {
             query?: never;
@@ -1203,6 +1279,14 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** CaseStatusIn */
+        CaseStatusIn: {
+            /**
+             * Status
+             * @description pending_review | approved | excluded
+             */
+            status: string;
+        };
         /** ChatMessage */
         ChatMessage: {
             /** Content */
@@ -1268,6 +1352,20 @@ export interface components {
         DiagnoseIn: {
             /** Url */
             url: string;
+        };
+        /** ExtractIn */
+        ExtractIn: {
+            /**
+             * Days
+             * @default 7
+             */
+            days: number;
+            /**
+             * Limit
+             * @description 이번 배치 최대 LLM 호출 수
+             * @default 10
+             */
+            limit: number;
         };
         /** FeedbackEventsIn */
         FeedbackEventsIn: {
@@ -1416,6 +1514,13 @@ export interface components {
         };
         /** ProposalOut */
         ProposalOut: {
+            /**
+             * Cases
+             * @description 주입된 승인 사례
+             */
+            cases?: {
+                [key: string]: unknown;
+            }[];
             /** Evidence */
             evidence?: {
                 [key: string]: unknown;
@@ -1977,6 +2082,143 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookmarkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_cases_api_cases_get: {
+        parameters: {
+            query?: {
+                /** @description pending_review/approved/excluded */
+                status?: string | null;
+                /** @description 기술 taxonomy ID 필터 */
+                technology_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extract_api_cases_extract_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtractIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cases_summary_api_cases_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    set_case_status_api_cases__case_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaseStatusIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

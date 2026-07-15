@@ -160,6 +160,26 @@ def _format_evidence(evidence: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _format_cases(cases: list[dict]) -> str:
+    """승인 사례 → 프롬프트 블록 — 정제된 문제/해법/정량효과/조선소 시사점."""
+    if not cases:
+        return ""
+    lines = ["\n## [승인 사례] (검토·승인된 적용 사례 — 우선 인용)"]
+    for i, c in enumerate(cases, start=1):
+        lines.append(f"[사례 {i}] {c.get('title', '')} — {c.get('industry', '')}"
+                     f" / {c.get('target_work', '')}")
+        if c.get("problem"):
+            lines.append(f"    문제: {c['problem']}")
+        if c.get("solution"):
+            lines.append(f"    해법: {c['solution']}")
+        for e in (c.get("quantified_effects") or [])[:2]:
+            lines.append(f"    효과: {e.get('metric', '')} {e.get('value', '')}"
+                         f" (원문: {e.get('evidence_text', '')})")
+        if c.get("shipyard_implications"):
+            lines.append(f"    조선소 시사점: {c['shipyard_implications']}")
+    return "\n".join(lines)
+
+
 def propose_for_task(
     task: dict,
     news_df: pd.DataFrame,
@@ -167,6 +187,7 @@ def propose_for_task(
     max_news: int = 10,
     persona: Persona | None = None,
     evidence: list[dict] | None = None,
+    cases: list[dict] | None = None,
 ) -> str:
     """제안서 생성. `evidence`(links 기반 근거)가 있으면 그것만 주입한다.
 
@@ -184,6 +205,7 @@ def propose_for_task(
         f"{_format_task(task)}\n\n"
         "## [근거 기사]\n"
         f"{_format_evidence(evidence)}"
+        f"{_format_cases(cases or [])}"
     )
     persona_block = persona_ctx.system_block(persona) if persona else ""
     messages = [
