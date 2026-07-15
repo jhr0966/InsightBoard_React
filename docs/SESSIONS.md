@@ -1,3 +1,13 @@
+## 2026-07-15 — fix: 같은 초 저장 시 뉴스 파일 덮어쓰기 (`fix-save-articles-filename`)
+
+**무엇을**: save_articles 파일명에 uuid 접미사 추가 — 동일 source·동일 초 연속 저장이 앞선 parquet 를 덮어써 기사가 유실되던 버그(PR #59 기록 항목) 수정. 로드 glob 은 그대로 매칭, 중복은 article_id 병합(I-15)이 처리. 개편 후속 항목 ④.
+
+**조치**: 동초 저장 회귀 테스트 1건 포함 pytest 593, 금지패턴 0, API 무변경.
+
+**다음**: 후속 잔여 — #57 관측지표 1주 리포트(운영 관측 필요), 매칭 정답셋 실데이터 교체(라벨링 필요), 배포 환경 실 LLM 수직 흐름 검증.
+
+---
+
 ## 2026-07-15 — docs: 개편 마무리 문서 정리 (`docs-redesign-wrapup`)
 
 **무엇을**: REDESIGN_STATUS.md 신설(Step 0~13·PR #57~#70 결과 표+설계 원칙+후속 5건), ARCHITECTURE.md 현행화(화면 매핑·신설 store/sola 모듈·자산화 수직 흐름·deps 설명), CLAUDE.md 라우팅 표 갱신(적용 사례·신설 모듈·인증 seam 정정). 코드 무변경.

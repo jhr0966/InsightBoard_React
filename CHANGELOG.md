@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed (같은 초 저장 시 뉴스 파일 덮어쓰기 — 기사 유실) — `fix-save-articles-filename`
+- **`store/news_db.save_articles`**: 파일명이 초 해상도 타임스탬프(`{source}_{HHMMSS}Z.parquet`)뿐이라 같은 source 를 같은 초에 두 번 저장하면 두 번째가 첫 파일을 **덮어써 기사가 유실**됐다(PR #59 에서 발견·기록된 한계). 파일명에 uuid 8자 접미사를 붙여 충돌을 제거 — 로드 glob(`{source}_*.parquet`)은 그대로 매칭되고, 중복 기사는 기존 article_id 필드 병합(I-15)이 처리하므로 파일 증가는 무해.
+- 검증: 동초 연속 저장 회귀 테스트 1건 추가(`tests/test_news_db.py`) 포함 pytest 593 passed · 금지패턴 0. API/스키마 무변경.
+
 ### Docs (개편 마무리 문서 정리) — `docs-redesign-wrapup`
 - **`docs/REDESIGN_STATUS.md` 신설**: 2026-07 전면 개편(Step 0~13, PR #57~#70) 현황·회고 — 단계별 결과 표, 확립된 설계 원칙(결정적 데이터 축·자산화 수직 흐름·이관 정직성·X-User-Id 비인증), 남은 후속 항목 5건.
 - **`docs/ARCHITECTURE.md` 현행화**: 화면↔라우터 매핑(오늘/뉴스 탐색/적용 사례/자동화 과제/분석실), store 신설 모듈 7종(article_id·links_db·taxonomy·rank·feedback·cases_db·proposals_db), sola(propose·refine·summarize·case_extract), 데이터 플로우에 매칭 영구화·자산화 수직 흐름 추가, deps.py 설명을 X-User-Id 경량 식별로 정정.
