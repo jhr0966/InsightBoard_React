@@ -42,6 +42,25 @@ def test_save_empty_returns_none():
     assert save_articles([], source="naver") is None
 
 
+def test_same_second_saves_do_not_overwrite(monkeypatch):
+    """같은 source·같은 초의 연속 저장이 앞선 파일을 덮어쓰지 않는다.
+
+    과거엔 파일명이 초 해상도 타임스탬프뿐이라 두 번째 저장이 첫 파일을
+    덮어써 기사가 유실됐다(PR #59 기록). uuid 접미사로 파일이 분리되고,
+    로드는 두 저장분을 모두 본다.
+    """
+    from store import news_db
+
+    monkeypatch.setattr(news_db, "_utc_stamp", lambda: "000001Z")
+    p1 = save_articles([{"title": "첫 저장", "link": "https://ex.com/a1"}], source="naver")
+    p2 = save_articles([{"title": "둘째 저장", "link": "https://ex.com/a2"}], source="naver")
+    assert p1 is not None and p2 is not None
+    assert p1 != p2 and p1.exists() and p2.exists()
+
+    titles = set(load_all_today()["title"])
+    assert {"첫 저장", "둘째 저장"} <= titles
+
+
 def test_score_matches_finds_overlap():
     news = pd.DataFrame(_sample_articles())
     tasks = pd.DataFrame([

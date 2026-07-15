@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -246,11 +247,17 @@ def _to_df(articles: list[dict]) -> pd.DataFrame:
 
 
 def save_articles(articles: list[dict], *, source: str) -> Path | None:
-    """오늘자 디렉토리에 source 별 Parquet로 저장. 빈 리스트는 저장 안 함."""
+    """오늘자 디렉토리에 source 별 Parquet로 저장. 빈 리스트는 저장 안 함.
+
+    파일명에 uuid 접미사 — 같은 source 를 같은 초에 두 번 저장해도 앞선
+    파일을 덮어쓰지 않는다(초 해상도 타임스탬프 충돌 → 기사 유실 버그).
+    중복 기사는 로드 시 article_id 필드 병합(I-15)이 처리하므로 파일이
+    늘어나는 것은 무해하다.
+    """
     if not articles:
         return None
     df = _to_df(articles)
-    path = news_dir_for() / f"{source}_{_utc_stamp()}.parquet"
+    path = news_dir_for() / f"{source}_{_utc_stamp()}_{uuid.uuid4().hex[:8]}.parquet"
     df.to_parquet(path, index=False)
     return path
 
