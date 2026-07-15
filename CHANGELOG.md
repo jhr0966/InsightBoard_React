@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Docs (개편 마무리 문서 정리) — `docs-redesign-wrapup`
+- **`docs/REDESIGN_STATUS.md` 신설**: 2026-07 전면 개편(Step 0~13, PR #57~#70) 현황·회고 — 단계별 결과 표, 확립된 설계 원칙(결정적 데이터 축·자산화 수직 흐름·이관 정직성·X-User-Id 비인증), 남은 후속 항목 5건.
+- **`docs/ARCHITECTURE.md` 현행화**: 화면↔라우터 매핑(오늘/뉴스 탐색/적용 사례/자동화 과제/분석실), store 신설 모듈 7종(article_id·links_db·taxonomy·rank·feedback·cases_db·proposals_db), sola(propose·refine·summarize·case_extract), 데이터 플로우에 매칭 영구화·자산화 수직 흐름 추가, deps.py 설명을 X-User-Id 경량 식별로 정정.
+- **`CLAUDE.md` 라우팅 표 갱신**: 신규 화면(적용 사례)·모듈(정체성/links/taxonomy/rank/feedback/proposals_db) 행 추가, 절대 규칙 §6 인증 seam 설명 현행화.
+
 ### Added (과제 추진 관리 — Proposal 엔터티) — `feat-proposal-entity`
 - **신규 엔터티 `store/proposals_db.py`** (SQLite, §15): 제안서가 범용 bookmark(마크다운 문자열)에서 독립 — 근거 관계(article_ids·case_ids·matching/prompt 버전)를 구조 필드로 보존, **상태 9종**(idea→draft→reviewing→feasibility→poc_ready→poc_running→adopted/on_hold/rejected), 모든 상태 전환을 `proposal_history` 에 이력 보존(동일 상태 전환은 무이력), **PoC 결과는 본문이 아닌 구조 필드**(poc_result·actual_effect) + 실행 관리 필드(owner·협업부서·데이터/기술 준비도·비용/기간·expected_kpi).
 - **구 보관함 이관 `migrate_from_bookmarks()`**: bookmark(type=proposal) → 엔터티, **원본 보존·재실행 멱등**(proposal_id 를 bookmark id 에서 결정 파생). 이관본은 `legacy=true`, 근거 meta 없으면 `evidence_unavailable=true` 표시(§11-3) — 근거 있는 척 하지 않는다. 상태 매핑 pending→reviewing.

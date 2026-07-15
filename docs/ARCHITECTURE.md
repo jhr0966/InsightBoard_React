@@ -34,12 +34,16 @@ FastAPI (api/)
 
 ## 화면 ↔ 라우터 매핑
 
+> 2026-07 개편(Step 11)으로 네비가 **일반**(매일 읽는 층)과 **관리**(운영 층)로 분리됐다.
+
 | 화면 (React 페이지) | 주요 API 라우터 |
 |---|---|
-| `web/src/pages/Board.tsx` — 📊 오늘의 보드 | `board.py` · `trends.py` |
-| `web/src/pages/Insights.tsx` — 🔎 인사이트 분석 | `insights.py` · `trends.py` · `opportunities.py` |
-| `web/src/pages/Proposals.tsx` — 🤖 자동화 제안 + 보관함 | `proposals.py` · `bookmarks.py` |
-| `web/src/pages/Collect.tsx` — 🗞 뉴스 수집 | `news.py` · `collect.py` · `sources.py` |
+| `web/src/pages/Board.tsx` — 🏠 오늘 (개인화 다이제스트 5요소) | `board.py`(digest·brief) · `feedback.py` |
+| `web/src/pages/Feed.tsx` — 🗞 뉴스 탐색 (카드/표·모달·검색) | `news.py`(커서 페이지네이션) |
+| `web/src/pages/Cases.tsx` — 📚 적용 사례 (검토/승인) | `cases.py` |
+| `web/src/pages/Proposals.tsx` — 🤖 자동화 과제 (생성+엔터티 칸반) | `proposals.py`(생성+엔터티 8종) |
+| `web/src/pages/Insights.tsx` — 🔬 분석실 (트렌드/매트릭스/히트맵 탭) | `insights.py` · `trends.py` · `opportunities.py` |
+| `web/src/pages/Collect.tsx` — ⚙️ 수집 관리 (운영 전용) | `collect.py` · `sources.py` |
 | `web/src/pages/TaskDefs.tsx` — 📋 작업 정의 | `taskdefs.py`(+ `roadmap.ingest`) |
 | `web/src/pages/Persona.tsx` · `components/Onboarding.tsx` | `persona.py` · `prefs.py` |
 | 앱 셸 `components/{Layout,Sidebar,Topbar,AssistantDrawer}.tsx` | `assistant.py`(SSE 챗+context) · `threads.py` |
@@ -58,15 +62,17 @@ InsightBoard_React/
 │
 ├── api/                         # FastAPI 백엔드 — React 가 소비하는 HTTP 계약
 │   ├── main.py                  # 앱·CORS·/api/health
-│   ├── deps.py                  # current_identity / Identity (no-op 인증)
+│   ├── deps.py                  # current_identity / Identity — X-User-Id 경량 식별
+│   │                            #   (인증 아님 — 신뢰 프록시 주입 전제, I-17; SSO 전환점)
 │   ├── schemas.py               # Pydantic 모델 (식별·감사 필드)
 │   └── routers/                 # taskdefs·bookmarks·news·trends·opportunities·proposals
-│                                # ·collect·threads·assistant·board·persona·prefs·sources·insights·matches
+│                                # ·collect·threads·assistant·board·persona·prefs·sources
+│                                # ·insights·matches·feedback·cases
 │
 ├── web/                         # React SPA (Vite + TS + Router + Query)
 │   └── src/
 │       ├── api/{client,types,schema}.ts   # 타입드 fetch+SSE / schema.ts=openapi-typescript 자동생성
-│       ├── pages/*.tsx                     # 화면 7종
+│       ├── pages/*.tsx                     # 화면 8종 (Board·Feed·Cases·Proposals·Insights·Collect·TaskDefs·Persona)
 │       ├── components/{Layout,Sidebar,Topbar,AssistantDrawer,Onboarding}.tsx
 │       ├── components/ui/*                  # Card·KPIStatGrid·Chip·Tabs·Modal·Kanban·EmptyState …
 │       ├── components/charts/*             # SVG: Line·Bar·Sparkline·BubbleMatrix·Heatmap
@@ -84,6 +90,13 @@ InsightBoard_React/
 ├── store/                       # 저장소·매칭·집계·캐시·북마크
 │   ├── paths.py · news_db.py · task_defs_db.py · match.py · trends.py · cache.py
 │   ├── chat_log.py · bookmarks.py · sola_threads.py · sources.py · run_log.py
+│   ├── article_id.py            # 기사 정체성 — URL 정규화 해시 (IDENTITY_VERSION, I-15)
+│   ├── links_db.py              # 뉴스↔작업 매칭 영구화 (article_task_links, I-16)
+│   ├── taxonomy.py              # 기술 분류 — TECH-* 안정 ID + 별칭 (TAXONOMY_VERSION)
+│   ├── rank.py                  # 개인화 랭킹 (RANKING_VERSION, LLM 미사용 규칙 문장)
+│   ├── feedback.py              # 피드백 이벤트 (impression/open/save/dismiss …)
+│   ├── cases_db.py              # 적용 사례 엔터티 (cases + case_sources, 검토 상태)
+│   ├── proposals_db.py          # 자동화 과제 엔터티 (상태 9종·전환 이력·PoC 구조 필드)
 │   ├── _audit.py                # 식별·감사 5필드 표준 (stamp/backfill/now_iso)
 │   └── repository.py            # 영구화 seam (Repository·JsonlRepository — Phase 2 교체점)
 │
@@ -94,12 +107,15 @@ InsightBoard_React/
 │   ├── providers/*              # openai(내장·groq 호환) · anthropic  (LLM_PROVIDER 로 교체)
 │   ├── prompts.py
 │   ├── opportunity.py · board_brief.py · trend_brief.py
+│   ├── propose.py               # 제안서 생성 — links 근거 선정(select_evidence)+승인 사례 주입
+│   ├── refine.py · summarize.py
+│   ├── case_extract.py          # 사례 추출 배치 (cron 말미 + 관리자 API)
 │   └── side_context.py          # orphan(보존) — 향후 AssistantDrawer 컨텍스트 일원화 연결점
 │
 ├── scripts/                     # gen_openapi · daily_scrape · diagnose_article · refresh_articles · verify_scrape …
 ├── Dockerfile · render.yaml · Procfile · requirements*.txt   # 배포
 ├── data/  (.gitignore)          # news/*.parquet · roadmap/*.parquet · task_defs.sqlite3 · persona · sola · bookmarks
-└── tests/                       # 백엔드 단위 테스트 (pytest -q, 462)
+└── tests/                       # 백엔드 단위 테스트 (pytest -q, 592)
 ```
 
 ---
@@ -124,14 +140,26 @@ InsightBoard_React/
         ▼                 └─→ store/task_defs_db UPSERT (SQLite)
    roadmap/query.load_latest  ── SQLite 우선, 비어있으면 Parquet fallback
 
-3) 매칭·기회
-   roadmap.query.load_latest + store.news_db.load_today
+3) 매칭·기회 (결정적 데이터 축 — I-16)
+   roadmap.query.load_latest + store.news_db (article_id 정체성 — I-15)
         │
-        ▼  store/match.score_matches  →  sola/opportunity (LLM 코멘트)
-        ▼
-   /api/insights · /api/opportunities → 보드 · 인사이트 매트릭스·히트맵
+        ▼  store/match.score_matches (MATCHING_VERSION·매칭 이유 컴포넌트)
+        ▼  store/links_db  ← 영구화 (윈도 시그니처·버전 stale 시 재계산)
+        │
+        ├─→ /api/insights · /api/opportunities  → 분석실 매트릭스·히트맵
+        ├─→ store/rank (개인화 다이제스트 "왜 관련" 문장)
+        ├─→ sola/case_extract (사례 후보 선정)
+        └─→ sola/propose.select_evidence (제안서 근거 — 매칭 기사만)
 
-4) LLM (어시스턴트·브리핑)
+4) 뉴스의 자산화 (수직 흐름: 뉴스 → 사례 → 과제)
+   기사(links 매칭) → sola/case_extract → store/cases_db (pending_review)
+        │                                      │ 사람 검토(승인/제외)
+        ▼                                      ▼
+   /api/proposals/generate ← 근거 기사 + [승인 사례]만 주입
+        │
+        ▼  store/proposals_db — 과제 엔터티 (상태 9종·전환 이력·PoC 결과)
+
+5) LLM (어시스턴트·브리핑)
    React → /api/assistant/chat (SSE) · /api/board/brief · /api/proposals/*
         │
         ▼  api/routers → sola.client.chat / chat_stream → store(chat_log·sola_threads)
@@ -162,11 +190,12 @@ InsightBoard_React/
 - `roadmap.query.load_latest(prefer="sqlite")` — SQLite 우선, Parquet fallback.
 
 ### store
-- `store.news_db.save_articles(articles, source) -> Path`.
+- `store.news_db.save_articles(articles, source) -> Path`. 로드는 정렬 결정적(`sort_at` desc + link asc — I-14), `article_id` 파생·필드 단위 중복 병합(I-15).
 - `store.task_defs_db` — SQLite `task_defs`(PK process_id) + `task_def_history`. `upsert · list_all · search · history`.
-- `store.match.score_matches(news_df, tasks_df, top_k, news_cols=(...)) -> DataFrame`.
-- `store.bookmarks` — JSONL: `bm_id, kind(opp|proposal|news|task), title, content, status(draft|adopted|rejected), …`.
-- `store.repository` — 영구화 seam(Phase 2 교체점, `INSIGHTBOARD_STORAGE`).
+- `store.match.score_matches(news_df, tasks_df, top_k, ...) -> DataFrame` — MATCHING_VERSION·score_components·matched_terms 포함(결정적, 기사×사용자 LLM 금지).
+- `store.links_db` — 매칭 결과 영구화(`article_task_links`). 소비자(기회/히트맵/근거 선정)는 저장본을 읽고, 윈도·버전 시그니처가 다르면 재계산(I-16).
+- `store.bookmarks` — JSONL(범용 스크랩). **제안서 보관은 `store.proposals_db`**(상태 9종·`proposal_history`·PoC 구조 필드), 사례는 `store.cases_db`(승인 게이트).
+- `store.repository` — 영구화 seam(Phase 2 교체점, `INSIGHTBOARD_STORAGE`). 파일 저장소는 단일 서버 파일럿 한정(I-17).
 
 ### sola
 - `sola.client.chat(messages, …) -> str` · `chat_stream(...)` — provider facade.
