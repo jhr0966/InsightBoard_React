@@ -46,6 +46,8 @@ def list_news(
     source: str | None = Query(default=None, description="출처 필터"),
     limit: int | None = Query(default=200, ge=1, le=2000),
 ) -> list[dict]:
+    # load_news_for_days 는 결정적 최신순(sort_at desc)을 보장 — head(limit) 은
+    # 항상 "가장 최신 limit 건"이다 (과거엔 미정렬이라 최신 날짜가 잘렸다).
     df = news_db.load_news_for_days(days)
     if source and not df.empty and "source" in df.columns:
         df = df[df["source"] == source]

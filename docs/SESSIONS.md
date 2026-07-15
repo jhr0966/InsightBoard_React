@@ -3,6 +3,13 @@
 **무엇을**: 수집 전수점검 — 추출 로직은 견고, 직전 성능 과최적화가 누락 키움. enrich 데드라인 45→90s(정상기사 abandon 방지), 본문 재시도 1→2. 반복수집 재fetch 회피 캐시(load_today_enriched_index/apply_cached): 오늘 이미 enrich 한 기사는 네트워크 스킵 → 속도+완성도 동시 개선. 참고 레포(News_Proto/InsightBoard_Streamlit)는 세션 GitHub 범위 밖이라 직접 비교 불가.
 
 **조치**: 신규 테스트 포함 pytest 511, 금지패턴 0.
+## 2026-07-15 — fix: 뉴스 조회 결정적 최신순 (최신 기사 잘림·출처 편향) (`fix-news-ordering`)
+
+**무엇을**: load_news_for_days/load_all_today 가 정렬 없이 과거→오늘 concat 만 해서, head(limit) 이 가장 오래된 기사를 취하고(30일 뷰에서 최신 날짜 통째 잘림) 탑 스토리가 파일명 사전순(출처 알파벳) 편향이던 구조 결함 수정. 혼재 포맷(ISO±offset·RFC822·date-only) published_at 을 UTC ISO 로 정규화한 파생 컬럼 sort_at(published→collected→일자 폴백)을 로드 시 계산하고, 모든 조회를 sort_at desc + link asc 결정적 정렬로 반환. 저장 스키마·API 응답 필드 무변경. 전면 개편(Step 0~13) 로드맵의 Step 1.
+
+**조치**: 신규 회귀 테스트 6건(tests/test_news_ordering.py) 포함 pytest 514 passed, 금지패턴 0, OpenAPI 스냅샷 무변경.
+
+**다음**: Step 2 `feat-article-identity`(URL 정규화·article_id·필드 단위 중복 병합) → Step 3 `feat-news-pagination`.
 
 ---
 
