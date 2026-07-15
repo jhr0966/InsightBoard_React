@@ -1,0 +1,670 @@
+{
+ "version": 1,
+ "note": "합성 시드 정답셋 — 실서버 수집 기사로 교체·확장 예정. 라벨: strong(강한 관련)/weak(약한 관련), 미기재=무관. task_key = dept||lv3||task",
+ "tasks": [
+  {
+   "dept": "가공부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "전처리",
+   "task": "강재 표면 전처리",
+   "sub_task": "블라스팅",
+   "task_def": "강재 표면의 녹·이물질을 블라스팅으로 제거하고 도장 전 표면조도를 확보하는 작업",
+   "sws_no": "",
+   "sws_name": "강재 표면 전처리"
+  },
+  {
+   "dept": "가공부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "절단",
+   "task": "강재 절단",
+   "sub_task": "플라즈마 절단",
+   "task_def": "절단 도면에 따라 플라즈마·레이저 절단기로 강재를 절단하고 절단면 품질을 확인",
+   "sws_no": "",
+   "sws_name": "강재 절단"
+  },
+  {
+   "dept": "가공부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "성형",
+   "task": "곡면 성형",
+   "sub_task": "라인히팅",
+   "task_def": "라인히팅과 프레스로 외판 곡면을 성형하고 곡직 정도를 관리",
+   "sws_no": "",
+   "sws_name": "곡면 성형"
+  },
+  {
+   "dept": "조립부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "소조립",
+   "task": "소조립 용접",
+   "sub_task": "FCAW 용접",
+   "task_def": "소조립 부재를 FCAW 반자동 용접으로 접합하고 비드 외관을 확인",
+   "sws_no": "",
+   "sws_name": "소조립 용접"
+  },
+  {
+   "dept": "조립부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "중조립",
+   "task": "용접 변형 교정",
+   "sub_task": "화염 교정",
+   "task_def": "중조립 블록의 용접 변형을 화염 가열로 교정하고 평탄도를 확보",
+   "sws_no": "",
+   "sws_name": "용접 변형 교정"
+  },
+  {
+   "dept": "조립부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "취부",
+   "task": "부재 취부",
+   "sub_task": "취부 정도 관리",
+   "task_def": "부재를 도면 위치에 취부하고 갭·단차 등 취부 정도를 측정·관리",
+   "sws_no": "",
+   "sws_name": "부재 취부"
+  },
+  {
+   "dept": "도장부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "도장",
+   "task": "스프레이 도장",
+   "sub_task": "에어리스 도장",
+   "task_def": "블록 표면에 에어리스 스프레이로 도료를 도포하고 도막을 형성",
+   "sws_no": "",
+   "sws_name": "스프레이 도장"
+  },
+  {
+   "dept": "도장부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "도장검사",
+   "task": "도장 검사",
+   "sub_task": "막두께 측정",
+   "task_def": "건조 도막 두께를 측정하고 외관 결함(핀홀·흘림)을 검사",
+   "sws_no": "",
+   "sws_name": "도장 검사"
+  },
+  {
+   "dept": "선행의장부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "배관",
+   "task": "파이프 스풀 제작",
+   "sub_task": "스풀 용접",
+   "task_def": "파이프 스풀을 절단·가공하고 티그 용접으로 제작",
+   "sws_no": "",
+   "sws_name": "파이프 스풀 제작"
+  },
+  {
+   "dept": "선행의장부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "의장",
+   "task": "의장품 설치",
+   "sub_task": "선행의장",
+   "task_def": "블록 단계에서 의장품(서포트·장비)을 도면대로 설치",
+   "sws_no": "",
+   "sws_name": "의장품 설치"
+  },
+  {
+   "dept": "품질관리부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "용접검사",
+   "task": "비파괴검사",
+   "sub_task": "UT/RT 판독",
+   "task_def": "용접부를 초음파·방사선으로 검사하고 결함을 판독",
+   "sws_no": "",
+   "sws_name": "비파괴검사"
+  },
+  {
+   "dept": "품질관리부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "치수검사",
+   "task": "블록 치수 검사",
+   "sub_task": "3차원 계측",
+   "task_def": "완성 블록의 주요 치수를 3차원 계측하고 정도 기준과 비교",
+   "sws_no": "",
+   "sws_name": "블록 치수 검사"
+  },
+  {
+   "dept": "생산관리부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "물류",
+   "task": "블록 운반",
+   "sub_task": "트랜스포터 운영",
+   "task_def": "트랜스포터로 블록과 대형 자재를 공장 간 운반",
+   "sws_no": "",
+   "sws_name": "블록 운반"
+  },
+  {
+   "dept": "생산관리부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "공정계획",
+   "task": "일정 계획 수립",
+   "sub_task": "공정 스케줄링",
+   "task_def": "호선별 공정 일정을 수립하고 부하를 평준화",
+   "sws_no": "",
+   "sws_name": "일정 계획 수립"
+  },
+  {
+   "dept": "설비보전부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "보전",
+   "task": "설비 예방정비",
+   "sub_task": "크레인 정비",
+   "task_def": "크레인·용접기 등 생산 설비를 점검하고 예방 정비",
+   "sws_no": "",
+   "sws_name": "설비 예방정비"
+  },
+  {
+   "dept": "안전환경부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "안전관리",
+   "task": "밀폐구역 작업 감시",
+   "sub_task": "가스 측정",
+   "task_def": "밀폐구역 작업 전 가스를 측정하고 작업 중 감시인을 배치",
+   "sws_no": "",
+   "sws_name": "밀폐구역 작업 감시"
+  },
+  {
+   "dept": "설계부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "생산설계",
+   "task": "작업도면 작성",
+   "sub_task": "생산도면",
+   "task_def": "생산 현장에서 쓰는 작업도면과 절차서를 작성",
+   "sws_no": "",
+   "sws_name": "작업도면 작성"
+  },
+  {
+   "dept": "정보기술부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "시스템",
+   "task": "생산 데이터 관리",
+   "sub_task": "MES 운영",
+   "task_def": "MES 로 생산 실적·품질 데이터를 수집·관리",
+   "sws_no": "",
+   "sws_name": "생산 데이터 관리"
+  },
+  {
+   "dept": "조립부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "대조립",
+   "task": "블록 탑재 용접",
+   "sub_task": "탑재 용접",
+   "task_def": "도크에서 블록을 탑재하고 대형 이음부를 용접",
+   "sws_no": "",
+   "sws_name": "블록 탑재 용접"
+  },
+  {
+   "dept": "도장부",
+   "lv1": "실행분과",
+   "lv2": "",
+   "lv3": "도장설비",
+   "task": "도장 부스 운영",
+   "sub_task": "부스 설비",
+   "task_def": "도장 부스의 급배기·온습도 설비를 운영하고 관리",
+   "sws_no": "",
+   "sws_name": "도장 부스 운영"
+  }
+ ],
+ "articles": [
+  {
+   "link": "https://gold.example.com/a01",
+   "title": "조선소 협동로봇 FCAW 용접 자동화 확산",
+   "summary": "국내 조선소가 소조립 라인에 협동로봇 기반 FCAW 용접 자동화를 도입해 생산성을 높였다.",
+   "keywords": "협동 로봇, FCAW, 용접 자동화, 소조립",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a02",
+   "title": "비전 AI로 용접 비드 결함 실시간 검출",
+   "summary": "머신비전과 딥러닝으로 용접 비드의 언더컷·기공을 실시간 판정하는 검사 시스템이 상용화됐다.",
+   "keywords": "비전 AI, 용접 결함, 외관검사, 딥러닝",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a03",
+   "title": "AI가 도막 두께 예측·측정 자동화",
+   "summary": "도장 공정에서 AI 가 건조 도막 두께를 예측하고 측정을 자동화하는 기술이 발표됐다.",
+   "keywords": "도막 두께, 막두께 측정, AI 예측, 도장 품질",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a04",
+   "title": "스프레이 도장 로봇, 대형 블록 도장에 투입",
+   "summary": "6축 도장 로봇이 에어리스 스프레이로 대형 블록을 자동 도장한다.",
+   "keywords": "도장 로봇, 에어리스 스프레이, 자동 도장",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a05",
+   "title": "고출력 레이저 절단기 신제품 출시",
+   "summary": "조선용 후판을 고속 절단하는 레이저 절단기가 출시됐다. 플라즈마 대비 절단면 품질이 높다.",
+   "keywords": "레이저 절단, 플라즈마, 후판, 절단면",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a06",
+   "title": "조선소 옥내물류에 AMR 도입 확산",
+   "summary": "자율이동로봇(AMR)과 AGV 가 조선소 자재 물류에 도입돼 운반 인력을 줄이고 있다.",
+   "keywords": "AMR, AGV, 자율물류, 자재 운반",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a07",
+   "title": "크레인 예지보전 — IoT 진동센서로 고장 예측",
+   "summary": "골리앗 크레인에 진동 센서를 달아 베어링 고장을 예지보전하는 사례가 소개됐다.",
+   "keywords": "예지보전, 크레인, 진동 센서, IoT",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a08",
+   "title": "조선소 디지털 트윈으로 공정 시뮬레이션",
+   "summary": "야드 전체를 디지털 트윈으로 구축해 공정 일정과 물류를 시뮬레이션한다.",
+   "keywords": "디지털 트윈, 공정 시뮬레이션, 일정 계획",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a09",
+   "title": "생성형 AI가 생산 작업도면 작성 지원",
+   "summary": "생성형 AI 가 설계 데이터를 읽어 작업도면 주석과 절차서를 자동 생성한다.",
+   "keywords": "생성형 AI, 작업도면, 생산설계, 문서 자동화",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a10",
+   "title": "밀폐구역 스마트 가스감지 시스템",
+   "summary": "밀폐구역 작업의 가스 농도를 무선 센서로 상시 감시하는 스마트 안전 시스템.",
+   "keywords": "밀폐구역, 가스 측정, 스마트 안전, 감시",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a11",
+   "title": "3D 스캐닝으로 블록 치수 검사 자동화",
+   "summary": "레이저 3D 스캐너로 블록 전체 치수를 계측해 정도 검사를 자동화했다.",
+   "keywords": "3D 스캐닝, 치수 검사, 블록 계측, 정도 관리",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a12",
+   "title": "라인히팅 곡면 성형 자동화 장비 개발",
+   "summary": "외판 곡면 성형용 라인히팅 자동화 장비가 개발돼 숙련 의존도를 낮춘다.",
+   "keywords": "라인히팅, 곡면 성형, 외판, 자동화 장비",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a13",
+   "title": "강재 전처리 블라스팅 로봇 실증",
+   "summary": "표면 전처리 블라스팅을 로봇이 수행해 분진 노출을 줄인 실증 사례.",
+   "keywords": "블라스팅, 표면 전처리, 로봇, 표면조도",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a14",
+   "title": "파이프 스풀 용접 자동화 셀 구축",
+   "summary": "배관 스풀 제작에 오비탈 용접 자동화 셀을 구축해 생산성을 2배로 높였다.",
+   "keywords": "파이프 스풀, 오비탈 용접, 배관 자동화",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a15",
+   "title": "조선 스마트팩토리 MES 플랫폼 고도화",
+   "summary": "생산 실적과 품질 데이터를 통합하는 MES 플랫폼이 고도화됐다.",
+   "keywords": "MES, 스마트팩토리, 생산 데이터, 플랫폼",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a16",
+   "title": "AI 용접 변형 예측으로 교정 작업 최소화",
+   "summary": "용접 변형을 AI 로 사전 예측해 화염 교정 공수를 줄이는 연구가 발표됐다.",
+   "keywords": "용접 변형, AI 예측, 화염 교정, 평탄도",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a17",
+   "title": "방사선 검사 필름 AI 자동 판독",
+   "summary": "RT 필름의 용접 결함을 AI 가 자동 판독해 검사원 판독 시간을 단축한다.",
+   "keywords": "방사선 검사, RT, 자동 판독, 비파괴검사",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a18",
+   "title": "취부 갭·단차 비전 측정 시스템",
+   "summary": "부재 취부 상태의 갭과 단차를 비전 카메라로 즉시 측정하는 시스템.",
+   "keywords": "취부, 갭 측정, 비전 측정, 정도 관리",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a19",
+   "title": "자율주행 트랜스포터, 블록 운반 무인화",
+   "summary": "자율주행 트랜스포터가 야드 내 블록 운반을 무인으로 수행한다.",
+   "keywords": "트랜스포터, 자율주행, 블록 운반, 무인화",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a20",
+   "title": "조선 작업자용 외골격 로봇 보급",
+   "summary": "상향 용접·의장 작업자의 근골격 부담을 줄이는 외골격 로봇이 보급된다.",
+   "keywords": "외골격, 웨어러블 로봇, 작업 부담",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a21",
+   "title": "AR 글래스로 의장품 설치 위치 안내",
+   "summary": "AR 글래스가 의장품 설치 위치와 순서를 현장에서 안내한다.",
+   "keywords": "AR, 의장품 설치, 선행의장, 스마트 글래스",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a22",
+   "title": "도장 부스 VOC 저감 설비 의무화 대응",
+   "summary": "도장 부스의 휘발성유기화합물(VOC) 저감 설비 투자가 확대되고 있다.",
+   "keywords": "도장 부스, VOC, 급배기 설비, 환경 규제",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a23",
+   "title": "머신러닝 용접 파라미터 최적화",
+   "summary": "전류·전압·속도 등 용접 파라미터를 머신러닝으로 최적화해 결함률을 낮췄다.",
+   "keywords": "머신러닝, 용접 파라미터, 최적화, 결함률",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a24",
+   "title": "APS 로 조선 생산 일정 최적화",
+   "summary": "빅데이터 기반 APS 가 호선 일정과 부하 평준화를 자동 수립한다.",
+   "keywords": "APS, 일정 최적화, 공정계획, 부하 평준화",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a25",
+   "title": "반도체 수출 3개월 연속 증가",
+   "summary": "지난달 반도체 수출이 증가세를 이어갔다.",
+   "keywords": "반도체, 수출, 실적",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a26",
+   "title": "아이돌 그룹 월드투어 매진",
+   "summary": "인기 아이돌 그룹의 월드투어 전 공연이 매진됐다.",
+   "keywords": "아이돌, 콘서트, 월드투어",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a27",
+   "title": "수도권 아파트 금리 인하 기대감",
+   "summary": "금리 인하 기대에 수도권 아파트 거래가 늘었다.",
+   "keywords": "부동산, 금리, 아파트",
+   "source": "google",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a28",
+   "title": "신형 스마트폰 카메라 성능 공개",
+   "summary": "신형 스마트폰의 카메라 센서 성능이 공개됐다.",
+   "keywords": "스마트폰, 카메라, 출시",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a29",
+   "title": "프로축구 개막전 관중 신기록",
+   "summary": "프로축구 개막전이 역대 최다 관중을 기록했다.",
+   "keywords": "축구, 개막전, 관중",
+   "source": "naver",
+   "press": "골드셋"
+  },
+  {
+   "link": "https://gold.example.com/a30",
+   "title": "편의점 여름 신상 음료 출시 경쟁",
+   "summary": "편의점 업계가 여름 신상 음료를 잇달아 출시했다.",
+   "keywords": "편의점, 음료, 신제품",
+   "source": "google",
+   "press": "골드셋"
+  }
+ ],
+ "labels": [
+  {
+   "article": "https://gold.example.com/a01",
+   "task_key": "조립부||소조립||소조립 용접",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a01",
+   "task_key": "조립부||대조립||블록 탑재 용접",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a01",
+   "task_key": "조립부||중조립||용접 변형 교정",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a02",
+   "task_key": "품질관리부||용접검사||비파괴검사",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a02",
+   "task_key": "조립부||소조립||소조립 용접",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a03",
+   "task_key": "도장부||도장검사||도장 검사",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a03",
+   "task_key": "도장부||도장||스프레이 도장",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a04",
+   "task_key": "도장부||도장||스프레이 도장",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a04",
+   "task_key": "도장부||도장검사||도장 검사",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a04",
+   "task_key": "도장부||도장설비||도장 부스 운영",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a05",
+   "task_key": "가공부||절단||강재 절단",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a06",
+   "task_key": "생산관리부||물류||블록 운반",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a07",
+   "task_key": "설비보전부||보전||설비 예방정비",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a08",
+   "task_key": "생산관리부||공정계획||일정 계획 수립",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a08",
+   "task_key": "정보기술부||시스템||생산 데이터 관리",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a09",
+   "task_key": "설계부||생산설계||작업도면 작성",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a10",
+   "task_key": "안전환경부||안전관리||밀폐구역 작업 감시",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a11",
+   "task_key": "품질관리부||치수검사||블록 치수 검사",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a11",
+   "task_key": "조립부||취부||부재 취부",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a12",
+   "task_key": "가공부||성형||곡면 성형",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a13",
+   "task_key": "가공부||전처리||강재 표면 전처리",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a14",
+   "task_key": "선행의장부||배관||파이프 스풀 제작",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a14",
+   "task_key": "조립부||소조립||소조립 용접",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a15",
+   "task_key": "정보기술부||시스템||생산 데이터 관리",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a15",
+   "task_key": "생산관리부||공정계획||일정 계획 수립",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a16",
+   "task_key": "조립부||중조립||용접 변형 교정",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a16",
+   "task_key": "조립부||소조립||소조립 용접",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a17",
+   "task_key": "품질관리부||용접검사||비파괴검사",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a18",
+   "task_key": "조립부||취부||부재 취부",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a18",
+   "task_key": "품질관리부||치수검사||블록 치수 검사",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a19",
+   "task_key": "생산관리부||물류||블록 운반",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a20",
+   "task_key": "조립부||소조립||소조립 용접",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a20",
+   "task_key": "선행의장부||의장||의장품 설치",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a21",
+   "task_key": "선행의장부||의장||의장품 설치",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a22",
+   "task_key": "도장부||도장설비||도장 부스 운영",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a22",
+   "task_key": "도장부||도장||스프레이 도장",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a23",
+   "task_key": "조립부||소조립||소조립 용접",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a23",
+   "task_key": "조립부||중조립||용접 변형 교정",
+   "relevance": "weak"
+  },
+  {
+   "article": "https://gold.example.com/a24",
+   "task_key": "생산관리부||공정계획||일정 계획 수립",
+   "relevance": "strong"
+  },
+  {
+   "article": "https://gold.example.com/a24",
+   "task_key": "정보기술부||시스템||생산 데이터 관리",
+   "relevance": "weak"
+  }
+ ]
+}

@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 매칭 품질 기준선 — 정답셋·평가 하네스 (`feat-matching-baseline`)
+
+**무엇을**: data/evaluation/matching_gold.json(기사 30×작업 20×라벨 40, 합성 시드 — 실데이터 교체 전제) + scripts/evaluate_matching.py(P@3/P@5·Strict@3·무관혼입·결과없음·편중 리포트) + 기준선 baseline_matching_v1.json 기록. 결과: P@3 51.7%, 상위3 무관 혼입 80% — 가중치 개선 필요성이 수치로 확정. 이후 매칭 변경은 기준선 대비로만 채택. 개편 로드맵 Step 4.
+
+**조치**: 하네스 가드 테스트 4건 포함 pytest 543, 금지패턴 0.
+
+**다음**: Step 5 `feat-match-reasons`(필드별 가중 분리 + score_components·matched_terms·이유 반환, 기준선 대비 개선 확인) → Step 6 links 저장.
+
+---
+
 ## 2026-07-15 — feat: 뉴스 목록 경량화 + 커서 페이지네이션 (`feat-news-pagination`)
 
 **무엇을**: 목록 API 에서 전체 본문 제외(excerpt≤300자·content_available 로 대체, 1MB+ 응답 해소), `{items, next_cursor}` 커서 페이지네이션(커서=sort_at::link, 결정적 정렬 기반이라 수집 개입에도 중복·누락 없음). Collect 는 useInfiniteQuery 60건씩+"더 보기". OpenAPI·타입 재생성. 개편 로드맵 Step 3.
