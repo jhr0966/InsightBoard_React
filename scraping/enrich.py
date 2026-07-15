@@ -20,6 +20,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import Comment
 
+import config as _config
 from scraping.extract import is_junk_image, soup_of
 from scraping.http import (
     ENRICH_TIMEOUT,
@@ -33,14 +34,26 @@ from scraping.http import (
 # 누적되는데, 이미 예산을 넘겼으면 남은 (가장 비싼) 단계를 건너뛴다 — 한 기사가
 # 배치 전체를 끌지 않게 하는 deadline. read 타임아웃(20s)보다 커서, 정상이지만
 # 느린 사이트의 폴백 복구(워밍업→재요청, 위장)가 한 단계만에 잘리지 않게 한다.
-_FETCH_BUDGET_S = 25.0
+# INSIGHTBOARD_ENRICH_BUDGET_S 로 배포 환경에서 조정 가능(기본 25s).
+_FETCH_BUDGET_S = _config.env_float("INSIGHTBOARD_ENRICH_BUDGET_S", 25.0)
 
 # enrich 배치 1개의 하드 wall-clock 데드라인(초) — '수집이 끝나지 않는' 현상의
 # 안전망(trickle 서버 등). 일상적으로 자르는 컷오프가 아니라 **드물게만** 걸리는
 # 백스톱이어야 한다. 45s 처럼 빡빡하면 느린 백엔드에서 정상 기사까지 abandon 해
 # 본문·사진 누락이 늘었다 → 넉넉히(90s) 잡아 정상 수집은 끝까지 완료시키되,
 # 무한 대기는 막는다. 반복 수집은 apply_cached 로 대부분 네트워크를 건너뛰어 빠르다.
-ENRICH_BATCH_DEADLINE = 90.0
+# INSIGHTBOARD_ENRICH_DEADLINE_S 로 배포 환경에서 조정 가능(기본 90s).
+ENRICH_BATCH_DEADLINE = _config.env_float("INSIGHTBOARD_ENRICH_DEADLINE_S", 90.0)
+
+# enrich 병렬 워커 수 — INSIGHTBOARD_ENRICH_WORKERS 로 조정(기본 4).
+# 소스가 병렬이라 실제 동시 fetch ≈ 소스 수 × 워커 수. CPU 좁은 배포(Render)에서
+# 워커 과다(10)는 동시 bs4 파싱 경합으로 오히려 누락을 키웠다.
+ENRICH_MAX_WORKERS = _config.env_int("INSIGHTBOARD_ENRICH_WORKERS", 4)
+
+# 배치당 enrich 대상 기사 수 상한 — INSIGHTBOARD_ENRICH_MAX_ARTICLES(기본 0=무제한).
+# 상한 초과분은 본문 없이 저장되고 다음 수집(캐시 미적중)에서 채워진다.
+ENRICH_MAX_ARTICLES = _config.env_int("INSIGHTBOARD_ENRICH_MAX_ARTICLES", 0)
+
 from store import cache
 
 logger = logging.getLogger(__name__)
@@ -654,9 +667,10 @@ def enrich_parallel(
     articles: list[dict],
     *,
     with_llm: bool = False,
-    max_workers: int = 4,
+    max_workers: int | None = None,
     deadline_s: float = ENRICH_BATCH_DEADLINE,
     progress_cb: Callable[[int, int, dict | None], None] | None = None,
+    stats_out: dict | None = None,
 ) -> list[dict]:
     """여러 기사의 본문/대표이미지/키워드를 **병렬**로 채운다(ThreadPoolExecutor).
 
@@ -664,7 +678,7 @@ def enrich_parallel(
     각 기사 링크에서 본문·og:image 를 가져와 채운다. 입력 리스트를 in-place 갱신하고
     동일 리스트 반환(순서 유지). 개별 기사 실패는 격리해 배치를 막지 않는다.
 
-    `max_workers` 기본 4 — 원형(News_Proto `MAX_CONTENT_WORKERS=4`)과 동일. 더 키우면
+    `max_workers` 기본 None → `ENRICH_MAX_WORKERS`(env 조정, 기본 4). 워커를 키우면
     (이전 10) 느린 백엔드에서 동시 bs4 파싱이 CPU 를 경합해 기사당 처리가 오히려
     느려지고, 데드라인에 걸려 본문·사진 누락이 늘었다. 소스가 병렬이라 실제 동시
     fetch 는 (소스 수 × max_workers).
@@ -680,7 +694,23 @@ def enrich_parallel(
     """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FTimeout, as_completed
 
-    total = len(articles)
+    if max_workers is None:
+        max_workers = ENRICH_MAX_WORKERS
+    # 관측지표(stats_out, 선택) — 호출부가 dict 를 넘기면 abandoned(데드라인 중단 수)·
+    # processed(완료 수)·skipped_cap(상한 초과로 건너뛴 수)을 채워 준다. 반환값(기사
+    # 리스트) 계약은 그대로 — 기존 호출부 하위호환.
+    if stats_out is None:
+        stats_out = {}
+    stats_out.update({"abandoned": 0, "processed": 0, "skipped_cap": 0})
+
+    # 배치 상한(INSIGHTBOARD_ENRICH_MAX_ARTICLES, 0=무제한) — 초과분은 본문 없이 두고
+    # 다음 수집에서 캐시 미적중으로 자연 보강된다.
+    targets = articles
+    if ENRICH_MAX_ARTICLES > 0 and len(articles) > ENRICH_MAX_ARTICLES:
+        targets = articles[:ENRICH_MAX_ARTICLES]
+        stats_out["skipped_cap"] = len(articles) - len(targets)
+
+    total = len(targets)
     if total == 0:
         return articles
 
@@ -699,7 +729,7 @@ def enrich_parallel(
     # 컨텍스트 매니저(with)를 쓰지 않는다 — __exit__ 의 shutdown(wait=True) 이 느린
     # 스레드를 끝까지 기다려 데드라인이 무의미해지기 때문. 직접 생성/종료한다.
     ex = ThreadPoolExecutor(max_workers=max_workers)
-    futures = [ex.submit(_work, art) for art in articles]
+    futures = [ex.submit(_work, art) for art in targets]
     try:
         for _ in as_completed(futures, timeout=deadline_s):
             done += 1
@@ -709,6 +739,7 @@ def enrich_parallel(
                 except Exception:  # noqa: BLE001
                     pass
     except _FTimeout:
+        stats_out["abandoned"] = total - done
         logger.warning(
             "enrich 배치 deadline %.0fs 초과 — %d/%d 완료, 나머지는 본문 없이 진행",
             deadline_s, done, total,
@@ -717,4 +748,5 @@ def enrich_parallel(
         # 남은 작업은 버린다(대기 X) — 큐 대기분은 취소, 실행 중인 건 백그라운드에서
         # 소켓 타임아웃(≤read)으로 곧 종료. 수집은 즉시 다음 단계로.
         ex.shutdown(wait=False, cancel_futures=True)
+        stats_out["processed"] = done
     return articles

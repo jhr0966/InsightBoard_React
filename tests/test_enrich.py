@@ -689,11 +689,13 @@ def test_fetch_article_uses_bounded_retry_session():
 
 
 def test_enrich_parallel_default_workers_bounded():
-    """워커 수는 원형(News_Proto MAX_CONTENT_WORKERS=4) 수준 — 느린 백엔드에서
-    과도한 동시 bs4 파싱(CPU 경합)으로 기사당 처리가 느려져 누락이 늘던 회귀 방지."""
+    """워커 기본값은 4 수준(env 미설정 시) — 느린 백엔드에서 과도한 동시 bs4 파싱
+    (CPU 경합)으로 기사당 처리가 느려져 누락이 늘던 회귀 방지. 기본값은
+    ENRICH_MAX_WORKERS 상수(INSIGHTBOARD_ENRICH_WORKERS env)로 옮겨졌다."""
     import inspect
     sig = inspect.signature(enrich.enrich_parallel)
-    assert 1 <= sig.parameters["max_workers"].default <= 6
+    assert sig.parameters["max_workers"].default is None  # None → ENRICH_MAX_WORKERS
+    assert 1 <= enrich.ENRICH_MAX_WORKERS <= 6
 
 
 def test_enrich_timeout_read_is_generous_enough():
