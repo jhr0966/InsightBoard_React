@@ -5,6 +5,7 @@ import Insights from "./pages/Insights";
 import Proposals from "./pages/Proposals";
 import Collect from "./pages/Collect";
 import Feed from "./pages/Feed";
+import Cases from "./pages/Cases";
 import TaskDefs from "./pages/TaskDefs";
 import PersonaPage from "./pages/Persona";
 
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/insights" element={<Insights />} />
         <Route path="/proposals" element={<Proposals />} />
         <Route path="/feed" element={<Feed />} />
+        <Route path="/cases" element={<Cases />} />
         <Route path="/collect" element={<Collect />} />
         <Route path="/taskdefs" element={<TaskDefs />} />
         <Route path="/persona" element={<PersonaPage />} />

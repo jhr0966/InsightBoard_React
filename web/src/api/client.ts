@@ -3,6 +3,7 @@
 import type {
   AssistantContext,
   Bookmark,
+  CaseItem,
   ChatMessage,
   DayCount,
   IngestResult,
@@ -141,6 +142,19 @@ export const api = {
     contentRate: (days = 7) => req<{ total: number; ready: number; pct: number }>(`/api/news/content-rate${qs({ days })}`),
     detail: (link: string, days = 30) =>
       req<NewsArticle>(`/api/news/detail${qs({ link, days })}`),
+  },
+
+  cases: {
+    list: (status?: string, technology_id?: string) =>
+      req<CaseItem[]>(`/api/cases${qs({ status, technology_id })}`),
+    summary: () => req<{ total: number; by_status: Record<string, number> }>("/api/cases/summary"),
+    setStatus: (id: string, status: string) =>
+      req<CaseItem>(`/api/cases/${encodeURIComponent(id)}/status`, {
+        method: "POST", body: JSON.stringify({ status }),
+      }),
+    extract: (days = 7, limit = 10) =>
+      req<{ attempted: number; extracted: number; failed?: number; reason?: string }>(
+        "/api/cases/extract", { method: "POST", body: JSON.stringify({ days, limit }) }),
   },
 
   feedback: {

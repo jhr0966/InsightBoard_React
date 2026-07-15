@@ -14,6 +14,7 @@ from api.routers import (
     assistant,
     board,
     bookmarks,
+    cases,
     collect,
     feedback,
     insights,
@@ -112,3 +113,4 @@ app.include_router(sources.router)
 app.include_router(matches.router)
 app.include_router(insights.router)
 app.include_router(feedback.router)
+app.include_router(cases.router)

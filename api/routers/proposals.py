@@ -47,6 +47,7 @@ class ProposalOut(BaseModel):
     task_process_id: str | None = None
     # 근거 기사(Step 8) — 제목·링크·매칭 이유. 프런트 표시 + 보관 시 meta 저장용.
     evidence: list[dict[str, Any]] = Field(default_factory=list)
+    cases: list[dict[str, Any]] = Field(default_factory=list, description="주입된 승인 사례")
     matching_version: int | None = None
     prompt_version: int | None = None
 
@@ -73,15 +74,21 @@ def generate(
     links = (links_db.matches_for_window(news_df, roadmap_df, days=body.days)
              if not news_df.empty and not roadmap_df.empty else None)
     evidence = select_evidence(body.task, links, news_df, max_items=body.max_news)
+    # 승인(approved) 사례만 주근거로 추가 주입(§14-3) — 근거 기사와 연결된 사례.
+    from store import cases_db
+
+    approved_cases = cases_db.approved_for_articles(
+        [str(e.get("article_id", "")) for e in evidence])[:2]
 
     persona = persona_store.load(identity.user_id)
     text = _llm_or_http(
-        lambda: propose_for_task(body.task, news_df, persona=persona, evidence=evidence),
+        lambda: propose_for_task(body.task, news_df, persona=persona,
+                                 evidence=evidence, cases=approved_cases),
         what="제안서 생성",
     )
     pid = body.task.get("process_id") or (body.task.get("org_meta") or {}).get("process_id")
     return ProposalOut(
-        proposal=text, task_process_id=pid, evidence=evidence,
+        proposal=text, task_process_id=pid, evidence=evidence, cases=approved_cases,
         matching_version=MATCHING_VERSION, prompt_version=PROPOSE_PROMPT_VERSION,
     )
 

@@ -72,6 +72,27 @@ export interface DigestItem {
   linked_task?: string;
   ranking_version: number;
 }
+// GET /api/cases — 사례 라이브러리 (Step 12).
+export interface CaseSource {
+  article_id: string; link: string; title: string;
+  evidence_text: string; evidence_type: string;
+}
+export interface CaseItem {
+  case_id: string;
+  title: string;
+  industry: string;
+  target_work: string;
+  problem: string;
+  solution: string;
+  technology_ids: string[];
+  implementation: string;
+  quantified_effects: { metric: string; value: string; evidence_text: string }[];
+  shipyard_implications: string;
+  confidence: number;
+  review_status: string;   // pending_review | approved | excluded
+  sources?: CaseSource[];
+}
+
 export interface DigestPage {
   items: DigestItem[];
   ranking_version: number;
