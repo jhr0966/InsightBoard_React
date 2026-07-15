@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 기사 식별 article_id + 필드 단위 중복 병합 (`feat-article-identity`)
+
+**무엇을**: store/article_id.py 신설 — 보수적 URL 정규화(추적 파라미터만 제거, 식별 파라미터 유지)+안정 article_id+IDENTITY_VERSION. news_db 의 link dedup(keep=last, 행 단위 승자)을 필드 단위 병합(_merge_duplicates, MERGE_VERSION)으로 교체: 게시시각(가장 이른 원본)·본문(가장 풍부)·이미지/LLM(최신)을 동시 보존, merged_record_count·original_urls 메타. news API 에 article_id 노출(Step 3·6 키). 전부 로드 시 파생 — 저장 무변경·재실행 가능. 개편 로드맵 Step 2.
+
+**조치**: 신규 테스트 10건 포함 pytest 534, 금지패턴 0, OpenAPI 무변경.
+
+**다음**: Step 3 `feat-news-pagination`(목록 경량화+커서 페이지네이션) → Step 4 매칭 정답셋.
+
+---
+
 ## 2026-07-15 — chore: PR #57 보강 — 사실관계 정정·관측지표·튜닝 env화 (`fix-collect-completeness-rebalance`)
 
 **무엇을**: ①CHANGELOG 의 "News_Proto 직접 비교 완료" 서술을 정정(세션 범위 밖이라 직접 열람 불가 — 수치는 미검증 참고값, 실질 근거는 본 레포 이력 #52·#56)  ②수집 런 관측지표 추가(run_daily.stats → run_log: 본문/이미지 확보 건수·율, 캐시 적중, 데드라인 중단, 상한 스킵 — 병합·롤백 판단 원자료) ③튜닝 노브 6종 env화(config.env_int/float/flag 신설, 기본값=검증값): WORKERS·CONNECT_S/READ_S·DEADLINE_S·BUDGET_S·CACHE·MAX_ARTICLES ④main(#58) 병합.
