@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (기사 식별 article_id + 필드 단위 중복 병합) — `feat-article-identity`
+- **신규 `store/article_id.py`**: 보수적 URL 정규화(`canonical_url`) + 안정 식별자(`article_id`, md5 16hex) + `IDENTITY_VERSION=1`. 추적 파라미터(utm_*·fbclid·gclid 등)만 제거하고 **기사 식별 파라미터(articleId·idxno·seq 등)는 유지** — 전체 쿼리 제거로 다른 기사가 합쳐지는 사고 방지. 도메인별 규칙(`DOMAIN_RULES`) 확장 구조. 원본 URL 은 절대 변형하지 않음(식별 계산 전용).
+- **필드 단위 중복 병합** (`store/news_db._merge_duplicates`, `MERGE_VERSION=1`): 같은 article_id 레코드를 행 단위 승자 선택(keep="last") 대신 **필드별 규칙으로 병합** — 게시시각은 가장 이른 원본, 수집시각은 최신, 본문·요약·키워드는 가장 풍부한 값, 이미지·LLM 산출은 최신 정상값. 한 레코드의 정확한 시각과 다른 레코드의 풍부한 본문이 동시에 보존된다. 병합 메타(`merged_record_count`·`original_urls`) 파생 컬럼 제공, link 없는 행은 병합 대상 제외(과거 link dedup 은 링크 없는 행들을 전부 붕괴시켰음 — 유실 해소). 병합 후 `sort_at` 재산출.
+- **목록/상세 API에 `article_id` 노출** (`api/routers/news.py`): 후속 페이지네이션(Step 3)·기사↔작업 links(Step 6)의 키. dict 응답이라 OpenAPI 스냅샷 무변경.
+- 저장 스키마 무변경 — 식별·병합은 전부 로드 시 파생(재실행 가능, 원본 보존). 규칙 변경 시 IDENTITY/MERGE_VERSION 증가로 파생 데이터 재빌드 트리거.
+- 검증: 신규 테스트 10건(`tests/test_article_identity.py` — 추적파라미터 수렴·식별파라미터 보존·충돌 가드·시각/본문/이미지 교차 병합·enrich 전후 병합·결정성) 포함 pytest 534 passed · 금지패턴 0.
+
 ### Fixed (수집 본문·사진 누락 급증 회귀 재균형 + 반복수집 가속) — `fix-collect-completeness-rebalance`
 - 수집 파이프라인 전수점검 결과, 본문/이미지 추출 로직 자체는 견고했고 **직전 성능 PR들의 과최적화가 누락을 키운** 것으로 판단 → 완성도 우선으로 재균형:
   - **enrich 배치 데드라인 45s → 90s** (`scraping/enrich.py`): 45s 는 느린 백엔드에서 정상 기사까지 abandon 해 본문·사진 누락을 늘렸다. 데드라인은 '무한 대기 방지 백스톱'이지 일상 컷오프가 아니므로 넉넉히. 정상 수집은 끝까지 완료, 무한 대기만 차단.

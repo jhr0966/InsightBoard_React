@@ -17,10 +17,11 @@ router = APIRouter(prefix="/api/news", tags=["news"])
 _LIST_CONTENT_MAX = 4000
 
 # 목록 응답 필드. content 는 카드·표가 본문을 보여주도록 포함(길이 제한 절단).
+# article_id 는 안정 식별자(정규화 URL 해시) — 후속 페이지네이션·links 의 키.
 _LIST_FIELDS = (
     "title", "press", "date", "published_at", "link", "summary",
     "keywords", "source", "query", "image_url", "summary_llm", "collected_at",
-    "content",
+    "content", "article_id",
 )
 # 상세 응답 — 목록 + 전체 본문/enrich 필드.
 _DETAIL_FIELDS = _LIST_FIELDS + ("keywords_llm", "enriched_at")

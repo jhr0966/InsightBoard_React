@@ -1,5 +1,12 @@
 """뉴스 article dict 리스트 ↔ 일자별 Parquet 저장소.
 
+기사 식별·중복 병합 계약 (Step 2 `feat-article-identity`):
+  조회 결과에는 파생 컬럼 `article_id`(정규화 URL 해시, `store/article_id.py`)가
+  붙는다. 같은 `article_id` 의 중복 레코드는 **행 단위 승자 선택이 아니라
+  필드 단위 병합**(`_merge_duplicates`, MERGE_VERSION)으로 하나가 된다 —
+  한 레코드의 정확한 게시시각과 다른 레코드의 풍부한 본문·이미지를 모두 보존.
+  원본 parquet 은 변형하지 않는다(병합은 로드 시 파생 — 언제든 재실행 가능).
+
 조회(load_*) 반환 계약 — 결정적 최신순:
   모든 조회 결과는 `sort_at` 내림차순 + `link` 오름차순(tie-break)으로 정렬된다.
   `sort_at` 은 저장 컬럼이 아니라 로드 시 계산되는 **파생 컬럼**:
@@ -18,6 +25,7 @@ from pathlib import Path
 import pandas as pd
 
 from config import NEWS_DIR
+from store.article_id import article_id as _article_id
 from store.paths import latest_parquet, news_dir_for
 
 logger = logging.getLogger(__name__)
@@ -102,6 +110,111 @@ def _with_sort_at(df: pd.DataFrame, *, fallback_day: str = "") -> pd.DataFrame:
     return df
 
 
+# 필드 단위 병합 정책 버전 — 규칙 변경 시 +1 (docs/INVARIANTS.md I-15).
+MERGE_VERSION = 1
+
+
+def _with_identity(df: pd.DataFrame) -> pd.DataFrame:
+    """파생 컬럼 `article_id` 계산 (원본 link 는 그대로 보존)."""
+    if df.empty:
+        df["article_id"] = pd.Series(dtype=str)
+        return df
+    df["article_id"] = df["link"].map(_article_id)
+    return df
+
+
+def _longest(values: list[str]) -> str:
+    """비어 있지 않은 값 중 가장 긴 것 (없으면 '')."""
+    best = ""
+    for v in values:
+        if len(v) > len(best):
+            best = v
+    return best
+
+
+def _last_nonempty(values: list[str]) -> str:
+    for v in reversed(values):
+        if v:
+            return v
+    return ""
+
+
+def _merge_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+    """같은 article_id 레코드들을 **필드 단위**로 병합 (MERGE_VERSION=1).
+
+    행 단위 승자 선택(keep="last")은 '정확한 게시시각을 가진 레코드'와 '본문이
+    풍부한 레코드'가 다를 때 정보를 잃는다 → 필드별 규칙으로 합친다:
+
+      published_at(_norm)  가장 이른 저장본의 비어 있지 않은 원문 게시시각
+      collected_at         가장 최근 수집시각 (정규화 비교)
+      content / summary / keywords   비어 있지 않은 값 중 가장 풍부한(긴) 값
+      image_url            가장 나중 저장본의 비어 있지 않은 값 (enrich 보강 우선)
+      summary_llm / keywords_llm / enriched_at   가장 나중의 정상(비어 있지 않은) 결과
+      나머지(title·press·source·query·link 등)   가장 나중 저장본(대표 레코드) 기준
+      merged_record_count / original_urls        병합 메타 (파생 컬럼)
+
+    link 가 비어 article_id 가 없는 행은 병합하지 않고 그대로 남긴다(유실 금지).
+    입력 순서 = 로드 순서(과거→오늘·파일명순) 가정 — "나중 = 최신 저장본".
+    """
+    if df.empty:
+        df["merged_record_count"] = pd.Series(dtype=int)
+        df["original_urls"] = pd.Series(dtype=str)
+        return df
+    ids = df["article_id"].tolist()
+    # 빈 id(링크 없음)는 행마다 고유 키 — 절대 서로 합쳐지지 않는다.
+    keys = [aid if aid else f"__row{i}" for i, aid in enumerate(ids)]
+    if len(set(keys)) == len(keys):  # 중복 없음 — 빠른 경로
+        df = df.copy()
+        df["merged_record_count"] = 1
+        df["original_urls"] = df["link"]
+        return df
+
+    order: list[str] = []
+    groups: dict[str, list[dict]] = {}
+    for key, rec in zip(keys, df.to_dict("records")):
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(rec)
+
+    merged_rows: list[dict] = []
+    for key in order:
+        rows = groups[key]
+        if len(rows) == 1:
+            row = dict(rows[0])
+            row["merged_record_count"] = 1
+            row["original_urls"] = str(row.get("link") or "")
+            merged_rows.append(row)
+            continue
+        cols = {c: [str(r.get(c) or "") for r in rows] for c in rows[0]}
+        out = dict(rows[-1])  # 대표 = 가장 나중 저장본
+        # 원문 게시시각 — 가장 이른 저장본의 비어 있지 않은 값(원본이 정확).
+        for i, v in enumerate(cols["published_at_norm"]):
+            if v:
+                out["published_at_norm"] = v
+                out["published_at"] = cols["published_at"][i]
+                break
+        # 수집시각 — 정규화 비교로 최신.
+        col_norm = [(_norm_ts(v), v) for v in cols["collected_at"]]
+        out["collected_at"] = max(col_norm)[1] if any(n for n, _ in col_norm) else ""
+        out["content"] = _longest(cols["content"])
+        out["summary"] = _longest(cols["summary"])
+        out["keywords"] = _longest(cols["keywords"])
+        out["image_url"] = _last_nonempty(cols["image_url"])
+        out["summary_llm"] = _last_nonempty(cols["summary_llm"])
+        out["keywords_llm"] = _last_nonempty(cols["keywords_llm"])
+        out["enriched_at"] = _last_nonempty(cols["enriched_at"])
+        # sort_at 재산출 — 병합된 published/collected 기준(둘 다 없으면 그룹 max 유지).
+        out["sort_at"] = (out.get("published_at_norm")
+                          or _norm_ts(out.get("collected_at"))
+                          or max(cols["sort_at"]))
+        out["merged_record_count"] = len(rows)
+        seen_links = list(dict.fromkeys(v for v in cols["link"] if v))
+        out["original_urls"] = "|".join(seen_links)
+        merged_rows.append(out)
+    return pd.DataFrame(merged_rows)
+
+
 def _sorted_latest(df: pd.DataFrame) -> pd.DataFrame:
     """결정적 최신순 — sort_at 내림차순, 동률은 link 오름차순(안정 tie-break)."""
     if df.empty or "sort_at" not in df.columns:
@@ -153,11 +266,14 @@ def _normalize_loaded(df: pd.DataFrame, *, day: str = "") -> pd.DataFrame:
             df[col] = ""
     # 과거 parquet 의 NaN 도 "" 로 — 다운스트림 `if image_url:` 가 'nan' 문자열에
     # 속지 않게(C2). collected_at 없던 과거 데이터는 빈값으로 남는다(정렬 시 뒤로).
-    return _with_sort_at(df[list(_ARTICLE_COLS)].fillna(""), fallback_day=day)
+    return _with_identity(_with_sort_at(df[list(_ARTICLE_COLS)].fillna(""), fallback_day=day))
 
 
 def _empty_frame() -> pd.DataFrame:
-    return _with_sort_at(pd.DataFrame(columns=list(_ARTICLE_COLS)))
+    df = _with_identity(_with_sort_at(pd.DataFrame(columns=list(_ARTICLE_COLS))))
+    df["merged_record_count"] = pd.Series(dtype=int)
+    df["original_urls"] = pd.Series(dtype=str)
+    return df
 
 
 def load_latest(source: str | None = None) -> pd.DataFrame:
@@ -176,7 +292,7 @@ def load_all_today() -> pd.DataFrame:
     df = _load_day_frame(today)
     if df is None or df.empty:
         return _empty_frame()
-    return _sorted_latest(df.drop_duplicates(subset=["link"], keep="last"))
+    return _sorted_latest(_merge_duplicates(df))
 
 
 # 디스크 재읽기 캐시 2단 — (개선 백로그 #2 → 리팩토링: 일자별 dedup)
@@ -241,14 +357,15 @@ def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.Data
         now: 테스트용 시점 주입 (UTC).
 
     각 일자 디렉토리는 `data/news/YYYY-MM-DD/`. 존재하지 않으면 스킵.
-    중복 link 는 마지막(=최신 저장 시점) 항목 보존. 디스크 읽기는 일자별 메모
-    (`_day_frame_memo`)로 dedup — 윈도우 길이가 달라도 같은 날짜는 1회만 읽는다.
-    결과는 윈도우 시그니처가 동일하면 메모이즈본을 `.copy()` 로 반환(호출부의
-    in-place 변형으로부터 캐시 보호).
+    같은 article_id(정규화 URL) 중복은 **필드 단위 병합**(`_merge_duplicates`) —
+    enrich 보강본의 본문·이미지와 원본의 게시시각을 모두 보존. 디스크 읽기는
+    일자별 메모(`_day_frame_memo`)로 dedup — 윈도우 길이가 달라도 같은 날짜는
+    1회만 읽는다. 결과는 윈도우 시그니처가 동일하면 메모이즈본을 `.copy()` 로
+    반환(호출부의 in-place 변형으로부터 캐시 보호).
 
     반환 순서는 **결정적 최신순**(sort_at desc, link asc — 모듈 docstring 계약).
-    dedup(keep="last") 은 정렬 **전에** 로드 순서(과거→오늘·파일명순) 기준으로
-    수행한다 — "나중 저장본(enrich 보강본) 우선" 의미론 유지.
+    병합은 정렬 **전에** 로드 순서(과거→오늘·파일명순) 기준으로 수행한다 —
+    "나중 저장본 = 최신"이라는 필드 병합 규칙의 전제.
     """
     if days < 1:
         raise ValueError("days must be >= 1")
@@ -271,9 +388,7 @@ def load_news_for_days(days: int = 7, *, now: datetime | None = None) -> pd.Data
             frames.append(day_df)
     result = (
         _empty_frame() if not frames
-        else _sorted_latest(
-            pd.concat(frames, ignore_index=True).drop_duplicates(subset=["link"], keep="last")
-        )
+        else _sorted_latest(_merge_duplicates(pd.concat(frames, ignore_index=True)))
     )
     _news_window_memo[key] = (sig, result)
     return result.copy()

@@ -67,4 +67,8 @@ React 는 기본적으로 텍스트를 escape 한다. `dangerouslySetInnerHTML` 
 
 ## I-14 — 뉴스 조회는 결정적 최신순 (`store/news_db.py`)
 
-`load_news_for_days`/`load_all_today`/`load_latest` 의 반환은 **`sort_at` 내림차순 + `link` 오름차순(tie-break)** 이다. `sort_at` 은 저장 컬럼이 아닌 로드 시 파생 컬럼: `published_at` 정규화(UTC ISO8601) → `collected_at` 정규화 → 일자 디렉토리 날짜 폴백. 파싱 실패 행도 목록에서 제거하지 않는다(맨 뒤). 다운스트림(`head(limit)`·`slice(0,N)`)은 이 계약에 의존하므로, **정렬 없이 concat 결과를 반환하거나 정렬 전에 limit 를 적용하는 변경 금지**. link 중복 제거(keep="last" = 나중 저장본 우선)는 정렬 **전** 로드 순서 기준 — 순서를 바꾸면 enrich 보강본이 원본에 가려진다. 회귀 가드: `tests/test_news_ordering.py`.
+`load_news_for_days`/`load_all_today`/`load_latest` 의 반환은 **`sort_at` 내림차순 + `link` 오름차순(tie-break)** 이다. `sort_at` 은 저장 컬럼이 아닌 로드 시 파생 컬럼: `published_at` 정규화(UTC ISO8601) → `collected_at` 정규화 → 일자 디렉토리 날짜 폴백. 파싱 실패 행도 목록에서 제거하지 않는다(맨 뒤). 다운스트림(`head(limit)`·`slice(0,N)`)은 이 계약에 의존하므로, **정렬 없이 concat 결과를 반환하거나 정렬 전에 limit 를 적용하는 변경 금지**. 중복 병합(I-15)은 정렬 **전** 로드 순서 기준 — "나중 = 최신 저장본" 전제가 깨지면 enrich 보강본 우선 규칙이 뒤집힌다. 회귀 가드: `tests/test_news_ordering.py`.
+
+## I-15 — 기사 식별은 article_id, 중복은 필드 단위 병합 (`store/article_id.py`·`news_db._merge_duplicates`)
+
+기사 식별자는 **정규화 URL 해시 `article_id`** — 정규화는 추적 파라미터(utm_* 등)만 제거하고 식별 파라미터(articleId·idxno·seq 등)는 유지한다(전체 쿼리 제거 금지 — 다른 기사가 합쳐진다). 원본 `link` 는 변형·유실 금지. 같은 article_id 의 중복 레코드는 행 단위 승자 선택이 아니라 **필드 단위 병합**(게시시각=가장 이른 원본, 본문=가장 풍부, 이미지·LLM=최신)으로 합친다. 식별·병합은 전부 로드 시 파생 — parquet 원본을 재작성하지 않는다. 규칙을 바꾸면 `IDENTITY_VERSION`/`MERGE_VERSION` 을 올려 파생 데이터(article_task_links 등)를 재빌드한다. 회귀 가드: `tests/test_article_identity.py`.
