@@ -1624,7 +1624,10 @@ export interface operations {
     chat_stream_api_assistant_chat_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1659,7 +1662,10 @@ export interface operations {
                 days?: number;
                 query?: string;
             };
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1717,7 +1723,10 @@ export interface operations {
                 /** @description 캐시 무시 재생성 */
                 force?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1752,7 +1761,10 @@ export interface operations {
                 days?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1788,7 +1800,10 @@ export interface operations {
                 /** @description 상태 필터(pending/adopted/rejected) */
                 status?: string | null;
             };
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1817,7 +1832,10 @@ export interface operations {
     create_bookmark_api_bookmarks_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1975,7 +1993,10 @@ export interface operations {
     run_collect_api_collect_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2100,7 +2121,10 @@ export interface operations {
     run_collect_stream_api_collect_stream_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2133,7 +2157,10 @@ export interface operations {
     record_api_feedback_events_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2423,7 +2450,10 @@ export interface operations {
             query?: {
                 days?: number;
             };
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2619,7 +2649,10 @@ export interface operations {
     get_persona_api_persona_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2634,12 +2667,24 @@ export interface operations {
                     "application/json": components["schemas"]["PersonaModel"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     put_persona_api_persona_put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2672,7 +2717,10 @@ export interface operations {
     derive_persona_api_persona_derive_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2685,6 +2733,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonaModel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2692,7 +2749,10 @@ export interface operations {
     reset_persona_api_persona_reset_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2707,12 +2767,24 @@ export interface operations {
                     "application/json": components["schemas"]["PersonaModel"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     generate_api_proposals_generate_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2745,7 +2817,10 @@ export interface operations {
     refine_api_proposals_refine_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2778,7 +2853,10 @@ export interface operations {
     summarize_api_proposals_summarize_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2998,7 +3076,10 @@ export interface operations {
                 /** @description true=기존 데이터셋 교체 */
                 replace?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3033,7 +3114,10 @@ export interface operations {
     preview_upload_api_taskdefs_upload_preview_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3099,7 +3183,10 @@ export interface operations {
     upsert_taskdef_api_taskdefs__process_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path: {
                 process_id: string;
             };
@@ -3134,7 +3221,10 @@ export interface operations {
     delete_taskdef_api_taskdefs__process_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path: {
                 process_id: string;
             };
@@ -3198,7 +3288,10 @@ export interface operations {
     list_threads_api_threads_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3215,12 +3308,24 @@ export interface operations {
                     }[];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_thread_api_threads_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

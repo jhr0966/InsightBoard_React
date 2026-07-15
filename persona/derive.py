@@ -232,7 +232,7 @@ def match_task_defs(interests: list[str]) -> list[dict]:
 
 # ── 통합 진입점 ──────────────────────────────────────────────
 
-def derive_and_store(persona: Persona, *, force: bool = False) -> Persona:
+def derive_and_store(persona: Persona, *, force: bool = False, user: str = "local") -> Persona:
     """관심사 추출 + 작업정의 매칭 → persona derived 필드 갱신·영구 저장.
 
     Args:
@@ -248,7 +248,7 @@ def derive_and_store(persona: Persona, *, force: bool = False) -> Persona:
         persona.matched_processes = match_task_defs(interests)
         persona.derived_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         persona.derived_source = source
-        persona_store.save(persona)
+        persona_store.save(persona, user=user)
     except Exception:  # noqa: BLE001 — 분석 실패가 프로필 저장 흐름을 깨면 안 됨
         pass
     return persona

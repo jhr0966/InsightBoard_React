@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 멀티유저 기반 — X-User-Id 경량 식별·격리 (`feat-identity-threading`)
+
+**무엇을**: api/deps.py 가 X-User-Id/X-Workspace-Id(신뢰 프록시 주입 전제 — 인증 아님, I-17)를 정제해 Identity 주입. persona 를 profiles/{user}.json 으로(레거시 자동 이관·원본 보존), threads 소유자 기록, bookmarks/threads 목록·feedback dismiss·digest/brief/proposals/assistant 를 사용자별로 격리. 파일 저장소는 파일럿 한정(DB 필요) 명문화. 개편 로드맵 Step 10.
+
+**조치**: 2인 격리 테스트 6건 포함 pytest 580, OpenAPI 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 11 IA 재편(Feed 신설·Collect 관리 전용·Board 다이어트·nav 재구성) → Step 12 사례 라이브러리.
+
+---
+
 ## 2026-07-15 — feat: 개인화 다이제스트 + 피드백 이벤트 (`feat-personal-digest`)
 
 **무엇을**: store/rank.py(신선도+관심 키워드+links 관심공정 가중, RANKING_VERSION)와 "왜 내 업무 관련" 규칙 문장(LLM 미사용), store/feedback.py(repository seam — impression/open/save/dismiss+ranking_version, dismiss 는 랭킹 제외 신호), GET /api/board/digest + /brief 입력 랭킹화(board_brief 재사용), Board 탑스토리 → 오늘의 다이제스트(왜 관련+저장/관련없음 버튼+이벤트 기록). 개편 로드맵 Step 9.

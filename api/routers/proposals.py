@@ -54,7 +54,7 @@ class ProposalOut(BaseModel):
 @router.post("/generate", response_model=ProposalOut)
 def generate(
     body: ProposalGenerateIn,
-    _identity: Identity = Depends(current_identity),
+    identity: Identity = Depends(current_identity),
 ) -> ProposalOut:
     """제안서 생성 — 선택 작업과 **매칭된 근거 기사**(links)만 주입 (Step 8).
 
@@ -74,7 +74,7 @@ def generate(
              if not news_df.empty and not roadmap_df.empty else None)
     evidence = select_evidence(body.task, links, news_df, max_items=body.max_news)
 
-    persona = persona_store.load()
+    persona = persona_store.load(identity.user_id)
     text = _llm_or_http(
         lambda: propose_for_task(body.task, news_df, persona=persona, evidence=evidence),
         what="제안서 생성",
@@ -94,7 +94,7 @@ class ProposalRefineIn(BaseModel):
 @router.post("/refine", response_model=ProposalOut)
 def refine(
     body: ProposalRefineIn,
-    _identity: Identity = Depends(current_identity),
+    identity: Identity = Depends(current_identity),
 ) -> ProposalOut:
     """현재 제안서 MD + 사용자 지시 → 다듬은 제안서 MD (`sola.refine` 위임).
 
@@ -102,7 +102,7 @@ def refine(
     """
     from sola.refine import refine_proposal
 
-    persona = persona_store.load()
+    persona = persona_store.load(identity.user_id)
     text = _llm_or_http(
         lambda: refine_proposal(body.proposal, body.instruction, persona=persona),
         what="제안서 다듬기",
