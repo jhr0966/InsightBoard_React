@@ -401,6 +401,24 @@
         "title": "DiagnoseIn",
         "type": "object"
       },
+      "FeedbackEventsIn": {
+        "properties": {
+          "events": {
+            "description": "[{action_type, article_id?, process_id?, context?, ranking_version?}]",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "FeedbackEventsIn",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1319,6 +1337,68 @@
         ]
       }
     },
+    "/api/board/digest": {
+      "get": {
+        "description": "오늘의 개인화 다이제스트 — 기사 3~5건 + '왜 내 업무와 관련 있는가'.\n\n랭킹·이유는 links(저장된 매칭)와 페르소나의 규칙 조합(LLM 미사용,\nstore/rank.py). '관련 없음'(dismiss) 처리한 기사는 제외된다.",
+        "operationId": "board_digest_api_board_digest_get",
+        "parameters": [
+          {
+            "description": "다이제스트 대상 기간",
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "description": "다이제스트 대상 기간",
+              "maximum": 30,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Board Digest Api Board Digest Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Board Digest",
+        "tags": [
+          "board"
+        ]
+      }
+    },
     "/api/bookmarks": {
       "get": {
         "operationId": "list_bookmarks_api_bookmarks_get",
@@ -1796,6 +1876,72 @@
         "summary": "Run Collect Stream",
         "tags": [
           "collect"
+        ]
+      }
+    },
+    "/api/feedback/events": {
+      "post": {
+        "operationId": "record_api_feedback_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackEventsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Record Api Feedback Events Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/feedback/summary": {
+      "get": {
+        "operationId": "summary_api_feedback_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Summary Api Feedback Summary Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Summary",
+        "tags": [
+          "feedback"
         ]
       }
     },

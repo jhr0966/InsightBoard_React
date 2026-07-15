@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added (개인화 다이제스트 + 피드백 이벤트) — `feat-personal-digest`
+- **개인화 랭킹** (`store/rank.py`, `RANKING_VERSION=1`, LLM 미사용): 점수 = 신선도(48h 감쇠) + 관심 키워드 일치 + links 연결 가중(**관심 공정/작업 연결은 강가중**, 그 외 약가중). "부서·직무 고려 맞춤 정보 제공"의 첫 구현 — 이제 도장부와 용접부 사용자의 상위 기사가 다르다.
+- **"왜 내 업무와 관련 있는가"**: 저장된 매칭 이유(matched_terms)+페르소나 신호의 **규칙 조합 문장**(기사×사용자 LLM 대량 생성 금지 — 계획 §8). 예: "내 관심 공정의 '도장 검사' 작업과 연결 — 기사의 '막두께·측정' 신호 · 관심 키워드 '막두께' 언급".
+- **피드백 이벤트** (`store/feedback.py` — repository seam I-8, `api/routers/feedback.py`, 계획 §12): impression/open/save/dismiss/case_open/proposal_created + `ranking_version` 기록 → "노출됐지만 무시 vs 노출 안 됨" 구분 가능. **'관련 없음'은 숨김이 아니라 저장되는 신호** — 다음 다이제스트에서 제외. 식별 필드 stamp(I-7)로 멀티유저(Step 10) 대비. 최근 5,000건 유지 트림.
+- **`GET /api/board/digest`**: 개인화 기사 3~5건+why+linked_task. `/brief` 입력도 랭킹 상위 기사로 확장(신규 모듈 중복 생성 없이 `board_brief` 재사용 — 계획 Phase5).
+- **Board 화면**: "탑 스토리"(수집 순서 나열) → **"오늘의 다이제스트"** — 기사별 💡왜 관련 한 줄 + 💾저장 + 관련 없음 버튼, 노출/열람/저장/관련없음 이벤트 자동 기록.
+- 검증: 신규 테스트 7건(`tests/test_personal_digest.py` — 관심 공정/키워드 부스트·why 조합·dismiss 제외·결정성·이벤트 기록/검증/식별 스탬프·dismiss 루프 통합) 포함 pytest 574 passed · OpenAPI 53 paths 재생성 · 웹 빌드 OK · 금지패턴 0.
+
 ### Fixed (제안서 근거 연결 — 무관 뉴스 주입 버그) — `fix-proposal-grounding`
 - **제안서가 작업과 무관한 뉴스로 생성되던 결함 수정** (`sola/propose.py`·`api/routers/proposals.py`): 과거엔 최근 뉴스 df 앞쪽 10건(작업과 무관)을 "[관련 뉴스]"로 주입 → 일반론 제안서. 이제 **저장된 links 에서 선택 작업과 실제 매칭된 기사만** 선정: 관련도 임계값(최고점 대비 0.25 — 실측: 무관 혼입 85→40%) + 신선도 가점(7일 내 ×1.15) + 출처 다양성(언론사당 최대 2건). 매칭 기사가 없으면 최근 뉴스로 위장하지 않고 "근거 없음"을 명시(§11-1).
 - **매칭 이유 주입**: 프롬프트의 각 [근거 N]에 매칭 용어·이유 문장(`render_match_reason`)·게시일 포함. 응답(`ProposalOut`)에 `evidence`(제목·링크·이유·article_id)·`matching_version`·`prompt_version` 반환.

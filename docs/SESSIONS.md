@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 개인화 다이제스트 + 피드백 이벤트 (`feat-personal-digest`)
+
+**무엇을**: store/rank.py(신선도+관심 키워드+links 관심공정 가중, RANKING_VERSION)와 "왜 내 업무 관련" 규칙 문장(LLM 미사용), store/feedback.py(repository seam — impression/open/save/dismiss+ranking_version, dismiss 는 랭킹 제외 신호), GET /api/board/digest + /brief 입력 랭킹화(board_brief 재사용), Board 탑스토리 → 오늘의 다이제스트(왜 관련+저장/관련없음 버튼+이벤트 기록). 개편 로드맵 Step 9.
+
+**조치**: 신규 테스트 7건 포함 pytest 574, OpenAPI 53 paths, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 10 멀티유저 기반(X-User-Id 관통·사용자별 persona/threads 격리+2인 테스트) → Step 11 IA 재편(Feed 신설·Board 다이어트).
+
+---
+
 ## 2026-07-15 — fix: 제안서 근거 연결 — links 기반 근거·이유 주입 (`fix-proposal-grounding`)
 
 **무엇을**: 제안서가 최근 뉴스 앞쪽 N건(무관)으로 생성되던 결함 수정 — links 에서 선택 작업과 매칭된 기사만(임계 0.25·신선도 가점·출처 다양성) 선정해 매칭 용어·이유와 함께 주입. 프롬프트 v2(사실/가정/추정·PoC·KPI·30/60/90). ProposalOut 에 evidence·버전 반환, Bookmark.meta 신설로 제안서↔근거 관계 저장, 화면에 근거 목록 표시. 수직 흐름(작업→관련뉴스→이유→근거 제안서→근거 재확인) 통합 테스트로 고정. 개편 로드맵 Step 8 — **Step 0~8 전부 완료, 수직 흐름 안정**.

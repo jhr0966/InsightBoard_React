@@ -57,6 +57,27 @@ export interface NewsListPage {
   next_cursor: string | null;
 }
 
+// GET /api/board/digest — 개인화 다이제스트 (Step 9).
+export interface DigestItem {
+  article_id: string;
+  link: string;
+  title: string;
+  press?: string;
+  source?: string;
+  image_url?: string;
+  sort_at?: string;
+  excerpt?: string;
+  why: string;               // "왜 내 업무와 관련 있는가" — 규칙 조합 문장
+  score: number;
+  linked_task?: string;
+  ranking_version: number;
+}
+export interface DigestPage {
+  items: DigestItem[];
+  ranking_version: number;
+  persona_set: boolean;
+}
+
 export interface KeywordCount { keyword: string; count: number; }
 export interface DayCount { date: string; count: number; }
 export interface SourceCount { source: string; count: number; }
