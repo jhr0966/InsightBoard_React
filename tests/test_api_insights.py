@@ -10,7 +10,9 @@ client = TestClient(app)
 
 def test_heatmap_shape_empty():
     body = client.get("/api/insights/heatmap").json()
-    assert body["cols"] == ["비전", "협동 로봇", "예지보전", "디지털 트윈", "AGV", "AI", "외골격"]
+    # Step 7: 열은 하드코딩 7종이 아니라 taxonomy(안정 ID·alias)를 따른다.
+    from store import taxonomy
+    assert body["cols"] == [c["name"] for c in taxonomy.heatmap_columns()]
     assert body["rows"] == []  # 로드맵/뉴스 없음
     assert body["data"] == []
 

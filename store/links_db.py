@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from store import taxonomy
 from store.article_id import IDENTITY_VERSION, article_id
 from store.match import DEFAULT_SEMANTIC_WEIGHT, MATCHING_VERSION, score_matches
 from store.paths import roadmap_dir
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 # 저장 top_k — 최대 소비자(히트맵 20) 기준. 소비자별로 slice_top_k 로 자른다.
 STORE_TOP_K = 20
 
-_JSON_COLS = ("score_components", "matched_terms", "matched_fields")
+_JSON_COLS = ("score_components", "matched_terms", "matched_fields", "technology_ids")
 
 
 def db_path() -> Path:
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS article_task_links (
   score_components TEXT NOT NULL DEFAULT '{}',
   matched_terms    TEXT NOT NULL DEFAULT '[]',
   matched_fields   TEXT NOT NULL DEFAULT '[]',
+  technology_ids   TEXT NOT NULL DEFAULT '[]',
   matching_version INTEGER NOT NULL,
   identity_version INTEGER NOT NULL,
   created_at       TEXT NOT NULL,
@@ -92,6 +94,11 @@ CREATE TABLE IF NOT EXISTS links_index_state (
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_SCHEMA)
+    # 마이그레이션 — CREATE TABLE IF NOT EXISTS 는 기존 테이블에 새 컬럼을 못 넣는다.
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(article_task_links)")}
+    if "technology_ids" not in cols:
+        conn.execute("ALTER TABLE article_task_links "
+                     "ADD COLUMN technology_ids TEXT NOT NULL DEFAULT '[]'")
 
 
 def _now_iso() -> str:
@@ -109,34 +116,39 @@ def _window_sig(news_df: pd.DataFrame, roadmap_df: pd.DataFrame) -> str:
            else sorted(article_id(str(l)) for l in news_df.get("link", pd.Series(dtype=str))))
     tkeys = sorted(_task_key(r) for r in roadmap_df.to_dict("records"))
     payload = json.dumps(
-        [ids, tkeys, MATCHING_VERSION, IDENTITY_VERSION, STORE_TOP_K],
+        [ids, tkeys, MATCHING_VERSION, IDENTITY_VERSION,
+         taxonomy.TAXONOMY_VERSION, STORE_TOP_K],
         ensure_ascii=False,
     )
     return hashlib.md5(payload.encode("utf-8")).hexdigest()
 
 
-def _store(days: int, sig: str, matches: pd.DataFrame) -> None:
+def _store(days: int, sig: str, matches: pd.DataFrame,
+           tech_tags: dict[str, list[str]] | None = None) -> None:
     """윈도우의 links 를 원자적으로 교체 저장 (파생 데이터 — 재실행 가능)."""
     now = _now_iso()
+    tech_tags = tech_tags or {}
     rows = []
     if not matches.empty:
         rank = matches.groupby(["dept", "lv3", "task", "sub_task"]).cumcount() + 1
         for (_, m), rk in zip(matches.iterrows(), rank):
+            link = str(m.get("link", ""))
             rows.append((
-                days, _task_key(m), article_id(str(m.get("link", ""))), str(m.get("link", "")),
+                days, _task_key(m), article_id(link), link,
                 str(m.get("news_title", "")), str(m.get("dept", "")), str(m.get("lv1", "")),
                 str(m.get("lv2", "")), str(m.get("lv3", "")), str(m.get("task", "")),
                 str(m.get("sub_task", "")), float(m.get("score", 0) or 0), int(rk),
                 json.dumps(m.get("score_components") or {}, ensure_ascii=False),
                 json.dumps(list(m.get("matched_terms") or []), ensure_ascii=False),
                 json.dumps(list(m.get("matched_fields") or []), ensure_ascii=False),
+                json.dumps(tech_tags.get(link, []), ensure_ascii=False),
                 MATCHING_VERSION, IDENTITY_VERSION, now,
             ))
     with _connect() as conn:
         conn.execute("DELETE FROM article_task_links WHERE window_days = ?", (days,))
         conn.executemany(
             "INSERT OR REPLACE INTO article_task_links VALUES "
-            "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+            "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
         conn.execute(
             "INSERT OR REPLACE INTO links_index_state VALUES (?,?,?,?,?,?,?)",
             (days, sig, MATCHING_VERSION, IDENTITY_VERSION, now,
@@ -189,8 +201,17 @@ def matches_for_window(
             logger.warning("links 저장본 읽기 실패 — 라이브 계산으로 폴백", exc_info=True)
     live = score_matches(news_df, roadmap_df, top_k=STORE_TOP_K,
                          semantic_weight=semantic_weight)
+    # 기술 태깅(taxonomy ID — 문자열 아님, 계획 §10) — 기사 텍스트에서 alias 매칭.
+    tags: dict[str, list[str]] = {}
+    if not live.empty:
+        text_cols = [c for c in ("title", "summary", "keywords", "keywords_llm", "content")
+                     if c in news_df.columns]
+        for rec in news_df.to_dict("records"):
+            link = str(rec.get("link", ""))
+            if link:
+                tags[link] = taxonomy.tag_text(" ".join(str(rec.get(c, "")) for c in text_cols))
     try:
-        _store(days, sig, live)
+        _store(days, sig, live, tags)
     except sqlite3.Error:
         logger.warning("links 저장 실패 — 다음 조회에서 재시도", exc_info=True)
     if live.empty:
@@ -198,6 +219,7 @@ def matches_for_window(
     live = live.copy()
     live["rank"] = live.groupby(["dept", "lv3", "task", "sub_task"]).cumcount() + 1
     live["article_id"] = live["link"].map(lambda l: article_id(str(l)))
+    live["technology_ids"] = live["link"].map(lambda l: tags.get(str(l), []))
     return live
 
 

@@ -1,7 +1,8 @@
 """인사이트 분석 보조 API — 공정×자동화기술 히트맵.
 
-행=`score_cells` 상위 공정(Lv3), 열=고정 기술 7종(ui/insights_v2 승계).
-셀 값 = "그 공정에 매칭된 뉴스" 중 해당 기술 키워드를 언급한 기사 수.
+행=`score_cells` 상위 공정(Lv3), 열=**기술 taxonomy**(`store/taxonomy.py` — Step 7,
+과거 하드코딩 7종 문자열 대체). 셀 값 = "그 공정에 매칭된 뉴스" 중 해당 기술
+(이름+alias — 예: 비전 AI·머신비전→컴퓨터 비전)을 언급한 기사 수.
 
 ⚠ 공정↔뉴스 연결은 `store.match.score_matches`(토큰/의미유사도) 를 재사용한다.
 과거엔 공정명(lv3) 문자열을 뉴스 본문에서 그대로 substring 검색했는데, 실데이터의
@@ -16,11 +17,9 @@ from fastapi import APIRouter, Query
 
 from roadmap import query as roadmap_query
 from sola.opportunity import score_cells
-from store import news_db
+from store import news_db, taxonomy
 
 router = APIRouter(prefix="/api/insights", tags=["insights"])
-
-TECHS = ["비전", "협동 로봇", "예지보전", "디지털 트윈", "AGV", "AI", "외골격"]
 
 # 공정당 연결할 뉴스 상한 — 히트맵은 '관련 여부' 집계라 랭킹용(5)보다 넉넉히 잡아
 # 신호를 충분히 모은다(일자별 뉴스 수가 상한이라 비용은 제한적).
@@ -130,12 +129,16 @@ def heatmap(
                 break
 
     by_lv3 = _matched_news_by_lv3(news, roadmap, days=days)
+    cols = taxonomy.heatmap_columns()
     data: list[list[int]] = []
     for p in procs:
         texts = [_row_text(r) for r in by_lv3.get(p, [])]
-        data.append([sum(1 for tx in texts if t.lower() in tx) for t in TECHS])
+        data.append([
+            sum(1 for tx in texts if taxonomy.mentions(tx, c["technology_id"]))
+            for c in cols
+        ])
 
-    return {"rows": procs, "cols": TECHS, "data": data}
+    return {"rows": procs, "cols": [c["name"] for c in cols], "data": data}
 
 
 @router.get("/heatmap-cell")
@@ -155,10 +158,12 @@ def heatmap_cell(
         return []
     roadmap = roadmap_query.load_latest()
     recs = _matched_news_by_lv3(news, roadmap, days=days).get(row, [])
-    cl = col.lower()
+    # col = 기술 표시 이름 → taxonomy ID 로 역해석해 alias 까지 매칭.
+    tech_id = taxonomy.id_by_name(col)
     out: list[dict] = []
     for rec in recs:
-        if cl in _row_text(rec):
+        tx = _row_text(rec)
+        if taxonomy.mentions(tx, tech_id) if tech_id else (col.lower() in tx):
             out.append({
                 "title": rec.get("title", ""), "link": rec.get("link", ""),
                 "press": rec.get("press", ""), "source": rec.get("source", ""),
@@ -167,3 +172,16 @@ def heatmap_cell(
             if len(out) >= limit:
                 break
     return out
+
+
+@router.get("/taxonomy")
+def taxonomy_list() -> list[dict]:
+    """기술 분류 체계 — 안정 ID·alias·계층 (Step 7). 관리 CRUD 는 Step 11 예정.
+
+    운영 편집은 `data/taxonomy/taxonomy.json` 오버라이드 파일(시드 폴백).
+    """
+    return [{
+        "technology_id": t["technology_id"], "name": t["name"],
+        "parent_id": t.get("parent_id"), "aliases": list(t.get("aliases") or []),
+        "description": t.get("description", ""), "active": bool(t.get("active", True)),
+    } for t in taxonomy.load()]

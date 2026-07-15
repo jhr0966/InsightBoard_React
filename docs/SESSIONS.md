@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 기술 taxonomy — 안정 ID·alias·버전 (`feat-tech-taxonomy`)
+
+**무엇을**: store/taxonomy.py 신설 — 히트맵 하드코딩 7종을 안정 ID(TECH-*)+alias+TAXONOMY_VERSION 체계로 교체(시드 10종, data/taxonomy/taxonomy.json 오버라이드). 히트맵 열·셀·클릭이 alias 매칭으로 전환, GET /api/insights/taxonomy 추가. links 에 technology_ids(ID) 태깅(ALTER 마이그레이션+시그니처에 taxonomy 버전 포함). 개편 로드맵 Step 7.
+
+**조치**: 신규 테스트 6건 포함 pytest 562, OpenAPI 51 paths 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 8 `fix-proposal-grounding` — links 근거(min_score_ratio 0.25)+이유 주입, 사실/가정/추정·PoC·KPI 섹션, 제안서↔근거 저장. 완료 후 수직 흐름 검증.
+
+---
+
 ## 2026-07-15 — feat: 기사↔작업 관계 저장소 article_task_links (`feat-article-task-links`)
 
 **무엇을**: store/links_db.py 신설 — 매칭 결과+결정적 이유를 SQLite 에 저장(write-through: 시그니처 일치 시 저장본, 새 수집/버전 변경 시 재계산·저장). 수집과 인덱싱 분리(cron 말미 rebuild + 관리자 rebuild-links API + links-status). 기회 매트릭스·히트맵·matches API 를 저장본 소비로 전환(매 요청 전체 재계산 제거, top_k=20+rank 슬라이스로 라이브와 동일 결과 보장). 개편 로드맵 Step 6.
