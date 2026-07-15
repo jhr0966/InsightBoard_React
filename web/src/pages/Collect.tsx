@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, streamCollect } from "../api/client";
 import type { CollectEvent, CollectSaved, CollectErr } from "../api/client";
 import { KPIStatGrid, Tabs, EmptyState, Modal, Badge } from "../components/ui";
@@ -21,9 +21,16 @@ export default function Collect() {
   const { query } = useGlobalSearch();
   const q = query.trim().toLowerCase();
 
-  const news = useQuery({ queryKey: ["news", 30], queryFn: () => api.news.list({ days: 30, limit: 300 }) });
+  // 커서 페이지네이션 — 60건씩, "더 보기"로 이어서 로드(과거 limit=300 단발 로드는
+  // 본문 포함 1MB+ 응답을 만들었다. 목록은 이제 발췌만 와서 가볍다).
+  const news = useInfiniteQuery({
+    queryKey: ["news", 30],
+    queryFn: ({ pageParam }) => api.news.list({ days: 30, limit: 60, cursor: pageParam || undefined }),
+    initialPageParam: "",
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+  });
   const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
-  const all = news.data ?? [];
+  const all = useMemo(() => (news.data?.pages ?? []).flatMap((p) => p.items), [news.data]);
 
   const cats = useMemo(() => all.filter((a) => newsCategory(a.source) === cat), [all, cat]);
   const channels = useMemo(() => ["전체", ...Array.from(new Set(cats.map((a) => articleChannel(a).label)))], [cats]);
@@ -92,7 +99,8 @@ export default function Collect() {
       {view === "browse" ? (
         <BrowseView cat={cat} setCat={(c) => { setCat(c); setChan("전체"); }}
           channels={channels} chan={chan} setChan={setChan} items={items} q={query} onOpen={setOpen}
-          loading={news.isLoading} />
+          loading={news.isLoading} hasMore={!!news.hasNextPage}
+          loadingMore={news.isFetchingNextPage} onMore={() => news.fetchNextPage()} />
       ) : (
         <SettingsView onCollect={(kw) => runCollect(kw)} collecting={running} />
       )}
@@ -188,10 +196,11 @@ function CollectButton({ pending, onRun }: { pending: boolean; onRun: () => void
   return <button className="btn primary" disabled={pending} onClick={onRun}>{pending ? "수집 중…" : "🔄 지금 수집"}</button>;
 }
 
-function BrowseView({ cat, setCat, channels, chan, setChan, items, q, onOpen, loading }: {
+function BrowseView({ cat, setCat, channels, chan, setChan, items, q, onOpen, loading, hasMore, loadingMore, onMore }: {
   cat: "keyword" | "portal"; setCat: (c: "keyword" | "portal") => void;
   channels: string[]; chan: string; setChan: (c: string) => void;
   items: NewsArticle[]; q: string; onOpen: (a: NewsArticle) => void; loading: boolean;
+  hasMore: boolean; loadingMore: boolean; onMore: () => void;
 }) {
   const [mode, setMode] = useState<"card" | "table">("card");
   return (
@@ -217,9 +226,15 @@ function BrowseView({ cat, setCat, channels, chan, setChan, items, q, onOpen, lo
       {loading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
         : items.length === 0 ? <EmptyState icon="🗞" title="기사가 없어요" hint="‘지금 수집’으로 수집을 시작하세요." />
         : mode === "table" ? <NewsTable items={items} onOpen={onOpen} />
-        : <div className="bd-grid">{items.slice(0, 48).map((a) => (
+        : <div className="bd-grid">{items.map((a) => (
             <div key={a.link} onClick={(e) => { e.preventDefault(); onOpen(a); }}><NewsCard article={a} /></div>
           ))}</div>}
+      {!loading && hasMore && (
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <button className="btn" disabled={loadingMore} onClick={onMore}>
+            {loadingMore ? "불러오는 중…" : "더 보기 ↓"}</button>
+        </div>
+      )}
     </>
   );
 }
@@ -230,7 +245,7 @@ function NewsTable({ items, onOpen }: { items: NewsArticle[]; onOpen: (a: NewsAr
       <table className="cl-table">
         <thead><tr><th>출처</th><th>제목</th><th>본문</th><th>키워드</th><th>수집</th></tr></thead>
         <tbody>
-          {items.slice(0, 200).map((a) => {
+          {items.map((a) => {
             const m = articleChannel(a);
             return (
               <tr key={a.link} onClick={() => onOpen(a)} style={{ cursor: "pointer" }}>

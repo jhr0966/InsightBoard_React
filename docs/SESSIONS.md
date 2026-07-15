@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 뉴스 목록 경량화 + 커서 페이지네이션 (`feat-news-pagination`)
+
+**무엇을**: 목록 API 에서 전체 본문 제외(excerpt≤300자·content_available 로 대체, 1MB+ 응답 해소), `{items, next_cursor}` 커서 페이지네이션(커서=sort_at::link, 결정적 정렬 기반이라 수집 개입에도 중복·누락 없음). Collect 는 useInfiniteQuery 60건씩+"더 보기". OpenAPI·타입 재생성. 개편 로드맵 Step 3.
+
+**조치**: 신규 테스트 5건 포함 pytest 539, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 4 매칭 품질 정답셋+평가 스크립트 → Step 5 match_reasons.
+
+---
+
 ## 2026-07-15 — feat: 기사 식별 article_id + 필드 단위 중복 병합 (`feat-article-identity`)
 
 **무엇을**: store/article_id.py 신설 — 보수적 URL 정규화(추적 파라미터만 제거, 식별 파라미터 유지)+안정 article_id+IDENTITY_VERSION. news_db 의 link dedup(keep=last, 행 단위 승자)을 필드 단위 병합(_merge_duplicates, MERGE_VERSION)으로 교체: 게시시각(가장 이른 원본)·본문(가장 풍부)·이미지/LLM(최신)을 동시 보존, merged_record_count·original_urls 메타. news API 에 article_id 노출(Step 3·6 키). 전부 로드 시 파생 — 저장 무변경·재실행 가능. 개편 로드맵 Step 2.

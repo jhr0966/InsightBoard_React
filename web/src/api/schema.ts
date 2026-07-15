@@ -388,7 +388,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List News */
+        /**
+         * List News
+         * @description 뉴스 목록 — 결정적 최신순 + 커서 페이지네이션.
+         *
+         *     응답: `{"items": [...], "next_cursor": str | null}`.
+         *     next_cursor 가 null 이면 마지막 페이지.
+         */
         get: operations["list_news_api_news_get"];
         put?: never;
         post?: never;
@@ -430,7 +436,7 @@ export interface paths {
         };
         /**
          * News Detail
-         * @description 단건 기사 상세 — 본문(content)·enrich 필드 포함. 목록의 link 로 조회.
+         * @description 단건 기사 상세 — 전체 본문(content)·enrich 필드 포함. 목록의 link 로 조회.
          */
         get: operations["news_detail_api_news_detail_get"];
         put?: never;
@@ -448,7 +454,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Today */
+        /**
+         * List Today
+         * @description 오늘 수집분 전체 — 보드 탑 스토리·신선도 배지용(하루치라 페이지네이션 없음).
+         */
         get: operations["list_today_api_news_today_get"];
         put?: never;
         post?: never;
@@ -2119,7 +2128,10 @@ export interface operations {
                 days?: number;
                 /** @description 출처 필터 */
                 source?: string | null;
-                limit?: number | null;
+                /** @description 페이지 크기 */
+                limit?: number;
+                /** @description 이전 응답의 next_cursor */
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -2135,7 +2147,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-                    }[];
+                    };
                 };
             };
             /** @description Validation Error */

@@ -29,27 +29,30 @@ def _seed():
 
 def test_news_list_and_source_filter():
     _seed()
-    alln = client.get("/api/news").json()
-    assert len(alln) == 2
-    # 카드·데이터표가 본문을 보여주도록 content 를 목록에 포함(길이 제한 절단).
-    assert "title" in alln[0] and "content" in alln[0]
-    naver = client.get("/api/news", params={"source": "naver"}).json()
+    page = client.get("/api/news").json()
+    alln = page["items"]
+    assert len(alln) == 2 and page["next_cursor"] is None
+    # 목록은 경량 — 전체 본문 대신 발췌(excerpt)·확보 여부만 (Step 3).
+    assert "title" in alln[0] and "excerpt" in alln[0] and "content_available" in alln[0]
+    assert "content" not in alln[0]
+    naver = client.get("/api/news", params={"source": "naver"}).json()["items"]
     assert [r["link"] for r in naver] == ["l1"]
 
 
-def test_news_list_truncates_content():
-    """목록 content 는 _LIST_CONTENT_MAX 로 절단(payload 절감), 상세는 전체."""
-    from api.routers.news import _LIST_CONTENT_MAX
+def test_news_list_excerpt_detail_full():
+    """목록은 발췌(≤_EXCERPT_MAX+…)·content_available 만, 전체 본문은 상세로 (Step 3)."""
+    from api.routers.news import _EXCERPT_MAX
 
     long_body = "가나다라마 " * 2000  # 충분히 길게
     news_db.save_articles(
         [{"title": "긴 본문", "link": "long1", "source": "naver", "date": _TODAY,
           "content": long_body}], source="naver")
-    row = next(r for r in client.get("/api/news").json() if r["link"] == "long1")
-    assert len(row["content"]) <= _LIST_CONTENT_MAX + 1  # 절단 + … 꼬리
-    assert row["content"].endswith("…")
+    row = next(r for r in client.get("/api/news").json()["items"] if r["link"] == "long1")
+    assert "content" not in row
+    assert len(row["excerpt"]) <= _EXCERPT_MAX + 1 and row["excerpt"].endswith("…")
+    assert row["content_available"] is True
     detail = client.get("/api/news/detail", params={"link": "long1"}).json()
-    assert len(detail["content"]) > _LIST_CONTENT_MAX  # 상세는 전체
+    assert len(detail["content"]) > _EXCERPT_MAX  # 상세는 전체
 
 
 def test_news_today():
@@ -58,7 +61,7 @@ def test_news_today():
 
 
 def test_news_empty_ok():
-    assert client.get("/api/news").json() == []
+    assert client.get("/api/news").json() == {"items": [], "next_cursor": None}
 
 
 def test_news_content_rate():

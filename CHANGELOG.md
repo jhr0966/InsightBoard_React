@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (뉴스 목록 경량화 + 커서 페이지네이션) — `feat-news-pagination`
+- **목록 API 경량화** (`api/routers/news.py`): 목록/오늘 응답에서 전체 본문(content) 제외 — 발췌 `excerpt`(≤300자)와 `content_available`(본문 확보 여부)로 대체. 기사 300건×본문 4,000자 ≈ 1MB+ 응답이 나오던 payload 문제 해소(전체 본문은 `/detail` 전용, 기존 유지).
+- **커서 페이지네이션** (`GET /api/news` → `{items, next_cursor}`): 커서 = 정렬키 그대로 `"{sort_at}::{link}"` (I-14 결정적 정렬 기준) → 페이지 사이에 새 수집이 끼어들어도 offset 과 달리 **중복·누락 없음**. 페이지 기본 60건, 잘못된 커서는 400.
+- **Collect 화면** (`Collect.tsx`): 단발 300건 로드 → `useInfiniteQuery` 60건씩 + "더 보기 ↓" 버튼. 카드 48장 절단·표 200행 절단 제거(페이지가 사용자 주도라 상한 불필요). `newsBody` 폴백에 excerpt 추가(카드·표 본문 표시 유지).
+- OpenAPI 스냅샷·`web/src/api/schema.ts` 재생성, `types.ts` 에 `NewsListPage`·excerpt/content_available/article_id/sort_at 수동 타입 추가.
+- 검증: 신규 페이지네이션 테스트 5건(`tests/test_news_pagination.py` — 전체 순회 무중복·수집 개입 시 커서 안정성·마지막 페이지·불량 커서 400·출처 필터 조합) 포함 pytest 539 passed · 웹 빌드 OK · 금지패턴 0.
+
 ### Added (기사 식별 article_id + 필드 단위 중복 병합) — `feat-article-identity`
 - **신규 `store/article_id.py`**: 보수적 URL 정규화(`canonical_url`) + 안정 식별자(`article_id`, md5 16hex) + `IDENTITY_VERSION=1`. 추적 파라미터(utm_*·fbclid·gclid 등)만 제거하고 **기사 식별 파라미터(articleId·idxno·seq 등)는 유지** — 전체 쿼리 제거로 다른 기사가 합쳐지는 사고 방지. 도메인별 규칙(`DOMAIN_RULES`) 확장 구조. 원본 URL 은 절대 변형하지 않음(식별 계산 전용).
 - **필드 단위 중복 병합** (`store/news_db._merge_duplicates`, `MERGE_VERSION=1`): 같은 article_id 레코드를 행 단위 승자 선택(keep="last") 대신 **필드별 규칙으로 병합** — 게시시각은 가장 이른 원본, 수집시각은 최신, 본문·요약·키워드는 가장 풍부한 값, 이미지·LLM 산출은 최신 정상값. 한 레코드의 정확한 시각과 다른 레코드의 풍부한 본문이 동시에 보존된다. 병합 메타(`merged_record_count`·`original_urls`) 파생 컬럼 제공, link 없는 행은 병합 대상 제외(과거 link dedup 은 링크 없는 행들을 전부 붕괴시켰음 — 유실 해소). 병합 후 `sort_at` 재산출.
