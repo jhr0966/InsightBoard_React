@@ -1,0 +1,39 @@
+{
+ "gold_version": 1,
+ "matching_version": 2,
+ "semantic_weight": 4.0,
+ "top_k": 5,
+ "labeled_tasks": 20,
+ "recall_at_3": 0.784,
+ "precision_at_3": 0.483,
+ "precision_at_5": 0.34,
+ "strict_precision_at_3": 0.383,
+ "irrelevant_in_top3_rate": 0.85,
+ "tasks_no_result_rate": 0.0,
+ "article_hit_bias_top5": [
+  [
+   "https://gold.example.com/a11",
+   6
+  ],
+  [
+   "https://gold.example.com/a04",
+   6
+  ],
+  [
+   "https://gold.example.com/a03",
+   6
+  ],
+  [
+   "https://gold.example.com/a18",
+   5
+  ],
+  [
+   "https://gold.example.com/a19",
+   5
+  ]
+ ],
+ "source_bias": {
+  "google": 21,
+  "naver": 38
+ }
+}

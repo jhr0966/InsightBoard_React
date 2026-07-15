@@ -54,9 +54,11 @@ def test_evaluate_metrics_on_toy_gold():
         "labels": [{"article": "s1", "task_key": "D||L||용접 작업", "relevance": "strong"}],
     }
     r = eval_mod.evaluate(toy, semantic_weight=0.0)
-    # 매칭되는 기사는 s1 뿐 → top3 = [s1] → P@3=1.0, 무관 혼입 0, 결과없음 0
-    assert r["precision_at_3"] == 1.0
-    assert r["strict_precision_at_3"] == 1.0
+    # 매칭되는 기사는 s1 뿐 → top3=[s1]. P@K 분모는 항상 K(부풀림 금지) → 1/3.
+    # 상한 대비 recall 은 1/1 = 100%.
+    assert r["recall_at_3"] == 1.0
+    assert r["precision_at_3"] == round(1 / 3, 3)
+    assert r["strict_precision_at_3"] == round(1 / 3, 3)
     assert r["irrelevant_in_top3_rate"] == 0.0
     assert r["tasks_no_result_rate"] == 0.0
 

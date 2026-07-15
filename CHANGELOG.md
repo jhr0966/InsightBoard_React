@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Changed (매칭 v2 — 필드별 가중·결정적 매칭 이유·근거 임계값) — `feat-match-reasons`
+- **`store/match.py` 매칭 v2** (`MATCHING_VERSION=2`): ①뉴스 필드별 가중 분리(제목×3·키워드×2·요약×1 — v1은 전 필드 동일 가중 합산) ②토큰 중첩에 **IDF 가중**(자동화·로봇 같은 범용 단어가 여러 작업 top3 에 반복 등장하는 편중 억제) ③**작업명 정확 일치 보너스**(+3, task/sub_task 원문이 제목에 등장) ④한국어 **조사 제거 토큰화**("결함을"↔"결함" 매칭 — 비파괴검사 등에서 정답 기사를 놓치던 원인).
+- **결정적 매칭 이유 반환** (계획 §8 — LLM 미사용): `score_components`(성분별 점수, 합=총점 보장)·`matched_terms`(기여 상위 용어)·`matched_fields`·`matching_version` 컬럼 추가. 표시 문장은 `render_match_reason()` 규칙 조합. Step 6 links 저장의 데이터 원천.
+- **근거 선정 임계값** `min_score_ratio`(기본 0=하위호환): 작업별 최고점 대비 꼬리 후보 제거. 정답셋 실측 — 0.25 에서 상위3 무관 혼입 85%→**40%**(recall@3 78→70%). 제안서 근거 선정(Step 8)은 0.25 사용 예정, 집계(히트맵)는 0 유지.
+- **평가 지표 수정** (`scripts/evaluate_matching.py`): P@K 분모를 항상 K 로(결과가 K 미만이어도 부풀리지 않음 — v1 리포트 51.7% 는 이 버그로 과대). **`recall_at_3`(작업별 정답 수 상한 대비 적중) 신설** — 정답 2개뿐인 작업의 P@3 상한(67%)에 눌리지 않는 핵심 지표. 동일 지표 기준 공정 비교: **v1 recall@3 75.7%·P@3 46.7% → v2 78.4%·48.3%** (개선 확인 후 채택). `report_matching_v2.json` 기록.
+- 검증: 신규 테스트 7건(`tests/test_match_reasons.py` — 성분·용어·필드·버전, 제목>요약 가중, 정확일치 보너스, 조사 매칭, 임계값, 이유 문장, 결정성) 포함 pytest 550 passed · 금지패턴 0 · 소비자(기회 매트릭스·히트맵)는 상대 순위 소비라 무해(점수 스케일만 변화).
+
 ### Added (매칭 품질 기준선 — 정답셋·평가 하네스) — `feat-matching-baseline`
 - **정답셋** `data/evaluation/matching_gold.json`: 조선소 도메인 기사 30건(무관 6건 포함) × 작업정의 20건 × 라벨 40건(strong/weak, 미기재=무관). **합성 시드** — 실서버 수집 기사로 교체·확장 전제(파일 note 에 명시). `.gitignore` 에 `data/evaluation/` 커밋 예외 추가.
 - **평가 스크립트** `scripts/evaluate_matching.py`: `score_matches` 를 정답셋으로 돌려 Precision@3/@5·Strict@3(strong만)·상위3 무관 혼입률·결과없음률·기사 반복등장 편중·출처 분포를 리포트(`--json`/`--save`). pytest 와 분리 — pytest(`tests/test_matching_eval.py` 4건)는 스키마·결정성·토이 정확성만 가드.

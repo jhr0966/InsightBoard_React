@@ -20,8 +20,9 @@ def test_semantic_weight_zero_is_backward_compatible():
     explicit0 = match.score_matches(news, tasks, top_k=5, semantic_weight=0.0)
     assert not base.empty
     assert float(base["score"].iloc[0]) == float(explicit0["score"].iloc[0])
-    # 토큰 1개(레이저)+1개(절단) 중첩 = 2.0 (의미 가산 없음)
-    assert float(base["score"].iloc[0]) == 2.0
+    # v2: 제목 중첩(레이저·절단)만 있고 의미 가산 없음 — 성분으로 검증(절대값은 idf 의존).
+    comps = base["score_components"].iloc[0]
+    assert comps.get("title_match", 0) > 0 and "semantic_similarity" not in comps
 
 
 def test_semantic_breaks_token_tie_by_idf_weight():
@@ -45,7 +46,7 @@ def test_semantic_breaks_token_tie_by_idf_weight():
     raw = match.score_matches(news, tasks.head(1), top_k=5)
     sa_raw = float(raw[raw["link"] == "A"]["score"].iloc[0])
     sb_raw = float(raw[raw["link"] == "B"]["score"].iloc[0])
-    assert sa_raw == sb_raw == 1.0
+    assert sa_raw == sb_raw  # 이 corpus 에선 idf 동일 → 동점 (v2: 절대값은 idf 의존)
 
     # semantic 켜면 task1 매칭에서 A(희소어 레이저) 가 B(흔한어 로봇) 보다 높다
     sem = match.score_matches(news, tasks, top_k=5,
