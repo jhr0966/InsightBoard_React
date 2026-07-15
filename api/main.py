@@ -15,6 +15,7 @@ from api.routers import (
     board,
     bookmarks,
     collect,
+    feedback,
     insights,
     matches,
     news,
@@ -110,3 +111,4 @@ app.include_router(prefs.router)
 app.include_router(sources.router)
 app.include_router(matches.router)
 app.include_router(insights.router)
+app.include_router(feedback.router)

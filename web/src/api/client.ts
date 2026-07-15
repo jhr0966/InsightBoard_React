@@ -9,6 +9,7 @@ import type {
   UploadPreview,
   KeywordCount,
   KeywordSeries,
+  DigestPage,
   NewsArticle,
   NewsListPage,
   OpportunityCell,
@@ -68,6 +69,9 @@ export const api = {
       req<{ brief: string; item_count: number; persona_label: string }>(
         `/api/board/brief${qs({ days })}`,
       ),
+    // 개인화 다이제스트 — 기사 3~5건 + "왜 내 업무와 관련 있는가"(규칙 조합).
+    digest: (limit = 5, days = 3) =>
+      req<DigestPage>(`/api/board/digest${qs({ limit, days })}`),
   },
 
   taskdefs: {
@@ -137,6 +141,14 @@ export const api = {
     contentRate: (days = 7) => req<{ total: number; ready: number; pct: number }>(`/api/news/content-rate${qs({ days })}`),
     detail: (link: string, days = 30) =>
       req<NewsArticle>(`/api/news/detail${qs({ link, days })}`),
+  },
+
+  feedback: {
+    // 노출/열람/저장/관련없음 이벤트 — 랭킹 평가·개인화 제외 목록의 원자료.
+    send: (events: Record<string, unknown>[]) =>
+      req<{ saved: number }>("/api/feedback/events", {
+        method: "POST", body: JSON.stringify({ events }),
+      }),
   },
 
   trends: {

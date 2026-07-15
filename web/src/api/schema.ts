@@ -89,6 +89,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/board/digest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Board Digest
+         * @description 오늘의 개인화 다이제스트 — 기사 3~5건 + '왜 내 업무와 관련 있는가'.
+         *
+         *     랭킹·이유는 links(저장된 매칭)와 페르소나의 규칙 조합(LLM 미사용,
+         *     store/rank.py). '관련 없음'(dismiss) 처리한 기사는 제외된다.
+         */
+        get: operations["board_digest_api_board_digest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bookmarks": {
         parameters: {
             query?: never;
@@ -251,6 +274,40 @@ export interface paths {
          *     살려둬 무료 호스팅의 프록시 idle 타임아웃(동기 수집의 'failed to fetch' 행)도 완화.
          */
         post: operations["run_collect_stream_api_collect_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/feedback/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record */
+        post: operations["record_api_feedback_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/feedback/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_api_feedback_summary_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1212,6 +1269,16 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** FeedbackEventsIn */
+        FeedbackEventsIn: {
+            /**
+             * Events
+             * @description [{action_type, article_id?, process_id?, context?, ranking_version?}]
+             */
+            events: {
+                [key: string]: unknown;
+            }[];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1678,6 +1745,41 @@ export interface operations {
             };
         };
     };
+    board_digest_api_board_digest_get: {
+        parameters: {
+            query?: {
+                /** @description 다이제스트 대상 기간 */
+                days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_bookmarks_api_bookmarks_get: {
         parameters: {
             query?: {
@@ -2024,6 +2126,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_api_feedback_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackEventsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summary_api_feedback_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

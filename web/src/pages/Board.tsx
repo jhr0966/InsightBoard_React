@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import type { DigestItem } from "../api/types";
 import { KPIStatGrid, EmptyState } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
@@ -21,15 +22,6 @@ function deltaClass(s: TrendSeriesItem): string {
   return "badge-default";
 }
 
-function LoadError({ msg, onRetry }: { msg: string; onRetry: () => void }) {
-  return (
-    <div className="card" style={{ margin: 0, display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
-      <span className="muted" style={{ fontSize: "var(--fs-caption)" }}>⚠️ {msg}</span>
-      <button className="btn" onClick={onRetry}>다시 시도</button>
-    </div>
-  );
-}
-
 function Section({ title, note, cta, children }: {
   title: string; note?: string; cta?: React.ReactNode; children: React.ReactNode;
 }) {
@@ -44,6 +36,83 @@ function Section({ title, note, cta, children }: {
     </section>
   );
 }
+
+// 오늘의 다이제스트 — 개인화 기사 3~5건 + 왜 관련 + 저장/관련없음 (Step 9).
+// 노출(impression)·저장(save)·관련없음(dismiss) 이벤트를 기록해 랭킹 개선의
+// 원자료로 쓴다 — '관련 없음'은 숨김이 아니라 저장되는 신호(계획 §12).
+function DigestSection() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const digest = useQuery({ queryKey: ["board", "digest"], queryFn: () => api.board.digest(5, 3) });
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const impressedRef = useRef(false);
+
+  useEffect(() => {
+    // 노출 이벤트 — 1회만(재렌더 중복 방지). 실패는 무시(랭킹 평가용 로그).
+    const items = digest.data?.items ?? [];
+    if (!items.length || impressedRef.current) return;
+    impressedRef.current = true;
+    void api.feedback.send(items.map((it) => ({
+      action_type: "impression", article_id: it.article_id,
+      context: "board_digest", ranking_version: it.ranking_version,
+    }))).catch(() => undefined);
+  }, [digest.data]);
+
+  const dismiss = useMutation({
+    mutationFn: (it: DigestItem) => api.feedback.send([{
+      action_type: "dismiss", article_id: it.article_id,
+      context: "board_digest", ranking_version: it.ranking_version,
+    }]),
+    onSuccess: (_d, it) => {
+      setHidden((h) => new Set(h).add(it.article_id));
+      toast.push("이 기사와 비슷한 항목의 우선순위를 낮출게요", "default");
+      qc.invalidateQueries({ queryKey: ["board", "digest"] });
+    },
+  });
+  const saveArticle = useMutation({
+    mutationFn: async (it: DigestItem) => {
+      await api.bookmarks.create({ type: "news", title: it.title, link: it.link,
+        content: it.excerpt ?? "" });
+      await api.feedback.send([{ action_type: "save", article_id: it.article_id,
+        context: "board_digest", ranking_version: it.ranking_version }]);
+    },
+    onSuccess: () => toast.push("💾 저장했어요", "success"),
+  });
+
+  const items = (digest.data?.items ?? []).filter((it) => !hidden.has(it.article_id));
+  return (
+    <Section title="오늘의 다이제스트" note="내 업무 기준 상위 기사">
+      {digest.isLoading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
+        : items.length === 0 ? <EmptyState icon="🗞" title="다이제스트가 비어 있어요"
+            hint={digest.data?.persona_set ? "수집이 쌓이면 내 업무 관련 기사가 골라집니다." : "페르소나를 설정하면 내 업무 기준으로 골라드려요."} />
+        : <div style={{ display: "grid", gap: 10 }}>
+          {items.map((it) => (
+            <div className="card" key={it.article_id} style={{ margin: 0, display: "grid", gap: 6 }}>
+              <a href={it.link} target="_blank" rel="noreferrer noopener"
+                style={{ fontWeight: 600, lineHeight: 1.4 }}
+                onClick={() => void api.feedback.send([{ action_type: "open",
+                  article_id: it.article_id, context: "board_digest",
+                  ranking_version: it.ranking_version }]).catch(() => undefined)}>
+                {it.title}
+              </a>
+              {it.excerpt && <div className="muted" style={{ fontSize: "var(--fs-caption)", lineHeight: 1.6 }}>{it.excerpt}</div>}
+              {it.why && <div style={{ fontSize: "var(--fs-caption)" }}>💡 {it.why}</div>}
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span className="muted" style={{ fontSize: "var(--fs-micro)", marginRight: "auto" }}>
+                  {it.press || it.source}{it.linked_task ? ` · ${it.linked_task}` : ""}
+                </span>
+                <button className="oa-mini" disabled={saveArticle.isPending}
+                  onClick={() => saveArticle.mutate(it)}>💾 저장</button>
+                <button className="oa-mini" disabled={dismiss.isPending}
+                  onClick={() => dismiss.mutate(it)}>관련 없음</button>
+              </div>
+            </div>
+          ))}
+        </div>}
+    </Section>
+  );
+}
+
 
 export default function Board() {
   const nav = useNavigate();
@@ -116,13 +185,8 @@ export default function Board() {
         </div>
       </Section>
 
-      {/* ③ 탑 스토리 */}
-      <Section title="탑 스토리" note="최근 수집 주요 기사">
-        {today.isLoading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
-          : today.isError ? <LoadError msg={(today.error as Error).message} onRetry={() => today.refetch()} />
-          : news.length === 0 ? <EmptyState icon="🗞" title="아직 수집된 뉴스가 없어요" hint="아래 키워드 관리에서 수집을 시작하세요." />
-          : <div className="bd-grid">{news.slice(0, 6).map((a) => <NewsCard key={a.link} article={a} />)}</div>}
-      </Section>
+      {/* ③ 오늘의 다이제스트 — 개인화 랭킹 + "왜 내 업무 관련" (Step 9) */}
+      <DigestSection />
 
       {/* ④ 자동화 제안 카드 */}
       <Section title="자동화 제안" note="부서 × 공정 기회 상위">
