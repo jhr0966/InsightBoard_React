@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from store import chat_log
 from store import sola_threads as threads_store
+
+from api.deps import Identity, current_identity
 
 router = APIRouter(prefix="/api/threads", tags=["threads"])
 
@@ -36,12 +38,14 @@ def _out(t) -> dict:
 
 
 @router.get("")
-def list_threads() -> list[dict]:
-    return [_out(t) for t in threads_store.list_threads()]
+def list_threads(identity: Identity = Depends(current_identity)) -> list[dict]:
+    # 사용자별 격리(Step 10) — 과거 스레드는 기본 사용자('local') 소유로 백필.
+    return [_out(t) for t in threads_store.list_threads(user=identity.user_id)]
 
 
 @router.post("")
-def create_thread(body: ThreadCreateIn) -> dict:
+def create_thread(body: ThreadCreateIn,
+                  identity: Identity = Depends(current_identity)) -> dict:
     """스레드 생성. title 이 비고 first_message 가 있으면 LLM 으로 제목 자동 생성.
 
     과거엔 프런트가 첫 메시지를 36자로 자른 제목을 보냈다 → 의미 없는 제목.
@@ -53,7 +57,8 @@ def create_thread(body: ThreadCreateIn) -> dict:
         from sola.thread_title import generate as _gen_title
 
         title = _gen_title(body.first_message)
-    return _out(threads_store.create(title))
+    return _out(threads_store.create(
+        title, user=identity.user_id, workspace=identity.workspace_id))
 
 
 @router.get("/{thread_id}")

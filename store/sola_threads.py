@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import SOLA_DIR, ensure_data_dirs
+from store._audit import DEFAULT_USER, DEFAULT_WORKSPACE
 
 
 # 후방 호환: A.3 의 단일 sola_main chat_key 를 자동 import 할 때 쓰는 thread id.
@@ -36,6 +37,9 @@ class Thread:
     updated_at: str = ""
     message_count: int = 0
     pinned: bool = False
+    # 식별 필드(Step 10) — 과거 레코드는 기본 사용자로 백필(하위호환).
+    user_id: str = DEFAULT_USER
+    workspace_id: str = DEFAULT_WORKSPACE
 
     @classmethod
     def from_dict(cls, d: dict) -> "Thread":
@@ -46,6 +50,8 @@ class Thread:
             updated_at=str(d.get("updated_at", "")),
             message_count=int(d.get("message_count", 0) or 0),
             pinned=bool(d.get("pinned", False)),
+            user_id=str(d.get("user_id") or DEFAULT_USER),
+            workspace_id=str(d.get("workspace_id") or DEFAULT_WORKSPACE),
         )
 
 
@@ -86,9 +92,14 @@ def _slug_id() -> str:
 
 # ── public API ──────────────────────────────────────────────
 
-def list_threads() -> list[Thread]:
-    """모든 thread — pinned 가 위, 동일 그룹 안에선 updated_at 내림차순."""
+def list_threads(user: str | None = None) -> list[Thread]:
+    """thread 목록 — pinned 가 위, 동일 그룹 안에선 updated_at 내림차순.
+
+    user 지정 시 그 사용자 것만(Step 10 격리). None = 전체(내부·관리용).
+    """
     threads = _read_all()
+    if user is not None:
+        threads = [t for t in threads if t.user_id == user]
     return sorted(
         threads,
         key=lambda t: (
@@ -115,14 +126,17 @@ def get(thread_id: str) -> Thread | None:
     return None
 
 
-def create(title: str = "") -> Thread:
-    """새 thread 생성 + 영구화. id 는 자동 슬러그."""
+def create(title: str = "", *, user: str = DEFAULT_USER,
+           workspace: str = DEFAULT_WORKSPACE) -> Thread:
+    """새 thread 생성 + 영구화. id 는 자동 슬러그. 소유자 기록(Step 10)."""
     now = _now_iso()
     th = Thread(
         id=_slug_id(),
         title=(title or _DEFAULT_TITLE)[:_TITLE_MAX],
         created_at=now,
         updated_at=now,
+        user_id=user,
+        workspace_id=workspace,
     )
     all_ = _read_all()
     all_.append(th)

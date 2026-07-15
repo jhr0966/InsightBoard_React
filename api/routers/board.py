@@ -5,7 +5,9 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+
+from api.deps import Identity, current_identity
 
 from persona import store as persona_store
 from sola.board_brief import brief as _brief
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/api/board", tags=["board"])
 _ITEM_FIELDS = ("title", "source", "summary", "summary_llm", "link", "date")
 
 
-def _ranked_digest(days: int, limit: int, persona) -> list[dict]:
+def _ranked_digest(days: int, limit: int, persona, *, user: str = "local") -> list[dict]:
     """개인화 다이제스트 원자료 — links × 페르소나 랭킹 (Step 9).
 
     빈 결과여도 안전(신규 설치·수집 전) — 호출부가 최신순 폴백.
@@ -32,21 +34,22 @@ def _ranked_digest(days: int, limit: int, persona) -> list[dict]:
              if not roadmap.empty else None)
     return rank.rank_articles(
         news, persona, links, limit=limit,
-        exclude_article_ids=feedback.dismissed_article_ids())
+        exclude_article_ids=feedback.dismissed_article_ids(user=user))
 
 
 @router.get("/digest")
 def board_digest(
     days: int = Query(default=3, ge=1, le=30, description="다이제스트 대상 기간"),
     limit: int = Query(default=5, ge=1, le=12),
+    identity: Identity = Depends(current_identity),
 ) -> dict:
     """오늘의 개인화 다이제스트 — 기사 3~5건 + '왜 내 업무와 관련 있는가'.
 
     랭킹·이유는 links(저장된 매칭)와 페르소나의 규칙 조합(LLM 미사용,
     store/rank.py). '관련 없음'(dismiss) 처리한 기사는 제외된다.
     """
-    persona = persona_store.load()
-    items = _ranked_digest(days, limit, persona)
+    persona = persona_store.load(identity.user_id)
+    items = _ranked_digest(days, limit, persona, user=identity.user_id)
     from store.rank import RANKING_VERSION
 
     return {"items": items, "ranking_version": RANKING_VERSION,
@@ -58,13 +61,14 @@ def board_brief(
     days: int = Query(default=1, ge=1, le=30),
     limit: int = Query(default=12, ge=1, le=50),
     force: bool = Query(default=False, description="캐시 무시 재생성"),
+    identity: Identity = Depends(current_identity),
 ) -> dict:
     df = news_db.load_news_for_days(days)
     items: list[dict] = []
     # 브리핑 입력 = 개인화 랭킹 상위(있으면) — board_brief 모듈을 교체하지 않고
     # 입력만 랭킹 기사 묶음으로 확장(계획 Phase5: 신규 모듈 중복 생성 금지).
-    persona = persona_store.load()
-    ranked = _ranked_digest(max(days, 3), min(limit, 8), persona)
+    persona = persona_store.load(identity.user_id)
+    ranked = _ranked_digest(max(days, 3), min(limit, 8), persona, user=identity.user_id)
     if ranked:
         items = [{"title": r.get("title", ""), "source": r.get("source", ""),
                   "summary": r.get("excerpt", ""), "link": r.get("link", ""),

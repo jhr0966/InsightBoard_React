@@ -22,8 +22,11 @@ router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 def list_bookmarks(
     type: str | None = Query(default=None, description="타입 필터(news/proposal/...)"),
     status: str | None = Query(default=None, description="상태 필터(pending/adopted/rejected)"),
+    identity: Identity = Depends(current_identity),
 ) -> list[BookmarkOut]:
-    items = bookmarks.list_all(type_=type)
+    # 사용자별 격리(Step 10) — 과거 데이터(user_id 미기록→'local' 백필)와 호환.
+    items = [b for b in bookmarks.list_all(type_=type)
+             if b.user_id == identity.user_id and b.workspace_id == identity.workspace_id]
     if status:
         items = [b for b in items if b.status == status]
     return [BookmarkOut.from_bookmark(b) for b in items]

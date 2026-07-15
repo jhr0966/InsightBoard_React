@@ -76,3 +76,7 @@ React 는 기본적으로 텍스트를 escape 한다. `dangerouslySetInnerHTML` 
 ## I-16 — 기사↔작업 매칭은 links 저장본 경유 (`store/links_db.py`)
 
 전체 윈도우(뉴스 N일 × 작업정의)의 매칭 소비(기회 매트릭스·히트맵·matches API·제안서 근거)는 `links_db.matches_for_window()` 를 경유한다 — 화면 요청마다 `score_matches` 를 직접 돌리지 마라(과거 셀 클릭마다 전체 코퍼스 재계산). 예외: 부분 뉴스셋(키워드 필터 등)은 라이브 계산 허용. links 는 **파생 데이터**: 원본은 뉴스 parquet·로드맵이며, `MATCHING_VERSION`/`IDENTITY_VERSION` 이 바뀌면 stale → 자동 재빌드된다(수동 복구 불필요, 관리자 재빌드는 `POST /api/matches/rebuild-links`). 수집 요청 안에서 동기 인덱싱 금지 — 선워밍은 일일 cron 말미가 담당. 회귀 가드: `tests/test_links_db.py`.
+
+## I-17 — X-User-Id 는 인증이 아니다 (`api/deps.py`)
+
+`X-User-Id`/`X-Workspace-Id` 헤더는 **신뢰된 내부 프록시가 사용자 검증 후 주입**하는 전제에서만 쓴다 — 외부에 직접 노출된 배포에서 이 헤더만으로 사용자를 믿으면 안 된다(개발 환경 시뮬레이션은 허용). 값은 슬러그 정제(트래버설 차단)를 거친다. 실서비스 전환(SSO/토큰)은 `api/deps.current_identity` 한 곳만 교체 — 라우터·store 는 Identity 를 관통하므로 무변경. 사용자별 파일 저장소(`persona/profiles/*.json`·`threads.json`·JSONL)는 **단일 서버 파일럿 한정** — 실제 멀티유저 서비스는 DB 저장소(repository seam, I-8) 전환이 필요하다. 격리 가드: `tests/test_multiuser_isolation.py`.

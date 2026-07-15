@@ -126,6 +126,7 @@ def context(
     screen: str = "board",
     days: int = 7,
     query: str = "",
+    identity: Identity = Depends(current_identity),
 ) -> dict:
     """현재 화면 컨텍스트를 system 메시지용 문자열로 패키징.
 
@@ -141,7 +142,7 @@ def context(
     from persona import store as persona_store
     from sola import task_context
 
-    persona = persona_store.load()
+    persona = persona_store.load(identity.user_id)
     parts: list[str] = []
     labels: list[str] = []
 

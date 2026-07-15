@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (멀티유저 기반 — 경량 사용자 식별·데이터 격리) — `feat-identity-threading`
+- **`api/deps.py` — X-User-Id/X-Workspace-Id 경량 식별** (Step 10, 계획 §13): 헤더를 슬러그 정제(트래버설·이상문자·연속점 차단)해 Identity 주입. **인증이 아님** — 신뢰 프록시가 검증 후 주입하는 전제(파일·I-17 에 명문화), 미제공 시 기본값(local/default)이라 단일 사용자와 100% 호환. SSO/토큰 전환은 이 파일 한 곳 교체.
+- **사용자별 페르소나** (`persona/store.py`): `profiles/{user_id}.json` — 과거 단일 `profile.json` 은 기본 사용자로 **최초 접근 시 자동 이관(원본 보존)**. 온보딩 dismiss 마커도 사용자별.
+- **격리 관통**: persona(GET/PUT/derive/reset)·bookmarks 목록·threads(소유자 기록+목록 필터)·feedback dismiss·board digest/brief·proposals·assistant context 가 Identity 사용자 기준으로 동작. 과거 레코드는 기본 사용자 소유로 백필(하위호환).
+- **제한사항 문서화**(I-17 신설): 파일 저장소(profiles/threads.json/JSONL)는 단일 서버 파일럿 한정 — 실서비스 멀티유저는 DB 저장소(repository seam I-8) 필요.
+- 검증: 신규 격리 테스트 6건(`tests/test_multiuser_isolation.py` — persona/bookmarks/threads/dismiss 2인 격리·레거시 이관·헤더 위생) 포함 pytest 580 passed · OpenAPI 재생성(헤더 파라미터) · 금지패턴 0.
+
 ### Added (개인화 다이제스트 + 피드백 이벤트) — `feat-personal-digest`
 - **개인화 랭킹** (`store/rank.py`, `RANKING_VERSION=1`, LLM 미사용): 점수 = 신선도(48h 감쇠) + 관심 키워드 일치 + links 연결 가중(**관심 공정/작업 연결은 강가중**, 그 외 약가중). "부서·직무 고려 맞춤 정보 제공"의 첫 구현 — 이제 도장부와 용접부 사용자의 상위 기사가 다르다.
 - **"왜 내 업무와 관련 있는가"**: 저장된 매칭 이유(matched_terms)+페르소나 신호의 **규칙 조합 문장**(기사×사용자 LLM 대량 생성 금지 — 계획 §8). 예: "내 관심 공정의 '도장 검사' 작업과 연결 — 기사의 '막두께·측정' 신호 · 관심 키워드 '막두께' 언급".
