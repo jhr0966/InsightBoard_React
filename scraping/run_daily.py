@@ -36,6 +36,16 @@ class CollectionReport:
 
     saved: list[dict] = field(default_factory=list)
     errors: list[dict] = field(default_factory=list)
+    # 관측지표(Phase 0 보강) — run_log 가 그대로 기록. 소스 병렬 실행 후 합산.
+    #   cache_hits          캐시로 본문·이미지를 채워 네트워크를 건너뛴 기사 수
+    #   deadline_abandoned  enrich 데드라인 초과로 본문 없이 중단된 기사 수
+    #   enrich_skipped_cap  배치 상한(ENRICH_MAX_ARTICLES) 초과로 건너뛴 기사 수
+    #   content_ready       저장 기사 중 본문(≥50자) 확보 수
+    #   image_ready         저장 기사 중 대표 이미지 확보 수
+    stats: dict = field(default_factory=lambda: {
+        "cache_hits": 0, "deadline_abandoned": 0, "enrich_skipped_cap": 0,
+        "content_ready": 0, "image_ready": 0,
+    })
 
     @property
     def total_articles(self) -> int:
@@ -98,12 +108,42 @@ def collect_batch(
     selected = tuple(s for s in sources if s in SOURCE_IDS)
     keyword_list = [k.strip() for k in keywords if k and k.strip()]
 
+    # 오늘 이미 수집·enrich 한 기사 인덱스(스냅샷) — 같은 기사를 다시 fetch 하지 않게.
+    # 반복 수집을 크게 가속하고(네트워크 생략) 데드라인 abandon 도 줄인다.
+    # INSIGHTBOARD_ENRICH_CACHE=0 으로 끌 수 있다(캐시는 오늘 하루 범위 = 일 단위 TTL).
+    import config as _config
+
+    use_cache = do_enrich and _config.env_flag("INSIGHTBOARD_ENRICH_CACHE", True)
+    enriched_index = _enrich.load_today_enriched_index() if use_cache else {}
+
+    def _enrich_bucket(articles: list[dict]) -> dict:
+        """캐시로 본문·이미지 채운 뒤, 남은(새) 기사만 실제 네트워크 enrich.
+
+        반환: 이 버킷의 관측지표(캐시 적중·데드라인 중단·상한 스킵·본문/이미지 확보).
+        """
+        stats = {"cache_hits": 0, "deadline_abandoned": 0, "enrich_skipped_cap": 0,
+                 "content_ready": 0, "image_ready": 0}
+        if not articles:
+            return stats
+        if do_enrich:
+            stats["cache_hits"] = _enrich.apply_cached(articles, enriched_index)
+            es: dict = {}
+            _enrich.enrich_parallel(articles, with_llm=False, stats_out=es)
+            stats["deadline_abandoned"] = int(es.get("abandoned", 0))
+            stats["enrich_skipped_cap"] = int(es.get("skipped_cap", 0))
+        # 확보율 원자료 — enrich 여부와 무관하게 저장 직전 상태를 집계.
+        stats["content_ready"] = sum(
+            1 for a in articles if len(str(a.get("content") or "")) >= 50)
+        stats["image_ready"] = sum(1 for a in articles if str(a.get("image_url") or "").strip())
+        return stats
+
     # 소스별 처리를 (saved, errors) 를 돌려주는 순수 클로저로 분리 — 공유 report 를
     # 직접 건드리지 않으므로 스레드에서 동시 실행해도 안전(파일명은 source 별로 달라
     # 동시 저장 충돌 없음). 결과는 제출 순서대로 병합해 결정적 순서를 보존한다.
-    def _do_keyword_source(src: str) -> tuple[list[dict], list[dict]]:
+    def _do_keyword_source(src: str) -> tuple[list[dict], list[dict], dict]:
         saved: list[dict] = []
         errors: list[dict] = []
+        stats: dict = {}
         bucket: list[dict] = []
         used_keywords: list[str] = []
         for kw in keyword_list:
@@ -118,19 +158,19 @@ def collect_batch(
             except Exception as e:  # noqa: BLE001 — 개별 실패 격리
                 errors.append({"source": src, "keyword": kw, "error": str(e)})
         if bucket:
-            if do_enrich:
-                # 검색 결과는 content 가 비어 있다 → 링크에서 본문·og:image 를 병렬 fetch.
-                _enrich.enrich_parallel(bucket, with_llm=False)
+            # 캐시 채움 + 새 기사만 본문·og:image 병렬 fetch.
+            stats = _enrich_bucket(bucket)
             path = save_articles(bucket, source=src)
             saved.append({
                 "source": src, "keywords": used_keywords,
                 "count": len(bucket), "path": str(path) if path else "",
             })
-        return saved, errors
+        return saved, errors, stats
 
-    def _do_tech() -> tuple[list[dict], list[dict]]:
+    def _do_tech() -> tuple[list[dict], list[dict], dict]:
         saved: list[dict] = []
         errors: list[dict] = []
+        stats: dict = {}
         try:
             # 사이트별 HTTP 실패를 errors 로 표면화 → '수집 헬스' 가 감지.
             articles = tech_sites.search_all(
@@ -141,8 +181,7 @@ def collect_batch(
                 # 사이트별 진행 — 모달에 'AI Times'·'오토메이션월드'를 개별 표시.
                 on_site=(lambda site, n: on_step("tech", site, n)) if on_step else None,
             )
-            if do_enrich:
-                _enrich.enrich_parallel(articles, with_llm=False)
+            stats = _enrich_bucket(articles)
             path = save_articles(articles, source="tech")
             # 사이트별 건수 — UI 가 press(사이트명) 기준으로 나눠 표시.
             sites: dict[str, int] = {}
@@ -156,17 +195,17 @@ def collect_batch(
             })
         except Exception as e:  # noqa: BLE001
             errors.append({"source": "tech", "keyword": "", "error": str(e)})
-        return saved, errors
+        return saved, errors, stats
 
-    def _do_feed(name: str, url: str) -> tuple[list[dict], list[dict]]:
+    def _do_feed(name: str, url: str) -> tuple[list[dict], list[dict], dict]:
         saved: list[dict] = []
         errors: list[dict] = []
+        stats: dict = {}
         from scraping import rss as _rss
         try:
             articles = _rss.fetch(url, source_name=name, max_results=max_results)
             if articles:
-                if do_enrich:
-                    _enrich.enrich_parallel(articles, with_llm=False)
+                stats = _enrich_bucket(articles)
                 path = save_articles(articles, source=name)
                 saved.append({
                     "source": name, "keywords": [], "count": len(articles),
@@ -176,10 +215,10 @@ def collect_batch(
                 on_step(name, "", len(articles))
         except Exception as e:  # noqa: BLE001
             errors.append({"source": name, "keyword": "", "error": str(e)})
-        return saved, errors
+        return saved, errors, stats
 
     # 작업 목록 — 소스(naver/google/tech) + 커스텀 RSS 피드. 제출 순서 = 병합 순서.
-    tasks: list[Callable[[], tuple[list[dict], list[dict]]]] = []
+    tasks: list[Callable[[], tuple[list[dict], list[dict], dict]]] = []
     for src in selected:
         if src in KEYWORD_SOURCES:
             tasks.append(lambda s=src: _do_keyword_source(s))
@@ -199,8 +238,10 @@ def collect_batch(
     with ThreadPoolExecutor(max_workers=min(8, len(tasks))) as ex:
         futures = [ex.submit(fn) for fn in tasks]
         for fut in futures:
-            saved, errors = fut.result()
+            saved, errors, stats = fut.result()
             report.saved.extend(saved)
             report.errors.extend(errors)
+            for k, v in (stats or {}).items():
+                report.stats[k] = report.stats.get(k, 0) + int(v or 0)
 
     return report

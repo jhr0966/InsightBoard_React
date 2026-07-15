@@ -63,6 +63,30 @@ def _env_or_secret(name: str, default: str = "") -> str:
         return default
 
 
+def env_int(name: str, default: int) -> int:
+    """정수 환경변수 — 파싱 실패/미설정 시 default (수집 튜닝 노브용, I-6)."""
+    try:
+        return int(_env_or_secret(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def env_float(name: str, default: float) -> float:
+    """실수 환경변수 — 파싱 실패/미설정 시 default."""
+    try:
+        return float(_env_or_secret(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def env_flag(name: str, default: bool) -> bool:
+    """불리언 환경변수 — "0"/"false"/"no"/"off" 만 False, 그 외 비어있지 않으면 True."""
+    raw = _env_or_secret(name, "").strip().lower()
+    if not raw:
+        return default
+    return raw not in {"0", "false", "no", "off"}
+
+
 def llm_provider() -> str:
     """LLM 제공자 계열 — 호출 SDK/메시지 포맷을 결정한다.
 

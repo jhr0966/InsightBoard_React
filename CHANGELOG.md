@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+### Fixed (수집 본문·사진 누락 급증 회귀 재균형 + 반복수집 가속) — `fix-collect-completeness-rebalance`
+- 수집 파이프라인 전수점검 결과, 본문/이미지 추출 로직 자체는 견고했고 **직전 성능 PR들의 과최적화가 누락을 키운** 것으로 판단 → 완성도 우선으로 재균형:
+  - **enrich 배치 데드라인 45s → 90s** (`scraping/enrich.py`): 45s 는 느린 백엔드에서 정상 기사까지 abandon 해 본문·사진 누락을 늘렸다. 데드라인은 '무한 대기 방지 백스톱'이지 일상 컷오프가 아니므로 넉넉히. 정상 수집은 끝까지 완료, 무한 대기만 차단.
+  - **본문 fetch 재시도 1 → 2회**: 일시적 실패(5xx·연결 끊김) 복구율↑.
+  - **enrich 병렬 워커 10 → 4** (원형 `News_Proto MAX_CONTENT_WORKERS=4` 와 동일): 워커를 키우면 느린 백엔드에서 동시 bs4 파싱이 CPU 를 경합해 기사당 처리가 오히려 느려지고 데드라인에 걸려 누락이 늘었다. 원형의 검증된 수치로 복귀(소스 병렬이라 실제 동시 fetch = 소스수×4).
+- **근거 정정(사실관계)**: News_Proto 레포는 당시 세션 GitHub 범위 밖이라 **소스를 직접 열람·대조하지 못했다** — "직접 비교 완료"는 과장이었고, 인용 수치(워커 4 등)는 이전 대화 기록 기반의 미검증 참고값이다. 재균형의 **검증 가능한 실질 근거는 본 레포 자체 이력**: 워커 6→10 상향(#52)·데드라인 45s 도입(#56) 시점과 본문·사진 누락 증가가 일치하며, 워커 4 는 #52 이전 값(6)보다도 보수적인 안전측 선택이다. 실효성은 병합 후 run 로그 관측지표로 판정한다(아래 보강).
+- **반복 수집 가속 — 재fetch 회피 캐시** (`enrich.load_today_enriched_index`/`apply_cached`, `run_daily`): 오늘 이미 수집·enrich 한 기사(같은 RSS/검색 결과가 매번 다시 나옴)는 본문·이미지를 캐시에서 채워 **네트워크를 건너뛴다** → 반복 수집이 크게 빨라지고 데드라인 abandon 도 감소(속도+완성도 동시 개선).
+- **(보강) 수집 관측지표** (`run_daily.CollectionReport.stats` → `store/run_log.py`): 병합·튜닝 판단을 테스트 개수가 아닌 실측으로 하도록, 매 수집 런에 **본문 확보 건수/율·이미지 확보 건수/율·캐시 적중 수·데드라인 중단 수·상한 스킵 수**를 기록(전체 실행시간 `duration_s`·출처별 오류는 기존 필드). `enrich_parallel(stats_out=)` 로 중단 수 표면화 — 반환 계약(기사 리스트)은 하위호환.
+- **(보강) 수집 튜닝 노브 환경변수화** (`config.env_int/env_float/env_flag` 신설, I-6 준수): `INSIGHTBOARD_ENRICH_WORKERS`(4)·`INSIGHTBOARD_ENRICH_CONNECT_S`(10)/`READ_S`(20)·`INSIGHTBOARD_ENRICH_DEADLINE_S`(90)·`INSIGHTBOARD_ENRICH_BUDGET_S`(25)·`INSIGHTBOARD_ENRICH_CACHE`(on, 일 단위 범위)·`INSIGHTBOARD_ENRICH_MAX_ARTICLES`(0=무제한). 기본값 = 이 PR 의 검증값 — 배포(Render)에서 코드 수정 없이 조정, 오타 값은 기본값 폴백.
+- 검증: 신규 테스트(캐시 채움·재fetch 스킵·빈약본문 제외·재시도2 + 지표 7건 `tests/test_collect_metrics.py`) 포함 pytest 524 passed · 금지패턴 0.
 ### Fixed (뉴스 조회 결정적 최신순 — 최신 기사 잘림·출처 편향) — `fix-news-ordering`
 - **뉴스 조회가 최신순이 아니던 구조 결함 수정** (`store/news_db.py`): `load_news_for_days`/`load_all_today` 가 일자 프레임을 과거→오늘 순으로 합치기만 하고 정렬하지 않아 ①다운스트림 `head(limit)` 이 **가장 오래된 기사**를 취했고(윈도우 기사 수 > limit 이면 최신 날짜가 통째로 잘림 — Collect 30일 뷰) ②보드 탑 스토리·브리핑 입력이 파일명 사전순(출처 알파벳순) 편향이었다. 이제 모든 조회는 **`sort_at` 내림차순 + `link` 오름차순(tie-break) 결정적 정렬**로 반환.
 - **혼재 타임스탬프 정규화**: `published_at` 이 소스별로 ISO+offset(+09:00)·UTC·RFC822·date-only 로 혼재해 문자열 정렬이 불가능했다 → 로드 시 UTC ISO8601 로 통일한 파생 컬럼 `published_at_norm`·`sort_at` 계산(저장 스키마 무변경). 폴백 체인: published_at 정규화 → collected_at 정규화 → 일자 디렉토리 날짜. 파싱 실패 행도 유실 없이 맨 뒤 배치.

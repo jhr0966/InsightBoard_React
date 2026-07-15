@@ -675,8 +675,8 @@ def test_get_article_response_skips_fallback_when_over_budget(monkeypatch):
     assert len(gets) == 1
 
 
-def test_fetch_article_uses_low_retry_session():
-    """fetch_article 은 best-effort → build_session(total_retries=1)."""
+def test_fetch_article_uses_bounded_retry_session():
+    """fetch_article 은 일시적 실패 복구로 재시도 2회(완성도 우선, 무제한 아님)."""
     captured = {}
 
     def _fake_build(**kw):
@@ -685,13 +685,17 @@ def test_fetch_article_uses_low_retry_session():
 
     with patch.object(enrich, "build_session", _fake_build):
         enrich.fetch_article("https://example.com/a")
-    assert captured.get("total_retries") == 1
+    assert captured.get("total_retries") == 2
 
 
-def test_enrich_parallel_default_workers_raised():
+def test_enrich_parallel_default_workers_bounded():
+    """워커 기본값은 4 수준(env 미설정 시) — 느린 백엔드에서 과도한 동시 bs4 파싱
+    (CPU 경합)으로 기사당 처리가 느려져 누락이 늘던 회귀 방지. 기본값은
+    ENRICH_MAX_WORKERS 상수(INSIGHTBOARD_ENRICH_WORKERS env)로 옮겨졌다."""
     import inspect
     sig = inspect.signature(enrich.enrich_parallel)
-    assert sig.parameters["max_workers"].default >= 10
+    assert sig.parameters["max_workers"].default is None  # None → ENRICH_MAX_WORKERS
+    assert 1 <= enrich.ENRICH_MAX_WORKERS <= 6
 
 
 def test_enrich_timeout_read_is_generous_enough():
@@ -736,3 +740,39 @@ def test_enrich_parallel_honors_deadline(monkeypatch):
     elapsed = _t.monotonic() - t0
     assert out is arts          # 입력 리스트 그대로 반환
     assert elapsed < 5          # 30초짜리들을 기다리지 않고 곧 반환
+
+
+# ── 반복 수집 캐시(재fetch 회피) ─────────────────────────────
+
+def test_apply_cached_fills_content_and_skips_refetch(monkeypatch):
+    """오늘 캐시에 좋은 본문이 있으면 content/image 를 채워 enrich 가 네트워크를 안 탄다."""
+    index = {
+        "https://ex.com/1": {
+            "content": "충분히 긴 한국어 본문입니다. " * 6,
+            "image_url": "https://img/x.jpg", "keywords": "용접,자동화",
+        }
+    }
+    art = {"title": "t", "link": "https://ex.com/1", "content": "", "image_url": ""}
+    n = enrich.apply_cached([art], index)
+    assert n == 1 and "한국어 본문" in art["content"] and art["image_url"] == "https://img/x.jpg"
+
+    # 채워졌으니 fetch_article 은 호출되지 않아야 함
+    called = {"n": 0}
+    monkeypatch.setattr(enrich, "fetch_article", lambda *a, **k: called.__setitem__("n", called["n"] + 1) or {"content": "", "image_url": ""})
+    enrich.enrich_one(art, with_llm=False)
+    assert called["n"] == 0
+
+
+def test_apply_cached_noop_without_index():
+    assert enrich.apply_cached([{"link": "x"}], {}) == 0
+
+
+def test_load_today_enriched_index_skips_bad_content():
+    from store import news_db
+    news_db.save_articles([
+        {"title": "좋음", "link": "g1", "source": "naver", "date": "2026-06-25",
+         "content": "충분히 긴 한국어 본문입니다. " * 6, "image_url": "https://img/a.jpg"},
+        {"title": "빈약", "link": "b1", "source": "naver", "date": "2026-06-25", "content": "짧음"},
+    ], source="naver")
+    idx = enrich.load_today_enriched_index()
+    assert "g1" in idx and "b1" not in idx  # 빈약한 본문은 캐시 제외
