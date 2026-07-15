@@ -1,3 +1,13 @@
+## 2026-07-15 — docs: 개편 마무리 문서 정리 (`docs-redesign-wrapup`)
+
+**무엇을**: REDESIGN_STATUS.md 신설(Step 0~13·PR #57~#70 결과 표+설계 원칙+후속 5건), ARCHITECTURE.md 현행화(화면 매핑·신설 store/sola 모듈·자산화 수직 흐름·deps 설명), CLAUDE.md 라우팅 표 갱신(적용 사례·신설 모듈·인증 seam 정정). 코드 무변경.
+
+**조치**: 문서 전용 — pytest·빌드 영향 없음.
+
+**다음**: #57 관측지표 1주 리포트, 매칭 정답셋 실데이터 교체, 배포 환경 실 LLM 수직 흐름 1회 검증.
+
+---
+
 ## 2026-07-15 — feat: 과제 추진 관리 — Proposal 엔터티 (`feat-proposal-entity`)
 
 **무엇을**: store/proposals_db.py 신설(SQLite) — 제안서를 bookmark 에서 독립: 근거 관계 구조 필드, 상태 9종(idea~adopted/on_hold/rejected), proposal_history 전환 이력, PoC 결과 구조 필드(poc_result·actual_effect)+실행 관리 필드. migrate_from_bookmarks(원본 보존·멱등·legacy/evidence_unavailable 표시). API 8종(save/list/summary/status/fields/history/delete/migrate, 사용자 격리). Proposals.tsx 보관함 = 4그룹 칸반+9상태 셀렉트+이관 버튼, Topbar·드로어 요약 전환. 개편 로드맵 Step 13(최종).
