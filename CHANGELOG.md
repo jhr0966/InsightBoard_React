@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (기술 taxonomy — 안정 ID·alias·버전) — `feat-tech-taxonomy`
+- **신규 `store/taxonomy.py`**: 기술 분류를 하드코딩 7종 문자열(`insights.TECHS`)에서 **안정 ID 체계**(TECH-CV-001 형식·parent_id·aliases·description·active·`TAXONOMY_VERSION`)로 교체. 시드 10종(컴퓨터 비전·로보틱스·자율이동로봇·예지보전·디지털 트윈·생성형 AI·AI/ML·웨어러블·IoT·데이터 플랫폼), **alias 로 동의어 수렴**(비전 AI·머신비전→컴퓨터 비전, AGV·AMR→자율이동로봇). 운영 편집은 `data/taxonomy/taxonomy.json` 오버라이드(깨지면 시드 폴백), 관리 CRUD 화면은 Step 11.
+- **히트맵 전환** (`api/routers/insights.py`): 열·셀 카운트·셀 클릭이 taxonomy(이름+alias) 기준 — 신규 기술은 데이터 추가만으로 열이 생긴다. 조회 API `GET /api/insights/taxonomy` 추가.
+- **links 태깅** (`store/links_db.py`): 저장 행에 `technology_ids`(기술명 문자열이 아닌 **ID**) 컬럼 추가(ALTER 마이그레이션 — 기존 DB 자동 승급) — 이름이 바뀌어도 관계 유지(계획 §10). 윈도우 시그니처에 `TAXONOMY_VERSION` 포함 — alias 개편 시 태깅 자동 재빌드.
+- 검증: 신규 테스트 6건(`tests/test_taxonomy.py` — ID 고유·형식, alias 수렴, 오버라이드·폴백, 히트맵 계약, links 태깅·역조회) 포함 pytest 562 passed · OpenAPI 51 paths 재생성 · 금지패턴 0.
+
 ### Added (기사↔작업 관계 저장소 article_task_links) — `feat-article-task-links`
 - **신규 `store/links_db.py`** (SQLite): `score_matches` 결과(점수+결정적 이유 — score_components·matched_terms·matched_fields·rank)를 **시스템 공통 자산**으로 저장. 개인화 피드·"왜 관련"·제안서 근거·히트맵·기회 매트릭스가 공유(계획 §3·§9).
 - **write-through 캐시 + 버전 stale 재빌드**: 윈도우 시그니처(기사 article_id 집합+작업 키 집합+MATCHING_VERSION+IDENTITY_VERSION) 일치 시 저장본, 불일치(새 수집·알고리즘/식별 규칙 변경) 시 재계산·저장. 저장 실패에도 조회는 라이브 폴백(항상 성공, 파생 데이터라 언제든 전체 재빌드 가능).

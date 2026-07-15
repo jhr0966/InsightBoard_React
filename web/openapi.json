@@ -2025,6 +2025,33 @@
         ]
       }
     },
+    "/api/insights/taxonomy": {
+      "get": {
+        "description": "기술 분류 체계 — 안정 ID·alias·계층 (Step 7). 관리 CRUD 는 Step 11 예정.\n\n운영 편집은 `data/taxonomy/taxonomy.json` 오버라이드 파일(시드 폴백).",
+        "operationId": "taxonomy_list_api_insights_taxonomy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Taxonomy List Api Insights Taxonomy Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Taxonomy List",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
     "/api/matches": {
       "get": {
         "operationId": "matches_api_matches_get",
