@@ -17,7 +17,6 @@ from fastapi import APIRouter, Query
 from roadmap import query as roadmap_query
 from sola.opportunity import score_cells
 from store import news_db
-from store.match import DEFAULT_SEMANTIC_WEIGHT, score_matches
 
 router = APIRouter(prefix="/api/insights", tags=["insights"])
 
@@ -34,15 +33,20 @@ def _row_text(rec: dict) -> str:
     return " ".join(str(rec.get(c, "")) for c in cols).lower()
 
 
-def _matched_news_by_lv3(news_df: pd.DataFrame, roadmap_df: pd.DataFrame) -> dict[str, list[dict]]:
+def _matched_news_by_lv3(
+    news_df: pd.DataFrame, roadmap_df: pd.DataFrame, *, days: int = 30,
+) -> dict[str, list[dict]]:
     """공정(lv3) → 매칭된 뉴스 레코드 목록. 자동화 기회 매트릭스와 동일한 매칭 사용.
 
     link(없으면 title) 를 키로 뉴스 레코드를 복원하고, lv3 별로 중복 제거해 모은다.
+    매칭은 저장된 links(Step 6) 소비 — 셀 클릭마다 전체 재계산하던 비용 제거.
     """
     if news_df.empty or roadmap_df.empty:
         return {}
-    matches = score_matches(news_df, roadmap_df, top_k=_TOP_K_PER_TASK,
-                            semantic_weight=DEFAULT_SEMANTIC_WEIGHT)
+    from store import links_db
+
+    matches = links_db.slice_top_k(
+        links_db.matches_for_window(news_df, roadmap_df, days=days), _TOP_K_PER_TASK)
     if matches.empty:
         return {}
     by_key = {str(r.get("link") or r.get("title") or ""): r for r in news_df.to_dict("records")}
@@ -112,7 +116,11 @@ def heatmap(
 ) -> dict:
     news = news_db.load_news_for_days(days)
     roadmap = roadmap_query.load_latest()
-    cells = score_cells(news, roadmap)
+    from store import links_db
+
+    stored = (links_db.matches_for_window(news, roadmap, days=days)
+              if not news.empty and not roadmap.empty else pd.DataFrame())
+    cells = score_cells(news, roadmap, matches=stored)
     procs: list[str] = []
     if not cells.empty:
         for lv3 in cells["lv3"].tolist():
@@ -121,7 +129,7 @@ def heatmap(
             if len(procs) >= rows:
                 break
 
-    by_lv3 = _matched_news_by_lv3(news, roadmap)
+    by_lv3 = _matched_news_by_lv3(news, roadmap, days=days)
     data: list[list[int]] = []
     for p in procs:
         texts = [_row_text(r) for r in by_lv3.get(p, [])]
@@ -146,7 +154,7 @@ def heatmap_cell(
     if news.empty:
         return []
     roadmap = roadmap_query.load_latest()
-    recs = _matched_news_by_lv3(news, roadmap).get(row, [])
+    recs = _matched_news_by_lv3(news, roadmap, days=days).get(row, [])
     cl = col.lower()
     out: list[dict] = []
     for rec in recs:

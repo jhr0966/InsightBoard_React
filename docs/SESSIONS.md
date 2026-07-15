@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 기사↔작업 관계 저장소 article_task_links (`feat-article-task-links`)
+
+**무엇을**: store/links_db.py 신설 — 매칭 결과+결정적 이유를 SQLite 에 저장(write-through: 시그니처 일치 시 저장본, 새 수집/버전 변경 시 재계산·저장). 수집과 인덱싱 분리(cron 말미 rebuild + 관리자 rebuild-links API + links-status). 기회 매트릭스·히트맵·matches API 를 저장본 소비로 전환(매 요청 전체 재계산 제거, top_k=20+rank 슬라이스로 라이브와 동일 결과 보장). 개편 로드맵 Step 6.
+
+**조치**: 신규 테스트 7건 포함 pytest 557, OpenAPI 50 paths 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 7 `feat-tech-taxonomy`(technology_id·alias 데이터화) → Step 8 `fix-proposal-grounding`(links 근거 주입).
+
+---
+
 ## 2026-07-15 — feat: 매칭 v2 — 필드 가중·IDF·조사 제거·결정적 이유 (`feat-match-reasons`)
 
 **무엇을**: score_matches v2(MATCHING_VERSION=2) — 필드별 가중(제목3·키워드2·요약1)+IDF 가중 중첩+작업명 정확일치 보너스+조사 제거 토큰화. score_components·matched_terms·matched_fields 반환(LLM 없는 결정적 이유, render_match_reason 규칙 문장). min_score_ratio 임계값(0.25 → 무관 혼입 85→40%). 평가 P@K 분모 버그 수정+recall@3 신설 — 공정 비교 v1 75.7%→v2 78.4% 개선 확인 후 채택. 개편 로드맵 Step 5.

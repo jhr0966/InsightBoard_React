@@ -2099,6 +2099,81 @@
         ]
       }
     },
+    "/api/matches/links-status": {
+      "get": {
+        "description": "윈도우별 links 인덱스 상태 — built_at·건수·버전·stale 여부.",
+        "operationId": "links_status_api_matches_links_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Links Status Api Matches Links Status Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Links Status",
+        "tags": [
+          "matches"
+        ]
+      }
+    },
+    "/api/matches/rebuild-links": {
+      "post": {
+        "description": "관리자 재빌드 — 알고리즘/식별 버전 변경·수집 직후 인덱스 선워밍.\n\n(계획 §9-1 실행 방식 ②. ①은 일일 cron `scripts/daily_scrape.py` 말미.)",
+        "operationId": "rebuild_links_api_matches_rebuild_links_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Rebuild Links Api Matches Rebuild Links Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rebuild Links",
+        "tags": [
+          "matches"
+        ]
+      }
+    },
     "/api/news": {
       "get": {
         "description": "뉴스 목록 — 결정적 최신순 + 커서 페이지네이션.\n\n응답: `{\"items\": [...], \"next_cursor\": str | null}`.\nnext_cursor 가 null 이면 마지막 페이지.",

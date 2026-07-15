@@ -31,5 +31,9 @@ def opportunities(
 ) -> list[dict]:
     news = news_db.load_news_for_days(days)
     roadmap = roadmap_query.load_latest()
-    cells = score_cells(news, roadmap).head(top)
+    # 저장된 links(Step 6) 소비 — 같은 윈도우 재조회 시 전체 매칭 재계산 제거.
+    from store import links_db
+
+    matches = links_db.matches_for_window(news, roadmap, days=days)
+    cells = score_cells(news, roadmap, matches=matches).head(top)
     return _clean(cells.to_dict(orient="records"))
