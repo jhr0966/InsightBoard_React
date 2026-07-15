@@ -13,6 +13,7 @@ import type {
   DigestPage,
   NewsArticle,
   NewsListPage,
+  ProposalEntity,
   OpportunityCell,
   ProcessMapCard,
   Persona,
@@ -204,6 +205,23 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ task, ...opts }),
       }),
+    // Proposal 엔터티(Step 13) — 상태 확장·이력·근거 관계 보존.
+    save: (body: { title: string; content: string; task_id?: string;
+      article_ids?: string[]; case_ids?: string[];
+      matching_version?: number; prompt_version?: number; status?: string }) =>
+      req<ProposalEntity>("/api/proposals/save", { method: "POST", body: JSON.stringify(body) }),
+    listEntities: (status?: string) => req<ProposalEntity[]>(`/api/proposals/list${qs({ status })}`),
+    summary: () => req<{ total: number; by_status: Record<string, number>; reviewing: number; adopted: number }>("/api/proposals/summary"),
+    setStatus: (id: string, status: string, note = "") =>
+      req<ProposalEntity>(`/api/proposals/${encodeURIComponent(id)}/status`, {
+        method: "PATCH", body: JSON.stringify({ status, note }) }),
+    history: (id: string) =>
+      req<{ from_status: string; to_status: string; note: string; changed_by: string; changed_at: string }[]>(
+        `/api/proposals/${encodeURIComponent(id)}/history`),
+    removeEntity: (id: string) =>
+      req<{ deleted: boolean }>(`/api/proposals/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    migrateBookmarks: () =>
+      req<{ migrated: number; skipped: number }>("/api/proposals/migrate-bookmarks", { method: "POST" }),
     // 현재 제안서 MD + 지시 → 다듬은 MD (처음부터 재생성 없이 반복 개선).
     refine: (proposal: string, instruction: string) =>
       req<{ proposal: string }>("/api/proposals/refine", {

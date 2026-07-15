@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 과제 추진 관리 — Proposal 엔터티 (`feat-proposal-entity`)
+
+**무엇을**: store/proposals_db.py 신설(SQLite) — 제안서를 bookmark 에서 독립: 근거 관계 구조 필드, 상태 9종(idea~adopted/on_hold/rejected), proposal_history 전환 이력, PoC 결과 구조 필드(poc_result·actual_effect)+실행 관리 필드. migrate_from_bookmarks(원본 보존·멱등·legacy/evidence_unavailable 표시). API 8종(save/list/summary/status/fields/history/delete/migrate, 사용자 격리). Proposals.tsx 보관함 = 4그룹 칸반+9상태 셀렉트+이관 버튼, Topbar·드로어 요약 전환. 개편 로드맵 Step 13(최종).
+
+**조치**: 신규 테스트 6건 포함 pytest 592, OpenAPI 65 paths 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: 개편(Step 0~13) 완료 — 마무리 문서 정리(ARCHITECTURE 갱신·개편 회고), #57 관측지표 1주 리포트, 매칭 정답셋 실데이터 교체.
+
+---
+
 ## 2026-07-15 — feat: 사례 라이브러리 — 뉴스의 자산화 (`feat-case-library`)
 
 **무엇을**: cases/case_sources 별도 엔터티(SQLite, 기사 다대다·evidence_type·검토상태) + sola/case_extract.py 추출 배치(cron 말미+관리자 API, 후보=본문+links 매칭 상위 N, 수치는 원문 구절 필수) + approved 사례만 제안서 "[승인 사례]" 주입 + 적용 사례(/cases) 메뉴(상태 탭·승인/제외). 개편 로드맵 Step 12.

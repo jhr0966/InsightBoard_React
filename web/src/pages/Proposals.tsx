@@ -6,7 +6,7 @@ import { KPIStatGrid, Tabs, EmptyState } from "../components/ui";
 import { KanbanBoard, KanbanColumn } from "../components/ui/Kanban";
 import { useToast } from "../components/ui/toast";
 import { ageLabel } from "../lib/time";
-import type { Bookmark } from "../api/types";
+import type { ProposalEntity } from "../api/types";
 
 export default function Proposals() {
   const [params] = useSearchParams();
@@ -77,12 +77,19 @@ function Generate() {
     onError: (e) => toast.push((e as Error).message, "danger"),
   });
   const save = useMutation({
-    // 근거 관계(meta)를 본문과 함께 저장 — 나중에 "이 제안의 근거가 뭐였지"를 복원.
-    mutationFn: (text: string) => api.bookmarks.create({
-      type: "proposal", title: text.split("\n")[0].slice(0, 60) || "제안서", content: text,
-      meta: genMeta,
-    } as Parameters<typeof api.bookmarks.create>[0]),
-    onSuccess: () => { toast.push("📦 보관함에 저장했어요 (검토 대기)", "success"); qc.invalidateQueries({ queryKey: ["bookmarks"] }); },
+    // Proposal 엔터티로 저장(Step 13) — 근거 관계·버전을 구조 필드로 보존.
+    mutationFn: (text: string) => api.proposals.save({
+      title: text.split("\n")[0].replace(/^#+\s*/, "").slice(0, 60) || "제안서",
+      content: text,
+      task_id: String(genMeta.task_id ?? ""),
+      article_ids: (genMeta.article_ids as string[]) ?? [],
+      case_ids: injectedCases.map((c) => String(c.case_id ?? "")).filter(Boolean),
+      matching_version: Number(genMeta.matching_version ?? 0),
+      prompt_version: Number(genMeta.prompt_version ?? 0),
+      status: "draft",
+    }),
+    onSuccess: () => { toast.push("📦 과제 보관함에 저장했어요 (초안)", "success"); qc.invalidateQueries({ queryKey: ["proposals"] }); },
+    onError: (e) => toast.push((e as Error).message, "danger"),
   });
 
   return (
@@ -148,70 +155,118 @@ function Generate() {
   );
 }
 
-const COLS: { status: string; title: string; dot: string; desc: string }[] = [
-  { status: "pending", title: "대기", dot: "#0369A1", desc: "검토 대기 중" },
-  { status: "adopted", title: "채택", dot: "#15803D", desc: "의사결정 완료" },
-  { status: "rejected", title: "기각", dot: "#B45309", desc: "사유와 함께 보관" },
+// 9-상태 라이프사이클(§15) — 칸반은 4개 그룹으로 묶어 "가볍게 보기" 유지.
+const STATUS_LABEL: Record<string, string> = {
+  idea: "아이디어", draft: "초안", reviewing: "검토 중",
+  feasibility: "타당성 평가", poc_ready: "PoC 준비", poc_running: "PoC 진행",
+  adopted: "채택", on_hold: "보류", rejected: "기각",
+};
+const COLS: { title: string; statuses: string[]; dot: string; desc: string }[] = [
+  { title: "제안", statuses: ["idea", "draft"], dot: "#64748B", desc: "아이디어·초안" },
+  { title: "검토·평가", statuses: ["reviewing", "feasibility"], dot: "#0369A1", desc: "검토 중·타당성" },
+  { title: "PoC", statuses: ["poc_ready", "poc_running"], dot: "#7C3AED", desc: "준비·진행" },
+  { title: "결정", statuses: ["adopted", "on_hold", "rejected"], dot: "#15803D", desc: "채택·보류·기각" },
 ];
 
 function Archive() {
   const qc = useQueryClient();
   const toast = useToast();
-  const all = useQuery({ queryKey: ["bookmarks", "proposal"], queryFn: () => api.bookmarks.list("proposal") });
+  const all = useQuery({ queryKey: ["proposals", "entities"], queryFn: () => api.proposals.listEntities() });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["proposals"] });
+  };
   const setStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => api.bookmarks.setStatus(id, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookmarks"] }),
+    mutationFn: ({ id, status }: { id: string; status: string }) => api.proposals.setStatus(id, status),
+    onSuccess: invalidate,
+    onError: (e) => toast.push((e as Error).message, "danger"),
   });
   const remove = useMutation({
-    mutationFn: (id: string) => api.bookmarks.remove(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["bookmarks"] }); toast.push("삭제됨", "default"); },
+    mutationFn: (id: string) => api.proposals.removeEntity(id),
+    onSuccess: () => { invalidate(); toast.push("삭제됨", "default"); },
+  });
+  // 구 bookmark 보관함 → 엔터티 이관 (명시적 버튼 · 원본 보존 · 멱등).
+  const migrate = useMutation({
+    mutationFn: () => api.proposals.migrateBookmarks(),
+    onSuccess: (r) => { invalidate(); toast.push(`구 보관함 이관 완료 — ${r.migrated}건 이관 · ${r.skipped}건 이미 존재`, "success"); },
+    onError: (e) => toast.push((e as Error).message, "danger"),
   });
 
   const items = all.data ?? [];
-  const byStatus = (s: string) => items.filter((b) => b.status === s);
-  const adoptedRate = items.length ? Math.round((byStatus("adopted").length / items.length) * 100) : 0;
+  const inStatuses = (ss: string[]) => items.filter((p) => ss.includes(p.status));
+  const count = (s: string) => items.filter((p) => p.status === s).length;
+  const decided = count("adopted") + count("rejected");
+  const adoptedRate = decided ? Math.round((count("adopted") / decided) * 100) : 0;
 
   if (all.isLoading) return <div className="muted">불러오는 중…</div>;
-  if (items.length === 0) return <EmptyState icon="📦" title="아직 제안서가 없어요" hint="‘제안 생성’ 탭에서 만들어 보관함에 저장하세요." />;
 
-  const actionsFor = (b: Bookmark) => {
-    if (b.status === "pending") return [["채택", "adopted"], ["기각", "rejected"]];
-    return [["↶ 대기로", "pending"]];
-  };
+  const migrateBtn = (
+    <button className="btn" disabled={migrate.isPending} onClick={() => migrate.mutate()}>
+      {migrate.isPending ? "이관 중…" : "📥 구 보관함 이관"}</button>
+  );
+
+  if (items.length === 0) {
+    return (
+      <>
+        <EmptyState icon="📦" title="아직 저장된 과제가 없어요"
+          hint="'제안 생성' 탭에서 만들어 저장하거나, 예전 보관함(bookmark)의 제안서를 이관하세요." />
+        <div style={{ textAlign: "center", marginTop: 8 }}>{migrateBtn}</div>
+      </>
+    );
+  }
 
   return (
     <>
-      <KPIStatGrid cols={4} items={[
-        { label: "총 제안", value: items.length },
-        { label: "채택", value: byStatus("adopted").length, tone: "success" },
-        { label: "대기", value: byStatus("pending").length, tone: "warning" },
-        { label: "채택률", value: `${adoptedRate}%` },
-      ]} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <KPIStatGrid cols={4} items={[
+            { label: "총 과제", value: items.length },
+            { label: "검토 중", value: count("reviewing") + count("feasibility"), tone: "warning" },
+            { label: "PoC", value: count("poc_ready") + count("poc_running") },
+            { label: "채택률(결정 대비)", value: `${adoptedRate}%`, tone: "success" },
+          ]} />
+        </div>
+        {migrateBtn}
+      </div>
       <KanbanBoard>
         {COLS.map((c) => {
-          const cards = byStatus(c.status);
+          const cards = inStatuses(c.statuses);
           return (
-            <KanbanColumn key={c.status} title={c.title} count={cards.length} dot={c.dot} desc={c.desc}>
-              {cards.map((b) => (
-                <div className="oa-card" key={b.id}>
-                  <div className="oa-card-t">{b.title}</div>
-                  {b.content && <div className="oa-card-d">{b.content}</div>}
-                  <div className="oa-card-foot">
-                    <span className="oa-card-age">{ageLabel(b.created_at)}</span>
-                    <span className="oa-card-btns">
-                      {actionsFor(b).map(([label, st]) => (
-                        <button key={st} className="oa-mini" onClick={() => setStatus.mutate({ id: b.id, status: st })}>{label}</button>
-                      ))}
-                      <button className="oa-mini" onClick={() => confirm("삭제?") && remove.mutate(b.id)}>🗑</button>
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <KanbanColumn key={c.title} title={c.title} count={cards.length} dot={c.dot} desc={c.desc}>
+              {cards.map((p) => <ProposalCard key={p.proposal_id} p={p}
+                onStatus={(st) => setStatus.mutate({ id: p.proposal_id, status: st })}
+                onRemove={() => confirm("삭제? (전환 이력도 함께 삭제됩니다)") && remove.mutate(p.proposal_id)} />)}
               {cards.length === 0 && <div className="muted" style={{ fontSize: "var(--fs-micro)" }}>없음</div>}
             </KanbanColumn>
           );
         })}
       </KanbanBoard>
     </>
+  );
+}
+
+function ProposalCard({ p, onStatus, onRemove }:
+  { p: ProposalEntity; onStatus: (st: string) => void; onRemove: () => void }) {
+  return (
+    <div className="oa-card">
+      <div className="oa-card-t">
+        {p.title}
+        {p.legacy && <span className="muted" style={{ fontSize: "var(--fs-micro)", marginLeft: 6 }} title="구 보관함에서 이관됨">🏷 이관</span>}
+        {p.evidence_unavailable && <span style={{ fontSize: "var(--fs-micro)", marginLeft: 6, color: "var(--semantic-warning, #B45309)" }} title="이관 당시 근거 기사 관계가 저장되지 않아 복원 불가">⚠ 근거 없음</span>}
+      </div>
+      {p.content && <div className="oa-card-d">{p.content}</div>}
+      {p.article_ids.length > 0 && (
+        <div className="muted" style={{ fontSize: "var(--fs-micro)" }}>📎 근거 {p.article_ids.length}건{p.case_ids.length > 0 && ` · 📚 사례 ${p.case_ids.length}건`}</div>
+      )}
+      <div className="oa-card-foot">
+        <span className="oa-card-age">{ageLabel(p.created_at)}</span>
+        <span className="oa-card-btns" style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+          <select value={p.status} onChange={(e) => onStatus(e.target.value)}
+            style={{ fontSize: "var(--fs-micro)", padding: "2px 4px" }} title="상태 전환 (이력 보존)">
+            {Object.entries(STATUS_LABEL).map(([st, label]) => <option key={st} value={st}>{label}</option>)}
+          </select>
+          <button className="oa-mini" onClick={onRemove}>🗑</button>
+        </span>
+      </div>
+    </div>
   );
 }

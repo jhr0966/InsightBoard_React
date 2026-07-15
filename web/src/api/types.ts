@@ -99,6 +99,33 @@ export interface DigestPage {
   persona_set: boolean;
 }
 
+// Proposal 엔터티 (Step 13) — 상태 확장·근거 관계·PoC 구조 필드.
+export interface ProposalEntity {
+  proposal_id: string;
+  title: string;
+  content: string;
+  task_id: string;
+  article_ids: string[];
+  case_ids: string[];
+  matching_version: number;
+  prompt_version: number;
+  status: string;           // idea|draft|reviewing|feasibility|poc_ready|poc_running|adopted|on_hold|rejected
+  owner: string;
+  partner_depts: string;
+  data_readiness: string;
+  tech_readiness: string;
+  est_cost: string;
+  est_duration: string;
+  expected_kpi: string[];
+  review_note: string;
+  poc_result: string;
+  actual_effect: string;
+  legacy: boolean;
+  evidence_unavailable: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface KeywordCount { keyword: string; count: number; }
 export interface DayCount { date: string; count: number; }
 export interface SourceCount { source: string; count: number; }

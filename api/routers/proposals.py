@@ -1,7 +1,10 @@
-"""자동화 제안 API — `sola.propose` 위임 (작업 × 최근 뉴스 → 제안서 초안).
+"""자동화 과제 API — 생성(`sola.propose`) + **Proposal 엔터티**(Step 13, §15).
 
-생성된 제안서의 보관/채택은 `/api/bookmarks?type=proposal` 로 처리(단일 저장소).
-Phase 1 은 동기 생성. 스트리밍 제안서는 후속(`/api/assistant/chat` 패턴 재사용).
+생성: 작업 × links 근거 → 제안서 초안(+근거·승인 사례).
+보관: 범용 bookmark 가 아니라 `store.proposals_db` — 상태 확장
+(idea→draft→reviewing→feasibility→poc_ready→poc_running→adopted/on_hold/rejected)
++ 전환 이력 보존 + PoC 결과 구조 필드. 구 bookmark 보관함은
+`POST /api/proposals/migrate-bookmarks` 로 이관(원본 보존·멱등).
 """
 from __future__ import annotations
 
@@ -132,3 +135,98 @@ def summarize(body: SummarizeIn, _identity: Identity = Depends(current_identity)
         lambda: summarize_news(df, max_items=body.max_items), what="뉴스 요약"
     )
     return {"summary": summary, "news_count": int(len(df))}
+
+
+# ── Proposal 엔터티 (Step 13) ──────────────────────────────────
+
+from store import proposals_db  # noqa: E402
+
+
+class ProposalSaveIn(BaseModel):
+    title: str = Field(..., min_length=1)
+    content: str = ""
+    task_id: str = ""
+    article_ids: list[str] = Field(default_factory=list)
+    case_ids: list[str] = Field(default_factory=list)
+    matching_version: int = 0
+    prompt_version: int = 0
+    status: str = Field(default="draft")
+
+
+@router.post("/save")
+def save_proposal(body: ProposalSaveIn,
+                  identity: Identity = Depends(current_identity)) -> dict:
+    """생성된 제안서를 Proposal 엔터티로 보관 — 근거 관계 포함(§11-3·§15)."""
+    try:
+        return proposals_db.create(
+            title=body.title, content=body.content, task_id=body.task_id,
+            article_ids=body.article_ids, case_ids=body.case_ids,
+            matching_version=body.matching_version, prompt_version=body.prompt_version,
+            status=body.status, user=identity.user_id, workspace=identity.workspace_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/list")
+def list_proposals(status: str | None = None,
+                   identity: Identity = Depends(current_identity)) -> list[dict]:
+    if status and status not in proposals_db.STATUSES:
+        raise HTTPException(status_code=422, detail=f"unknown status: {status}")
+    return proposals_db.list_all(user=identity.user_id, status=status)
+
+
+@router.get("/summary")
+def proposals_summary(identity: Identity = Depends(current_identity)) -> dict:
+    return proposals_db.summary(user=identity.user_id)
+
+
+class ProposalStatusIn(BaseModel):
+    status: str
+    note: str = ""
+
+
+@router.patch("/{proposal_id}/status")
+def proposal_status(proposal_id: str, body: ProposalStatusIn,
+                    identity: Identity = Depends(current_identity)) -> dict:
+    """상태 전환 — proposal_history 에 이력 보존(§15)."""
+    try:
+        out = proposals_db.set_status(proposal_id, body.status, note=body.note,
+                                      user=identity.user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if out is None:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
+    return out
+
+
+class ProposalFieldsIn(BaseModel):
+    fields: dict[str, Any] = Field(..., description="owner·partner_depts·준비도·비용/기간·expected_kpi·poc_result 등")
+
+
+@router.patch("/{proposal_id}")
+def proposal_fields(proposal_id: str, body: ProposalFieldsIn,
+                    _identity: Identity = Depends(current_identity)) -> dict:
+    out = proposals_db.update_fields(proposal_id, body.fields)
+    if out is None:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
+    return out
+
+
+@router.get("/{proposal_id}/history")
+def proposal_history(proposal_id: str) -> list[dict]:
+    return proposals_db.history(proposal_id)
+
+
+@router.delete("/{proposal_id}")
+def delete_proposal(proposal_id: str,
+                    _identity: Identity = Depends(current_identity)) -> dict:
+    return {"deleted": proposals_db.delete(proposal_id)}
+
+
+@router.post("/migrate-bookmarks")
+def migrate_bookmarks(_identity: Identity = Depends(current_identity)) -> dict:
+    """구 bookmark(type=proposal) → Proposal 엔터티 이관 (원본 보존·멱등).
+
+    이관본은 legacy=true, 근거 meta 없으면 evidence_unavailable=true(§11-3).
+    """
+    return proposals_db.migrate_from_bookmarks()

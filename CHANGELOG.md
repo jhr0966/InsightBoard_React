@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (과제 추진 관리 — Proposal 엔터티) — `feat-proposal-entity`
+- **신규 엔터티 `store/proposals_db.py`** (SQLite, §15): 제안서가 범용 bookmark(마크다운 문자열)에서 독립 — 근거 관계(article_ids·case_ids·matching/prompt 버전)를 구조 필드로 보존, **상태 9종**(idea→draft→reviewing→feasibility→poc_ready→poc_running→adopted/on_hold/rejected), 모든 상태 전환을 `proposal_history` 에 이력 보존(동일 상태 전환은 무이력), **PoC 결과는 본문이 아닌 구조 필드**(poc_result·actual_effect) + 실행 관리 필드(owner·협업부서·데이터/기술 준비도·비용/기간·expected_kpi).
+- **구 보관함 이관 `migrate_from_bookmarks()`**: bookmark(type=proposal) → 엔터티, **원본 보존·재실행 멱등**(proposal_id 를 bookmark id 에서 결정 파생). 이관본은 `legacy=true`, 근거 meta 없으면 `evidence_unavailable=true` 표시(§11-3) — 근거 있는 척 하지 않는다. 상태 매핑 pending→reviewing.
+- **API** (`api/routers/proposals.py`): POST /save·GET /list·GET /summary·PATCH /{id}/status·PATCH /{id}(필드)·GET /{id}/history·DELETE /{id}·POST /migrate-bookmarks — 사용자(X-User-Id) 격리.
+- **화면** (`Proposals.tsx`): 저장이 bookmark 가 아닌 엔터티로(초안 상태) — 근거·사례·버전 관계 포함. 보관함 탭 = **4그룹 칸반**(제안/검토·평가/PoC/결정)에 9-상태 셀렉트(이력 보존 전환), 🏷이관·⚠근거없음 배지, 근거/사례 건수 표시, 📥구 보관함 이관 버튼(명시적·멱등). Topbar 알림 배지·SOLA 드로어 요약도 엔터티 summary 로 전환.
+- 검증: 신규 테스트 6건(`tests/test_proposals_entity.py` — 생성/검증·전환 이력·구조 필드·이관 멱등+legacy 플래그·API 왕복 422/404·2인 격리) 포함 pytest 592 passed · OpenAPI 65 paths 재생성 · 웹 빌드 OK · 금지패턴 0.
+
 ### Added (사례 라이브러리 — 뉴스의 자산화) — `feat-case-library`
 - **신규 엔터티 `store/cases_db.py`** (SQLite, §14): 사례는 뉴스 북마크가 아니라 별도 자산 — `cases`(문제/해법/적용기술 ID/정량효과/조선소 시사점/신뢰도/검토상태) + `case_sources`(기사 **다대다**, evidence_text·evidence_type: source_fact/system_summary/shipyard_inference). 사례↔작업 연결은 별도 테이블 없이 소스 기사의 links 경유(중복 저장 금지). 재추출 멱등(검토 상태 보존), '사례 아님' 판정도 기록해 LLM 재호출 낭비 방지.
 - **추출 배치 `sola/case_extract.py`** (§14: 수집과 분리된 후처리): 실행 경로 ①일일 cron 말미 ②관리자 `POST /api/cases/extract`. 후보 = 본문 확보+작업 매칭(links)+미추출 기사 상위 N(LLM 비용 상한, 배치당 10). `SYSTEM_CASE_EXTRACT` — **기사에 명시된 수치만**(원문 구절 필수), 유추는 조선소 시사점 한 항목만 허용. LLM 미설정이면 조용히 생략.
