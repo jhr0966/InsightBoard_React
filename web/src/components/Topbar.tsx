@@ -71,7 +71,7 @@ export default function Topbar({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               onSearch((e.target as HTMLInputElement).value);
-              navigate("/collect");
+              navigate("/feed");
             }
           }}
         />

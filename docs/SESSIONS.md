@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: IA 재편 — 오늘·뉴스 탐색·분석실·수집 관리 분리 (`feat-ia-restructure`)
+
+**무엇을**: nav 재구성(일반: 오늘/뉴스 탐색/자동화 과제/분석실 · 관리: 수집 관리/작업 정의). Feed.tsx 신설(뉴스 읽기를 Collect 에서 분리·승격), Collect 는 운영 전용, Board 는 5요소 3분 화면으로 다이어트(KPI·매트릭스·트렌드 제거 — 분석실과 중복), Insights 는 탭 구조(STEP 라벨 제거), Topbar 검색 → /feed. "부담 없이 심플하게 보고 인사이트를 얻는다" 원칙의 화면 반영. 개편 로드맵 Step 11.
+
+**조치**: 프런트 전용 — pytest 580, 웹 빌드(tsc) OK, 금지패턴 0.
+
+**다음**: Step 12 사례 라이브러리(별도 엔터티·검토 상태·배치 추출) → Step 13 과제 추진 관리(Proposal 엔터티 분리).
+
+---
+
 ## 2026-07-15 — feat: 멀티유저 기반 — X-User-Id 경량 식별·격리 (`feat-identity-threading`)
 
 **무엇을**: api/deps.py 가 X-User-Id/X-Workspace-Id(신뢰 프록시 주입 전제 — 인증 아님, I-17)를 정제해 Identity 주입. persona 를 profiles/{user}.json 으로(레거시 자동 이관·원본 보존), threads 소유자 기록, bookmarks/threads 목록·feedback dismiss·digest/brief/proposals/assistant 를 사용자별로 격리. 파일 저장소는 파일럿 한정(DB 필요) 명문화. 개편 로드맵 Step 10.

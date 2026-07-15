@@ -2,17 +2,16 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { KPIStatGrid, EmptyState, Badge } from "../components/ui";
+import { KPIStatGrid, EmptyState, Badge, Tabs } from "../components/ui";
 import LineChart from "../components/charts/LineChart";
 import BubbleMatrix from "../components/charts/BubbleMatrix";
 import type { Bubble } from "../components/charts/BubbleMatrix";
 import Heatmap from "../components/charts/Heatmap";
 
-function Section({ title, step, children }: { title: string; step?: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bd-sec">
       <div className="bd-sec-head">
-        {step && <Badge tone="accent">{step}</Badge>}
         <span className="bd-sec-title">{title}</span>
       </div>
       {children}
@@ -55,6 +54,8 @@ export default function Insights() {
   const [sel, setSel] = useState<string | null>(null);
   const [hmSel, setHmSel] = useState<string | null>(null);
   const [tkw, setTkw] = useState<string | null>(null);  // 선택한 트렌드 키워드(공정 매핑 필터)
+  // Step 11: 분석 3종을 탭으로 — 한 번에 하나만(파고드는 층도 화면은 가볍게).
+  const [tab, setTab] = useState<"trend" | "matrix" | "heatmap">("trend");
 
   const keywords = useQuery({ queryKey: ["trends", "keywords", days], queryFn: () => api.trends.keywords(days, 12) });
   const volume = useQuery({ queryKey: ["trends", "volume", days], queryFn: () => api.trends.volume(days) });
@@ -87,8 +88,8 @@ export default function Insights() {
   return (
     <div>
       <div className="ia-head">
-        <div className="ia-eyebrow">WORKFLOW / 인사이트 분석</div>
-        <div className="ia-title">자동화 제안 분석실</div>
+        <div className="ia-eyebrow">WORKFLOW / 분석실</div>
+        <div className="ia-title">분석실</div>
         <div className="ia-desc">트렌드 · 공정 매칭 · PoC 후보를 한눈에.</div>
       </div>
 
@@ -99,14 +100,17 @@ export default function Insights() {
         { label: "PoC 후보", value: (opps.data ?? []).length, tone: "warning" },
       ]} />
 
-      <div className="ia-filter">
+      <div className="ia-filter" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <Tabs items={[{ key: "trend", label: "📈 트렌드 → 공정" }, { key: "matrix", label: "🧭 기회 매트릭스" }, { key: "heatmap", label: "🔬 기술 히트맵" }]}
+          value={tab} onChange={(t) => setTab(t as typeof tab)} />
+        <span style={{ flex: 1 }} />
         {[7, 14, 30].map((d) => (
           <button key={d} className={`ia-filter-btn${d === days ? " on" : ""}`} onClick={() => setDays(d)}>{d}일</button>
         ))}
       </div>
 
       {/* A. 트렌드 → 공정 매핑 */}
-      <Section title="트렌드 → 공정 연결" step="STEP 1">
+      {tab === "trend" && <Section title="트렌드 → 공정 연결">
         <div className="chart-row">
           <div className="card" style={{ margin: 0 }}>
             <div className="card-title">키워드 트렌드 <span className="muted" style={{ fontWeight: 400 }}>· {trend.data?.mode === "daily" ? "최근 14일(일별)" : "최근 8주(주별)"}</span></div>
@@ -165,10 +169,10 @@ export default function Insights() {
                 </div>}
           </div>
         )}
-      </Section>
+      </Section>}
 
       {/* B. 매트릭스 + PoC 랭킹 */}
-      <Section title="자동화 제안 매트릭스" step="STEP 2">
+      {tab === "matrix" && <Section title="자동화 기회 매트릭스">
         {bubbles.length === 0 ? <EmptyState icon="🧭" title="아직 매칭된 자동화 제안이 없어요" hint="뉴스·작업정의(로드맵)가 필요합니다." />
           : <div className="chart-row">
             <BubbleMatrix cells={bubbles} selectedKey={sel} onSelect={setSel} />
@@ -186,10 +190,10 @@ export default function Insights() {
               })}
             </div>
           </div>}
-      </Section>
+      </Section>}
 
       {/* C. 히트맵 */}
-      <Section title="공정 × 자동화 기술 히트맵" step="STEP 3">
+      {tab === "heatmap" && <Section title="공정 × 자동화 기술 히트맵">
         {(heatmap.data?.rows.length ?? 0) === 0
           ? <EmptyState icon="🔬" title="공정 × 기술 매칭이 아직 없어요" hint="작업정의 업로드 + 뉴스 수집 후 표시됩니다." />
           : <div className="card" style={{ margin: 0 }}>
@@ -198,7 +202,7 @@ export default function Insights() {
             {hmSel && <HeatmapDetail sel={hmSel} days={days}
               onProposals={() => nav(`/proposals?from=insights&lv3=${encodeURIComponent(hmSel.split("||")[0])}`)} />}
           </div>}
-      </Section>
+      </Section>}
     </div>
   );
 }

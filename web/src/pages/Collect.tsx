@@ -1,52 +1,21 @@
-import { useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, streamCollect } from "../api/client";
 import type { CollectEvent, CollectSaved, CollectErr } from "../api/client";
-import { KPIStatGrid, Tabs, EmptyState, Modal, Badge } from "../components/ui";
+import { Modal, Badge } from "../components/ui";
 import { useToast } from "../components/ui/toast";
-import NewsCard from "../components/NewsCard";
 import BarChart from "../components/charts/BarChart";
-import { useGlobalSearch } from "../search";
-import { articleChannel, httpsImg, newsBody, newsCategory, newsSummary, sourceMeta } from "../lib/news";
+import { sourceMeta } from "../lib/news";
 import { ageLabel } from "../lib/time";
-import type { NewsArticle } from "../api/types";
 
+// 수집 관리 (Step 11 — 운영 전용). 뉴스 읽기는 /feed(뉴스 탐색)로 분리됐다.
 export default function Collect() {
   const qc = useQueryClient();
   const toast = useToast();
-  const [view, setView] = useState<"browse" | "settings">("browse");
-  const [cat, setCat] = useState<"keyword" | "portal">("keyword");
-  const [chan, setChan] = useState<string>("전체");
-  const [open, setOpen] = useState<NewsArticle | null>(null);
-  const { query } = useGlobalSearch();
-  const q = query.trim().toLowerCase();
-
-  // 커서 페이지네이션 — 60건씩, "더 보기"로 이어서 로드(과거 limit=300 단발 로드는
-  // 본문 포함 1MB+ 응답을 만들었다. 목록은 이제 발췌만 와서 가볍다).
-  const news = useInfiniteQuery({
-    queryKey: ["news", 30],
-    queryFn: ({ pageParam }) => api.news.list({ days: 30, limit: 60, cursor: pageParam || undefined }),
-    initialPageParam: "",
-    getNextPageParam: (last) => last.next_cursor ?? undefined,
-  });
-  const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
-  const all = useMemo(() => (news.data?.pages ?? []).flatMap((p) => p.items), [news.data]);
-
-  const cats = useMemo(() => all.filter((a) => newsCategory(a.source) === cat), [all, cat]);
-  const channels = useMemo(() => ["전체", ...Array.from(new Set(cats.map((a) => articleChannel(a).label)))], [cats]);
-  const items = cats.filter((a) =>
-    (chan === "전체" || articleChannel(a).label === chan) &&
-    (!q || `${a.title} ${newsSummary(a)} ${a.keywords ?? ""}`.toLowerCase().includes(q)));
 
   const [prog, setProg] = useState<CollectProgress | null>(null);
   const running = !!prog?.running;
   const runningRef = useRef(false);
-  const [summary, setSummary] = useState<string | null>(null);
-  const summarize = useMutation({
-    mutationFn: () => api.proposalsExtra.summarize(3),
-    onSuccess: (d) => setSummary(d.summary?.trim() || "요약할 최근 뉴스가 없어요."),
-    onError: (e) => toast.push((e as Error).message, "danger"),
-  });
 
   async function runCollect(kw: string[]) {
     if (runningRef.current) return;
@@ -75,43 +44,17 @@ export default function Collect() {
     }
   }
 
-  const activeSources = new Set(all.map((a) => articleChannel(a).label)).size;
-  const lastUpdate = all[0]?.collected_at || all[0]?.date;
-
   return (
     <div>
-      <KPIStatGrid items={[
-        { label: "활성 출처", value: activeSources },
-        { label: "오늘 수집", value: today.isLoading ? "…" : (today.data?.length ?? 0) },
-        { label: "30일 누적", value: news.isLoading ? "…" : all.length },
-        { label: "최종 갱신", value: lastUpdate ? ageLabel(lastUpdate) : "—" },
-      ]} />
-
       <div className="cl-bar">
-        <Tabs items={[{ key: "browse", label: "🃏 카드" }, { key: "settings", label: "⚙ 수집 설정" }]}
-          value={view} onChange={(v) => setView(v as "browse" | "settings")} />
+        <span className="muted" style={{ fontSize: "var(--fs-caption)" }}>
+          기사 읽기는 <b>뉴스 탐색</b> 메뉴에서 — 여기는 수집 실행·출처·진단만 다룹니다.
+        </span>
         <span className="cl-grow" />
-        <button className="btn" disabled={summarize.isPending} onClick={() => summarize.mutate()}>
-          {summarize.isPending ? "요약 중…" : "📰 최근 뉴스 요약"}</button>
         <CollectButton pending={running} onRun={() => runCollect([])} />
       </div>
-
-      {view === "browse" ? (
-        <BrowseView cat={cat} setCat={(c) => { setCat(c); setChan("전체"); }}
-          channels={channels} chan={chan} setChan={setChan} items={items} q={query} onOpen={setOpen}
-          loading={news.isLoading} hasMore={!!news.hasNextPage}
-          loadingMore={news.isFetchingNextPage} onMore={() => news.fetchNextPage()} />
-      ) : (
-        <SettingsView onCollect={(kw) => runCollect(kw)} collecting={running} />
-      )}
-
-      <ArticleModal article={open} onClose={() => setOpen(null)} />
+      <SettingsView onCollect={(kw) => runCollect(kw)} collecting={running} />
       <CollectProgressModal prog={prog} onClose={() => { if (!running) setProg(null); }} />
-      {summary !== null && (
-        <Modal open onClose={() => setSummary(null)} title="📰 최근 뉴스 요약 (3일)" width={600}>
-          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: "var(--fs-body)" }}>{summary}</div>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -192,118 +135,11 @@ function CollectProgressModal({ prog, onClose }: { prog: CollectProgress | null;
   );
 }
 
+
 function CollectButton({ pending, onRun }: { pending: boolean; onRun: () => void }) {
   return <button className="btn primary" disabled={pending} onClick={onRun}>{pending ? "수집 중…" : "🔄 지금 수집"}</button>;
 }
 
-function BrowseView({ cat, setCat, channels, chan, setChan, items, q, onOpen, loading, hasMore, loadingMore, onMore }: {
-  cat: "keyword" | "portal"; setCat: (c: "keyword" | "portal") => void;
-  channels: string[]; chan: string; setChan: (c: string) => void;
-  items: NewsArticle[]; q: string; onOpen: (a: NewsArticle) => void; loading: boolean;
-  hasMore: boolean; loadingMore: boolean; onMore: () => void;
-}) {
-  const [mode, setMode] = useState<"card" | "table">("card");
-  return (
-    <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Tabs items={[{ key: "keyword", label: "🔑 키워드 뉴스" }, { key: "portal", label: "🏛 뉴스 포탈" }]}
-          value={cat} onChange={(c) => setCat(c as "keyword" | "portal")} />
-        <span style={{ flex: 1 }} />
-        <Tabs items={[{ key: "card", label: "🃏 카드" }, { key: "table", label: "📋 데이터 표" }]}
-          value={mode} onChange={(m) => setMode(m as "card" | "table")} />
-      </div>
-      <div className="cl-chips">
-        {channels.map((c) => {
-          const m = c === "전체" ? { color: "var(--text-muted)" } : sourceMeta(c);
-          return (
-            <button key={c} className={`cl-chip${c === chan ? " on" : ""}`} onClick={() => setChan(c)}>
-              {c !== "전체" && <span className="cl-chip-dot" style={{ background: m.color }} />}{c}
-            </button>
-          );
-        })}
-      </div>
-      {q && <div className="muted" style={{ marginBottom: 8 }}>검색: "{q}" — {items.length}건</div>}
-      {loading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
-        : items.length === 0 ? <EmptyState icon="🗞" title="기사가 없어요" hint="‘지금 수집’으로 수집을 시작하세요." />
-        : mode === "table" ? <NewsTable items={items} onOpen={onOpen} />
-        : <div className="bd-grid">{items.map((a) => (
-            <div key={a.link} onClick={(e) => { e.preventDefault(); onOpen(a); }}><NewsCard article={a} /></div>
-          ))}</div>}
-      {!loading && hasMore && (
-        <div style={{ textAlign: "center", marginTop: 12 }}>
-          <button className="btn" disabled={loadingMore} onClick={onMore}>
-            {loadingMore ? "불러오는 중…" : "더 보기 ↓"}</button>
-        </div>
-      )}
-    </>
-  );
-}
-
-function NewsTable({ items, onOpen }: { items: NewsArticle[]; onOpen: (a: NewsArticle) => void }) {
-  return (
-    <div className="cl-table-wrap">
-      <table className="cl-table">
-        <thead><tr><th>출처</th><th>제목</th><th>본문</th><th>키워드</th><th>수집</th></tr></thead>
-        <tbody>
-          {items.map((a) => {
-            const m = articleChannel(a);
-            return (
-              <tr key={a.link} onClick={() => onOpen(a)} style={{ cursor: "pointer" }}>
-                <td><span className="cl-chip-dot" style={{ background: m.color }} /> {m.label}</td>
-                <td className="cl-td-title">{a.title}</td>
-                <td className="cl-td-sum">{newsBody(a) || <span className="muted">(본문 없음)</span>}</td>
-                <td className="cl-td-kw">{(a.keywords_llm || a.keywords || "").split(",").slice(0, 3).join(", ")}</td>
-                <td className="muted" style={{ whiteSpace: "nowrap" }}>{ageLabel(a.collected_at || a.date)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClose: () => void }) {
-  // 목록은 본문(content)을 빼고 주므로 모달 열릴 때 상세를 별도 조회.
-  const detail = useQuery({
-    queryKey: ["news", "detail", article?.link],
-    queryFn: () => api.news.detail(article!.link),
-    enabled: !!article?.link,
-    staleTime: 5 * 60 * 1000,
-  });
-  if (!article) return null;
-  const m = articleChannel(article);
-  const full = detail.data ?? article;
-  // 본문(content) 우선, 없으면 RSS/검색 스니펫(summary) 폴백. 수집은 LLM 요약을
-  // 만들지 않으므로 별도 '요약' 블록은 두지 않는다(본문만 보여줌).
-  const body = newsBody(full);
-  const kws = (full.keywords_llm || full.keywords || "").trim();
-  const img = httpsImg(full.image_url);
-  return (
-    <Modal open onClose={onClose} title={<span style={{ color: m.color }}>{m.label}</span>} width={640}>
-      {img && (
-        <img src={img} alt="" loading="lazy"
-          style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 8, marginBottom: 12 }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-      )}
-      <div className="muted" style={{ fontSize: "var(--fs-caption)" }}>
-        {full.press ? `${full.press} · ` : ""}{ageLabel(full.collected_at || full.date)}
-      </div>
-      <h2 style={{ margin: "8px 0 12px", fontSize: "var(--fs-headline)", lineHeight: 1.35 }}>{full.title}</h2>
-      {detail.isLoading ? (
-        <div style={{ display: "grid", gap: 6 }}>{[0, 1, 2, 3].map((i) => <div key={i} className="skel" style={{ height: 14 }} />)}</div>
-      ) : body ? (
-        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, maxHeight: 340, overflowY: "auto", fontSize: "var(--fs-body)" }}>{body}</div>
-      ) : (
-        <div className="muted" style={{ lineHeight: 1.6 }}>본문이 아직 수집되지 않았어요. 아래에서 원본을 확인하세요.</div>
-      )}
-      {kws && <div style={{ marginTop: 12 }}>{kws.split(",").map((k) => <span key={k} className="chip">{k.trim()}</span>)}</div>}
-      <div style={{ marginTop: 16 }}>
-        {article.link && <a className="btn primary" href={article.link} target="_blank" rel="noreferrer noopener">원본 기사 열기 ↗</a>}
-      </div>
-    </Modal>
-  );
-}
 
 interface RunEntry {
   ts?: string; trigger?: string; ok?: boolean;
@@ -328,6 +164,7 @@ function RunTimeline({ runs }: { runs: RunEntry[] }) {
     </div>
   );
 }
+
 
 function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => void; collecting: boolean }) {
   const qc = useQueryClient();
