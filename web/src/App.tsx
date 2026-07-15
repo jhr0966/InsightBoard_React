@@ -4,10 +4,11 @@ import Board from "./pages/Board";
 import Insights from "./pages/Insights";
 import Proposals from "./pages/Proposals";
 import Collect from "./pages/Collect";
+import Feed from "./pages/Feed";
 import TaskDefs from "./pages/TaskDefs";
 import PersonaPage from "./pages/Persona";
 
-// 5 라우트 (REACT_MIGRATION_PLAN §4): 보드/인사이트/자동화제안/수집/작업정의.
+// Step 11 IA: 오늘(보드)/뉴스 탐색(feed)/자동화 과제/분석실 + 관리(수집·작업정의).
 export default function App() {
   return (
     <Routes>
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/" element={<Board />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/proposals" element={<Proposals />} />
+        <Route path="/feed" element={<Feed />} />
         <Route path="/collect" element={<Collect />} />
         <Route path="/taskdefs" element={<TaskDefs />} />
         <Route path="/persona" element={<PersonaPage />} />

@@ -61,7 +61,8 @@ UI는 **React SPA**(`web/`, Vite+TS+Router+Query), 백엔드는 **FastAPI**(`api
 | 보드/트렌드 LLM 산출 | `sola/{board_brief,trend_brief,opportunity,side_context}.py` |
 | 페르소나 | `persona/{schema,store,context}.py` |
 | 📊 오늘의 보드 | `web/src/pages/Board.tsx` (+ `api/routers/board.py`·`trends.py`) |
-| 🗞 뉴스 수집 | `web/src/pages/Collect.tsx` (카드/설정·기사모달·수집 SSE; + `api/routers/news.py`·`collect.py`·`sources.py`) |
+| 🗞 뉴스 탐색 | `web/src/pages/Feed.tsx` (카드/표·기사모달·검색; + `api/routers/news.py`) |
+| ⚙️ 수집 관리 | `web/src/pages/Collect.tsx` (수집 SSE·출처·진단·이력; + `api/routers/collect.py`·`sources.py`) |
 | 📋 작업 정의 | `web/src/pages/TaskDefs.tsx` (엑셀 업로드·diff 미리보기·풀편집폼·이력; + `api/routers/taskdefs.py`, `roadmap/ingest.py`, `store/task_defs_db.py`) |
 | 🔎 인사이트 분석 | `web/src/pages/Insights.tsx` (트렌드 라인·BubbleMatrix·Heatmap+셀매칭; + `api/routers/insights.py`·`trends.py`·`opportunities.py`) |
 | 🤖 자동화 제안 (제안 생성 + 보관함) | `web/src/pages/Proposals.tsx` (+ `api/routers/proposals.py`·`bookmarks.py`) |

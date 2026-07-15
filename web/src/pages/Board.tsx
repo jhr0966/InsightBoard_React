@@ -1,26 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { DigestItem } from "../api/types";
-import { KPIStatGrid, EmptyState } from "../components/ui";
+import { EmptyState } from "../components/ui";
 import { useToast } from "../components/ui/toast";
-import NewsCard from "../components/NewsCard";
-import BubbleMatrix from "../components/charts/BubbleMatrix";
-import type { Bubble } from "../components/charts/BubbleMatrix";
-import LineChart from "../components/charts/LineChart";
-import Sparkline from "../components/charts/Sparkline";
-import type { TrendSeriesItem } from "../api/types";
-
-function deltaLabel(s: TrendSeriesItem): string {
-  if (s.is_new) return `신규 ${s.total}건`;
-  return s.delta >= 0 ? `+${s.delta}%` : `${s.delta}%`;
-}
-function deltaClass(s: TrendSeriesItem): string {
-  if (s.is_new || s.delta >= 20) return "badge-success";
-  if (s.delta <= -20) return "badge-danger";
-  return "badge-default";
-}
 
 function Section({ title, note, cta, children }: {
   title: string; note?: string; cta?: React.ReactNode; children: React.ReactNode;
@@ -118,30 +102,11 @@ export default function Board() {
   const nav = useNavigate();
   const toast = useToast();
   const qc = useQueryClient();
-  const [sel, setSel] = useState<string | null>(null);
 
   const persona = useQuery({ queryKey: ["persona"], queryFn: () => api.persona.get() });
-  const summary = useQuery({ queryKey: ["bookmarks", "summary"], queryFn: () => api.bookmarks.summary() });
-  const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
   const brief = useQuery({ queryKey: ["board", "brief"], queryFn: () => api.board.brief(1) });
-  const opps = useQuery({ queryKey: ["opportunities", 30], queryFn: () => api.opportunities.list(30, 6) });
-  const trend = useQuery({ queryKey: ["trends", "keyword-series"], queryFn: () => api.trends.keywordSeries() });
+  const opps = useQuery({ queryKey: ["opportunities", 30], queryFn: () => api.opportunities.list(30, 3) });
   const keywords = useQuery({ queryKey: ["trends", "keywords", 30], queryFn: () => api.trends.keywords(30, 8) });
-
-  const status = (summary.data?.proposal_status as Record<string, number> | undefined) ?? {};
-  const proposals = (summary.data?.by_type as Record<string, number> | undefined)?.proposal ?? 0;
-  const news = today.data ?? [];
-
-  const bubbles: Bubble[] = useMemo(() => {
-    const cells = opps.data ?? [];
-    const maxScore = Math.max(1, ...cells.map((c) => c.cell_score));
-    const maxAvg = Math.max(0.01, ...cells.map((c) => c.avg_score));
-    return cells.map((c) => ({
-      key: `${c.dept}||${c.lv3}`, label: c.lv3, dept: c.dept,
-      ease: Math.min(1, c.avg_score / maxAvg), impact: Math.min(1, c.cell_score / maxScore), score: c.cell_score,
-    }));
-  }, [opps.data]);
-  const selCell = (opps.data ?? []).find((c) => `${c.dept}||${c.lv3}` === sel);
 
   const collect = useMutation({
     mutationFn: () => api.collect.run(persona.data?.interest_keywords ?? [], { do_enrich: false }),
@@ -152,9 +117,12 @@ export default function Board() {
   const name = persona.data?.name || persona.data?.dept || "";
   const now = new Date();
 
+  // Step 11 홈 다이어트 — "부담 없이 읽는" 3분 화면: 인사말 → 한 줄 브리핑 →
+  // 개인화 다이제스트 → 자동화 제안 3장 → 내 키워드. KPI·매트릭스·트렌드 차트는
+  // 분석실(/insights)로 이관(중복 제거).
   return (
     <div>
-      {/* ① 인사말 + KPI */}
+      {/* ① 인사말 */}
       <div className="bd-greet">
         <div className="bd-greet-hi">안녕하세요{name ? `, ${name}님` : ""} 👋</div>
         <div className="bd-greet-sub">
@@ -162,35 +130,25 @@ export default function Board() {
           {" · "}{now.getMonth() + 1}월 {now.getDate()}일 {String(now.getHours()).padStart(2, "0")}:{String(now.getMinutes()).padStart(2, "0")} 기준
         </div>
       </div>
-      <KPIStatGrid items={[
-        { label: "오늘 수집", value: today.isLoading ? "…" : news.length },
-        { label: "자동화 제안", value: proposals },
-        { label: "채택", value: status.adopted ?? 0, tone: "success" },
-        { label: "채택 대기", value: status.pending ?? 0, tone: "warning" },
-      ]} />
 
-      {/* ② SOLA 브리핑 + 캐러셀 */}
-      <Section title="SOLA 오늘의 브리핑" note="아침 7분"
-        cta={news.length > 0 && <button className="btn primary" onClick={() => nav("/proposals?from=brief")}>이 뉴스로 제안서 →</button>}>
+      {/* ② SOLA 한 줄 브리핑 */}
+      <Section title="SOLA 오늘의 브리핑" note="오늘 내 업무 기준 요약"
+        cta={<button className="btn primary" onClick={() => nav("/proposals?from=brief")}>이 뉴스로 제안서 →</button>}>
         <div className="bd-brief">
           <span className="bd-brief-tag">요약</span>
           {brief.isLoading ? <div className="skel" style={{ height: 40, marginTop: 12 }} />
             : brief.isError ? <div className="bd-brief-text muted">브리핑을 불러오지 못했어요 — {(brief.error as Error).message}</div>
             : <div className="bd-brief-text">{brief.data?.brief}</div>}
-          {news.length > 0 && (
-            <div className="bd-carousel" style={{ marginTop: "var(--space-4)" }}>
-              {news.slice(0, 6).map((a) => <NewsCard key={a.link} article={a} compact />)}
-            </div>
-          )}
         </div>
       </Section>
 
-      {/* ③ 오늘의 다이제스트 — 개인화 랭킹 + "왜 내 업무 관련" (Step 9) */}
+      {/* ③ 오늘의 다이제스트 — 개인화 랭킹 + "왜 내 업무 관련" */}
       <DigestSection />
 
-      {/* ④ 자동화 제안 카드 */}
-      <Section title="자동화 제안" note="부서 × 공정 기회 상위">
-        {opps.data?.length === 0 ? <EmptyState icon="🤖" title="아직 매칭된 자동화 제안이 없어요" hint="뉴스·작업정의가 쌓이면 표시됩니다." />
+      {/* ④ 자동화 제안 상위 3 — 행동 유도 카드(상세 분석은 분석실) */}
+      <Section title="자동화 제안" note="부서 × 공정 기회 상위"
+        cta={<button className="btn" onClick={() => nav("/insights")}>분석실에서 더 보기 →</button>}>
+        {(opps.data ?? []).length === 0 ? <EmptyState icon="🤖" title="아직 매칭된 자동화 제안이 없어요" hint="뉴스·작업정의가 쌓이면 표시됩니다." />
           : <div className="bd-opps">
             {(opps.data ?? []).slice(0, 3).map((c) => (
               <div className="bd-opp" key={`${c.dept}-${c.lv3}`}>
@@ -209,56 +167,7 @@ export default function Board() {
           </div>}
       </Section>
 
-      {/* ⑤ 기회 매트릭스 */}
-      <Section title="기회 매트릭스" note="난이도 × 효과">
-        {bubbles.length === 0 ? <EmptyState icon="🧭" title="매트릭스를 그릴 데이터가 부족해요" />
-          : <div className="chart-row">
-            <BubbleMatrix cells={bubbles} selectedKey={sel} onSelect={setSel} height={360} />
-            <div>
-              {selCell ? <>
-                <div style={{ fontWeight: 600 }}>{selCell.dept} · {selCell.lv3}</div>
-                <div style={{ display: "flex", gap: 12, margin: "8px 0" }}>
-                  <span><b>{selCell.cell_score.toFixed(1)}</b> <span className="muted">점수</span></span>
-                  <span><b>{selCell.matched_news}</b> <span className="muted">뉴스</span></span>
-                </div>
-                <button className="btn primary" onClick={() => nav(`/proposals?from=matrix&dept=${encodeURIComponent(selCell.dept)}&lv3=${encodeURIComponent(selCell.lv3)}`)}>제안서 작업장 →</button>
-              </> : <div className="muted">버블을 클릭하면 상세가 표시됩니다.</div>}
-            </div>
-          </div>}
-      </Section>
-
-      {/* ⑥ 트렌드 — 적응형(주간 8칸 / 일간 14칸) */}
-      <Section title="키워드 트렌드" note={trend.data?.mode === "daily" ? "최근 14일(일별)" : "최근 8주(주별)"}>
-        <div className="chart-row">
-          <div className="card" style={{ margin: 0 }}>
-            {trend.data && trend.data.series.length > 0 ? (
-              <>
-                <LineChart labels={trend.data.labels}
-                  series={trend.data.series.slice(0, 4).map((s) => ({ name: s.keyword, values: s.counts }))}
-                  width={560} height={180} highlightTop={3} />
-                {trend.data.anno && (
-                  <div className="bd-trend-anno">
-                    <strong>{trend.data.anno.name} {trend.data.anno.arrow}</strong>
-                    <span className="muted"> · {trend.data.anno.sub}</span>
-                  </div>
-                )}
-              </>
-            ) : <div className="muted">아직 트렌드를 그릴 데이터가 부족해요. 수집이 쌓이면 키워드 추이가 표시됩니다.</div>}
-          </div>
-          <div className="card" style={{ margin: 0 }}>
-            {(trend.data?.series ?? []).slice(0, 6).map((s) => (
-              <div className="bd-trend-kw" key={s.keyword}>
-                <span className="bd-trend-kw-name">{s.keyword}</span>
-                <Sparkline values={s.counts} />
-                <span className={`badge ${deltaClass(s)}`}>{deltaLabel(s)}</span>
-              </div>
-            ))}
-            {(trend.data?.series ?? []).length === 0 && <div className="muted">키워드 추이가 아직 없어요.</div>}
-          </div>
-        </div>
-      </Section>
-
-      {/* ⑦ 키워드 관리 */}
+      {/* ⑤ 내 키워드 + 수집 */}
       <Section title="내 키워드" note="관심사 + 자동 추출"
         cta={<button className="btn primary" disabled={collect.isPending} onClick={() => collect.mutate()}>
           {collect.isPending ? "수집 중…" : "지금 수집 →"}</button>}>
