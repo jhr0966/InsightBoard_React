@@ -102,14 +102,14 @@ def _screen_digest(screen: str, days: int) -> tuple[str, int]:
     lines.append(f"## 상위 키워드: {kw_line or '없음'}")
 
     if screen == "proposals":
-        from store import bookmarks
+        from store import proposals_db
         try:
-            sc = bookmarks.summary_counts()
-            ps = sc.get("proposal_status") if isinstance(sc, dict) else None
-            if isinstance(ps, dict):
-                lines.append(
-                    f"## 제안 보관함: 채택 {ps.get('adopted', 0)} · 대기 {ps.get('pending', 0)} · 보류 {ps.get('held', 0)}"
-                )
+            sc = proposals_db.summary()
+            by = sc.get("by_status", {})
+            lines.append(
+                f"## 과제 보관함: 총 {sc.get('total', 0)} · 검토중 {by.get('reviewing', 0)}"
+                f" · PoC {by.get('poc_running', 0)} · 채택 {by.get('adopted', 0)}"
+            )
         except Exception:  # noqa: BLE001
             pass
     elif screen == "taskdefs":

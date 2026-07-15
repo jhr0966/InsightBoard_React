@@ -16,14 +16,13 @@ export default function Topbar({
   const nav = navByPath(pathname);
   const navigate = useNavigate();
   const summary = useQuery({
-    queryKey: ["bookmarks", "summary"],
-    queryFn: () => api.bookmarks.summary(),
+    queryKey: ["proposals", "summary"],
+    queryFn: () => api.proposals.summary(),
   });
   const llm = useQuery({ queryKey: ["assistant", "status"], queryFn: () => api.assistant.status() });
   const persona = useQuery({ queryKey: ["persona"], queryFn: () => api.persona.get() });
   const today = useQuery({ queryKey: ["news", "today"], queryFn: () => api.news.today() });
-  const pendingAdopt =
-    ((summary.data?.proposal_status as Record<string, number> | undefined)?.pending) ?? 0;
+  const pendingAdopt = summary.data?.reviewing ?? 0;
 
   const now = new Date();
   const stamp = `${now.getMonth() + 1}.${now.getDate()} · ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} 갱신`;
@@ -77,7 +76,7 @@ export default function Topbar({
         />
         <button
           className="topbar-btn"
-          title={pendingAdopt > 0 ? `${pendingAdopt}건 채택 대기` : "새 알림 없음"}
+          title={pendingAdopt > 0 ? `${pendingAdopt}건 검토 중` : "새 알림 없음"}
           onClick={() => navigate("/proposals")}
         >
           🔔{pendingAdopt > 0 && <span className="topbar-dot-badge">{pendingAdopt}</span>}

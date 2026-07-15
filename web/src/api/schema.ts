@@ -757,6 +757,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/proposals/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Proposals */
+        get: operations["list_proposals_api_proposals_list_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/migrate-bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Migrate Bookmarks
+         * @description 구 bookmark(type=proposal) → Proposal 엔터티 이관 (원본 보존·멱등).
+         *
+         *     이관본은 legacy=true, 근거 meta 없으면 evidence_unavailable=true(§11-3).
+         */
+        post: operations["migrate_bookmarks_api_proposals_migrate_bookmarks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals/refine": {
         parameters: {
             query?: never;
@@ -773,6 +812,26 @@ export interface paths {
          *     SOLA 작업실의 '다시 생성/다듬기' — 처음부터 재생성 없이 기존 산출물을 반복 개선.
          */
         post: operations["refine_api_proposals_refine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Proposal
+         * @description 생성된 제안서를 Proposal 엔터티로 보관 — 근거 관계 포함(§11-3·§15).
+         */
+        post: operations["save_proposal_api_proposals_save_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -797,6 +856,78 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Proposals Summary */
+        get: operations["proposals_summary_api_proposals_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Proposal */
+        delete: operations["delete_proposal_api_proposals__proposal_id__delete"];
+        options?: never;
+        head?: never;
+        /** Proposal Fields */
+        patch: operations["proposal_fields_api_proposals__proposal_id__patch"];
+        trace?: never;
+    };
+    "/api/proposals/{proposal_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Proposal History */
+        get: operations["proposal_history_api_proposals__proposal_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/{proposal_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Proposal Status
+         * @description 상태 전환 — proposal_history 에 이력 보존(§15).
+         */
+        patch: operations["proposal_status_api_proposals__proposal_id__status_patch"];
         trace?: never;
     };
     "/api/sources": {
@@ -1490,6 +1621,16 @@ export interface components {
              */
             theme: string;
         };
+        /** ProposalFieldsIn */
+        ProposalFieldsIn: {
+            /**
+             * Fields
+             * @description owner·partner_depts·준비도·비용/기간·expected_kpi·poc_result 등
+             */
+            fields: {
+                [key: string]: unknown;
+            };
+        };
         /** ProposalGenerateIn */
         ProposalGenerateIn: {
             /**
@@ -1546,6 +1687,50 @@ export interface components {
              * @description 현재 제안서 MD
              */
             proposal: string;
+        };
+        /** ProposalSaveIn */
+        ProposalSaveIn: {
+            /** Article Ids */
+            article_ids?: string[];
+            /** Case Ids */
+            case_ids?: string[];
+            /**
+             * Content
+             * @default
+             */
+            content: string;
+            /**
+             * Matching Version
+             * @default 0
+             */
+            matching_version: number;
+            /**
+             * Prompt Version
+             * @default 0
+             */
+            prompt_version: number;
+            /**
+             * Status
+             * @default draft
+             */
+            status: string;
+            /**
+             * Task Id
+             * @default
+             */
+            task_id: string;
+            /** Title */
+            title: string;
+        };
+        /** ProposalStatusIn */
+        ProposalStatusIn: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Status */
+            status: string;
         };
         /** SourceHealth */
         SourceHealth: {
@@ -3056,6 +3241,76 @@ export interface operations {
             };
         };
     };
+    list_proposals_api_proposals_list_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    migrate_bookmarks_api_proposals_migrate_bookmarks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     refine_api_proposals_refine_post: {
         parameters: {
             query?: never;
@@ -3092,6 +3347,44 @@ export interface operations {
             };
         };
     };
+    save_proposal_api_proposals_save_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalSaveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     summarize_api_proposals_summarize_post: {
         parameters: {
             query?: never;
@@ -3105,6 +3398,189 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SummarizeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    proposals_summary_api_proposals_summary_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_proposal_api_proposals__proposal_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    proposal_fields_api_proposals__proposal_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalFieldsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    proposal_history_api_proposals__proposal_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    proposal_status_api_proposals__proposal_id__status_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-User-Id"?: string | null;
+                "X-Workspace-Id"?: string | null;
+            };
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalStatusIn"];
             };
         };
         responses: {
