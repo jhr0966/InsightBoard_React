@@ -39,10 +39,22 @@ export interface NewsArticle {
   collected_at?: string;
   published_at?: string;
   query?: string;
+  // 식별·정렬 (Step 2·3) — article_id 는 정규화 URL 해시, sort_at 은 정렬·커서 키.
+  article_id?: string;
+  sort_at?: string;
+  // 목록 경량 필드 — 본문 발췌·확보 여부 (전체 본문은 /detail).
+  excerpt?: string;
+  content_available?: boolean;
   // /api/news/detail 전용 (목록에선 미포함)
   content?: string;
   keywords_llm?: string;
   enriched_at?: string;
+}
+
+// GET /api/news 커서 페이지네이션 응답. next_cursor null = 마지막 페이지.
+export interface NewsListPage {
+  items: NewsArticle[];
+  next_cursor: string | null;
 }
 
 export interface KeywordCount { keyword: string; count: number; }

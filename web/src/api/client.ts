@@ -10,6 +10,7 @@ import type {
   KeywordCount,
   KeywordSeries,
   NewsArticle,
+  NewsListPage,
   OpportunityCell,
   ProcessMapCard,
   Persona,
@@ -129,8 +130,9 @@ export const api = {
   },
 
   news: {
-    list: (q?: { days?: number; source?: string; limit?: number }) =>
-      req<NewsArticle[]>(`/api/news${qs(q ?? {})}`),
+    // 커서 페이지네이션 — 응답 {items, next_cursor}. cursor 는 이전 응답의 next_cursor.
+    list: (q?: { days?: number; source?: string; limit?: number; cursor?: string }) =>
+      req<NewsListPage>(`/api/news${qs(q ?? {})}`),
     today: () => req<NewsArticle[]>("/api/news/today"),
     contentRate: (days = 7) => req<{ total: number; ready: number; pct: number }>(`/api/news/content-rate${qs({ days })}`),
     detail: (link: string, days = 30) =>

@@ -61,7 +61,7 @@ def test_limit_keeps_latest_day_articles():
     _clear_memos()
     res = client.get("/api/news", params={"days": 7, "limit": 2})
     assert res.status_code == 200
-    links = [r["link"] for r in res.json()]
+    links = [r["link"] for r in res.json()["items"]]
     assert len(links) == 2
     assert links[0] == "https://x/today"  # 과거엔 어제 기사 2건이 반환되고 오늘이 잘렸다
 

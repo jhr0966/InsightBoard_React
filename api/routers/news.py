@@ -1,8 +1,16 @@
 """뉴스 API — `store.news_db` 위임 (수집된 기사 조회).
 
 Parquet 합본 DataFrame 을 레코드로 변환해 노출. Phase 1 read-only(수집 실행은
-후속 `/api/collect`). 목록 응답은 카드·데이터표가 본문을 보여줄 수 있도록 본문
-(content)을 길이 제한(_LIST_CONTENT_MAX)해서 포함하고, 전체 본문은 `/detail` 로 조회.
+후속 `/api/collect`).
+
+목록/상세 계약 (Step 3 `feat-news-pagination`):
+- 목록(`GET /api/news`)은 **경량 응답** — 전체 본문(content) 대신 발췌
+  `excerpt`(≤ `_EXCERPT_MAX`)와 `content_available`(본문 확보 여부)만 싣는다.
+  기사 300건 × 본문 4,000자 = 1MB+ 응답이 나오던 payload 문제 해소.
+- 전체 본문·enrich 필드는 상세(`GET /api/news/detail`)로만.
+- 목록은 **커서 페이지네이션**: 응답 `{items, next_cursor}`. 커서는 정렬키
+  그대로 `"{sort_at}::{link}"` (I-14 결정적 정렬: sort_at desc·link asc 이므로
+  offset 과 달리 수집이 끼어들어도 중복/누락 없이 이어진다).
 """
 from __future__ import annotations
 
@@ -12,49 +20,76 @@ from store import news_db
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 
-# 목록 응답에 실을 본문 최대 길이 — 카드 발췌·데이터표 본문 표시에 충분하면서
-# payload 가 과대해지지 않게 절단(전체 본문은 /detail). 한국어 기사 대부분 포함.
-_LIST_CONTENT_MAX = 4000
+# 목록 발췌(excerpt) 최대 길이 — 카드 2줄 클램프·데이터표 프리뷰에 충분한 크기.
+_EXCERPT_MAX = 300
+# 본문 '확보' 판정 최소 길이 — /content-rate 와 동일 기준.
+_CONTENT_READY_MIN = 50
 
-# 목록 응답 필드. content 는 카드·표가 본문을 보여주도록 포함(길이 제한 절단).
-# article_id 는 안정 식별자(정규화 URL 해시) — 후속 페이지네이션·links 의 키.
+# 목록 응답 필드 — 본문(content)은 제외(excerpt/content_available 파생 필드로 대체).
+# article_id 는 안정 식별자(정규화 URL 해시), sort_at 은 정렬·커서 키.
 _LIST_FIELDS = (
     "title", "press", "date", "published_at", "link", "summary",
     "keywords", "source", "query", "image_url", "summary_llm", "collected_at",
-    "content", "article_id",
+    "article_id", "sort_at",
 )
 # 상세 응답 — 목록 + 전체 본문/enrich 필드.
-_DETAIL_FIELDS = _LIST_FIELDS + ("keywords_llm", "enriched_at")
+_DETAIL_FIELDS = _LIST_FIELDS + ("content", "keywords_llm", "enriched_at")
 
 
-def _records(df, fields=_LIST_FIELDS, *, content_max: int | None = None) -> list[dict]:
+def _records(df, fields=_LIST_FIELDS, *, excerpt: bool = False) -> list[dict]:
     if df.empty:
         return []
     cols = [c for c in fields if c in df.columns]
     rows = df[cols].to_dict(orient="records")
-    # 목록은 본문을 절단(payload 절감). content_max=None 이면 원문 그대로(상세).
-    if content_max is not None:
-        for r in rows:
-            c = r.get("content")
-            if isinstance(c, str) and len(c) > content_max:
-                r["content"] = c[:content_max].rstrip() + "…"
+    if excerpt and "content" in df.columns:
+        # 목록 경량화 — 본문은 발췌·확보 여부만 파생해 싣는다(전체는 /detail).
+        contents = df["content"].astype(str).tolist()
+        for r, c in zip(rows, contents):
+            r["content_available"] = len(c) >= _CONTENT_READY_MIN
+            r["excerpt"] = (c[:_EXCERPT_MAX].rstrip() + "…") if len(c) > _EXCERPT_MAX else c
     return rows
+
+
+def _after_cursor(df, cursor: str):
+    """커서(`"{sort_at}::{link}"`) **이후** 행만 남긴다 (정렬 계약 I-14 기준).
+
+    정렬이 (sort_at desc, link asc) 이므로 '이후' = sort_at 이 더 작거나,
+    같으면 link 가 더 큰 행. 커서 형식이 어긋나면 400.
+    """
+    parts = cursor.split("::", 1)
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="잘못된 커서 형식입니다.")
+    c_sort, c_link = parts
+    mask = (df["sort_at"] < c_sort) | ((df["sort_at"] == c_sort) & (df["link"] > c_link))
+    return df[mask]
 
 
 @router.get("")
 def list_news(
     days: int = Query(default=7, ge=1, le=90, description="오늘 포함 최근 N일"),
     source: str | None = Query(default=None, description="출처 필터"),
-    limit: int | None = Query(default=200, ge=1, le=2000),
-) -> list[dict]:
+    limit: int = Query(default=60, ge=1, le=500, description="페이지 크기"),
+    cursor: str | None = Query(default=None, description="이전 응답의 next_cursor"),
+) -> dict:
+    """뉴스 목록 — 결정적 최신순 + 커서 페이지네이션.
+
+    응답: `{"items": [...], "next_cursor": str | null}`.
+    next_cursor 가 null 이면 마지막 페이지.
+    """
     # load_news_for_days 는 결정적 최신순(sort_at desc)을 보장 — head(limit) 은
-    # 항상 "가장 최신 limit 건"이다 (과거엔 미정렬이라 최신 날짜가 잘렸다).
+    # 항상 "커서 이후 가장 최신 limit 건"이다.
     df = news_db.load_news_for_days(days)
     if source and not df.empty and "source" in df.columns:
         df = df[df["source"] == source]
-    if limit and not df.empty:
-        df = df.head(limit)
-    return _records(df, content_max=_LIST_CONTENT_MAX)
+    if cursor and not df.empty:
+        df = _after_cursor(df, cursor)
+    page = df.head(limit) if not df.empty else df
+    items = _records(page, excerpt=True)
+    next_cursor = None
+    if len(items) == limit and len(df) > limit:
+        last = items[-1]
+        next_cursor = f"{last.get('sort_at', '')}::{last.get('link', '')}"
+    return {"items": items, "next_cursor": next_cursor}
 
 
 @router.get("/detail")
@@ -62,20 +97,20 @@ def news_detail(
     link: str = Query(..., description="기사 URL(고유키)"),
     days: int = Query(default=30, ge=1, le=365, description="조회 윈도(이 안에서 link 매칭)"),
 ) -> dict:
-    """단건 기사 상세 — 본문(content)·enrich 필드 포함. 목록의 link 로 조회."""
+    """단건 기사 상세 — 전체 본문(content)·enrich 필드 포함. 목록의 link 로 조회."""
     df = news_db.load_news_for_days(days)
     if df.empty or "link" not in df.columns:
         raise HTTPException(status_code=404, detail="기사를 찾을 수 없습니다.")
     match = df[df["link"] == link]
     if match.empty:
         raise HTTPException(status_code=404, detail="기사를 찾을 수 없습니다.")
-    # 상세는 전체 본문(content_max=None).
-    return _records(match.head(1), _DETAIL_FIELDS, content_max=None)[0]
+    return _records(match.head(1), _DETAIL_FIELDS)[0]
 
 
 @router.get("/today")
 def list_today() -> list[dict]:
-    return _records(news_db.load_all_today(), content_max=_LIST_CONTENT_MAX)
+    """오늘 수집분 전체 — 보드 탑 스토리·신선도 배지용(하루치라 페이지네이션 없음)."""
+    return _records(news_db.load_all_today(), excerpt=True)
 
 
 @router.get("/content-rate")
@@ -89,5 +124,5 @@ def content_rate(days: int = Query(default=7, ge=1, le=90)) -> dict:
     total = int(len(df))
     if total == 0 or "content" not in df.columns:
         return {"total": total, "ready": 0, "pct": 0}
-    ready = int((df["content"].astype(str).str.len() >= 50).sum())
+    ready = int((df["content"].astype(str).str.len() >= _CONTENT_READY_MIN).sum())
     return {"total": total, "ready": ready, "pct": round(ready / total * 100)}
