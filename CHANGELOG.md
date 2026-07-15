@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (뉴스 조회 결정적 최신순 — 최신 기사 잘림·출처 편향) — `fix-news-ordering`
+- **뉴스 조회가 최신순이 아니던 구조 결함 수정** (`store/news_db.py`): `load_news_for_days`/`load_all_today` 가 일자 프레임을 과거→오늘 순으로 합치기만 하고 정렬하지 않아 ①다운스트림 `head(limit)` 이 **가장 오래된 기사**를 취했고(윈도우 기사 수 > limit 이면 최신 날짜가 통째로 잘림 — Collect 30일 뷰) ②보드 탑 스토리·브리핑 입력이 파일명 사전순(출처 알파벳순) 편향이었다. 이제 모든 조회는 **`sort_at` 내림차순 + `link` 오름차순(tie-break) 결정적 정렬**로 반환.
+- **혼재 타임스탬프 정규화**: `published_at` 이 소스별로 ISO+offset(+09:00)·UTC·RFC822·date-only 로 혼재해 문자열 정렬이 불가능했다 → 로드 시 UTC ISO8601 로 통일한 파생 컬럼 `published_at_norm`·`sort_at` 계산(저장 스키마 무변경). 폴백 체인: published_at 정규화 → collected_at 정규화 → 일자 디렉토리 날짜. 파싱 실패 행도 유실 없이 맨 뒤 배치.
+- 소비 경로 5곳(뉴스 목록·오늘·보드 탑스토리·브리핑 입력·제안서 뉴스 입력) 모두 저장소 계층 정렬로 일괄 수정 — 라우터 코드 변경 없음(주석만). 제안서의 "작업 매칭" 근거 선정은 후속 `fix-proposal-grounding` 범위.
+- 검증: 신규 회귀 테스트 6건(`tests/test_news_ordering.py` — 최신순·limit 잘림·혼재 포맷·폴백·tie-break 결정성·today 결정성) 포함 pytest 514 passed · OpenAPI 스냅샷 무변경(응답 필드 동일) · 금지패턴 0.
+
 ### Fixed (뉴스 수집이 끝나지 않음 + 모달 중복 요약 블록) — `fix-collect-never-finishes`
 - **수집이 안 끝나는 현상 해결** (`scraping/enrich.py`): 검색은 끝났는데 본문 enrich 단계에서 무한 대기하던 문제. `requests` 의 read 타임아웃은 '바이트 간 간격'이라 데이터를 찔끔찔끔 흘리는 서버엔 안 걸려 수집이 영원히 안 끝날 수 있다 → `enrich_parallel` 에 **하드 wall-clock 데드라인**(`ENRICH_BATCH_DEADLINE=45s`) 추가. 초과 시 미완료 기사는 본문 없이 두고 즉시 반환(`ThreadPoolExecutor` 를 `shutdown(wait=False, cancel_futures=True)` 로 끊어 느린 스레드를 기다리지 않음). 소스 병렬이라 전체 수집 ≈ 가장 느린 소스 1개 ≈ 데드라인 수준에서 종료.
 - **모달 중복 '요약' 블록 제거** (`Collect.tsx` ArticleModal): 제목 밑 파란 블록은 LLM 요약이 아니라 `summary`(RSS/검색 스니펫)였고 본문 도입부와 중복돼 혼동을 줬다. 블록을 없애고 본문(content)만 표시(본문 없으면 스니펫을 본문 자리에 폴백). **수집은 LLM 요약을 생성하지 않음**(with_llm=False) 재확인.
