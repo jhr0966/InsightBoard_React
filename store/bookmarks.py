@@ -35,6 +35,9 @@ class Bookmark:
     content: str = ""
     link: str = ""
     tags: list[str] = field(default_factory=list)
+    # 구조화 메타(Step 8) — 제안서↔근거 관계: {task_id, task_key, article_ids,
+    # matching_version, prompt_version}. 본문 문자열에 근거를 숨기지 않는다(계획 §11-3).
+    meta: dict = field(default_factory=dict)
     created_at: str = ""
     # 의사결정 상태 (제안서 전용 의미를 가지지만 모든 타입에 존재).
     status: str = "pending"
@@ -62,6 +65,7 @@ class Bookmark:
             content=str(data.get("content", "")),
             link=str(data.get("link", "")),
             tags=list(data.get("tags", []) or []),
+            meta=dict(data.get("meta", {}) or {}),
             created_at=created_at,
             status=status,
             decision_note=str(data.get("decision_note", "")),

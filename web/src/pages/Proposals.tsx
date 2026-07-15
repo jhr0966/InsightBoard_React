@@ -32,6 +32,9 @@ function Generate() {
   const [selected, setSelected] = useState("");
   const [draft, setDraft] = useState("");   // 현재 제안서 MD(생성/다듬기로 갱신)
   const [instr, setInstr] = useState("");    // 다듬기 지시
+  // 근거 기사(Step 8) — 생성 응답의 links 기반 근거. 보관 시 meta 로 함께 저장.
+  const [evidence, setEvidence] = useState<Record<string, unknown>[]>([]);
+  const [genMeta, setGenMeta] = useState<Record<string, unknown>>({});
   const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
 
   // 핸드오프(dept/lv3)면 매칭되는 작업정의를 자동 선택.
@@ -52,7 +55,17 @@ function Generate() {
       const t = await api.taskdefs.get(pid);
       return api.proposals.generate((t.json as Record<string, unknown>) ?? { process_id: pid });
     },
-    onSuccess: (d) => setDraft(d.proposal),
+    onSuccess: (d, pid) => {
+      setDraft(d.proposal);
+      const ev = (d as unknown as { evidence?: Record<string, unknown>[] }).evidence ?? [];
+      setEvidence(ev);
+      setGenMeta({
+        task_id: pid,
+        article_ids: ev.map((e) => e.article_id).filter(Boolean),
+        matching_version: (d as unknown as { matching_version?: number }).matching_version,
+        prompt_version: (d as unknown as { prompt_version?: number }).prompt_version,
+      });
+    },
   });
   // 다듬기 — 현재 draft + 지시 → 새 draft (처음부터 재생성 없이 반복 개선).
   const refine = useMutation({
@@ -61,9 +74,11 @@ function Generate() {
     onError: (e) => toast.push((e as Error).message, "danger"),
   });
   const save = useMutation({
+    // 근거 관계(meta)를 본문과 함께 저장 — 나중에 "이 제안의 근거가 뭐였지"를 복원.
     mutationFn: (text: string) => api.bookmarks.create({
       type: "proposal", title: text.split("\n")[0].slice(0, 60) || "제안서", content: text,
-    }),
+      meta: genMeta,
+    } as Parameters<typeof api.bookmarks.create>[0]),
     onSuccess: () => { toast.push("📦 보관함에 저장했어요 (검토 대기)", "success"); qc.invalidateQueries({ queryKey: ["bookmarks"] }); },
   });
 
@@ -88,6 +103,23 @@ function Generate() {
             {gen.isPending ? "생성 중…" : "제안서 생성"}</button>
         </div>
         {draft && <>
+          {evidence.length > 0 && (
+            <div className="card" style={{ margin: "10px 0", background: "var(--bg-subtle, transparent)" }}>
+              <div className="card-title">📎 근거 기사 {evidence.length}건 <span className="muted" style={{ fontWeight: 400 }}>· 이 기사들만 제안 근거로 주입됨</span></div>
+              {evidence.map((ev, i) => (
+                <div key={String(ev.link ?? i)} style={{ fontSize: "var(--fs-caption)", lineHeight: 1.6, marginBottom: 6 }}>
+                  <a href={String(ev.link ?? "#")} target="_blank" rel="noreferrer noopener">
+                    [근거 {i + 1}] {String(ev.title ?? "")}</a>
+                  <div className="muted" style={{ fontSize: "var(--fs-micro)" }}>{String(ev.reason ?? "")}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {evidence.length === 0 && (
+            <div className="muted" style={{ fontSize: "var(--fs-caption)", margin: "8px 0" }}>
+              ⚠️ 이 작업과 매칭된 근거 기사가 없어요 — 제안서가 일반론일 수 있습니다. 수집을 늘리거나 작업정의 키워드를 보강하세요.
+            </div>
+          )}
           <div className="pr-output">{draft}</div>
           <div className="pr-refine" style={{ display: "flex", gap: 6, marginTop: 10 }}>
             <input style={{ flex: 1 }} value={instr} onChange={(e) => setInstr(e.target.value)}

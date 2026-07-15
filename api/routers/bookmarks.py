@@ -44,7 +44,7 @@ def create_bookmark(
     bm_id = body.id or bookmarks.make_id(body.type, body.title, body.link)
     bm = bookmarks.Bookmark(
         id=bm_id, type=body.type, title=body.title,
-        content=body.content, link=body.link, tags=body.tags,
+        content=body.content, link=body.link, tags=body.tags, meta=body.meta,
         user_id=identity.user_id, workspace_id=identity.workspace_id,
         created_by=identity.user_id,
     )

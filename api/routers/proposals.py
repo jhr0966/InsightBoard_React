@@ -38,13 +38,17 @@ def _llm_or_http(fn, *, what: str):
 
 class ProposalGenerateIn(BaseModel):
     task: dict[str, Any] = Field(..., description="작업 정의(또는 매칭 셀) dict")
-    days: int = Field(default=7, ge=1, le=90, description="제안 근거 뉴스 기간")
-    max_news: int = Field(default=10, ge=1, le=50)
+    days: int = Field(default=30, ge=1, le=90, description="제안 근거 뉴스 기간")
+    max_news: int = Field(default=6, ge=1, le=50, description="근거 기사 최대 수")
 
 
 class ProposalOut(BaseModel):
     proposal: str
     task_process_id: str | None = None
+    # 근거 기사(Step 8) — 제목·링크·매칭 이유. 프런트 표시 + 보관 시 meta 저장용.
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    matching_version: int | None = None
+    prompt_version: int | None = None
 
 
 @router.post("/generate", response_model=ProposalOut)
@@ -52,14 +56,34 @@ def generate(
     body: ProposalGenerateIn,
     _identity: Identity = Depends(current_identity),
 ) -> ProposalOut:
+    """제안서 생성 — 선택 작업과 **매칭된 근거 기사**(links)만 주입 (Step 8).
+
+    과거엔 최근 뉴스 앞쪽 N건(작업과 무관)을 넣어 일반론 제안서가 나왔다.
+    흐름: 작업 → links 조회 → 관련도·신선도·출처 다양성으로 근거 선정 →
+    매칭 이유와 함께 프롬프트 주입 → 근거 목록을 응답에 포함(보관 시 관계 저장).
+    """
+    from roadmap import query as roadmap_query
+    from sola.propose import select_evidence
+    from sola.prompts import PROPOSE_PROMPT_VERSION
+    from store import links_db
+    from store.match import MATCHING_VERSION
+
     news_df = news_db.load_news_for_days(body.days)
+    roadmap_df = roadmap_query.load_latest()
+    links = (links_db.matches_for_window(news_df, roadmap_df, days=body.days)
+             if not news_df.empty and not roadmap_df.empty else None)
+    evidence = select_evidence(body.task, links, news_df, max_items=body.max_news)
+
     persona = persona_store.load()
     text = _llm_or_http(
-        lambda: propose_for_task(body.task, news_df, max_news=body.max_news, persona=persona),
+        lambda: propose_for_task(body.task, news_df, persona=persona, evidence=evidence),
         what="제안서 생성",
     )
     pid = body.task.get("process_id") or (body.task.get("org_meta") or {}).get("process_id")
-    return ProposalOut(proposal=text, task_process_id=pid)
+    return ProposalOut(
+        proposal=text, task_process_id=pid, evidence=evidence,
+        matching_version=MATCHING_VERSION, prompt_version=PROPOSE_PROMPT_VERSION,
+    )
 
 
 class ProposalRefineIn(BaseModel):

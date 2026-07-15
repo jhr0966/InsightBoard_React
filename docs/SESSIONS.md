@@ -1,3 +1,13 @@
+## 2026-07-15 — fix: 제안서 근거 연결 — links 기반 근거·이유 주입 (`fix-proposal-grounding`)
+
+**무엇을**: 제안서가 최근 뉴스 앞쪽 N건(무관)으로 생성되던 결함 수정 — links 에서 선택 작업과 매칭된 기사만(임계 0.25·신선도 가점·출처 다양성) 선정해 매칭 용어·이유와 함께 주입. 프롬프트 v2(사실/가정/추정·PoC·KPI·30/60/90). ProposalOut 에 evidence·버전 반환, Bookmark.meta 신설로 제안서↔근거 관계 저장, 화면에 근거 목록 표시. 수직 흐름(작업→관련뉴스→이유→근거 제안서→근거 재확인) 통합 테스트로 고정. 개편 로드맵 Step 8 — **Step 0~8 전부 완료, 수직 흐름 안정**.
+
+**조치**: 신규 테스트 5건 포함 pytest 567, OpenAPI 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 9 개인화 홈+피드백 이벤트 → Step 10 멀티유저 → Step 11 IA 재편.
+
+---
+
 ## 2026-07-15 — feat: 기술 taxonomy — 안정 ID·alias·버전 (`feat-tech-taxonomy`)
 
 **무엇을**: store/taxonomy.py 신설 — 히트맵 하드코딩 7종을 안정 ID(TECH-*)+alias+TAXONOMY_VERSION 체계로 교체(시드 10종, data/taxonomy/taxonomy.json 오버라이드). 히트맵 열·셀·클릭이 alias 매칭으로 전환, GET /api/insights/taxonomy 추가. links 에 technology_ids(ID) 태깅(ALTER 마이그레이션+시그니처에 taxonomy 버전 포함). 개편 로드맵 Step 7.
