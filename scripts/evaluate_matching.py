@@ -61,14 +61,21 @@ def evaluate(gold: dict, *, top_k: int = 5,
             tk = f"{m['dept']}||{m['lv3']}||{m['task']}"
             by_task.setdefault(tk, []).append(str(m["link"]))
 
+    labels_by_task: dict[str, set[str]] = {}
+    for lb in gold["labels"]:
+        labels_by_task.setdefault(lb["task_key"], set()).add(lb["article"])
+
     p3s, p5s, strict3s, irrel3 = [], [], [], 0
     no_result = 0
+    recall_hit = recall_poss = 0
     hit_counter: Counter = Counter()
     src_counter: Counter = Counter()
     art_source = {a["link"]: a.get("source", "") for a in gold["articles"]}
 
     for tk in sorted(labeled_tasks):
         links = by_task.get(tk, [])
+        n_labels = len(labels_by_task.get(tk, ()))
+        recall_poss += min(n_labels, 3)
         if not links:
             no_result += 1
             p3s.append(0.0); p5s.append(0.0); strict3s.append(0.0)
@@ -76,9 +83,11 @@ def evaluate(gold: dict, *, top_k: int = 5,
         top3, top5 = links[:3], links[:5]
         rel3 = [rel.get((tk, ln), "none") for ln in top3]
         rel5 = [rel.get((tk, ln), "none") for ln in top5]
-        p3s.append(sum(r != "none" for r in rel3) / len(top3))
-        p5s.append(sum(r != "none" for r in rel5) / len(top5))
-        strict3s.append(sum(r == "strong" for r in rel3) / len(top3))
+        # 분모는 항상 K — 결과가 K개 미만이어도 부풀리지 않는다(v1 리포트의 집계 버그 수정).
+        p3s.append(sum(r != "none" for r in rel3) / 3)
+        p5s.append(sum(r != "none" for r in rel5) / 5)
+        strict3s.append(sum(r == "strong" for r in rel3) / 3)
+        recall_hit += sum(r != "none" for r in rel3)
         if any(r == "none" for r in rel3):
             irrel3 += 1
         for ln in top3:
@@ -88,9 +97,13 @@ def evaluate(gold: dict, *, top_k: int = 5,
     n = len(labeled_tasks) or 1
     return {
         "gold_version": gold.get("version"),
+        "matching_version": _matching_version(),
         "semantic_weight": semantic_weight,
         "top_k": top_k,
         "labeled_tasks": len(labeled_tasks),
+        # recall_at_3: 상한(작업별 정답 수, 최대 3) 대비 적중 — 정답이 2개뿐인 작업의
+        # P@3 상한(67%)에 눌리지 않는 핵심 품질 지표.
+        "recall_at_3": round(recall_hit / (recall_poss or 1), 3),
         "precision_at_3": round(sum(p3s) / n, 3),
         "precision_at_5": round(sum(p5s) / n, 3),
         "strict_precision_at_3": round(sum(strict3s) / n, 3),
@@ -101,11 +114,21 @@ def evaluate(gold: dict, *, top_k: int = 5,
     }
 
 
+def _matching_version() -> int:
+    try:
+        from store.match import MATCHING_VERSION
+        return MATCHING_VERSION
+    except ImportError:
+        return 1
+
+
 def render(report: dict) -> str:
     lines = [
         "# 매칭 품질 리포트 (score_matches)",
-        f"- 정답셋 v{report['gold_version']} · 라벨 작업 {report['labeled_tasks']}개"
+        f"- 정답셋 v{report['gold_version']} · 매칭 v{report.get('matching_version', '?')}"
+        f" · 라벨 작업 {report['labeled_tasks']}개"
         f" · semantic_weight={report['semantic_weight']} · top_k={report['top_k']}",
+        f"- Recall@3(상한 대비): {report.get('recall_at_3', 0):.1%}",
         f"- Precision@3: {report['precision_at_3']:.1%}   Precision@5: {report['precision_at_5']:.1%}",
         f"- Strict(강한 관련만)@3: {report['strict_precision_at_3']:.1%}",
         f"- 상위3에 무관 기사 낀 작업 비율: {report['irrelevant_in_top3_rate']:.1%}",

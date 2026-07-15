@@ -1,3 +1,13 @@
+## 2026-07-15 — feat: 매칭 v2 — 필드 가중·IDF·조사 제거·결정적 이유 (`feat-match-reasons`)
+
+**무엇을**: score_matches v2(MATCHING_VERSION=2) — 필드별 가중(제목3·키워드2·요약1)+IDF 가중 중첩+작업명 정확일치 보너스+조사 제거 토큰화. score_components·matched_terms·matched_fields 반환(LLM 없는 결정적 이유, render_match_reason 규칙 문장). min_score_ratio 임계값(0.25 → 무관 혼입 85→40%). 평가 P@K 분모 버그 수정+recall@3 신설 — 공정 비교 v1 75.7%→v2 78.4% 개선 확인 후 채택. 개편 로드맵 Step 5.
+
+**조치**: 신규 테스트 7건 포함 pytest 550, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: Step 6 `feat-article-task-links`(관계 SQLite 저장+수집 후 인덱싱+저장본 소비 전환) — links 에 이유 데이터가 그대로 들어간다.
+
+---
+
 ## 2026-07-15 — feat: 매칭 품질 기준선 — 정답셋·평가 하네스 (`feat-matching-baseline`)
 
 **무엇을**: data/evaluation/matching_gold.json(기사 30×작업 20×라벨 40, 합성 시드 — 실데이터 교체 전제) + scripts/evaluate_matching.py(P@3/P@5·Strict@3·무관혼입·결과없음·편중 리포트) + 기준선 baseline_matching_v1.json 기록. 결과: P@3 51.7%, 상위3 무관 혼입 80% — 가중치 개선 필요성이 수치로 확정. 이후 매칭 변경은 기준선 대비로만 채택. 개편 로드맵 Step 4.
