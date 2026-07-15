@@ -72,3 +72,7 @@ React 는 기본적으로 텍스트를 escape 한다. `dangerouslySetInnerHTML` 
 ## I-15 — 기사 식별은 article_id, 중복은 필드 단위 병합 (`store/article_id.py`·`news_db._merge_duplicates`)
 
 기사 식별자는 **정규화 URL 해시 `article_id`** — 정규화는 추적 파라미터(utm_* 등)만 제거하고 식별 파라미터(articleId·idxno·seq 등)는 유지한다(전체 쿼리 제거 금지 — 다른 기사가 합쳐진다). 원본 `link` 는 변형·유실 금지. 같은 article_id 의 중복 레코드는 행 단위 승자 선택이 아니라 **필드 단위 병합**(게시시각=가장 이른 원본, 본문=가장 풍부, 이미지·LLM=최신)으로 합친다. 식별·병합은 전부 로드 시 파생 — parquet 원본을 재작성하지 않는다. 규칙을 바꾸면 `IDENTITY_VERSION`/`MERGE_VERSION` 을 올려 파생 데이터(article_task_links 등)를 재빌드한다. 회귀 가드: `tests/test_article_identity.py`.
+
+## I-16 — 기사↔작업 매칭은 links 저장본 경유 (`store/links_db.py`)
+
+전체 윈도우(뉴스 N일 × 작업정의)의 매칭 소비(기회 매트릭스·히트맵·matches API·제안서 근거)는 `links_db.matches_for_window()` 를 경유한다 — 화면 요청마다 `score_matches` 를 직접 돌리지 마라(과거 셀 클릭마다 전체 코퍼스 재계산). 예외: 부분 뉴스셋(키워드 필터 등)은 라이브 계산 허용. links 는 **파생 데이터**: 원본은 뉴스 parquet·로드맵이며, `MATCHING_VERSION`/`IDENTITY_VERSION` 이 바뀌면 stale → 자동 재빌드된다(수동 복구 불필요, 관리자 재빌드는 `POST /api/matches/rebuild-links`). 수집 요청 안에서 동기 인덱싱 금지 — 선워밍은 일일 cron 말미가 담당. 회귀 가드: `tests/test_links_db.py`.

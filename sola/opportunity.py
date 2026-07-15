@@ -29,19 +29,27 @@ def score_cells(
     *,
     cell_level: str = "lv3",
     top_k_per_task: int = 5,
+    matches: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """반환 컬럼:
       dept, lv3, cell_score, avg_score, matched_news, matched_tasks,
       sample_tasks, sample_news
     cell_score 내림차순.
+
+    matches: 미리 계산/저장된 매칭(df, `store.links_db` — rank 컬럼 포함 가능).
+        None 이면 라이브 계산(하위호환·키워드 필터 등 부분 뉴스셋 경로).
     """
     if news_df.empty or roadmap_df.empty:
         return _empty()
     if cell_level not in roadmap_df.columns:
         return _empty()
 
-    matches = score_matches(news_df, roadmap_df, top_k=top_k_per_task,
-                            semantic_weight=DEFAULT_SEMANTIC_WEIGHT)
+    if matches is None:
+        matches = score_matches(news_df, roadmap_df, top_k=top_k_per_task,
+                                semantic_weight=DEFAULT_SEMANTIC_WEIGHT)
+    elif "rank" in matches.columns:
+        # 저장본(top_k=20)에서 이 집계의 top_k 만 — 라이브 top_k 결과와 동일 순서.
+        matches = matches[matches["rank"] <= top_k_per_task]
     if matches.empty:
         return _empty()
 

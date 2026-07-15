@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (기사↔작업 관계 저장소 article_task_links) — `feat-article-task-links`
+- **신규 `store/links_db.py`** (SQLite): `score_matches` 결과(점수+결정적 이유 — score_components·matched_terms·matched_fields·rank)를 **시스템 공통 자산**으로 저장. 개인화 피드·"왜 관련"·제안서 근거·히트맵·기회 매트릭스가 공유(계획 §3·§9).
+- **write-through 캐시 + 버전 stale 재빌드**: 윈도우 시그니처(기사 article_id 집합+작업 키 집합+MATCHING_VERSION+IDENTITY_VERSION) 일치 시 저장본, 불일치(새 수집·알고리즘/식별 규칙 변경) 시 재계산·저장. 저장 실패에도 조회는 라이브 폴백(항상 성공, 파생 데이터라 언제든 전체 재빌드 가능).
+- **수집과 인덱싱 분리** (계획 §9-1): 수집 API 는 저장만. 선워밍 ①일일 cron(`scripts/daily_scrape.py` 말미 rebuild) ②관리자 `POST /api/matches/rebuild-links` + 상태 `GET /api/matches/links-status`(built_at·건수·버전·stale).
+- **소비자 전환**: 기회 매트릭스(`score_cells(matches=)` 파라미터화)·히트맵(+셀 클릭)·matches API 가 저장본 소비 — **셀 클릭마다 전체 코퍼스 재계산하던 비용 제거**. 저장 top_k=20 + rank 로 소비자별 슬라이스(라이브 top_k 결과와 순서 동일 보장). matches API 는 과거 의미유사도 없이 계산해 히트맵과 미묘하게 다르던 것도 일관화. process-map(키워드 필터 부분셋)만 라이브 유지.
+- 검증: 신규 테스트 7건(`tests/test_links_db.py` — 저장=라이브 동일성, 재계산 스킵, 새 기사/버전 stale, 역조회, 재빌드·상태 API, 집계 동등성) 포함 pytest 557 passed · OpenAPI 50 paths 재생성 · 금지패턴 0.
+
 ### Changed (매칭 v2 — 필드별 가중·결정적 매칭 이유·근거 임계값) — `feat-match-reasons`
 - **`store/match.py` 매칭 v2** (`MATCHING_VERSION=2`): ①뉴스 필드별 가중 분리(제목×3·키워드×2·요약×1 — v1은 전 필드 동일 가중 합산) ②토큰 중첩에 **IDF 가중**(자동화·로봇 같은 범용 단어가 여러 작업 top3 에 반복 등장하는 편중 억제) ③**작업명 정확 일치 보너스**(+3, task/sub_task 원문이 제목에 등장) ④한국어 **조사 제거 토큰화**("결함을"↔"결함" 매칭 — 비파괴검사 등에서 정답 기사를 놓치던 원인).
 - **결정적 매칭 이유 반환** (계획 §8 — LLM 미사용): `score_components`(성분별 점수, 합=총점 보장)·`matched_terms`(기여 상위 용어)·`matched_fields`·`matching_version` 컬럼 추가. 표시 문장은 `render_match_reason()` 규칙 조합. Step 6 links 저장의 데이터 원천.

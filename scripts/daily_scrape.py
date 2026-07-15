@@ -114,6 +114,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"[daily_scrape] WARN: 런 로그 기록 실패: {exc}",
               file=sys.stderr, flush=True)
 
+    # links 인덱스 선워밍(Step 6) — 수집 직후 기사↔작업 관계를 미리 빌드해
+    # 첫 화면 조회가 저장본을 바로 읽게 한다. 실패해도 cron 을 깨지 않는다
+    # (조회 경로가 write-through 라 스스로 복구).
+    try:
+        from store import links_db
+        summary = links_db.rebuild(days=30)
+        print(f"[daily_scrape] links 인덱스: {summary}", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_scrape] WARN: links 인덱스 빌드 실패(다음 조회에서 자동 복구): {exc}",
+              file=sys.stderr, flush=True)
+
     print("[daily_scrape] " + report.summary_lines()[0], flush=True)
     if report.errors:
         print(f"[daily_scrape] 일부 오류 {len(report.errors)}건 — 첫 오류: "
