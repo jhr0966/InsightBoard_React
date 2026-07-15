@@ -1,7 +1,9 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-data/
+# 런타임 데이터는 무시하되, 매칭 품질 정답셋(data/evaluation)은 커밋 대상.
+data/*
+!data/evaluation/
 .env
 .venv/
 .design-handoff/

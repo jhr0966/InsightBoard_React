@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Added (매칭 품질 기준선 — 정답셋·평가 하네스) — `feat-matching-baseline`
+- **정답셋** `data/evaluation/matching_gold.json`: 조선소 도메인 기사 30건(무관 6건 포함) × 작업정의 20건 × 라벨 40건(strong/weak, 미기재=무관). **합성 시드** — 실서버 수집 기사로 교체·확장 전제(파일 note 에 명시). `.gitignore` 에 `data/evaluation/` 커밋 예외 추가.
+- **평가 스크립트** `scripts/evaluate_matching.py`: `score_matches` 를 정답셋으로 돌려 Precision@3/@5·Strict@3(strong만)·상위3 무관 혼입률·결과없음률·기사 반복등장 편중·출처 분포를 리포트(`--json`/`--save`). pytest 와 분리 — pytest(`tests/test_matching_eval.py` 4건)는 스키마·결정성·토이 정확성만 가드.
+- **기준선 기록** `data/evaluation/baseline_matching_v1.json` (semantic_weight=4.0, top_k=5): **P@3 51.7% · P@5 46.5% · Strict@3 41.7% · 상위3 무관 혼입 80% · 결과없음 0%**. → 상위권에 무관 기사가 흔히 낀다는 것이 수치로 확인 — Step 5(가중치 분리·매칭 이유) 변경은 이 기준선 대비로만 채택한다.
+- 검증: pytest 543 passed · 금지패턴 0 · 백엔드 전용(OpenAPI/웹 무변경).
+
 ### Changed (뉴스 목록 경량화 + 커서 페이지네이션) — `feat-news-pagination`
 - **목록 API 경량화** (`api/routers/news.py`): 목록/오늘 응답에서 전체 본문(content) 제외 — 발췌 `excerpt`(≤300자)와 `content_available`(본문 확보 여부)로 대체. 기사 300건×본문 4,000자 ≈ 1MB+ 응답이 나오던 payload 문제 해소(전체 본문은 `/detail` 전용, 기존 유지).
 - **커서 페이지네이션** (`GET /api/news` → `{items, next_cursor}`): 커서 = 정렬키 그대로 `"{sort_at}::{link}"` (I-14 결정적 정렬 기준) → 페이지 사이에 새 수집이 끼어들어도 offset 과 달리 **중복·누락 없음**. 페이지 기본 60건, 잘못된 커서는 400.
