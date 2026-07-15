@@ -95,6 +95,7 @@ class BookmarkOut(AuditedModel):
     content: str = ""
     link: str = ""
     tags: list[str] = Field(default_factory=list)
+    meta: dict = Field(default_factory=dict, description="구조화 메타(제안서 근거 관계 등)")
     status: str = "pending"
     decision_note: str = ""
     decided_at: str = ""
@@ -111,6 +112,7 @@ class BookmarkCreateIn(BaseModel):
     content: str = ""
     link: str = ""
     tags: list[str] = Field(default_factory=list)
+    meta: dict = Field(default_factory=dict, description="구조화 메타 — 제안서는 {task_id, task_key, article_ids, matching_version, prompt_version}")
     id: Optional[str] = Field(default=None, description="생략 시 내용 해시로 생성")
 
 

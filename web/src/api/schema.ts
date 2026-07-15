@@ -609,7 +609,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Generate */
+        /**
+         * Generate
+         * @description 제안서 생성 — 선택 작업과 **매칭된 근거 기사**(links)만 주입 (Step 8).
+         *
+         *     과거엔 최근 뉴스 앞쪽 N건(작업과 무관)을 넣어 일반론 제안서가 나왔다.
+         *     흐름: 작업 → links 조회 → 관련도·신선도·출처 다양성으로 근거 선정 →
+         *     매칭 이유와 함께 프롬프트 주입 → 근거 목록을 응답에 포함(보관 시 관계 저장).
+         */
         post: operations["generate_api_proposals_generate_post"];
         delete?: never;
         options?: never;
@@ -1038,6 +1045,13 @@ export interface components {
              * @default
              */
             link: string;
+            /**
+             * Meta
+             * @description 구조화 메타 — 제안서는 {task_id, task_key, article_ids, matching_version, prompt_version}
+             */
+            meta?: {
+                [key: string]: unknown;
+            };
             /** Tags */
             tags?: string[];
             /** Title */
@@ -1079,6 +1093,13 @@ export interface components {
              * @default
              */
             link: string;
+            /**
+             * Meta
+             * @description 구조화 메타(제안서 근거 관계 등)
+             */
+            meta?: {
+                [key: string]: unknown;
+            };
             /**
              * Status
              * @default pending
@@ -1309,12 +1330,13 @@ export interface components {
             /**
              * Days
              * @description 제안 근거 뉴스 기간
-             * @default 7
+             * @default 30
              */
             days: number;
             /**
              * Max News
-             * @default 10
+             * @description 근거 기사 최대 수
+             * @default 6
              */
             max_news: number;
             /**
@@ -1327,6 +1349,14 @@ export interface components {
         };
         /** ProposalOut */
         ProposalOut: {
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            }[];
+            /** Matching Version */
+            matching_version?: number | null;
+            /** Prompt Version */
+            prompt_version?: number | null;
             /** Proposal */
             proposal: string;
             /** Task Process Id */

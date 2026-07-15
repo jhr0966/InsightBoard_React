@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Fixed (제안서 근거 연결 — 무관 뉴스 주입 버그) — `fix-proposal-grounding`
+- **제안서가 작업과 무관한 뉴스로 생성되던 결함 수정** (`sola/propose.py`·`api/routers/proposals.py`): 과거엔 최근 뉴스 df 앞쪽 10건(작업과 무관)을 "[관련 뉴스]"로 주입 → 일반론 제안서. 이제 **저장된 links 에서 선택 작업과 실제 매칭된 기사만** 선정: 관련도 임계값(최고점 대비 0.25 — 실측: 무관 혼입 85→40%) + 신선도 가점(7일 내 ×1.15) + 출처 다양성(언론사당 최대 2건). 매칭 기사가 없으면 최근 뉴스로 위장하지 않고 "근거 없음"을 명시(§11-1).
+- **매칭 이유 주입**: 프롬프트의 각 [근거 N]에 매칭 용어·이유 문장(`render_match_reason`)·게시일 포함. 응답(`ProposalOut`)에 `evidence`(제목·링크·이유·article_id)·`matching_version`·`prompt_version` 반환.
+- **프롬프트 v2** (`SYSTEM_PROPOSE`, `PROPOSE_PROMPT_VERSION=2`): §11-2 섹션 반영 — 대상 작업 / 현재 문제와 기회([근거 N] 인용) / 제안 과제(기술·방식) / 필요 데이터·연계 설비·시스템 / **사실·가정·추정 구분**(근거 없는 수치는 추정으로 강제) / 리스크 / **PoC 범위와 성공 KPI** / 30·60·90일.
+- **제안서↔근거 관계 저장** (§11-3): Bookmark 에 `meta` 필드 신설(dataclass·API In/Out — 과거 레코드는 빈 dict 백필) — 보관 시 `{task_id, article_ids, matching_version, prompt_version}` 저장, "이 제안의 근거가 뭐였지"를 복원 가능. Proposals 화면에 📎 근거 기사 목록(링크+이유) 표시, 근거 0건이면 경고 배너.
+- **수직 흐름 검증**(§16): 작업 선택 → links 관련 기사 → 연결 이유 → 근거 주입 제안서 → 보관 meta 재확인을 통합 테스트(`test_vertical_flow_end_to_end`)로 고정 — 무관 기사(콘서트) 배제·[근거 1] 주입·역조회·meta 왕복 전부 검증.
+- 검증: 신규 테스트 5건 포함 pytest 567 passed · OpenAPI 재생성(ProposalOut·Bookmark meta) · 웹 빌드 OK · 금지패턴 0.
+
 ### Added (기술 taxonomy — 안정 ID·alias·버전) — `feat-tech-taxonomy`
 - **신규 `store/taxonomy.py`**: 기술 분류를 하드코딩 7종 문자열(`insights.TECHS`)에서 **안정 ID 체계**(TECH-CV-001 형식·parent_id·aliases·description·active·`TAXONOMY_VERSION`)로 교체. 시드 10종(컴퓨터 비전·로보틱스·자율이동로봇·예지보전·디지털 트윈·생성형 AI·AI/ML·웨어러블·IoT·데이터 플랫폼), **alias 로 동의어 수렴**(비전 AI·머신비전→컴퓨터 비전, AGV·AMR→자율이동로봇). 운영 편집은 `data/taxonomy/taxonomy.json` 오버라이드(깨지면 시드 폴백), 관리 CRUD 화면은 Step 11.
 - **히트맵 전환** (`api/routers/insights.py`): 열·셀 카운트·셀 클릭이 taxonomy(이름+alias) 기준 — 신규 기술은 데이터 추가만으로 열이 생긴다. 조회 API `GET /api/insights/taxonomy` 추가.
