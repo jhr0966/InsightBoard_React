@@ -1,3 +1,13 @@
+## 2026-07-16 — chore: Groq LLM 키 위치 명확화 — render.yaml·DEPLOY (`chore-render-groq-env`)
+
+**무엇을**: 실제 배포 상태 조회 결과 Vercel 프로젝트는 SPA(vite, Root=web)만·백엔드는 Render(insightboard-api). LLM 은 백엔드 호출이므로 Groq 키는 Render 에 등록해야 함(Vercel 은 무효). render.yaml 에 LLM_BACKEND(sync:false)+Groq 레시피 주석 추가, DEPLOY.md 에 "LLM 키는 백엔드에만·프런트엔 금지(VITE_ 노출)" 명문화 + Groq/Anthropic 레시피 분리. 코드 무변경.
+
+**조치**: 문서·블루프린트 전용 — pytest·빌드 영향 없음. YAML 파싱 확인.
+
+**다음**: 사용자가 Render 대시보드에서 LLM_API_KEY=<Groq 키> 입력 후 재배포 → /api/health·SOLA 채팅으로 확인.
+
+---
+
 ## 2026-07-15 — fix: 같은 초 저장 시 뉴스 파일 덮어쓰기 (`fix-save-articles-filename`)
 
 **무엇을**: save_articles 파일명에 uuid 접미사 추가 — 동일 source·동일 초 연속 저장이 앞선 parquet 를 덮어써 기사가 유실되던 버그(PR #59 기록 항목) 수정. 로드 glob 은 그대로 매칭, 중복은 article_id 병합(I-15)이 처리. 개편 후속 항목 ④.
