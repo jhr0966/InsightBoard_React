@@ -5,7 +5,9 @@
 
 ## [Unreleased]
 
-### Fixed (같은 초 저장 시 뉴스 파일 덮어쓰기 — 기사 유실) — `fix-save-articles-filename`
+### Changed (배포 — Groq LLM 키 위치 명확화) — `chore-render-groq-env`
+- **`render.yaml`**: 백엔드(Render) envVars 에 `LLM_BACKEND`(sync:false) 추가 + Groq 레시피 주석 — Groq 는 OpenAI 호환이라 `LLM_PROVIDER=openai`·`LLM_BACKEND=groq`·`LLM_API_KEY=<키>` 로 `https://api.groq.com/openai/v1` 라우팅(기존엔 provider/key/model 만 선언, backend 스위치가 블루프린트에서 안 보였음).
+- **`docs/DEPLOY.md`**: LLM/Groq 키는 **백엔드(Render)에만** 넣고 프런트(Vercel)엔 넣지 않음을 명문화 — 프런트 빌드는 `LLM_API_KEY` 를 읽지 않고 `VITE_` 변수는 클라이언트 번들에 노출돼 비밀키 부적합. 백엔드 env 목록에 Groq/Anthropic 별 레시피 분리, 서버리스 풀스택(루트 vercel.json)은 데모 전용임을 재확인. 코드 무변경.
 - **`store/news_db.save_articles`**: 파일명이 초 해상도 타임스탬프(`{source}_{HHMMSS}Z.parquet`)뿐이라 같은 source 를 같은 초에 두 번 저장하면 두 번째가 첫 파일을 **덮어써 기사가 유실**됐다(PR #59 에서 발견·기록된 한계). 파일명에 uuid 8자 접미사를 붙여 충돌을 제거 — 로드 glob(`{source}_*.parquet`)은 그대로 매칭되고, 중복 기사는 기존 article_id 필드 병합(I-15)이 처리하므로 파일 증가는 무해.
 - 검증: 동초 연속 저장 회귀 테스트 1건 추가(`tests/test_news_db.py`) 포함 pytest 593 passed · 금지패턴 0. API/스키마 무변경.
 

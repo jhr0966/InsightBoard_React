@@ -17,12 +17,19 @@ services:
         value: /app/data   # 임시(휘발) — 무료 플랜. 영구화하려면 /data + disk 블록.
       - key: INSIGHTBOARD_CORS_ORIGINS
         sync: false   # 대시보드에서 Vercel 도메인 입력 (예: https://insight-board-react.vercel.app)
+      # LLM (SOLA) — 제안서/요약/사례추출/브리핑이 백엔드에서 호출한다.
+      # Groq 사용 레시피: LLM_PROVIDER=openai(기본) · LLM_BACKEND=groq(기본) ·
+      #   LLM_API_KEY=<Groq 키> · (선택) LLM_MODEL=llama-3.3-70b-versatile.
+      #   Groq 는 OpenAI 호환이라 provider=openai + backend=groq 로 base_url 이
+      #   https://api.groq.com/openai/v1 로 라우팅된다(config.llm_base_url).
       - key: LLM_PROVIDER
-        sync: false   # anthropic | openai
+        sync: false   # openai(=groq/사내/ollama 계열) | anthropic
+      - key: LLM_BACKEND
+        sync: false   # openai 계열 내 base_url 스위치: groq(기본) | internal | ollama
       - key: LLM_API_KEY
         sync: false
       - key: LLM_MODEL
-        sync: false
+        sync: false   # 미설정 시 backend 기본값(groq → llama-3.3-70b-versatile)
     # 영구 디스크(유료 플랜에서만) — 데이터 영구 보존이 필요하면 주석 해제:
     # disk:
     #   name: data
