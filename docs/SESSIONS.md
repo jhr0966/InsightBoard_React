@@ -1,3 +1,13 @@
+## 2026-07-16 — security: 커밋된 .env 추적 해제 (`fix-env-secret-hygiene`)
+
+**무엇을**: Groq 401(Invalid API Key) 점검 중 발견 — `.gitignore` 에 `.env` 가 있었지만 초기(PR #7)에 이미 커밋돼 추적 중이었고 LLM_API_KEY 가 레포에 노출돼 있었다(private 레포). `git rm --cached .env` 로 추적 해제(로컬 보존), 추적 파일 내 `gsk_` 패턴 0 확인. 히스토리에는 남으므로 키 재발급 필수 안내.
+
+**조치**: 추적 해제 커밋 — 코드·테스트 영향 없음. 사용자: Groq 콘솔 새 키 → 로컬 .env + Render 대시보드 입력.
+
+**다음**: (사용자) 키 재발급·Render 반영 후 SOLA 호출 확인. 401 지속 시 Render env 값 재점검(따옴표·공백·미저장).
+
+---
+
 ## 2026-07-16 — chore: Groq LLM 키 위치 명확화 — render.yaml·DEPLOY (`chore-render-groq-env`)
 
 **무엇을**: 실제 배포 상태 조회 결과 Vercel 프로젝트는 SPA(vite, Root=web)만·백엔드는 Render(insightboard-api). LLM 은 백엔드 호출이므로 Groq 키는 Render 에 등록해야 함(Vercel 은 무효). render.yaml 에 LLM_BACKEND(sync:false)+Groq 레시피 주석 추가, DEPLOY.md 에 "LLM 키는 백엔드에만·프런트엔 금지(VITE_ 노출)" 명문화 + Groq/Anthropic 레시피 분리. 코드 무변경.
