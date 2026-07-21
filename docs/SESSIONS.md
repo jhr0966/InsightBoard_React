@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: 자동수집 워크플로 거짓 실패 (`fix-daily-collect-parse`)
+
+**무엇을**: daily-collect 스케줄 런 2회가 failure 표시 → Actions 로그 확인 결과 수집은 성공(30건 저장)했고, 판정 스크립트의 `echo | python3 - <<PY` heredoc-stdin 충돌로 빈 입력 파싱 실패가 원인. 응답을 env(RESP)로 전달하도록 수정, 셸 로직 로컬 재현 검증. 수집 로그 판정: 총 80.6s·본문 97%·중단 0(워커6 효과 enrich:google 71.9→59.5s). 자동수집 데이터는 슬립 시 소실(무료 플랜 한계, 기지).
+
+**조치**: YAML OK · 재현 검증 OK · pytest(워크플로 정합성 11건) passed.
+
+**다음**: 다음 스케줄 런(KST 13/18시)에서 초록 확인. GitHub 스케줄은 1~2시간 지연될 수 있음(07시 예정 → 실행 08~09시).
+
+---
+
 ## 2026-07-21 — chore: 네이버 뉴스 기본 수집 제외 (`chore-drop-naver-source`)
 
 **무엇을**: 네이버 검색 마크업 미매칭(제목 미추출·0건)·IP 소프트차단으로 사용자가 네이버 수집 제외 결정. run_daily.DEFAULT_COLLECT_SOURCES=(google,tech) 신설 → collect 라우터·daily_scrape CLI 기본값·store.sources.DEFAULT_SOURCES·출처 헬스에서 네이버 제거. naver.py 파서/테스트는 dormant 보존(명시 sources=["naver"]만 동작, UI 미노출). SOURCE_IDS 는 유효 id 로 naver 유지(명시 지정·테스트용).
