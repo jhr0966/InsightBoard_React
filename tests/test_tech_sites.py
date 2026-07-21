@@ -94,6 +94,10 @@ def test_search_site_dedupes_titles():
     assert len(titles) == len(set(titles))
 
 
+# 실패 격리 테스트용 2-사이트 구성 — 실제 TECH_SITES 목록과 무관하게 동작을 가드.
+_TWO_SITES = {"AI Times": "https://www.aitimes.com", "테스트사이트": "https://example.com"}
+
+
 def test_search_all_aggregates_and_swallows_failure():
     def _fake_search(name, url, max_results=10):
         if name == "AI Times":
@@ -102,7 +106,8 @@ def test_search_all_aggregates_and_swallows_failure():
                      "published_at": ""}]
         raise RuntimeError("fail")
 
-    with patch.object(tech_sites, "search_site", _fake_search):
+    with patch.object(tech_sites, "TECH_SITES", _TWO_SITES), \
+         patch.object(tech_sites, "search_site", _fake_search):
         out = tech_sites.search_all(max_results_per_site=5)
     assert len(out) == 1
     assert out[0]["press"] == "AI Times"
@@ -133,15 +138,16 @@ def test_search_all_reports_each_site_via_on_site():
         if name == "AI Times":
             return [{"title": "a", "link": url + "/a", "source": "tech"},
                     {"title": "b", "link": url + "/b", "source": "tech"}]
-        raise RuntimeError("403")  # 오토메이션월드 실패 시뮬
+        raise RuntimeError("403")  # 둘째 사이트 실패 시뮬
 
     sites: list[tuple] = []
-    with patch.object(tech_sites, "search_site", _fake_search):
+    with patch.object(tech_sites, "TECH_SITES", _TWO_SITES), \
+         patch.object(tech_sites, "search_site", _fake_search):
         out = tech_sites.search_all(on_site=lambda n, c: sites.append((n, c)))
     assert len(out) == 2
-    # 두 사이트 모두 통보됨 — 실패한 오토메이션월드도 0건으로 '시도했음'이 보인다.
+    # 두 사이트 모두 통보됨 — 실패한 사이트도 0건으로 '시도했음'이 보인다.
     assert ("AI Times", 2) in sites
-    assert ("오토메이션월드", 0) in sites
+    assert ("테스트사이트", 0) in sites
 
 
 def test_search_all_surfaces_errors_via_on_error():
@@ -153,7 +159,8 @@ def test_search_all_surfaces_errors_via_on_error():
         raise RuntimeError("403")
 
     seen: list[tuple] = []
-    with patch.object(tech_sites, "search_site", _fake_search):
+    with patch.object(tech_sites, "TECH_SITES", _TWO_SITES), \
+         patch.object(tech_sites, "search_site", _fake_search):
         out = tech_sites.search_all(max_results_per_site=5, on_error=lambda n, m: seen.append((n, m)))
     assert len(out) == 1  # 성공 사이트 결과는 보존
     assert seen and seen[0][1] == "403"  # 실패 사이트는 콜백으로 통보

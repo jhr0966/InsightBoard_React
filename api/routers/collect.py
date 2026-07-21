@@ -35,8 +35,8 @@ def _keywords_or_default(keywords: list[str]) -> list[str]:
     """키워드가 비면 도메인 기본 키워드(`config.DEFAULT_DAILY_KEYWORDS`)로 폴백.
 
     naver/google 은 키워드가 있어야 검색하므로, UI '지금 수집'(빈 키워드)·페르소나
-    관심 키워드 미설정 시 두 소스가 통째로 비던 문제 방어. tech(AI Times·오토메이션
-    월드)는 키워드 무관이라 영향 없음. cron(daily_scrape)은 자체 기본값을 직접 넘긴다.
+    관심 키워드 미설정 시 두 소스가 통째로 비던 문제 방어. tech(AI Times)는
+    키워드 무관이라 영향 없음. cron(daily_scrape)은 자체 기본값을 직접 넘긴다.
     """
     cleaned = [k.strip() for k in keywords if k and k.strip()]
     return cleaned or list(DEFAULT_DAILY_KEYWORDS)

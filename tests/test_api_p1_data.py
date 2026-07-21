@@ -23,7 +23,8 @@ def _seed():
 
 def test_sources_list_defaults_enabled():
     items = client.get("/api/sources").json()["items"]
-    assert len(items) >= 4
+    # 기본 출처 3개 (오토메이션월드는 2026-07 사이트 폐쇄로 제거)
+    assert len(items) >= 3
     assert all(i["enabled"] for i in items)
 
 

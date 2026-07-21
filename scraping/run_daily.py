@@ -178,7 +178,7 @@ def collect_batch(
                 on_error=lambda site, msg: errors.append(
                     {"source": "tech", "keyword": site, "error": msg}
                 ),
-                # 사이트별 진행 — 모달에 'AI Times'·'오토메이션월드'를 개별 표시.
+                # 사이트별 진행 — 모달에 tech 사이트를 개별 표시.
                 on_site=(lambda site, n: on_step("tech", site, n)) if on_step else None,
             )
             stats = _enrich_bucket(articles)
