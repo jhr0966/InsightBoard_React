@@ -1,3 +1,13 @@
+## 2026-07-21 — feat: 수집 진행 표시 — enrich 단계 진행률 (`feat-collect-progress`)
+
+**무엇을**: 수집 진행 모달이 검색 후 enrich(가장 긴 단계) 동안 무진행 스피너만 돌던 것 개선. collect_batch(on_enrich=(done,total)) 스레드안전 전역 카운터(소스 병렬 합산) → SSE enrich 이벤트 → 모달 "본문 정리 중 N/M"+진행바. 검색/enrich 문구 구분.
+
+**조치**: 신규 테스트 1건 포함 pytest 602, 웹 빌드 OK, 스키마 무변경.
+
+**다음**: 사용자 수집 테스트 → 로그로 속도 개선폭·본문 확보율 확인.
+
+---
+
 ## 2026-07-21 — fix: 수집 속도 — enrich 재시도·네이버 정크 링크 (`fix-collect-speed`)
 
 **무엇을**: 수집 로그(run 20260721-065842) 진단 → 병목=enrich 91s(소스당 90s 데드라인). 원인 ①본문 fetch 재시도 2회가 read타임아웃 20s에 곱해져 느린 사이트 1건 40~53s → ENRICH_FETCH_RETRIES 0(env INSIGHTBOARD_ENRICH_RETRIES)으로 개별 fetch ~30s 상한. ②네이버가 언론사 홈·keep.naver.com을 기사로 오수집(제목 "○○새 창 열림"·본문0) → _is_junk_link로 도메인루트/정크호스트 필터 + 폴백 제목이 정크 라벨 앵커 건너뜀. best-effort라 재시도 0 안전(다음 수집 캐시미스로 보강).

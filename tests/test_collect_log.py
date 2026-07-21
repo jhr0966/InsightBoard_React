@@ -58,6 +58,29 @@ def test_collect_log_records_stage_events():
     assert "ms" in sd and sd["found"] == 2
 
 
+def test_on_enrich_reports_global_progress():
+    """on_enrich(done, total) 이 소스별 버킷을 전역 누적해 진행률을 통보한다."""
+    ticks: list[tuple] = []
+    with patch.object(run_daily, "_run_keyword_source",
+                      lambda src, kw, mx: _fake_articles(kw, n=3)), \
+         patch.object(run_daily._enrich, "enrich_parallel", _fake_enrich_with_progress):
+        run_daily.collect_batch(["용접"], sources=("naver",), max_results=5,
+                                on_enrich=lambda d, t: ticks.append((d, t)))
+    assert ticks, "enrich 진행 콜백이 한 번도 호출되지 않음"
+    # enrich_start 에서 total 을 먼저 알림(0,3) → 이후 항목마다 done 증가 → (3,3) 종료
+    assert ticks[0] == (0, 3)
+    assert ticks[-1] == (3, 3)
+    assert [d for d, _ in ticks] == [0, 1, 2, 3]
+
+
+def _fake_enrich_with_progress(arts, **k):
+    cb = k.get("progress_cb")
+    if cb:
+        for i, _a in enumerate(arts, 1):
+            cb(i, len(arts), None)
+    return arts
+
+
 def test_search_error_event_on_failure():
     clog = collect_log.CollectLog()
 
