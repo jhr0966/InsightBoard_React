@@ -47,20 +47,19 @@ def test_create_thread_auto_titles_from_first_message():
 def test_sources_health_reports_status_per_source():
     from store import news_db
     news_db.save_articles([
-        {"title": "n1", "source": "naver", "press": "전자신문", "keywords": "",
+        {"title": "g1", "source": "google", "press": "전자신문", "keywords": "",
          "content": "x", "date": "2026-06-15", "collected_at": "2026-06-15T09:00:00Z",
          "link": "https://e.com/1"},
         {"title": "t1", "source": "tech", "press": "AI Times", "keywords": "",
          "content": "x", "date": "2026-06-15", "collected_at": "2026-06-15T09:00:00Z",
          "link": "https://e.com/2"},
-    ], source="naver")
+    ], source="google")
     rows = client.get("/api/sources/health", params={"days": 30}).json()
     by = {r["name"]: r for r in rows}
-    assert by["네이버 뉴스"]["count_7d"] == 1 and by["네이버 뉴스"]["status"] == "정상"
+    assert by["구글 뉴스"]["count_7d"] == 1 and by["구글 뉴스"]["status"] == "정상"
     assert by["AI Times"]["count_7d"] == 1
-    # 수집 없는 출처는 무수집
-    assert by["구글 뉴스"]["status"] == "무수집"
-    # 폐쇄된 오토메이션월드는 기본 출처 목록에서 제거됨
+    # 네이버 뉴스는 기본 출처에서 제외됨, 폐쇄된 오토메이션월드도 목록에 없음
+    assert "네이버 뉴스" not in by
     assert "오토메이션월드" not in by
 
 

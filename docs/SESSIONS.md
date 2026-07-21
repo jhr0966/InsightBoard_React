@@ -1,3 +1,13 @@
+## 2026-07-21 — chore: 네이버 뉴스 기본 수집 제외 (`chore-drop-naver-source`)
+
+**무엇을**: 네이버 검색 마크업 미매칭(제목 미추출·0건)·IP 소프트차단으로 사용자가 네이버 수집 제외 결정. run_daily.DEFAULT_COLLECT_SOURCES=(google,tech) 신설 → collect 라우터·daily_scrape CLI 기본값·store.sources.DEFAULT_SOURCES·출처 헬스에서 네이버 제거. naver.py 파서/테스트는 dormant 보존(명시 sources=["naver"]만 동작, UI 미노출). SOURCE_IDS 는 유효 id 로 naver 유지(명시 지정·테스트용).
+
+**조치**: 테스트 갱신 포함 pytest 602, OpenAPI 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: 배포 후 수집 = 구글+AI Times. 향후 네이버 재개 원하면 실제 검색 HTML로 셀렉터 수정 후 DEFAULT_COLLECT_SOURCES 에 복귀.
+
+---
+
 ## 2026-07-21 — chore: enrich 워커 4→6 상향 (`fix-enrich-workers`)
 
 **무엇을**: ENRICH_MAX_WORKERS 기본 4→6(env INSIGHTBOARD_ENRICH_WORKERS). 재시도 제거(#78)로 데드라인 중단 0·본문 100%·헤드룸 확보(로그 실측 117→79s) → long pole 소스(google 20건 ~72s) 단축 목적. I/O 대기 위주라 CPU 버스트 짧음, Render 힘겨우면 env로 4 복귀. 테스트 상한 가드 6→8.
