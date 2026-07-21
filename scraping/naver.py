@@ -24,6 +24,28 @@ _LIST_SELECTORS = [
     "div.item_news",
 ]
 _TITLE_SELECTORS = ["a.news_tit", "a[class*='news_tit']", "a[class*='title']", "a[class*='tit']"]
+
+# 정크 링크 판정 — 검색결과에 섞인 '언론사 홈'·'Keep 저장' 링크는 기사가 아니다.
+# 증상(실측): 제목이 "○○○새 창 열림", 링크가 도메인 루트(기사 경로 없음) 또는
+# keep.naver.com → 본문 0자로 enrich 슬롯만 낭비하고 데이터도 오염된다.
+_JUNK_TITLE_SUFFIX = "새 창 열림"
+_JUNK_LABELS = ("네이버뉴스", "Keep에 바로가기")
+_JUNK_HOSTS = ("keep.naver.com",)
+
+
+def _is_junk_link(link: str) -> bool:
+    """도메인 루트(기사 경로 없음) 또는 정크 호스트면 True — 언론사 홈·Keep."""
+    from urllib.parse import urlparse
+
+    try:
+        p = urlparse(link)
+    except ValueError:
+        return True
+    host = (p.netloc or "").lower()
+    if any(h in host for h in _JUNK_HOSTS):
+        return True
+    # 기사라면 경로에 식별자가 있다. 루트('' 또는 '/')는 언론사 홈페이지.
+    return len((p.path or "").strip("/")) < 2
 _PRESS_SELECTORS = ["span[class*='press']", "a[class*='press']", "a.info.press", "span.info.press", "a.press"]
 _DATE_SELECTORS = ["span[class*='time']", "span[class*='date']", "span.info", "i.time"]
 _DESC_SELECTORS = [
@@ -85,9 +107,13 @@ def search(keyword: str, max_results: int = 10) -> list[dict]:
 
         title_tag = first_tag(item, _TITLE_SELECTORS)
         if not title_tag:
+            # 폴백 — 제목 셀렉터 미매칭 시 첫 유효 앵커. 단, '언론사 홈'·'Keep' 처럼
+            # 정크 라벨("새 창 열림" 접미사·언론사명)은 제목으로 쓰지 않는다(오염 방지).
             for a in item.find_all("a", href=True):
                 txt = a.get_text(strip=True)
-                if a.get("href", "").startswith("http") and len(txt) > 10:
+                if (a.get("href", "").startswith("http") and len(txt) > 10
+                        and not txt.endswith(_JUNK_TITLE_SUFFIX)
+                        and txt not in _JUNK_LABELS):
                     title_tag = a
                     break
         if not title_tag:
@@ -100,6 +126,9 @@ def search(keyword: str, max_results: int = 10) -> list[dict]:
                 link = a.get("href")
                 break
         if not link or link in seen_links:
+            continue
+        # 언론사 홈·Keep 등 기사가 아닌 링크는 버린다(제목이 "○○○새 창 열림"·본문 0자).
+        if _is_junk_link(link):
             continue
         seen_links.add(link)
 
