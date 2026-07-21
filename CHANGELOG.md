@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Fixed (자동수집 워크플로 거짓 실패 — heredoc stdin 충돌) — `fix-daily-collect-parse`
+- **`daily-collect.yml` 결과 판정 버그 수정**: `echo "$resp" | python3 - <<'PY'` 는 heredoc 이 stdin 을 차지해 파이프의 응답 JSON 이 스크립트에 도달하지 않는다 → 백엔드 수집이 **성공했는데도**(Actions 로그 실측: 30건 저장) "응답 파싱 실패"로 워크플로가 failure 표시되던 버그. 응답을 env(`RESP`)로 전달하도록 수정, 셸 로직 로컬 재현 검증.
+- 참고: 스케줄 런 2회 모두 이 버그로 빨간 표시였으나 실제 수집·저장은 정상 동작했음(수집 자체는 문제 없음).
+
 ### Removed (네이버 뉴스 기본 수집 제외 — 구글+AI Times) — `chore-drop-naver-source`
 - **네이버 뉴스를 기본 수집에서 제외**(사용자 결정): 네이버 검색 결과 마크업이 파서 셀렉터(news_tit 등)와 안 맞아 제목 미추출→정크만 남고, 데이터센터 IP 소프트차단 가능성도 있음(수집 로그 실측: 네이버 0건). 이제 UI '지금 수집'·cron·자동수집은 **구글 뉴스 + AI Times** 만 사용(`run_daily.DEFAULT_COLLECT_SOURCES`). `store.sources.DEFAULT_SOURCES`·출처 헬스(`api/routers/sources`)·collect 라우터 기본값·`daily_scrape` CLI 기본값에서 네이버 제거.
 - `scraping/naver.py` 파서·테스트는 **보존**(dormant) — 명시적 `sources=["naver"]` 로만 동작하며 UI 엔 노출 안 됨. 향후 네이버 마크업에 맞춰 셀렉터를 고치면 기본셋에 되돌릴 수 있다. 과거 저장된 `source="naver"` 기사는 그대로 유지.
