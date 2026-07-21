@@ -5,7 +5,9 @@
 
 ## [Unreleased]
 
-### Changed (배포 — Groq LLM 키 위치 명확화) — `chore-render-groq-env`
+### Security (커밋된 `.env` 추적 해제 — API 키 노출 위생) — `fix-env-secret-hygiene`
+- **`.env` 를 git 추적에서 제거**(`git rm --cached`): `.gitignore` 에 `.env` 가 있었지만 초기(PR #7)에 이미 커밋돼 있어 ignore 가 무효 — LLM_API_KEY(Groq)가 레포에 계속 커밋되고 있었다. 로컬 파일은 보존, 이후 커밋에는 포함되지 않는다. 템플릿은 기존 `.env.example` 사용.
+- ⚠ 과거 히스토리에는 키가 남아 있으므로 **키 재발급(rotation) 필수** — 레포는 private 이지만 노출 이력이 있는 키는 폐기가 원칙. Groq 콘솔에서 새 키 발급 → 로컬 `.env`·Render 대시보드에만 입력.
 - **`render.yaml`**: 백엔드(Render) envVars 에 `LLM_BACKEND`(sync:false) 추가 + Groq 레시피 주석 — Groq 는 OpenAI 호환이라 `LLM_PROVIDER=openai`·`LLM_BACKEND=groq`·`LLM_API_KEY=<키>` 로 `https://api.groq.com/openai/v1` 라우팅(기존엔 provider/key/model 만 선언, backend 스위치가 블루프린트에서 안 보였음).
 - **`docs/DEPLOY.md`**: LLM/Groq 키는 **백엔드(Render)에만** 넣고 프런트(Vercel)엔 넣지 않음을 명문화 — 프런트 빌드는 `LLM_API_KEY` 를 읽지 않고 `VITE_` 변수는 클라이언트 번들에 노출돼 비밀키 부적합. 백엔드 env 목록에 Groq/Anthropic 별 레시피 분리, 서버리스 풀스택(루트 vercel.json)은 데모 전용임을 재확인. 코드 무변경.
 - **`store/news_db.save_articles`**: 파일명이 초 해상도 타임스탬프(`{source}_{HHMMSS}Z.parquet`)뿐이라 같은 source 를 같은 초에 두 번 저장하면 두 번째가 첫 파일을 **덮어써 기사가 유실**됐다(PR #59 에서 발견·기록된 한계). 파일명에 uuid 8자 접미사를 붙여 충돌을 제거 — 로드 glob(`{source}_*.parquet`)은 그대로 매칭되고, 중복 기사는 기존 article_id 필드 병합(I-15)이 처리하므로 파일 증가는 무해.
