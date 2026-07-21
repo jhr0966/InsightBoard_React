@@ -54,6 +54,14 @@ ENRICH_MAX_WORKERS = _config.env_int("INSIGHTBOARD_ENRICH_WORKERS", 4)
 # 상한 초과분은 본문 없이 저장되고 다음 수집(캐시 미적중)에서 채워진다.
 ENRICH_MAX_ARTICLES = _config.env_int("INSIGHTBOARD_ENRICH_MAX_ARTICLES", 0)
 
+# 본문 fetch 재시도 횟수 — INSIGHTBOARD_ENRICH_RETRIES(기본 0).
+# 재시도는 read 타임아웃(20s)에 곱해져 느린 사이트 1건이 최대 (재시도+1)×20s 를
+# 잡아먹는다(실측: 재시도 2 → 개별 fetch 40~53s → 배치가 90s 데드라인에 상시 걸림).
+# enrich 는 best-effort(실패해도 제목·og:image 는 남고, 다음 수집에서 캐시 미적중으로
+# 재시도)라 기본 0 으로 개별 fetch 상한을 ~30s(connect10+read20)로 묶어 배치를 빠르게
+# 끝낸다. 검색(목록) 세션의 재시도(build_session 기본 3)는 그대로 — 목록은 1회뿐이라 싸다.
+ENRICH_FETCH_RETRIES = _config.env_int("INSIGHTBOARD_ENRICH_RETRIES", 0)
+
 from store import cache
 
 logger = logging.getLogger(__name__)
@@ -415,7 +423,7 @@ def fetch_article(url: str, *, session=None) -> dict[str, str]:
         return {"content": "", "image_url": ""}
     # 본문 fetch 세션 — 일시적 실패(5xx·끊김) 복구를 위해 재시도 2회(완성도 우선).
     # 느린 호스트 누적시간은 짧은 백오프 + 배치 데드라인으로 억제.
-    sess = session or build_session(total_retries=2, backoff_factor=0.3)
+    sess = session or build_session(total_retries=ENRICH_FETCH_RETRIES, backoff_factor=0.3)
     try:
         time.sleep(random.uniform(0.2, 0.5))
         resp = _get_article_response(sess, url)
@@ -718,7 +726,7 @@ def enrich_parallel(
     # 배치 전체가 1개 세션을 공유 — 같은 언론사로의 연결을 keep-alive 로 재사용해
     # 매 기사 새 세션 생성·핸드셰이크 비용을 줄인다(requests.Session 은 GET 에 스레드
     # 안전). 일시적 실패 복구로 재시도 2회.
-    shared = build_session(total_retries=2, backoff_factor=0.3)
+    shared = build_session(total_retries=ENRICH_FETCH_RETRIES, backoff_factor=0.3)
 
     def _work(art: dict) -> None:
         # 기사별 지표(디버깅 로그용) — 소요·본문길이·이미지·예외를 item_cb 로 통보.

@@ -1,3 +1,13 @@
+## 2026-07-21 — fix: 수집 속도 — enrich 재시도·네이버 정크 링크 (`fix-collect-speed`)
+
+**무엇을**: 수집 로그(run 20260721-065842) 진단 → 병목=enrich 91s(소스당 90s 데드라인). 원인 ①본문 fetch 재시도 2회가 read타임아웃 20s에 곱해져 느린 사이트 1건 40~53s → ENRICH_FETCH_RETRIES 0(env INSIGHTBOARD_ENRICH_RETRIES)으로 개별 fetch ~30s 상한. ②네이버가 언론사 홈·keep.naver.com을 기사로 오수집(제목 "○○새 창 열림"·본문0) → _is_junk_link로 도메인루트/정크호스트 필터 + 폴백 제목이 정크 라벨 앵커 건너뜀. best-effort라 재시도 0 안전(다음 수집 캐시미스로 보강).
+
+**조치**: 신규 테스트 3건 포함 pytest 601, 스키마 무변경, 금지패턴 0.
+
+**다음**: 배포 후 재수집 로그로 총소요·본문확보율 재확인. (후속) 수집 진행 모달에 enrich 단계 진행 표시(현재 검색 후 무진행 스피너) — 체감 대기 개선.
+
+---
+
 ## 2026-07-21 — feat: 아침 자동수집 — 배포 백엔드 HTTP 트리거 (`feat-daily-collect-workflow`)
 
 **무엇을**: .github/workflows/daily-collect.yml 신설 — GitHub Actions 가 KST 07/13/18시 배포 백엔드 /api/collect 를 HTTP 호출(러너 수집 아님 — 러너 디스크 휘발이라 앱에 못 닿음). health 재시도로 콜드스타트 웨이크업, 하루 여러 번이라 사용 시간대 슬립·데이터 유실 완화. BACKEND_URL repo variable(기본값 fallback). 구 scrape-daily.yml 제거(data/news gitignore→commit no-op + repo커밋은 라이브 저장소 못 채움). DEPLOY §3-1 문서화.

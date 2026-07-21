@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (수집 속도 — enrich 재시도 폭주 + 네이버 정크 링크) — `fix-collect-speed`
+- **개별 fetch 시간 상한**: enrich 본문 fetch 세션의 재시도를 2→**0**으로(`ENRICH_FETCH_RETRIES`, env `INSIGHTBOARD_ENRICH_RETRIES`). 수집 로그 실측 결과 재시도가 read 타임아웃(20s)에 곱해져 느린 사이트 1건이 **40~53초**를 잡아먹고(mk.co.kr 50s·donga 53s·yna 48s) 배치가 매번 90s 데드라인에 걸려 6~8건씩 중단됐다. enrich 는 best-effort(실패해도 제목·og:image 는 남고 다음 수집 캐시 미적중으로 재시도)라 재시도 0 으로 개별 fetch 를 ~30s(connect10+read20)로 묶어 배치를 빠르게 끝낸다. 검색(목록) 세션 재시도는 그대로.
+- **네이버 정크 링크 제거**: 검색결과에 섞인 언론사 홈페이지 루트(`e-science.co.kr`·`medicaltimes.com`·`press9.kr` 등)·`keep.naver.com` 을 기사로 잘못 수집하던 문제 수정(`naver._is_junk_link` — 도메인 루트/정크 호스트 판정). 증상: 제목 "○○○새 창 열림"·본문 0자로 enrich 슬롯 낭비 + 데이터 오염. 폴백 제목 선택도 정크 라벨("새 창 열림" 접미사·"네이버뉴스"/"Keep") 앵커를 건너뛴다.
+- 효과(로그 기준 추정): enrich 병목(소스당 90s)이 개별 fetch 상한·정크 제거로 크게 단축, 데드라인 중단 감소 → 본문 확보율 개선 예상.
+- 검증: 신규 테스트 3건(`test_naver.py` 정크 필터·`_is_junk_link`, `test_enrich.py` 재시도 상한) 포함 pytest 601 passed · 스키마 무변경 · 금지패턴 0.
+
 ### Changed (아침 자동수집 — 배포 백엔드 HTTP 트리거) — `feat-daily-collect-workflow`
 - **신규 `.github/workflows/daily-collect.yml`**: GitHub Actions 가 하루 3회(KST 07/13/18시) **배포된 백엔드 `/api/collect` 를 HTTP 호출**해 백엔드가 자기 저장소에 수집하게 한다. 러너에서 수집하지 않는다 — 러너 디스크는 휘발이라 라이브 앱에 도달하지 못하기 때문. 호출이 곧 웨이크업이라 사용 시간대 슬립도 완화("수시로 없어짐" 대응). 백엔드 URL 은 repo variable `BACKEND_URL`(미설정 시 기본값). health 재시도로 콜드스타트 대기, 수집 0건은 경고(차단/셀렉터 파손 신호).
 - **구 `scrape-daily.yml` 제거**: 러너에서 수집→`data/news` commit 방식인데 `data/news` 가 gitignore 라 commit 이 항상 no-op 이었고, repo 커밋은 애초에 라이브 백엔드 저장소를 못 채운다(설계 오류). HTTP 트리거로 대체.

@@ -676,7 +676,12 @@ def test_get_article_response_skips_fallback_when_over_budget(monkeypatch):
 
 
 def test_fetch_article_uses_bounded_retry_session():
-    """fetch_article 은 일시적 실패 복구로 재시도 2회(완성도 우선, 무제한 아님)."""
+    """fetch_article 은 ENRICH_FETCH_RETRIES(기본 0)로 개별 fetch 시간을 묶는다.
+
+    과거엔 재시도 2회가 read 타임아웃(20s)에 곱해져 느린 사이트 1건이 40~53s 를
+    잡아먹고 배치가 90s 데드라인에 상시 걸렸다(수집 로그 실측). enrich 는
+    best-effort 라 기본 0 으로 개별 fetch 상한을 ~30s 로 낮춰 배치를 빠르게 끝낸다.
+    """
     captured = {}
 
     def _fake_build(**kw):
@@ -685,7 +690,7 @@ def test_fetch_article_uses_bounded_retry_session():
 
     with patch.object(enrich, "build_session", _fake_build):
         enrich.fetch_article("https://example.com/a")
-    assert captured.get("total_retries") == 2
+    assert captured.get("total_retries") == enrich.ENRICH_FETCH_RETRIES == 0
 
 
 def test_enrich_parallel_default_workers_bounded():

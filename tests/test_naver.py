@@ -114,3 +114,48 @@ def test_naver_search_propagates_http_failure():
             patch.object(naver, "build_session", lambda: FailSession()):
         with pytest.raises(RuntimeError):
             naver.search("스마트 조선소")
+
+
+# 정크 링크(언론사 홈·Keep) 필터 — 제목 "○○○새 창 열림"·도메인 루트 링크는 버린다.
+# 실측 로그의 오염 패턴(keep.naver.com, e-science.co.kr 홈, "메디칼타임즈새 창 열림")을 고정.
+_JUNK_HTML = """
+<html><body>
+  <div class="fds-news-item-list-tab">
+    <div>
+      <a class="news_tit" href="https://www.shipnews.co.kr/article/111">진짜 기사 스마트 조선소 AI</a>
+      <a class="info press" href="https://www.shipnews.co.kr">한국조선신문</a>
+    </div>
+    <div>
+      <a href="https://keep.naver.com">Keep에 바로가기새 창 열림</a>
+    </div>
+    <div>
+      <a href="https://www.medicaltimes.com/">메디칼타임즈새 창 열림</a>
+    </div>
+    <div>
+      <a href="http://www.e-science.co.kr">이코노미사이언스새 창 열림</a>
+    </div>
+  </div>
+</body></html>
+"""
+
+
+def test_naver_search_drops_junk_homepage_and_keep_links():
+    with patch.object(naver.time, "sleep", lambda *a, **k: None), \
+            patch.object(naver, "build_session", lambda: _fake_session(_JUNK_HTML)):
+        arts = naver.search("조선소", max_results=10)
+    titles = [a["title"] for a in arts]
+    links = [a["link"] for a in arts]
+    # 진짜 기사만 남는다
+    assert "진짜 기사 스마트 조선소 AI" in titles
+    # 정크는 모두 제거 — 제목/링크 어디에도 없음
+    assert not any(t.endswith("새 창 열림") for t in titles)
+    assert not any("keep.naver.com" in l for l in links)
+    assert all("/article/" in l or l.rstrip("/").count("/") >= 3 for l in links)
+
+
+def test_is_junk_link():
+    assert naver._is_junk_link("https://keep.naver.com") is True
+    assert naver._is_junk_link("https://www.medicaltimes.com/") is True   # 도메인 루트
+    assert naver._is_junk_link("http://www.e-science.co.kr") is True
+    assert naver._is_junk_link("https://n.news.naver.com/mnews/article/001/0016") is False
+    assert naver._is_junk_link("https://www.mk.co.kr/news/world/12103330") is False
