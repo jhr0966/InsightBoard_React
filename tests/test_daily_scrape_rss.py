@@ -109,33 +109,39 @@ def test_main_warns_when_zero_articles(isolated_sources, capsys):
     assert "0건" in cap.err or "0건" in cap.out
 
 
-# ── workflow yml 정합성 ────────────────────────────────────
+# ── workflow yml 정합성 (daily-collect.yml — 배포 백엔드 HTTP 트리거) ─────────
+# 구 scrape-daily.yml(러너 수집→data/news commit)은 제거됨: data/news 가 gitignore
+# 라 commit 이 no-op 이었고, repo 커밋은 라이브 백엔드 저장소를 못 채운다.
 
-def test_workflow_yaml_is_valid_and_uses_skip_flag():
-    """scrape-daily.yml 가 skip_custom_rss 입력을 정의하고 스크립트에 전달한다."""
+def _daily_collect_text() -> str:
     from pathlib import Path
-    yml_path = Path(__file__).parent.parent / ".github" / "workflows" / "scrape-daily.yml"
-    text = yml_path.read_text(encoding="utf-8")
-    # YAML 파싱 — yaml 의 boolean alias 로 `on:` 키는 True 로 파싱될 수 있음
+    yml_path = Path(__file__).parent.parent / ".github" / "workflows" / "daily-collect.yml"
+    return yml_path.read_text(encoding="utf-8")
+
+
+def test_workflow_yaml_is_valid_and_triggers_backend():
+    """daily-collect.yml 이 유효 YAML 이고 배포 백엔드 /api/collect 를 호출한다."""
+    text = _daily_collect_text()
     try:
         import yaml
         data = yaml.safe_load(text)
         on_key = data.get("on") if "on" in data else data.get(True)
         assert on_key is not None
-        assert "skip_custom_rss" in on_key["workflow_dispatch"]["inputs"]
+        assert "workflow_dispatch" in on_key and "schedule" in on_key
     except ImportError:
-        assert "skip_custom_rss" in text
-    # CLI flag 전달 코드 존재
-    assert "--skip-custom-rss" in text
+        assert "workflow_dispatch" in text and "schedule" in text
+    # 러너가 아닌 배포 백엔드를 HTTP 로 트리거 + URL 은 repo variable(기본값 fallback)
+    assert "/api/collect" in text
+    assert "BACKEND_URL" in text
+    # repo 에 쓰지 않음(외부 호출만)
+    assert "contents: read" in text
 
 
 def test_workflow_cron_schedule_is_set():
-    from pathlib import Path
-    yml_path = Path(__file__).parent.parent / ".github" / "workflows" / "scrape-daily.yml"
-    text = yml_path.read_text(encoding="utf-8")
+    text = _daily_collect_text()
     # cron 표현식 존재
     assert "cron:" in text
-    # 명시적인 시간대 주석 (KST 09:00)
+    # 명시적인 시간대 주석 (KST)
     assert "KST" in text
 
 
