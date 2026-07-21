@@ -45,10 +45,14 @@ _FETCH_BUDGET_S = _config.env_float("INSIGHTBOARD_ENRICH_BUDGET_S", 25.0)
 # INSIGHTBOARD_ENRICH_DEADLINE_S 로 배포 환경에서 조정 가능(기본 90s).
 ENRICH_BATCH_DEADLINE = _config.env_float("INSIGHTBOARD_ENRICH_DEADLINE_S", 90.0)
 
-# enrich 병렬 워커 수 — INSIGHTBOARD_ENRICH_WORKERS 로 조정(기본 4).
-# 소스가 병렬이라 실제 동시 fetch ≈ 소스 수 × 워커 수. CPU 좁은 배포(Render)에서
-# 워커 과다(10)는 동시 bs4 파싱 경합으로 오히려 누락을 키웠다.
-ENRICH_MAX_WORKERS = _config.env_int("INSIGHTBOARD_ENRICH_WORKERS", 4)
+# enrich 병렬 워커 수 — INSIGHTBOARD_ENRICH_WORKERS 로 조정(기본 6).
+# 소스가 병렬이라 실제 동시 fetch ≈ 소스 수 × 워커 수. 과거 10은 CPU 좁은 배포
+# (Render)에서 동시 bs4 파싱 경합으로 누락을 키워 4로 낮췄었다. 이후 재시도 제거
+# (ENRICH_FETCH_RETRIES=0)로 개별 fetch 가 ~30s 로 묶이고 데드라인 중단 0·본문 100%
+# 로 헤드룸이 생겨(수집 로그 실측), long pole 소스(google 20건 ~72s)를 줄이려
+# 6 으로 상향. fetch 는 대부분 네트워크 대기(I/O)라 워커를 늘려도 CPU 버스트는 짧다.
+# Render 가 힘겨우면 INSIGHTBOARD_ENRICH_WORKERS=4 로 즉시 되돌린다.
+ENRICH_MAX_WORKERS = _config.env_int("INSIGHTBOARD_ENRICH_WORKERS", 6)
 
 # 배치당 enrich 대상 기사 수 상한 — INSIGHTBOARD_ENRICH_MAX_ARTICLES(기본 0=무제한).
 # 상한 초과분은 본문 없이 저장되고 다음 수집(캐시 미적중)에서 채워진다.

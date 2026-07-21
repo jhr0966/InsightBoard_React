@@ -79,7 +79,7 @@ def test_enrich_env_knobs_defaults_and_override(monkeypatch):
     from scraping import enrich as _enrich
 
     # 기본값 (env 미설정)
-    assert _enrich.ENRICH_MAX_WORKERS == 4
+    assert _enrich.ENRICH_MAX_WORKERS == 6
     assert _enrich.ENRICH_BATCH_DEADLINE == 90.0
     assert _enrich._FETCH_BUDGET_S == 25.0
     assert _enrich.ENRICH_MAX_ARTICLES == 0
@@ -95,7 +95,7 @@ def test_enrich_env_knobs_defaults_and_override(monkeypatch):
     monkeypatch.delenv("INSIGHTBOARD_ENRICH_WORKERS")
     monkeypatch.delenv("INSIGHTBOARD_ENRICH_DEADLINE_S")
     importlib.reload(_enrich)  # 다른 테스트에 영향 없게 원복
-    assert _enrich.ENRICH_MAX_WORKERS == 4
+    assert _enrich.ENRICH_MAX_WORKERS == 6
 
 
 def test_enrich_parallel_stats_out_reports_abandoned():

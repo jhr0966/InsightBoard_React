@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Changed (enrich 워커 4→6 — long pole 소스 단축) — `fix-enrich-workers`
+- **enrich 병렬 워커 기본값 4→6** (`INSIGHTBOARD_ENRICH_WORKERS`). 재시도 제거(#78)로 개별 fetch가 ~30s로 묶이고 데드라인 중단 0·본문 100%가 되어 헤드룸이 생김(수집 로그 실측: 총 117→79s). google 20건 같은 long pole 소스의 enrich(~72s)를 더 줄이려 상향. fetch는 대부분 네트워크 대기(I/O)라 워커 증가의 CPU 버스트는 짧음. Render가 힘겨우면 env로 4 복귀.
+- 검증: pytest 602 passed(워커 상한 가드 4→8 조정) · 스키마 무변경.
+
 ### Added (수집 진행 표시 — enrich 단계 진행률) — `feat-collect-progress`
 - **수집 진행 모달에 본문 정리(enrich) 진행률 표시**: 과거엔 검색 후 가장 긴 enrich 단계 동안 진행 표시 없이 스피너만 돌아 "빙빙 도는" 체감이 컸다. 이제 "본문 정리 중… N/M건" + 진행 바를 보여준다. `collect_batch(on_enrich=(done,total))` 콜백(스레드 안전 전역 누적 — 소스 병렬 처리분 합산) → SSE `enrich` 이벤트 → 모달. 검색 단계는 "기사 검색 중… N건 발견"으로 문구 구분.
 - 검증: 신규 테스트 1건(`test_collect_log.py` — 전역 진행 누적) 포함 pytest 602 passed · 웹 빌드 OK · 스키마 무변경.

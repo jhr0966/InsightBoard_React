@@ -1,3 +1,13 @@
+## 2026-07-21 — chore: enrich 워커 4→6 상향 (`fix-enrich-workers`)
+
+**무엇을**: ENRICH_MAX_WORKERS 기본 4→6(env INSIGHTBOARD_ENRICH_WORKERS). 재시도 제거(#78)로 데드라인 중단 0·본문 100%·헤드룸 확보(로그 실측 117→79s) → long pole 소스(google 20건 ~72s) 단축 목적. I/O 대기 위주라 CPU 버스트 짧음, Render 힘겨우면 env로 4 복귀. 테스트 상한 가드 6→8.
+
+**조치**: pytest 602, 스키마 무변경.
+
+**다음**: 네이버 0건 — 사용자가 네이버 검색 페이지 HTML 제공 시 셀렉터 정확 수정(news_tit 미매칭 → 폴백 의존 → 정크 스킵으로 0건). 그 전까지 google+AI Times로 30건 100% 확보 유지.
+
+---
+
 ## 2026-07-21 — feat: 수집 진행 표시 — enrich 단계 진행률 (`feat-collect-progress`)
 
 **무엇을**: 수집 진행 모달이 검색 후 enrich(가장 긴 단계) 동안 무진행 스피너만 돌던 것 개선. collect_batch(on_enrich=(done,total)) 스레드안전 전역 카운터(소스 병렬 합산) → SSE enrich 이벤트 → 모달 "본문 정리 중 N/M"+진행바. 검색/enrich 문구 구분.
