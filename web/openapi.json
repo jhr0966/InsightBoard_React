@@ -2401,6 +2401,100 @@
         ]
       }
     },
+    "/api/collect/logs": {
+      "get": {
+        "description": "상세 수집 로그가 있는 최근 런 목록(최신 우선) — 로그 버튼 드롭다운용.",
+        "operationId": "collect_logs_api_collect_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Collect Logs Api Collect Logs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Collect Logs",
+        "tags": [
+          "collect"
+        ]
+      }
+    },
+    "/api/collect/logs/{run_id}": {
+      "get": {
+        "description": "단일 런의 상세 로그 — 복사용 렌더 텍스트 + 원시 이벤트.\n\n`text` 는 1부 요약 + 2부 JSONL 이벤트를 합친 복사용 문자열이다.",
+        "operationId": "collect_log_detail_api_collect_logs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Collect Log Detail Api Collect Logs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Collect Log Detail",
+        "tags": [
+          "collect"
+        ]
+      }
+    },
     "/api/collect/runs": {
       "get": {
         "operationId": "collect_runs_api_collect_runs_get",

@@ -88,6 +88,7 @@ def collect_batch(
     on_step: Callable[[str, str, int], None] | None = None,
     extra_feeds: Sequence[tuple[str, str]] | None = None,
     do_enrich: bool = True,
+    clog=None,
 ) -> CollectionReport:
     """키워드×소스 배치 수집 + 커스텀 RSS 피드.
 
@@ -98,6 +99,8 @@ def collect_batch(
         on_step: (source, keyword, found_count) 진행 콜백 (저장 직전이 아닌 검색 직후).
         extra_feeds: 커스텀 RSS 출처 — `(name, url)` 튜플 리스트. 키워드 무관하게
             한 번씩 fetch 한다. 빈 리스트/None 이면 스킵.
+        clog: 선택적 `store.collect_log.CollectLog` — 단계별 소요·기사별 지표를
+            구조화 이벤트로 기록(디버깅 로그용). None 이면 계측 생략.
 
     Returns:
         CollectionReport — 소스당 1 entry, 실패는 errors 에 별도 누적.
@@ -108,6 +111,14 @@ def collect_batch(
     selected = tuple(s for s in sources if s in SOURCE_IDS)
     keyword_list = [k.strip() for k in keywords if k and k.strip()]
 
+    def _ev(ev: str, **f) -> None:
+        """clog 이 있으면 이벤트 기록(없으면 no-op) — 계측이 수집을 막지 않게 흡수."""
+        if clog is not None:
+            try:
+                clog.event(ev, **f)
+            except Exception:  # noqa: BLE001
+                pass
+
     # 오늘 이미 수집·enrich 한 기사 인덱스(스냅샷) — 같은 기사를 다시 fetch 하지 않게.
     # 반복 수집을 크게 가속하고(네트워크 생략) 데드라인 abandon 도 줄인다.
     # INSIGHTBOARD_ENRICH_CACHE=0 으로 끌 수 있다(캐시는 오늘 하루 범위 = 일 단위 TTL).
@@ -116,7 +127,21 @@ def collect_batch(
     use_cache = do_enrich and _config.env_flag("INSIGHTBOARD_ENRICH_CACHE", True)
     enriched_index = _enrich.load_today_enriched_index() if use_cache else {}
 
-    def _enrich_bucket(articles: list[dict]) -> dict:
+    # 실행 설정 스냅샷 — "왜 느린가"는 워커/타임아웃/캐시 값 없이는 판단 불가.
+    from scraping.http import ENRICH_TIMEOUT
+    _ev("run_start", keywords=keyword_list, sources=list(selected), max_results=max_results,
+        do_enrich=do_enrich, env={
+            "workers": _enrich.ENRICH_MAX_WORKERS,
+            "deadline_s": _enrich.ENRICH_BATCH_DEADLINE,
+            "budget_s": _enrich._FETCH_BUDGET_S,
+            "max_articles": _enrich.ENRICH_MAX_ARTICLES,
+            "cache": bool(use_cache),
+            "timeout": str(tuple(ENRICH_TIMEOUT)),
+        })
+    import time as _time
+    _t_run = _time.monotonic()
+
+    def _enrich_bucket(articles: list[dict], src: str = "") -> dict:
         """캐시로 본문·이미지 채운 뒤, 남은(새) 기사만 실제 네트워크 enrich.
 
         반환: 이 버킷의 관측지표(캐시 적중·데드라인 중단·상한 스킵·본문/이미지 확보).
@@ -126,15 +151,23 @@ def collect_batch(
         if not articles:
             return stats
         if do_enrich:
+            _t = _time.monotonic()
             stats["cache_hits"] = _enrich.apply_cached(articles, enriched_index)
+            _ev("enrich_start", src=src, total=len(articles), cache_hits=stats["cache_hits"])
             es: dict = {}
-            _enrich.enrich_parallel(articles, with_llm=False, stats_out=es)
+            _enrich.enrich_parallel(
+                articles, with_llm=False, stats_out=es,
+                item_cb=(lambda rec: _ev("enrich_item", src=src, **rec)) if clog is not None else None)
             stats["deadline_abandoned"] = int(es.get("abandoned", 0))
             stats["enrich_skipped_cap"] = int(es.get("skipped_cap", 0))
         # 확보율 원자료 — enrich 여부와 무관하게 저장 직전 상태를 집계.
         stats["content_ready"] = sum(
             1 for a in articles if len(str(a.get("content") or "")) >= 50)
         stats["image_ready"] = sum(1 for a in articles if str(a.get("image_url") or "").strip())
+        if do_enrich:
+            _ev("enrich_done", src=src, total=len(articles), ms=int((_time.monotonic() - _t) * 1000),
+                content_ok=stats["content_ready"], image_ok=stats["image_ready"],
+                abandoned=stats["deadline_abandoned"], cap_skipped=stats["enrich_skipped_cap"])
         return stats
 
     # 소스별 처리를 (saved, errors) 를 돌려주는 순수 클로저로 분리 — 공유 report 를
@@ -147,41 +180,55 @@ def collect_batch(
         bucket: list[dict] = []
         used_keywords: list[str] = []
         for kw in keyword_list:
+            _ev("search_start", src=src, kw=kw)
+            _t = _time.monotonic()
             try:
                 articles = _run_keyword_source(src, kw, max_results)
                 for art in articles:
                     art.setdefault("query", kw)
                 bucket.extend(articles)
                 used_keywords.append(kw)
+                _ev("search_done", src=src, kw=kw, found=len(articles),
+                    ms=int((_time.monotonic() - _t) * 1000))
                 if on_step:
                     on_step(src, kw, len(articles))
             except Exception as e:  # noqa: BLE001 — 개별 실패 격리
                 errors.append({"source": src, "keyword": kw, "error": str(e)})
+                _ev("search_error", src=src, kw=kw, error=f"{type(e).__name__}: {str(e)[:120]}",
+                    ms=int((_time.monotonic() - _t) * 1000))
         if bucket:
             # 캐시 채움 + 새 기사만 본문·og:image 병렬 fetch.
-            stats = _enrich_bucket(bucket)
+            stats = _enrich_bucket(bucket, src=src)
             path = save_articles(bucket, source=src)
             saved.append({
                 "source": src, "keywords": used_keywords,
                 "count": len(bucket), "path": str(path) if path else "",
             })
+            _ev("saved", src=src, count=len(bucket), path=str(path) if path else "")
         return saved, errors, stats
 
     def _do_tech() -> tuple[list[dict], list[dict], dict]:
         saved: list[dict] = []
         errors: list[dict] = []
         stats: dict = {}
+        _t = _time.monotonic()
         try:
             # 사이트별 HTTP 실패를 errors 로 표면화 → '수집 헬스' 가 감지.
+            def _on_tech_site(site: str, n: int) -> None:
+                _ev("search_done", src="tech", kw=site, found=n)
+                if on_step:
+                    on_step("tech", site, n)
+
+            def _on_tech_error(site: str, msg: str) -> None:
+                errors.append({"source": "tech", "keyword": site, "error": msg})
+                _ev("search_error", src="tech", kw=site, error=str(msg)[:120])
+
             articles = tech_sites.search_all(
                 max_results_per_site=max_results,
-                on_error=lambda site, msg: errors.append(
-                    {"source": "tech", "keyword": site, "error": msg}
-                ),
-                # 사이트별 진행 — 모달에 tech 사이트를 개별 표시.
-                on_site=(lambda site, n: on_step("tech", site, n)) if on_step else None,
+                on_error=_on_tech_error,
+                on_site=_on_tech_site,  # 사이트별 진행 — 모달에 tech 사이트를 개별 표시.
             )
-            stats = _enrich_bucket(articles)
+            stats = _enrich_bucket(articles, src="tech")
             path = save_articles(articles, source="tech")
             # 사이트별 건수 — UI 가 press(사이트명) 기준으로 나눠 표시.
             sites: dict[str, int] = {}
@@ -193,8 +240,11 @@ def collect_batch(
                 "source": "tech", "keywords": [], "count": len(articles),
                 "path": str(path) if path else "", "sites": sites,
             })
+            _ev("saved", src="tech", count=len(articles), path=str(path) if path else "",
+                ms=int((_time.monotonic() - _t) * 1000))
         except Exception as e:  # noqa: BLE001
             errors.append({"source": "tech", "keyword": "", "error": str(e)})
+            _ev("search_error", src="tech", kw="", error=f"{type(e).__name__}: {str(e)[:120]}")
         return saved, errors, stats
 
     def _do_feed(name: str, url: str) -> tuple[list[dict], list[dict], dict]:
@@ -202,19 +252,24 @@ def collect_batch(
         errors: list[dict] = []
         stats: dict = {}
         from scraping import rss as _rss
+        _t = _time.monotonic()
         try:
             articles = _rss.fetch(url, source_name=name, max_results=max_results)
+            _ev("search_done", src=name, kw="", found=len(articles),
+                ms=int((_time.monotonic() - _t) * 1000))
             if articles:
-                stats = _enrich_bucket(articles)
+                stats = _enrich_bucket(articles, src=name)
                 path = save_articles(articles, source=name)
                 saved.append({
                     "source": name, "keywords": [], "count": len(articles),
                     "path": str(path) if path else "",
                 })
+                _ev("saved", src=name, count=len(articles), path=str(path) if path else "")
             if on_step:
                 on_step(name, "", len(articles))
         except Exception as e:  # noqa: BLE001
             errors.append({"source": name, "keyword": "", "error": str(e)})
+            _ev("search_error", src=name, kw="", error=f"{type(e).__name__}: {str(e)[:120]}")
         return saved, errors, stats
 
     # 작업 목록 — 소스(naver/google/tech) + 커스텀 RSS 피드. 제출 순서 = 병합 순서.
@@ -228,6 +283,7 @@ def collect_batch(
         tasks.append(lambda n=name, u=url: _do_feed(n, u))
 
     if not tasks:
+        _ev("run_end", total_s=round(_time.monotonic() - _t_run, 2), total_articles=0)
         return report
 
     # 소스 동시 실행 — 각 소스는 검색+본문 enrich 가 네트워크 대기라, 순차로 돌면
@@ -244,4 +300,7 @@ def collect_batch(
             for k, v in (stats or {}).items():
                 report.stats[k] = report.stats.get(k, 0) + int(v or 0)
 
+    _ev("run_end", total_s=round(_time.monotonic() - _t_run, 2),
+        total_articles=report.total_articles, total_files=report.total_files,
+        errors=len(report.errors))
     return report

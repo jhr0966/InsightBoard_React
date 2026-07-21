@@ -671,6 +671,7 @@ def enrich_parallel(
     deadline_s: float = ENRICH_BATCH_DEADLINE,
     progress_cb: Callable[[int, int, dict | None], None] | None = None,
     stats_out: dict | None = None,
+    item_cb: Callable[[dict], None] | None = None,
 ) -> list[dict]:
     """여러 기사의 본문/대표이미지/키워드를 **병렬**로 채운다(ThreadPoolExecutor).
 
@@ -720,10 +721,26 @@ def enrich_parallel(
     shared = build_session(total_retries=2, backoff_factor=0.3)
 
     def _work(art: dict) -> None:
+        # 기사별 지표(디버깅 로그용) — 소요·본문길이·이미지·예외를 item_cb 로 통보.
+        t_item = time.monotonic()
+        err = ""
         try:
             enrich_one(art, with_llm=with_llm, session=shared)
-        except Exception:  # noqa: BLE001 — 단일 기사 enrich 실패가 배치를 막지 않게.
+        except Exception as exc:  # noqa: BLE001 — 단일 기사 enrich 실패가 배치를 막지 않게.
+            err = f"{type(exc).__name__}: {str(exc)[:100]}"
             logger.debug("기사 enrich 실패: %s", art.get("link"), exc_info=True)
+        if item_cb is not None:
+            try:
+                item_cb({
+                    "link": str(art.get("link") or ""),
+                    "title": str(art.get("title") or "")[:60],
+                    "content_len": len(str(art.get("content") or "")),
+                    "image": bool(str(art.get("image_url") or "").strip()),
+                    "ms": int((time.monotonic() - t_item) * 1000),
+                    "error": err,
+                })
+            except Exception:  # noqa: BLE001 — 로깅 콜백 실패가 enrich 를 막지 않게.
+                pass
 
     done = 0
     # 컨텍스트 매니저(with)를 쓰지 않는다 — __exit__ 의 shutdown(wait=True) 이 느린

@@ -1,3 +1,13 @@
+## 2026-07-21 — feat: 수집 상세 로그 — 디버깅용 단계·기사별 계측 (`feat-collect-log`)
+
+**무엇을**: store/collect_log.py 신설(런당 구조화 이벤트 JSON, 최근 20런) — run_start(설정 스냅샷)/search_*(출처×키워드 소요·예외)/enrich_item(기사별 본문·이미지·소요)/saved/run_end. collect_batch(clog=)·enrich_parallel(item_cb=) 계측 배선(no-op 안전). API GET /api/collect/logs·/logs/{run_id}(렌더 텍스트+이벤트). 수집 관리에 📋 수집 로그 버튼+모달(런 선택·복사). run_log와 run_id 공유. 로그도 휘발(수집 직후 복사용).
+
+**조치**: 신규 테스트 6건 포함 pytest 599, OpenAPI 67 paths, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: (P2) 배포 후 수집 1회 → 로그 복사 제공받아 병목·누락 표적 수정. (P3-B) 아침 자동수집 워크플로 — feat-daily-collect-workflow.
+
+---
+
 ## 2026-07-21 — chore: 오토메이션월드 수집 제거 — 사이트 폐쇄 (`chore-remove-automationworld`)
 
 **무엇을**: automation-world.co.kr 도메인 DNS 소멸 확인(사이트 폐쇄) → tech_sites(TECH_SITES/TECH_RSS)·store/sources(DEFAULT_SOURCES 3개로)·api/routers/sources(_PRESS_SITES)에서 제거. tech 수집 테스트를 실제 사이트 목록과 분리(2-사이트 fixture)해 향후 목록 변경에 내성. 잔여: 네이버/구글/AI Times 수집 품질은 배포 환경 관측지표로 점검(컨테이너는 뉴스 사이트 아웃바운드 차단).
