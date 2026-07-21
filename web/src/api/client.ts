@@ -281,6 +281,12 @@ export const api = {
     runs: (limit = 12) => req<Record<string, unknown>[]>(`/api/collect/runs${qs({ limit })}`),
     diagnose: (url: string) =>
       req<Record<string, unknown>>("/api/collect/diagnose", { method: "POST", body: JSON.stringify({ url }) }),
+    // 상세 수집 로그(디버깅) — 런 목록 + 단일 런 렌더 텍스트(복사용).
+    logs: (limit = 20) =>
+      req<{ run_id: string; meta: Record<string, unknown>; event_count: number }[]>(`/api/collect/logs${qs({ limit })}`),
+    logDetail: (runId: string) =>
+      req<{ run_id: string; meta: Record<string, unknown>; events: Record<string, unknown>[]; dropped: number; text: string }>(
+        `/api/collect/logs/${encodeURIComponent(runId)}`),
   },
 
   proposalsExtra: {
@@ -300,6 +306,7 @@ export interface CollectEvent {
   source?: string;
   keyword?: string;
   found?: number;
+  run_id?: string;          // done 이벤트 — 방금 런의 상세 로그 id
   total_articles?: number;
   total_files?: number;
   saved?: CollectSaved[];

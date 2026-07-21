@@ -14,6 +14,8 @@ export default function Collect() {
   const toast = useToast();
 
   const [prog, setProg] = useState<CollectProgress | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logRunId, setLogRunId] = useState<string | undefined>(undefined);  // 최근 런 우선 선택
   const running = !!prog?.running;
   const runningRef = useRef(false);
 
@@ -28,6 +30,7 @@ export default function Collect() {
           setProg((p) => (p ? { ...p, steps: [...p.steps, { label, found: e.found ?? 0 }], total: p.total + (e.found ?? 0) } : p));
         } else if (e.type === "done") {
           setProg((p) => (p ? { ...p, running: false, done: { articles: e.total_articles ?? 0, files: e.total_files ?? 0, saved: e.saved ?? [], errors: e.errors ?? [] } } : p));
+          if (e.run_id) setLogRunId(e.run_id);   // 방금 런 로그를 바로 열 수 있게
           toast.push(`✅ ${e.total_articles ?? 0}건 수집했어요`, "success");
           qc.invalidateQueries({ queryKey: ["news"] });
           qc.invalidateQueries({ queryKey: ["collect"] });
@@ -51,11 +54,65 @@ export default function Collect() {
           기사 읽기는 <b>뉴스 탐색</b> 메뉴에서 — 여기는 수집 실행·출처·진단만 다룹니다.
         </span>
         <span className="cl-grow" />
+        <button className="btn" onClick={() => setLogOpen(true)} title="최근 수집 런의 상세 로그를 보고 복사합니다">📋 수집 로그</button>
         <CollectButton pending={running} onRun={() => runCollect([])} />
       </div>
       <SettingsView onCollect={(kw) => runCollect(kw)} collecting={running} />
       <CollectProgressModal prog={prog} onClose={() => { if (!running) setProg(null); }} />
+      {logOpen && <CollectLogModal initialRunId={logRunId} onClose={() => setLogOpen(false)} />}
     </div>
+  );
+}
+
+// 수집 로그 모달 — 최근 런 선택 + 상세 로그(단계별 소요·기사별 본문/이미지 확보) + 복사.
+function CollectLogModal({ initialRunId, onClose }: { initialRunId?: string; onClose: () => void }) {
+  const toast = useToast();
+  const [sel, setSel] = useState<string | undefined>(initialRunId);
+  const runs = useQuery({ queryKey: ["collect", "logs"], queryFn: () => api.collect.logs(20) });
+  const list = runs.data ?? [];
+  const runId = sel ?? initialRunId ?? list[0]?.run_id;
+  const detail = useQuery({
+    queryKey: ["collect", "log", runId],
+    queryFn: () => api.collect.logDetail(runId as string),
+    enabled: !!runId,
+  });
+
+  const copy = async () => {
+    const text = detail.data?.text ?? "";
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.push("📄 로그를 복사했어요 — 채팅에 붙여넣어 주세요", "success");
+    } catch {
+      toast.push("복사 실패 — 로그 영역을 직접 선택해 복사하세요", "danger");
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="수집 로그" width={720}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+        <select value={runId ?? ""} onChange={(e) => setSel(e.target.value)} style={{ flex: 1, minWidth: 220 }}>
+          {list.length === 0 && <option value="">최근 수집 런이 없어요</option>}
+          {list.map((r) => {
+            const ts = String((r.meta as Record<string, unknown>)?.ts ?? "").replace("T", " ").slice(0, 19);
+            const dur = (r.meta as Record<string, unknown>)?.duration_s;
+            return <option key={r.run_id} value={r.run_id}>{ts || r.run_id}{dur != null ? ` · ${dur}s` : ""} · {r.event_count}개 이벤트</option>;
+          })}
+        </select>
+        <button className="btn primary" disabled={!detail.data?.text} onClick={copy}>📄 전체 복사</button>
+      </div>
+      {detail.isLoading && <div className="muted">불러오는 중…</div>}
+      {detail.isError && <div style={{ color: "var(--semantic-danger)" }}>로그를 불러올 수 없어요(휘발됐거나 오래된 런).</div>}
+      {detail.data && (
+        <textarea readOnly value={detail.data.text}
+          style={{ width: "100%", height: 380, fontFamily: "var(--font-mono, monospace)", fontSize: "var(--fs-micro, 12px)",
+                   lineHeight: 1.5, whiteSpace: "pre", overflow: "auto", resize: "vertical",
+                   border: "1px solid var(--line)", borderRadius: 8, padding: 10,
+                   background: "var(--bg-subtle, var(--surface))", color: "var(--ink)" }} />
+      )}
+      <div className="muted" style={{ fontSize: "var(--fs-micro)", marginTop: 8 }}>
+        ⚠ 로그는 서버 파일이라 재배포·슬립 시 사라져요 — 수집 직후 복사해 두세요. 최근 20런만 보관.
+      </div>
+    </Modal>
   );
 }
 

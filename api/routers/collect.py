@@ -97,20 +97,45 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
     def _on_step(source: str, keyword: str, found: int) -> None:
         events.put({"type": "step", "source": source, "keyword": keyword, "found": found})
 
+    # 상세 수집 로그(디버깅) — run_log 와 run_id 를 공유해 '수집 이력'과 같은 런을 가리킨다.
+    from store import collect_log as _collect_log
+    from store import run_log as _run_log
+    from datetime import datetime, timezone
+
+    _now = datetime.now(timezone.utc)
+    run_id = _run_log._new_run_id(_now)
+    clog = _collect_log.CollectLog()
+
     def _worker() -> None:
         t0 = time.monotonic()
         try:
             report = collect_batch(
                 keywords, sources=sources, max_results=body.max_results,
-                do_enrich=body.do_enrich, on_step=_on_step,
+                do_enrich=body.do_enrich, on_step=_on_step, clog=clog,
             )
+            duration = round(time.monotonic() - t0, 1)
             try:  # 런 로그 — '수집 이력/헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
-                from store import run_log
-                run_log.record_run(report, trigger="manual", duration_s=round(time.monotonic() - t0, 1))
+                _run_log.record_run(report, trigger="manual", duration_s=duration,
+                                    run_id=run_id, ts=_now.isoformat())
+            except Exception:  # noqa: BLE001
+                pass
+            try:  # 상세 이벤트 로그 저장 — 수집 로그 버튼이 읽는다.
+                _collect_log.save(run_id, clog, meta={
+                    "ts": _now.isoformat(), "trigger": "manual", "duration_s": duration,
+                    "env": next((e for e in clog.events() if e.get("ev") == "run_start"), {}).get("env", {}),
+                    "totals": {
+                        "total_articles": report.total_articles,
+                        "content_ready": report.stats.get("content_ready", 0),
+                        "image_ready": report.stats.get("image_ready", 0),
+                        "cache_hits": report.stats.get("cache_hits", 0),
+                        "deadline_abandoned": report.stats.get("deadline_abandoned", 0),
+                    },
+                })
             except Exception:  # noqa: BLE001
                 pass
             events.put({
                 "type": "done",
+                "run_id": run_id,           # 방금 런의 상세 로그를 바로 열 수 있게.
                 "total_articles": report.total_articles,
                 "total_files": report.total_files,
                 "saved": report.saved,      # 출처별 건수(+tech 사이트 분해)
@@ -152,6 +177,34 @@ def collect_runs(limit: int = 12) -> list[dict]:
     from store import run_log
 
     return run_log.load_runs(limit=limit)
+
+
+@router.get("/logs")
+def collect_logs(limit: int = 20) -> list[dict]:
+    """상세 수집 로그가 있는 최근 런 목록(최신 우선) — 로그 버튼 드롭다운용."""
+    from store import collect_log
+
+    return collect_log.list_runs(limit=limit)
+
+
+@router.get("/logs/{run_id}")
+def collect_log_detail(run_id: str) -> dict:
+    """단일 런의 상세 로그 — 복사용 렌더 텍스트 + 원시 이벤트.
+
+    `text` 는 1부 요약 + 2부 JSONL 이벤트를 합친 복사용 문자열이다.
+    """
+    from store import collect_log
+
+    payload = collect_log.load(run_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="해당 런의 상세 로그가 없습니다(휘발됐거나 오래됨).")
+    return {
+        "run_id": payload.get("run_id", run_id),
+        "meta": payload.get("meta", {}),
+        "events": payload.get("events", []),
+        "dropped": payload.get("dropped", 0),
+        "text": collect_log.render_text(payload),
+    }
 
 
 class DiagnoseIn(BaseModel):

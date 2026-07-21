@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added (수집 상세 로그 — 디버깅용 단계·기사별 계측) — `feat-collect-log`
+- **신규 `store/collect_log.py`**: 수집 1런의 구조화 이벤트를 스레드 안전하게 누적(`CollectLog`) → `data/logs/detail/{run_id}.json`(최근 20런). 이벤트: `run_start`(설정 스냅샷: 워커·타임아웃·데드라인·캐시·max_results) · `search_start/done/error`(출처×키워드별 소요 ms·건수·예외) · `enrich_start/item/done`(기사별 본문 길이·이미지 확보·소요·예외, 배치 본문/이미지 확보 수·데드라인 중단) · `saved` · `run_end`(총 소요). `render_text()`가 1부 요약(병목·실패)+2부 JSONL을 복사용 텍스트로 렌더.
+- **계측 배선**: `scraping/run_daily.collect_batch(clog=…)` 옵션 파라미터 — None이면 no-op, 계측 실패는 수집을 막지 않게 흡수. `enrich_parallel(item_cb=…)`로 기사별 지표 통보. `api/routers/collect.py` 스트림 수집이 run_log와 **run_id를 공유**해 로그를 저장, done 이벤트에 run_id 포함.
+- **API**: `GET /api/collect/logs`(최근 런 목록) · `GET /api/collect/logs/{run_id}`(렌더 텍스트+원시 이벤트, 없으면 404). run_id는 경로 traversal 방지 정제.
+- **화면**: 수집 관리 상단에 **📋 수집 로그** 버튼 → 모달(런 선택 드롭다운 · 상세 로그 텍스트 · 📄 전체 복사). 수집 직후엔 방금 런이 자동 선택됨.
+- ⚠ 로그도 서버 파일이라 슬립/재배포 시 휘발(수집 직후 복사용). 검증: 신규 테스트 6건(`tests/test_collect_log.py` — 단계 이벤트·검색오류·저장/렌더 왕복·traversal 정제·트림·API 404) 포함 pytest 599 passed · OpenAPI 67 paths 재생성 · 웹 빌드 OK · 금지패턴 0.
+
 ### Removed (오토메이션월드 수집 제거 — 사이트 폐쇄) — `chore-remove-automationworld`
 - **오토메이션월드를 수집 대상에서 제거**: `automation-world.co.kr` 도메인 DNS 소멸(ESERVFAIL) 확인 — 사이트 폐쇄. `scraping/tech_sites.py`(TECH_SITES/TECH_RSS)·`store/sources.py`(DEFAULT_SOURCES 4→3)·`api/routers/sources.py`(_PRESS_SITES)에서 제거. 과거 config 의 disabled 목록에 이름이 남아 있어도 무해하게 무시된다.
 - 테스트 정리: tech 수집 실패 격리·사이트별 진행 콜백 테스트는 실제 사이트 목록과 분리된 2-사이트 fixture(monkeypatch TECH_SITES)로 전환 — 향후 사이트 추가/제거에도 테스트가 흔들리지 않게. 출처 헬스 테스트는 "오토메이션월드 미노출"을 가드.
