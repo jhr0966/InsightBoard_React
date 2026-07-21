@@ -243,7 +243,8 @@ def test_cli_default_keywords_used(monkeypatch):
     rc = daily_scrape.main([])
     assert rc == 0
     assert captured["keywords"] == list(DEFAULT_DAILY_KEYWORDS)
-    assert captured["sources"] == tuple(run_daily.SOURCE_IDS)
+    # 기본 수집 대상 — 네이버 제외(google+tech)
+    assert captured["sources"] == tuple(run_daily.DEFAULT_COLLECT_SOURCES)
 
 
 def test_collect_batch_runs_sources_concurrently(monkeypatch):

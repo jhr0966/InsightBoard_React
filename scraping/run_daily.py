@@ -22,8 +22,15 @@ from scraping import tech_sites
 from store.news_db import save_articles
 
 
-SOURCE_IDS = ("naver", "google", "tech")
+SOURCE_IDS = ("naver", "google", "tech")  # 유효한 소스 id (검증·명시 지정용)
 KEYWORD_SOURCES = ("naver", "google")  # tech 는 키워드와 무관, 1회만 실행
+
+# 기본 수집 대상 — UI '지금 수집'·cron·자동수집이 소스 미지정 시 쓰는 셋.
+# 네이버는 검색 결과 마크업이 파서 셀렉터와 안 맞고(제목 미추출) 데이터센터 IP
+# 소프트차단 가능성도 있어 **기본 제외**(사용자 결정, 2026-07). 구글 뉴스가 국내
+# 언론 기사를 상당 포괄한다. naver.py 파서는 향후 재검토용으로 보존하되, 명시적으로
+# sources=["naver"] 를 넘길 때만 동작한다(UI 에는 노출 안 됨).
+DEFAULT_COLLECT_SOURCES = ("google", "tech")
 
 
 @dataclass

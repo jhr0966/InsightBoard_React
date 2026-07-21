@@ -1,4 +1,10 @@
-"""네이버 뉴스 검색 (키워드 → 기사 dict 리스트)."""
+"""네이버 뉴스 검색 (키워드 → 기사 dict 리스트).
+
+⚠ 기본 수집에서 제외됨(2026-07): 네이버 검색 결과 마크업이 아래 셀렉터(news_tit 등)와
+안 맞아 제목이 추출되지 않고(폴백은 정크만 남김), 데이터센터 IP 소프트차단 가능성도 있다.
+`run_daily.DEFAULT_COLLECT_SOURCES` 는 google+tech 만 쓴다. 이 모듈은 향후 셀렉터를
+현재 마크업에 맞게 고쳐 재활성화할 때를 대비해 보존한다(명시적 sources=["naver"] 로만 동작).
+"""
 from __future__ import annotations
 
 import random

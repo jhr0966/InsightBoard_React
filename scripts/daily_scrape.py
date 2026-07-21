@@ -5,7 +5,7 @@ GH Actions workflow 또는 로컬에서 호출.
 Usage:
     python -m scripts.daily_scrape                              # 기본 키워드 + 전체 소스 + 등록된 커스텀 RSS
     python -m scripts.daily_scrape --keywords "용접 로봇" "디지털 트윈"
-    python -m scripts.daily_scrape --sources naver google       # tech 제외
+    python -m scripts.daily_scrape --sources google             # tech 제외(구글만)
     python -m scripts.daily_scrape --max-results 20
     python -m scripts.daily_scrape --skip-custom-rss            # 커스텀 RSS 스킵
 
@@ -21,7 +21,7 @@ import sys
 from typing import Sequence
 
 from config import DEFAULT_DAILY_KEYWORDS, ensure_data_dirs
-from scraping.run_daily import SOURCE_IDS, collect_batch
+from scraping.run_daily import DEFAULT_COLLECT_SOURCES, SOURCE_IDS, collect_batch
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -42,8 +42,8 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--sources",
         nargs="*",
         choices=SOURCE_IDS,
-        default=list(SOURCE_IDS),
-        help="사용 소스 ID — naver/google/tech 부분집합. 기본: 전체.",
+        default=list(DEFAULT_COLLECT_SOURCES),
+        help="사용 소스 ID — google/tech(기본) · naver 는 명시 지정 시에만(기본 제외).",
     )
     parser.add_argument(
         "--max-results",

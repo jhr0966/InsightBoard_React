@@ -23,8 +23,11 @@ def _seed():
 
 def test_sources_list_defaults_enabled():
     items = client.get("/api/sources").json()["items"]
-    # 기본 출처 3개 (오토메이션월드는 2026-07 사이트 폐쇄로 제거)
-    assert len(items) >= 3
+    # 기본 출처 2개 = 구글 뉴스 / AI Times (오토메이션월드 폐쇄·네이버 기본 제외, 2026-07)
+    names = {i["name"] for i in items}
+    assert {"구글 뉴스", "AI Times"} <= names
+    assert "네이버 뉴스" not in names
+    assert len(items) >= 2
     assert all(i["enabled"] for i in items)
 
 

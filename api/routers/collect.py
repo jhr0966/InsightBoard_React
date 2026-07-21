@@ -24,7 +24,8 @@ from config import DEFAULT_DAILY_KEYWORDS
 
 router = APIRouter(prefix="/api/collect", tags=["collect"])
 # 스키마 기본값 — top-level 에서 scraping 을 import 하지 않기 위해 로컬 상수.
-_DEFAULT_SOURCES = ("naver", "google", "tech")
+# 네이버는 기본 수집에서 제외(파서 미매칭·IP 이슈, 2026-07) → 구글+AI Times(tech).
+_DEFAULT_SOURCES = ("google", "tech")
 
 
 def _sse(payload: dict) -> str:
@@ -52,7 +53,7 @@ class CollectIn(BaseModel):
 @router.post("")
 def run_collect(body: CollectIn, _identity: Identity = Depends(current_identity)) -> dict:
     try:
-        from scraping.run_daily import SOURCE_IDS, collect_batch
+        from scraping.run_daily import DEFAULT_COLLECT_SOURCES, collect_batch
     except ImportError as exc:  # 서버리스 등 scraping 미포함 환경
         raise HTTPException(
             status_code=503,
@@ -61,7 +62,7 @@ def run_collect(body: CollectIn, _identity: Identity = Depends(current_identity)
 
     report = collect_batch(
         _keywords_or_default(body.keywords),
-        sources=body.sources if body.sources is not None else SOURCE_IDS,
+        sources=body.sources if body.sources is not None else DEFAULT_COLLECT_SOURCES,
         max_results=body.max_results,
         do_enrich=body.do_enrich,
     )
@@ -82,14 +83,14 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
     살려둬 무료 호스팅의 프록시 idle 타임아웃(동기 수집의 'failed to fetch' 행)도 완화.
     """
     try:
-        from scraping.run_daily import SOURCE_IDS, collect_batch
+        from scraping.run_daily import DEFAULT_COLLECT_SOURCES, collect_batch
     except ImportError as exc:  # 서버리스 등 scraping 미포함 환경
         raise HTTPException(
             status_code=503,
             detail="수집 기능을 사용할 수 없는 환경입니다(서버리스 등). 로컬/전용 백엔드에서 실행하세요.",
         ) from exc
 
-    sources = list(body.sources) if body.sources is not None else list(SOURCE_IDS)
+    sources = list(body.sources) if body.sources is not None else list(DEFAULT_COLLECT_SOURCES)
     keywords = _keywords_or_default(body.keywords)
     events: queue.Queue = queue.Queue()
     _SENTINEL = object()

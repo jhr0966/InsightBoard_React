@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Removed (네이버 뉴스 기본 수집 제외 — 구글+AI Times) — `chore-drop-naver-source`
+- **네이버 뉴스를 기본 수집에서 제외**(사용자 결정): 네이버 검색 결과 마크업이 파서 셀렉터(news_tit 등)와 안 맞아 제목 미추출→정크만 남고, 데이터센터 IP 소프트차단 가능성도 있음(수집 로그 실측: 네이버 0건). 이제 UI '지금 수집'·cron·자동수집은 **구글 뉴스 + AI Times** 만 사용(`run_daily.DEFAULT_COLLECT_SOURCES`). `store.sources.DEFAULT_SOURCES`·출처 헬스(`api/routers/sources`)·collect 라우터 기본값·`daily_scrape` CLI 기본값에서 네이버 제거.
+- `scraping/naver.py` 파서·테스트는 **보존**(dormant) — 명시적 `sources=["naver"]` 로만 동작하며 UI 엔 노출 안 됨. 향후 네이버 마크업에 맞춰 셀렉터를 고치면 기본셋에 되돌릴 수 있다. 과거 저장된 `source="naver"` 기사는 그대로 유지.
+- 검증: 테스트 갱신(출처 목록·헬스·CLI 기본값 기대치) 포함 pytest 602 passed · OpenAPI 재생성(수집 소스 기본 설명) · 웹 빌드 OK · 금지패턴 0.
+
 ### Changed (enrich 워커 4→6 — long pole 소스 단축) — `fix-enrich-workers`
 - **enrich 병렬 워커 기본값 4→6** (`INSIGHTBOARD_ENRICH_WORKERS`). 재시도 제거(#78)로 개별 fetch가 ~30s로 묶이고 데드라인 중단 0·본문 100%가 되어 헤드룸이 생김(수집 로그 실측: 총 117→79s). google 20건 같은 long pole 소스의 enrich(~72s)를 더 줄이려 상향. fetch는 대부분 네트워크 대기(I/O)라 워커 증가의 CPU 버스트는 짧음. Render가 힘겨우면 env로 4 복귀.
 - 검증: pytest 602 passed(워커 상한 가드 4→8 조정) · 스키마 무변경.

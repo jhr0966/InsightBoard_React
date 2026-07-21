@@ -24,9 +24,10 @@ from config import DATA_ROOT, ensure_data_dirs
 
 
 # 기본(빌트인) 출처 — 사용자가 비활성화는 가능, 제거는 불가.
-# 키워드 뉴스(네이버/구글) 먼저, 뉴스 포탈(AI Times) 다음.
+# 키워드 뉴스(구글) 먼저, 뉴스 포탈(AI Times) 다음.
+# (네이버 뉴스는 2026-07 기본 수집에서 제외 — 검색 마크업 미매칭·IP 이슈. 과거
+#  config 의 disabled/legacy 항목에 남아 있어도 무해하게 무시된다.)
 DEFAULT_SOURCES: tuple[str, ...] = (
-    "네이버 뉴스",
     "구글 뉴스",
     "AI Times",
 )

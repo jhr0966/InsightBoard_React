@@ -1503,7 +1503,7 @@ export interface components {
             max_results: number;
             /**
              * Sources
-             * @description 부분집합 ('naver', 'google', 'tech')
+             * @description 부분집합 ('google', 'tech')
              */
             sources?: string[] | null;
         };
