@@ -1,3 +1,13 @@
+## 2026-07-21 — chore: 오토메이션월드 수집 제거 — 사이트 폐쇄 (`chore-remove-automationworld`)
+
+**무엇을**: automation-world.co.kr 도메인 DNS 소멸 확인(사이트 폐쇄) → tech_sites(TECH_SITES/TECH_RSS)·store/sources(DEFAULT_SOURCES 3개로)·api/routers/sources(_PRESS_SITES)에서 제거. tech 수집 테스트를 실제 사이트 목록과 분리(2-사이트 fixture)해 향후 목록 변경에 내성. 잔여: 네이버/구글/AI Times 수집 품질은 배포 환경 관측지표로 점검(컨테이너는 뉴스 사이트 아웃바운드 차단).
+
+**조치**: pytest 593 passed · 스키마 무변경.
+
+**다음**: 배포 환경에서 수집 1회 실행 → 수집 헬스·본문 확보율(content_rate) 확인 → 출처별 튜닝.
+
+---
+
 ## 2026-07-16 — security: 커밋된 .env 추적 해제 (`fix-env-secret-hygiene`)
 
 **무엇을**: Groq 401(Invalid API Key) 점검 중 발견 — `.gitignore` 에 `.env` 가 있었지만 초기(PR #7)에 이미 커밋돼 추적 중이었고 LLM_API_KEY 가 레포에 노출돼 있었다(private 레포). `git rm --cached .env` 로 추적 해제(로컬 보존), 추적 파일 내 `gsk_` 패턴 0 확인. 히스토리에는 남으므로 키 재발급 필수 안내.

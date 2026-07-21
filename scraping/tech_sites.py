@@ -1,7 +1,10 @@
-"""도메인 특화 기술 뉴스 사이트 (AI Times, 오토메이션월드, 추가 가능).
+"""도메인 특화 기술 뉴스 사이트 (AI Times, 추가 가능).
 
 각 사이트 메인 페이지에서 기사 링크 후보를 찾아 article dict 리스트로 반환.
 구체적 셀렉터를 강제하지 않고, 휴리스틱(제목 길이 + 도메인 일치 + 네비게이션 블록리스트)으로 추출.
+
+⚠ 오토메이션월드는 2026-07 사이트 폐쇄(도메인 DNS 소멸 확인)로 제거했다.
+새 사이트 추가는 TECH_SITES/TECH_RSS 에 한 줄씩.
 """
 from __future__ import annotations
 
@@ -20,15 +23,13 @@ from scraping.http import REQUEST_TIMEOUT, build_session, default_headers
 
 TECH_SITES: dict[str, str] = {
     "AI Times": "https://www.aitimes.com",
-    "오토메이션월드": "https://automation-world.co.kr",
 }
 
-# 모우/모비 계열 CMS(AI Times·오토메이션월드)의 표준 전체기사 RSS 피드.
-# homepage <a> 휴리스틱은 사이트마다 마크업이 달라 취약(오토메이션월드처럼 통째로
-# 0건이 되기도) → RSS 를 1순위로 쓰고, 실패/빈손일 때만 homepage 스크래핑으로 폴백.
+# 모우/모비 계열 CMS(AI Times 등)의 표준 전체기사 RSS 피드.
+# homepage <a> 휴리스틱은 사이트마다 마크업이 달라 취약(통째로 0건이 되기도)
+# → RSS 를 1순위로 쓰고, 실패/빈손일 때만 homepage 스크래핑으로 폴백.
 TECH_RSS: dict[str, str] = {
     "AI Times": "https://www.aitimes.com/rss/allArticle.xml",
-    "오토메이션월드": "https://automation-world.co.kr/rss/allArticle.xml",
 }
 
 
@@ -168,9 +169,9 @@ def search_all(
     기존처럼 조용히 건너뛴다(후방 호환).
 
     `on_site(site_name, count)` 콜백은 사이트 1곳을 마칠 때마다 호출 — 수집 진행
-    모달이 'AI Times'·'오토메이션월드'를 사이트별로 표시하게 한다(과거엔 tech 묶음
-    1줄만 떠서 오토메이션월드가 시도조차 안 되는 것처럼 보였다). 실패한 사이트도
-    0건으로 통보해 '시도했음'이 보이게 한다.
+    모달이 사이트별로 개별 표시하게 한다(과거엔 tech 묶음 1줄만 떠서 특정 사이트가
+    시도조차 안 되는 것처럼 보였다). 실패한 사이트도 0건으로 통보해 '시도했음'이
+    보이게 한다.
     """
     bag: list[dict] = []
     for name, url in TECH_SITES.items():

@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Removed (오토메이션월드 수집 제거 — 사이트 폐쇄) — `chore-remove-automationworld`
+- **오토메이션월드를 수집 대상에서 제거**: `automation-world.co.kr` 도메인 DNS 소멸(ESERVFAIL) 확인 — 사이트 폐쇄. `scraping/tech_sites.py`(TECH_SITES/TECH_RSS)·`store/sources.py`(DEFAULT_SOURCES 4→3)·`api/routers/sources.py`(_PRESS_SITES)에서 제거. 과거 config 의 disabled 목록에 이름이 남아 있어도 무해하게 무시된다.
+- 테스트 정리: tech 수집 실패 격리·사이트별 진행 콜백 테스트는 실제 사이트 목록과 분리된 2-사이트 fixture(monkeypatch TECH_SITES)로 전환 — 향후 사이트 추가/제거에도 테스트가 흔들리지 않게. 출처 헬스 테스트는 "오토메이션월드 미노출"을 가드.
+- 검증: pytest 593 passed · 코드 스키마 무변경(OpenAPI 재생성 불필요).
+
 ### Security (커밋된 `.env` 추적 해제 — API 키 노출 위생) — `fix-env-secret-hygiene`
 - **`.env` 를 git 추적에서 제거**(`git rm --cached`): `.gitignore` 에 `.env` 가 있었지만 초기(PR #7)에 이미 커밋돼 있어 ignore 가 무효 — LLM_API_KEY(Groq)가 레포에 계속 커밋되고 있었다. 로컬 파일은 보존, 이후 커밋에는 포함되지 않는다. 템플릿은 기존 `.env.example` 사용.
 - ⚠ 과거 히스토리에는 키가 남아 있으므로 **키 재발급(rotation) 필수** — 레포는 private 이지만 노출 이력이 있는 키는 폐기가 원칙. Groq 콘솔에서 새 키 발급 → 로컬 `.env`·Render 대시보드에만 입력.

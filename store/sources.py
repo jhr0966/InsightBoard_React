@@ -1,8 +1,9 @@
 """뉴스 수집 출처 설정 영구화 (`data/sources/config.json`).
 
-기본 출처 4개(AI Times / 오토메이션월드 / Google RSS / 네이버 기술)는 항상
-목록에 존재. 사용자는 enable/disable 토글로 비활성화할 수 있고, 추가 RSS
-출처를 등록할 수도 있다(실 수집 wire 는 후속 PR).
+기본 출처 3개(네이버 뉴스 / 구글 뉴스 / AI Times)는 항상 목록에 존재.
+사용자는 enable/disable 토글로 비활성화할 수 있고, 추가 RSS 출처를 등록할
+수도 있다. (오토메이션월드는 2026-07 사이트 폐쇄로 기본 출처에서 제거 —
+과거 config 의 disabled 목록에 남아 있어도 무해하게 무시된다.)
 
 Schema (`config.json`):
     {
@@ -23,12 +24,11 @@ from config import DATA_ROOT, ensure_data_dirs
 
 
 # 기본(빌트인) 출처 — 사용자가 비활성화는 가능, 제거는 불가.
-# 키워드 뉴스(네이버/구글) 먼저, 뉴스 포탈(AI Times/오토메이션월드) 다음.
+# 키워드 뉴스(네이버/구글) 먼저, 뉴스 포탈(AI Times) 다음.
 DEFAULT_SOURCES: tuple[str, ...] = (
     "네이버 뉴스",
     "구글 뉴스",
     "AI Times",
-    "오토메이션월드",
 )
 
 # 과거 표시명 → 현 표시명 (disabled 목록 등 영구 설정 호환)

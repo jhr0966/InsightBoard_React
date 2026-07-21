@@ -59,7 +59,9 @@ def test_sources_health_reports_status_per_source():
     assert by["네이버 뉴스"]["count_7d"] == 1 and by["네이버 뉴스"]["status"] == "정상"
     assert by["AI Times"]["count_7d"] == 1
     # 수집 없는 출처는 무수집
-    assert by["오토메이션월드"]["status"] == "무수집"
+    assert by["구글 뉴스"]["status"] == "무수집"
+    # 폐쇄된 오토메이션월드는 기본 출처 목록에서 제거됨
+    assert "오토메이션월드" not in by
 
 
 def test_create_thread_explicit_title_skips_llm():

@@ -46,10 +46,10 @@ class SourceHealth(BaseModel):
     status: str = "정상"  # 정상 | 무수집 | 비활성
 
 
-# 출처 표시명 → 기사 매칭. 네이버/구글은 source 코드, AI Times/오토메이션월드는
+# 출처 표시명 → 기사 매칭. 네이버/구글은 source 코드, AI Times 등 tech 사이트는
 # source="tech" 묶음이라 press(사이트명)로 구분, 커스텀은 source==name.
 _SOURCE_CODE = {"네이버 뉴스": "naver", "구글 뉴스": "google"}
-_PRESS_SITES = {"AI Times", "오토메이션월드"}
+_PRESS_SITES = {"AI Times"}
 
 
 def _source_stats(news, name: str) -> tuple[int, str]:
