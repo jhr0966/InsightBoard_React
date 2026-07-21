@@ -1,3 +1,13 @@
+## 2026-07-21 — feat: 아침 자동수집 — 배포 백엔드 HTTP 트리거 (`feat-daily-collect-workflow`)
+
+**무엇을**: .github/workflows/daily-collect.yml 신설 — GitHub Actions 가 KST 07/13/18시 배포 백엔드 /api/collect 를 HTTP 호출(러너 수집 아님 — 러너 디스크 휘발이라 앱에 못 닿음). health 재시도로 콜드스타트 웨이크업, 하루 여러 번이라 사용 시간대 슬립·데이터 유실 완화. BACKEND_URL repo variable(기본값 fallback). 구 scrape-daily.yml 제거(data/news gitignore→commit no-op + repo커밋은 라이브 저장소 못 채움). DEPLOY §3-1 문서화.
+
+**조치**: 워크플로 YAML OK · 코드/테스트 무변경. 사용자: repo variable BACKEND_URL 설정 권장(미설정 시 기본값 동작).
+
+**다음**: (P2) 배포 후 수집 로그 복사 제공받아 병목·누락 표적 수정.
+
+---
+
 ## 2026-07-21 — feat: 수집 상세 로그 — 디버깅용 단계·기사별 계측 (`feat-collect-log`)
 
 **무엇을**: store/collect_log.py 신설(런당 구조화 이벤트 JSON, 최근 20런) — run_start(설정 스냅샷)/search_*(출처×키워드 소요·예외)/enrich_item(기사별 본문·이미지·소요)/saved/run_end. collect_batch(clog=)·enrich_parallel(item_cb=) 계측 배선(no-op 안전). API GET /api/collect/logs·/logs/{run_id}(렌더 텍스트+이벤트). 수집 관리에 📋 수집 로그 버튼+모달(런 선택·복사). run_log와 run_id 공유. 로그도 휘발(수집 직후 복사용).

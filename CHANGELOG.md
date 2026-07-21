@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (아침 자동수집 — 배포 백엔드 HTTP 트리거) — `feat-daily-collect-workflow`
+- **신규 `.github/workflows/daily-collect.yml`**: GitHub Actions 가 하루 3회(KST 07/13/18시) **배포된 백엔드 `/api/collect` 를 HTTP 호출**해 백엔드가 자기 저장소에 수집하게 한다. 러너에서 수집하지 않는다 — 러너 디스크는 휘발이라 라이브 앱에 도달하지 못하기 때문. 호출이 곧 웨이크업이라 사용 시간대 슬립도 완화("수시로 없어짐" 대응). 백엔드 URL 은 repo variable `BACKEND_URL`(미설정 시 기본값). health 재시도로 콜드스타트 대기, 수집 0건은 경고(차단/셀렉터 파손 신호).
+- **구 `scrape-daily.yml` 제거**: 러너에서 수집→`data/news` commit 방식인데 `data/news` 가 gitignore 라 commit 이 항상 no-op 이었고, repo 커밋은 애초에 라이브 백엔드 저장소를 못 채운다(설계 오류). HTTP 트리거로 대체.
+- `docs/DEPLOY.md` §3-1 신설 — 자동수집 원리·`BACKEND_URL` 설정·영구화 옵션.
+- 검증: 워크플로 YAML 파싱 OK · 코드/테스트 무변경.
+
 ### Added (수집 상세 로그 — 디버깅용 단계·기사별 계측) — `feat-collect-log`
 - **신규 `store/collect_log.py`**: 수집 1런의 구조화 이벤트를 스레드 안전하게 누적(`CollectLog`) → `data/logs/detail/{run_id}.json`(최근 20런). 이벤트: `run_start`(설정 스냅샷: 워커·타임아웃·데드라인·캐시·max_results) · `search_start/done/error`(출처×키워드별 소요 ms·건수·예외) · `enrich_start/item/done`(기사별 본문 길이·이미지 확보·소요·예외, 배치 본문/이미지 확보 수·데드라인 중단) · `saved` · `run_end`(총 소요). `render_text()`가 1부 요약(병목·실패)+2부 JSONL을 복사용 텍스트로 렌더.
 - **계측 배선**: `scraping/run_daily.collect_batch(clog=…)` 옵션 파라미터 — None이면 no-op, 계측 실패는 수집을 막지 않게 흡수. `enrich_parallel(item_cb=…)`로 기사별 지표 통보. `api/routers/collect.py` 스트림 수집이 run_log와 **run_id를 공유**해 로그를 저장, done 이벤트에 run_id 포함.
