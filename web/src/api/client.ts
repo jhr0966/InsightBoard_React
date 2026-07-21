@@ -302,10 +302,12 @@ export const api = {
 export interface CollectSaved { source: string; count: number; keywords?: string[]; sites?: Record<string, number>; }
 export interface CollectErr { source?: string; keyword?: string; error: string; }
 export interface CollectEvent {
-  type: "start" | "step" | "ping" | "done" | "error";
+  type: "start" | "step" | "enrich" | "ping" | "done" | "error";
   source?: string;
   keyword?: string;
   found?: number;
+  done?: number;            // enrich 이벤트 — 본문 정리 완료 수
+  total?: number;           // enrich 이벤트 — 본문 정리 대상 수(소스 검색 완료분 누적)
   run_id?: string;          // done 이벤트 — 방금 런의 상세 로그 id
   total_articles?: number;
   total_files?: number;

@@ -28,6 +28,8 @@ export default function Collect() {
         if (e.type === "step") {
           const label = sourceMeta(e.source).label + (e.keyword ? ` · ${e.keyword}` : "");
           setProg((p) => (p ? { ...p, steps: [...p.steps, { label, found: e.found ?? 0 }], total: p.total + (e.found ?? 0) } : p));
+        } else if (e.type === "enrich") {
+          setProg((p) => (p ? { ...p, enrich: { done: e.done ?? 0, total: e.total ?? 0 } } : p));
         } else if (e.type === "done") {
           setProg((p) => (p ? { ...p, running: false, done: { articles: e.total_articles ?? 0, files: e.total_files ?? 0, saved: e.saved ?? [], errors: e.errors ?? [] } } : p));
           if (e.run_id) setLogRunId(e.run_id);   // 방금 런 로그를 바로 열 수 있게
@@ -120,6 +122,7 @@ interface CollectProgress {
   running: boolean;
   steps: { label: string; found: number }[];
   total: number;
+  enrich?: { done: number; total: number };   // 본문 정리 진행(검색 후 가장 긴 단계)
   done?: { articles: number; files: number; saved: CollectSaved[]; errors: CollectErr[] };
   error?: string;
 }
@@ -133,10 +136,22 @@ function CollectProgressModal({ prog, onClose }: { prog: CollectProgress | null;
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <span className="cl-spinner" aria-hidden />
-            <span>수집 중… <b>{prog.total}</b>건 발견</span>
+            <span>
+              {prog.enrich
+                ? <>본문 정리 중… <b>{prog.enrich.done}</b>/{prog.enrich.total}건</>
+                : <>기사 검색 중… <b>{prog.total}</b>건 발견</>}
+            </span>
           </div>
+          {prog.enrich && prog.enrich.total > 0 && (
+            <div style={{ height: 6, borderRadius: 3, background: "var(--line)", overflow: "hidden", margin: "0 0 8px" }}>
+              <div style={{ height: "100%", width: `${Math.min(100, Math.round((prog.enrich.done / prog.enrich.total) * 100))}%`,
+                            background: "var(--accent-primary, #0E7C97)", transition: "width .3s" }} />
+            </div>
+          )}
           <div className="muted" style={{ fontSize: "var(--fs-caption)", minHeight: 18 }}>
-            {last ? `${last.label} — ${last.found}건` : "출처에 연결하는 중…"}
+            {prog.enrich
+              ? "각 기사 본문·대표 이미지를 가져오는 중이에요 (가장 오래 걸리는 단계)"
+              : last ? `${last.label} — ${last.found}건` : "출처에 연결하는 중…"}
           </div>
         </>
       ) : prog.error ? (

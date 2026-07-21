@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added (수집 진행 표시 — enrich 단계 진행률) — `feat-collect-progress`
+- **수집 진행 모달에 본문 정리(enrich) 진행률 표시**: 과거엔 검색 후 가장 긴 enrich 단계 동안 진행 표시 없이 스피너만 돌아 "빙빙 도는" 체감이 컸다. 이제 "본문 정리 중… N/M건" + 진행 바를 보여준다. `collect_batch(on_enrich=(done,total))` 콜백(스레드 안전 전역 누적 — 소스 병렬 처리분 합산) → SSE `enrich` 이벤트 → 모달. 검색 단계는 "기사 검색 중… N건 발견"으로 문구 구분.
+- 검증: 신규 테스트 1건(`test_collect_log.py` — 전역 진행 누적) 포함 pytest 602 passed · 웹 빌드 OK · 스키마 무변경.
+
 ### Fixed (수집 속도 — enrich 재시도 폭주 + 네이버 정크 링크) — `fix-collect-speed`
 - **개별 fetch 시간 상한**: enrich 본문 fetch 세션의 재시도를 2→**0**으로(`ENRICH_FETCH_RETRIES`, env `INSIGHTBOARD_ENRICH_RETRIES`). 수집 로그 실측 결과 재시도가 read 타임아웃(20s)에 곱해져 느린 사이트 1건이 **40~53초**를 잡아먹고(mk.co.kr 50s·donga 53s·yna 48s) 배치가 매번 90s 데드라인에 걸려 6~8건씩 중단됐다. enrich 는 best-effort(실패해도 제목·og:image 는 남고 다음 수집 캐시 미적중으로 재시도)라 재시도 0 으로 개별 fetch 를 ~30s(connect10+read20)로 묶어 배치를 빠르게 끝낸다. 검색(목록) 세션 재시도는 그대로.
 - **네이버 정크 링크 제거**: 검색결과에 섞인 언론사 홈페이지 루트(`e-science.co.kr`·`medicaltimes.com`·`press9.kr` 등)·`keep.naver.com` 을 기사로 잘못 수집하던 문제 수정(`naver._is_junk_link` — 도메인 루트/정크 호스트 판정). 증상: 제목 "○○○새 창 열림"·본문 0자로 enrich 슬롯 낭비 + 데이터 오염. 폴백 제목 선택도 정크 라벨("새 창 열림" 접미사·"네이버뉴스"/"Keep") 앵커를 건너뛴다.

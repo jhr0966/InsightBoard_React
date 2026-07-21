@@ -86,6 +86,7 @@ def collect_batch(
     sources: Sequence[str] = SOURCE_IDS,
     max_results: int = 10,
     on_step: Callable[[str, str, int], None] | None = None,
+    on_enrich: Callable[[int, int], None] | None = None,
     extra_feeds: Sequence[tuple[str, str]] | None = None,
     do_enrich: bool = True,
     clog=None,
@@ -97,6 +98,8 @@ def collect_batch(
         sources: 사용 소스 ID — {"naver", "google", "tech"} 부분집합.
         max_results: 키워드/사이트 당 최대 기사 수.
         on_step: (source, keyword, found_count) 진행 콜백 (저장 직전이 아닌 검색 직후).
+        on_enrich: (done, total) 본문 정리 진행 콜백 — enrich 는 가장 긴 단계라
+            소스 병렬로 처리되는 전역 누적 진행을 UI 스피너에 흘려보낸다.
         extra_feeds: 커스텀 RSS 출처 — `(name, url)` 튜플 리스트. 키워드 무관하게
             한 번씩 fetch 한다. 빈 리스트/None 이면 스킵.
         clog: 선택적 `store.collect_log.CollectLog` — 단계별 소요·기사별 지표를
@@ -118,6 +121,34 @@ def collect_batch(
                 clog.event(ev, **f)
             except Exception:  # noqa: BLE001
                 pass
+
+    # enrich 전역 진행 카운터 — 소스가 병렬이라 스레드 안전하게 누적. total 은
+    # 각 소스가 검색을 마치고 enrich 에 진입할 때(enrich_start) 더해진다.
+    import threading as _threading
+    _enrich_lock = _threading.Lock()
+    _enrich_prog = {"done": 0, "total": 0}
+
+    def _enrich_add_total(n: int) -> None:
+        if on_enrich is None or n <= 0:
+            return
+        with _enrich_lock:
+            _enrich_prog["total"] += n
+            done, total = _enrich_prog["done"], _enrich_prog["total"]
+        try:
+            on_enrich(done, total)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _enrich_tick() -> None:
+        if on_enrich is None:
+            return
+        with _enrich_lock:
+            _enrich_prog["done"] += 1
+            done, total = _enrich_prog["done"], _enrich_prog["total"]
+        try:
+            on_enrich(done, total)
+        except Exception:  # noqa: BLE001
+            pass
 
     # 오늘 이미 수집·enrich 한 기사 인덱스(스냅샷) — 같은 기사를 다시 fetch 하지 않게.
     # 반복 수집을 크게 가속하고(네트워크 생략) 데드라인 abandon 도 줄인다.
@@ -154,9 +185,11 @@ def collect_batch(
             _t = _time.monotonic()
             stats["cache_hits"] = _enrich.apply_cached(articles, enriched_index)
             _ev("enrich_start", src=src, total=len(articles), cache_hits=stats["cache_hits"])
+            _enrich_add_total(len(articles))  # 전역 진행 total 에 이 버킷 추가
             es: dict = {}
             _enrich.enrich_parallel(
                 articles, with_llm=False, stats_out=es,
+                progress_cb=(lambda d, t, a: _enrich_tick()) if on_enrich is not None else None,
                 item_cb=(lambda rec: _ev("enrich_item", src=src, **rec)) if clog is not None else None)
             stats["deadline_abandoned"] = int(es.get("abandoned", 0))
             stats["enrich_skipped_cap"] = int(es.get("skipped_cap", 0))

@@ -97,6 +97,10 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
     def _on_step(source: str, keyword: str, found: int) -> None:
         events.put({"type": "step", "source": source, "keyword": keyword, "found": found})
 
+    def _on_enrich(done: int, total: int) -> None:
+        # 본문 정리(enrich) 전역 진행 — 검색 후 가장 긴 단계라 스피너에 진행률을 준다.
+        events.put({"type": "enrich", "done": done, "total": total})
+
     # 상세 수집 로그(디버깅) — run_log 와 run_id 를 공유해 '수집 이력'과 같은 런을 가리킨다.
     from store import collect_log as _collect_log
     from store import run_log as _run_log
@@ -111,7 +115,7 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
         try:
             report = collect_batch(
                 keywords, sources=sources, max_results=body.max_results,
-                do_enrich=body.do_enrich, on_step=_on_step, clog=clog,
+                do_enrich=body.do_enrich, on_step=_on_step, on_enrich=_on_enrich, clog=clog,
             )
             duration = round(time.monotonic() - t0, 1)
             try:  # 런 로그 — '수집 이력/헬스' 가 읽음. 로깅 실패가 수집을 깨면 안 됨.
