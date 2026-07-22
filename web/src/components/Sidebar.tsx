@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { NavLink, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { NAV_MAIN, NAV_MANAGE } from "../nav";
+import { clickableProps } from "./ui";
 import ThemeSwitcher from "./ThemeSwitcher";
 
 function NavRow({ to, emoji, num, name, sub, end }: (typeof NAV_MAIN)[number]) {
@@ -40,7 +41,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="persona-card" onClick={() => navigate("/persona")}>
+      <div className="persona-card" {...clickableProps(() => navigate("/persona"), "내 페르소나 설정 열기")}>
         {persona.data?.is_set ? (
           <>
             <div className="persona-head">{(persona.data.name || persona.data.dept || "?").slice(0, 1)}</div>

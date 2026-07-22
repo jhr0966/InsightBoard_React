@@ -1,6 +1,23 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 // ── 공통 UI 컴포넌트 (assets/v2 디자인 토큰 기반) ──
+
+// 클릭 가능한 div/tr 을 키보드로도 조작 가능하게 — role="button"+tabIndex+Enter/Space.
+// 마우스 onClick 만 있던 요소에 스프레드해서 접근성 표준화. label 은 aria-label(선택).
+export function clickableProps(onClick: () => void, label?: string) {
+  return {
+    role: "button",
+    tabIndex: 0,
+    ...(label ? { "aria-label": label } : {}),
+    onClick,
+    onKeyDown: (e: ReactKeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick();
+      }
+    },
+  };
+}
 
 export function Card({ title, children, className = "" }: { title?: ReactNode; children: ReactNode; className?: string }) {
   return (

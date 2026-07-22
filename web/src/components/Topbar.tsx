@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { navByPath } from "../nav";
+import { clickableProps } from "./ui";
 
 // 상단바 — 브레드크럼·제목·갱신시각·알림벨·설정·아바타·전역검색 (ui/app_shell.py 승계).
 export default function Topbar({
@@ -77,13 +78,14 @@ export default function Topbar({
         <button
           className="topbar-btn"
           title={pendingAdopt > 0 ? `${pendingAdopt}건 검토 중` : "새 알림 없음"}
+          aria-label={pendingAdopt > 0 ? `알림 — ${pendingAdopt}건 검토 중` : "알림 — 새 알림 없음"}
           onClick={() => navigate("/proposals")}
         >
           🔔{pendingAdopt > 0 && <span className="topbar-dot-badge">{pendingAdopt}</span>}
         </button>
-        <button className="topbar-btn" title="설정 · 프로필" onClick={() => navigate("/persona")}>⚙</button>
+        <button className="topbar-btn" title="설정 · 프로필" aria-label="설정 · 프로필" onClick={() => navigate("/persona")}>⚙</button>
         <div className="topbar-avatar" title={persona.data?.name || "프로필"}
-          onClick={() => navigate("/persona")} style={{ cursor: "pointer" }}>{avatar}</div>
+          {...clickableProps(() => navigate("/persona"), "프로필 · 페르소나 열기")} style={{ cursor: "pointer" }}>{avatar}</div>
       </div>
     </header>
     </>
