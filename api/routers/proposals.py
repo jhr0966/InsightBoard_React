@@ -43,6 +43,9 @@ class ProposalGenerateIn(BaseModel):
     task: dict[str, Any] = Field(..., description="작업 정의(또는 매칭 셀) dict")
     days: int = Field(default=30, ge=1, le=90, description="제안 근거 뉴스 기간")
     max_news: int = Field(default=6, ge=1, le=50, description="근거 기사 최대 수")
+    # 사례 화면에서 '이 사례로 제안서' 핸드오프 시 그 사례 id 를 실어 보낸다.
+    # 근거 기사 매칭과 별개로 지정 사례를 주근거에 포함(승인된 것만 — §14-3 준수).
+    case_ids: list[str] = Field(default_factory=list, description="주입할 사례 id (승인된 것만 반영)")
 
 
 class ProposalOut(BaseModel):
@@ -82,6 +85,19 @@ def generate(
 
     approved_cases = cases_db.approved_for_articles(
         [str(e.get("article_id", "")) for e in evidence])[:2]
+    # 핸드오프로 지정된 사례를 앞쪽에 병합(승인된 것만, 중복 제거) — '이 사례로 제안서'가
+    # 실제로 그 사례를 근거로 쓰게 한다. 미승인 사례는 §14-3 에 따라 조용히 무시.
+    if body.case_ids:
+        seen = {str(c.get("case_id")) for c in approved_cases}
+        picked: list[dict[str, Any]] = []
+        for cid in body.case_ids:
+            if cid in seen:
+                continue
+            c = cases_db.get(cid)
+            if c and c.get("review_status") == "approved":
+                picked.append(c)
+                seen.add(cid)
+        approved_cases = (picked + approved_cases)[:3]
 
     persona = persona_store.load(identity.user_id)
     text = _llm_or_http(

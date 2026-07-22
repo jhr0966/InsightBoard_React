@@ -1676,6 +1676,11 @@ export interface components {
         /** ProposalGenerateIn */
         ProposalGenerateIn: {
             /**
+             * Case Ids
+             * @description 주입할 사례 id (승인된 것만 반영)
+             */
+            case_ids?: string[];
+            /**
              * Days
              * @description 제안 근거 뉴스 기간
              * @default 30

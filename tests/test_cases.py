@@ -145,3 +145,34 @@ def test_approved_case_injected_into_proposal(monkeypatch):
     body = _gen()
     assert body["cases"] and body["cases"][0]["title"] == "타사 도막 검사 자동화 사례"
     assert "[승인 사례]" in body["proposal"] and "[사례 1]" in body["proposal"]
+
+
+def test_handoff_case_ids_inject_specified_case(monkeypatch):
+    """'이 사례로 제안서' 핸드오프 — case_ids 로 지정한 사례를 주입(승인된 것만)."""
+    from roadmap import query as roadmap_query
+    from sola.client import LLMNotConfigured
+    from store import news_db
+
+    # 근거 기사와 무관한(=자동 매칭 안 되는) 사례를 별도 기사로 저장.
+    news_db.save_articles([{"title": "무관 기사", "link": "https://x/unrel", "source": "naver",
+                            "keywords": "x", "content": "본문 " * 30}], source="naver")
+    from store.article_id import article_id
+    other = article_id("https://x/other-case-src")
+    cases_db.upsert_case({**_case(other), "title": "핸드오프로 지정한 사례"}, _sources(other))
+    cid = cases_db.case_id_for_article(other)
+    monkeypatch.setattr(roadmap_query, "load_latest", lambda: pd.DataFrame([{
+        "dept": "조립부", "lv1": "", "lv2": "", "lv3": "용접", "task": "용접 검사",
+        "sub_task": "", "task_def": "용접부 외관 검사"}]))
+
+    def _gen(case_ids):
+        with patch("sola.propose.chat", side_effect=LLMNotConfigured("t")):
+            return client.post("/api/proposals/generate", json={
+                "task": {"org_meta": {"dept": "조립부", "lv3": "용접", "task": "용접 검사"}},
+                "case_ids": case_ids}).json()
+
+    # 미승인 지정 → 무시(§14-3)
+    assert _gen([cid])["cases"] == []
+    # 승인 후 지정 → 근거 기사와 매칭 안 돼도 주입됨
+    cases_db.set_status(cid, "approved")
+    titles = [c["title"] for c in _gen([cid])["cases"]]
+    assert "핸드오프로 지정한 사례" in titles

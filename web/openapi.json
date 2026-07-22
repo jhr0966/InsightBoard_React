@@ -660,6 +660,14 @@
       },
       "ProposalGenerateIn": {
         "properties": {
+          "case_ids": {
+            "description": "주입할 사례 id (승인된 것만 반영)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Case Ids",
+            "type": "array"
+          },
           "days": {
             "default": 30,
             "description": "제안 근거 뉴스 기간",
