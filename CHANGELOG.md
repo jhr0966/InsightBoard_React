@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added (UX — 키보드 접근성 표준화) — `fix-ux-keyboard` (UX_AUDIT PR-F)
+- **공용 `clickableProps(onClick, label?)` 헬퍼** (`components/ui`): 마우스 `onClick` 만 있던 `div`/`tr` 에 스프레드하면 `role="button"`+`tabIndex=0`+Enter/Space 키 처리+`aria-label`(선택)을 한 번에 부여 — 클릭 가능한 요소를 키보드로도 조작 가능하게.
+- 적용: Feed **기사 카드·표 행**, Insights **트렌드 키워드 행·연결 공정 카드**, Sidebar **페르소나 카드**, Topbar **아바타**. Topbar **알림 벨·설정(⚙) 버튼에 `aria-label`** 추가(이모지만 있어 스크린리더가 못 읽던 문제).
+- 검증: 웹 빌드(tsc) OK · 프런트 전용.
+
 ### Changed (UX — 카피·표기 일관화) — `chore-ux-consistency` (UX_AUDIT PR-E)
 - **사이드바 "채택 대기" 상시 0 버그 수정**: 구 bookmark 요약의 `pending`(상태 9종 개편으로 사라진 값)을 읽어 항상 0이었다 → Proposal 엔터티 summary 로 교체하고 라벨을 **과제·채택·검토 중**(reviewing+feasibility 합계)으로.
 - 카피: Topbar 신선도 "LIVE"→"실시간" · Proposals 힌트 "(bookmark)" 제거 · TaskDefs 필드 "줄글 정의 (task_def_text)"→"줄글 정의".

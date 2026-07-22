@@ -1,3 +1,13 @@
+## 2026-07-22 — feat: UX 키보드 접근성 표준화 (`fix-ux-keyboard`, UX_AUDIT PR-F)
+
+**무엇을**: 공용 `clickableProps(onClick, label?)` 헬퍼 신설(role=button+tabIndex+Enter/Space+aria-label). 마우스 onClick 만 있던 div/tr 에 적용 — Feed 기사 카드·표 행, Insights 트렌드 키워드 행·연결 공정 카드, Sidebar 페르소나 카드, Topbar 아바타. Topbar 알림 벨·설정 버튼에 aria-label(이모지라 스크린리더 미독). UX_AUDIT PR-F(선택) 완료 = UX_AUDIT 전체(A~F) 마무리.
+
+**조치**: 웹 빌드 OK · 프런트 전용.
+
+**다음**: UX_AUDIT 계획 완료. RSS 신규 출처(로봇신문·헬로티 등)는 준비만 됨 — 지시 시 착수.
+
+---
+
 ## 2026-07-22 — chore: UX 카피·표기 일관화 (`chore-ux-consistency`, UX_AUDIT PR-E)
 
 **무엇을**: 사이드바 하단 통계를 proposals.summary 로 바꿔 항상 0이던 "채택 대기" 버그 해소(과제/채택/검토 중 실집계). Topbar 신선도 라벨 LIVE→"실시간". Proposals "(bookmark)" 잔재 카피 제거. TaskDefs "줄글 정의(task_def_text)"→"줄글 정의", 엑셀 파일 input 을 스타일드 라벨(📂 파일 선택)+선택 파일명 표시로 정돈. Collect 빠른수집 키워드·진단 URL 입력에 Enter 제출. UX_AUDIT PR-E 완료.

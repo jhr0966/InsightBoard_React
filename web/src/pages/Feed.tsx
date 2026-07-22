@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { Tabs, EmptyState, Modal, LoadError } from "../components/ui";
+import { Tabs, EmptyState, Modal, LoadError, clickableProps } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
 import { useGlobalSearch } from "../search";
@@ -69,7 +69,7 @@ export default function Feed() {
         : items.length === 0 ? <EmptyState icon="🗞" title="기사가 없어요" hint="수집 관리에서 수집을 시작하세요." />
         : mode === "table" ? <NewsTable items={items} onOpen={setOpen} />
         : <div className="bd-grid">{items.map((a) => (
-            <div key={a.link} onClick={(e) => { e.preventDefault(); setOpen(a); }}><NewsCard article={a} /></div>
+            <div key={a.link} {...clickableProps(() => setOpen(a), `${a.title} 열기`)}><NewsCard article={a} /></div>
           ))}</div>}
       {!news.isLoading && news.hasNextPage && (
         <div style={{ textAlign: "center", marginTop: 12 }}>
@@ -96,7 +96,7 @@ function NewsTable({ items, onOpen }: { items: NewsArticle[]; onOpen: (a: NewsAr
           {items.map((a) => {
             const m = articleChannel(a);
             return (
-              <tr key={a.link} onClick={() => onOpen(a)} style={{ cursor: "pointer" }}>
+              <tr key={a.link} {...clickableProps(() => onOpen(a), `${a.title} 열기`)} style={{ cursor: "pointer" }}>
                 <td><span className="cl-chip-dot" style={{ background: m.color }} /> {m.label}</td>
                 <td className="cl-td-title">{a.title}</td>
                 <td className="cl-td-sum">{newsBody(a) || <span className="muted">(본문 없음)</span>}</td>

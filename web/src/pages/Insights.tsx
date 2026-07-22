@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { KPIStatGrid, EmptyState, Badge, Tabs, LoadError } from "../components/ui";
+import { KPIStatGrid, EmptyState, Badge, Tabs, LoadError, clickableProps } from "../components/ui";
 import LineChart from "../components/charts/LineChart";
 import BubbleMatrix from "../components/charts/BubbleMatrix";
 import type { Bubble } from "../components/charts/BubbleMatrix";
@@ -144,8 +144,8 @@ export default function Insights() {
             <div className="muted" style={{ fontSize: "var(--fs-micro)", marginBottom: 4 }}>키워드를 누르면 연결 공정이 바뀝니다</div>
             {(keywords.data ?? []).map((k, i) => (
               <div className={`ia-kw${k.keyword === activeKw ? " on" : ""}`} key={k.keyword}
-                style={{ cursor: "pointer" }} role="button"
-                onClick={() => setTkw(k.keyword === activeKw ? null : k.keyword)}>
+                style={{ cursor: "pointer" }}
+                {...clickableProps(() => setTkw(k.keyword === activeKw ? null : k.keyword), `${k.keyword} 트렌드 선택`)}>
                 <span className="ia-kw-rank">{String(i + 1).padStart(2, "0")}</span>
                 <span className="ia-kw-name">{k.keyword} {newSet.has(k.keyword) && <Badge tone="success">NEW</Badge>}</span>
                 <span className="ia-kw-bar" style={{ width: `${(k.count / kwMax) * 90}px` }} />
@@ -166,7 +166,7 @@ export default function Insights() {
                 : <div className="ia-pmap">
                   {pmap.data!.map((p) => (
                     <div className="ia-pmap-card" key={`${p.dept}||${p.lv3}`}
-                      onClick={() => { setSel(`${p.dept}||${p.lv3}`); }} style={{ cursor: "pointer" }}>
+                      {...clickableProps(() => setSel(`${p.dept}||${p.lv3}`), `${p.dept} ${p.lv3} 선택`)} style={{ cursor: "pointer" }}>
                       <div className="ia-pmap-head">
                         <span className="ia-pmap-proc">{p.dept} · {p.lv3}</span>
                         <Badge tone={p.tag === "PoC 후보" ? "warning" : "default"}>{p.tag}</Badge>
