@@ -143,3 +143,61 @@ def test_decode_google_url_rejects_google_host():
     """디코드 결과가 google.com 이면(자기참조) 빈 문자열."""
     got = google._decode_google_url(f"https://news.google.com/rss/articles/{_cbm_token('https://news.google.com/x')}")
     assert got == ""
+
+
+# ── 링크 복원 개선(동의 쿠키·통계·batchexecute 재시도) ──────────────
+
+
+def test_search_populates_resolve_stats():
+    """stats_out 에 복원 방법별 카운트가 채워진다. description 에 비-구글 직링크가 있는
+    _SAMPLE_RSS 는 direct 로 분류된다(_extract_original_link 이 우선)."""
+    rss = _SAMPLE_RSS.replace("설명1", '&lt;a href="https://www.hankyung.com/a1"&gt;기사&lt;/a&gt;')
+    rss = rss.replace("설명2", '&lt;a href="https://www.mk.co.kr/a2"&gt;기사&lt;/a&gt;')
+    with patch.object(google, "build_session", lambda: _fake_session(rss)):
+        stats: dict = {}
+        google.search("자동화", max_results=10, stats_out=stats)
+    assert stats.get("direct") == 2
+    assert stats.get("unresolved", 0) == 0
+    assert sum(stats.values()) == 2
+
+
+def test_search_applies_consent_cookies():
+    """search 가 세션에 구글 동의 우회 쿠키를 심는다(batchexecute 성공률↑)."""
+    calls: list[tuple] = []
+
+    class CookieJar:
+        def set(self, name, value, **kw):
+            calls.append((name, value, kw.get("domain")))
+
+    class FakeSession:
+        cookies = CookieJar()
+
+        def get(self, *a, **kw):
+            return _FakeResp(_SAMPLE_RSS)
+
+    with patch.object(google, "build_session", lambda: FakeSession()):
+        google.search("x", max_results=5)
+    names = {c[0] for c in calls}
+    assert "CONSENT" in names and "SOCS" in names
+    assert all(c[2] == ".google.com" for c in calls)
+
+
+def test_batchexecute_decode_retries_once_then_succeeds():
+    """첫 시도가 빈 문자열이면 1회 재시도해 두 번째 성공을 취한다(간헐 봇 응답 흡수)."""
+    seq = iter(["", "https://www.hani.co.kr/arti/1"])
+    with patch.object(google, "_batchexecute_decode_once", lambda s, t: next(seq)):
+        got = google._batchexecute_decode(object(), "TOKEN")
+    assert got == "https://www.hani.co.kr/arti/1"
+
+
+def test_resolve_link_method_labels_unresolved():
+    """디코드·batchexecute·리디렉트 모두 실패하면 (원본, 'unresolved')."""
+    class FailSession:
+        def get(self, *a, **kw):
+            import requests
+            raise requests.RequestException("blocked")
+
+    url = "https://news.google.com/rss/articles/OPAQUEtoken123"
+    with patch.object(google, "_batchexecute_decode", lambda s, t: ""):
+        link, method = google._resolve_link_method(FailSession(), url)
+    assert link == url and method == "unresolved"

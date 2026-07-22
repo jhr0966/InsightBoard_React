@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (수집 — 구글뉴스 본문·사진 미수집 개선) — `fix-google-link-resolve`
+- **구글 동의(consent) 인터스티셜 우회** (`scraping/google.py`): 데이터센터 IP(Render)로 news.google.com 접근 시 동의 페이지가 떠 batchexecute 서명 추출이 실패 → 원문 링크를 못 풀고 **본문·사진이 통째로 비던** 핵심 원인. 검색 세션에 `CONSENT`/`SOCS` 동의 쿠키를 심어 실제 콘텐츠를 받게 함(원문 링크 복원 성공률↑).
+- **batchexecute 재시도 1회** (`_batchexecute_decode`): 간헐적 봇 의심 응답(빈 서명/동의 페이지)을 한 번 더 시도해 흡수. 실패 토큰만 재시도라 정상 경로엔 부담 없음. 해석 타임아웃 8→12s(데이터센터 지연에 서명 왕복이 잘리던 것 완화).
+- **원문 링크 복원 관측화**: `google.search(stats_out=...)` 가 복원 방법별 카운트(직링크/base64/batchexecute/redirect/**미복원**)를 집계 → `run_daily` 가 소스 단위 `resolve` 이벤트로 수집 로그에 기록. 수집 로그 요약에 **"구글 링크 복원 N/M 성공 · 미복원 K(=본문·사진 누락 위험)"** 한 줄 추가 — 실패율을 로그만 보고 진단 가능.
+
 ### Fixed (Feed — 카드 클릭 시 모달 대신 원본이 바로 열리던 회귀) — `fix-feed-card-modal`
 - **`clickableProps` 에 `preventDefault` 복원** (`components/ui`): PR-F 에서 Feed 카드 래퍼의 `onClick` 을 헬퍼로 바꾸며 기존 `e.preventDefault()` 가 빠졌다 — `NewsCard` 는 `<a href={원문}>` 앵커라 클릭이 앵커 기본 이동으로 흘러 **자세히보기 모달 없이 원본 새 탭이 바로 열렸다**. 헬퍼의 클릭 핸들러가 `preventDefault` 후 `onClick` 만 태우도록 수정(다른 적용처는 div/tr 라 기본 동작이 없어 무해).
 

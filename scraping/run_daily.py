@@ -78,12 +78,13 @@ class CollectionReport:
 
 
 def _run_keyword_source(
-    src: str, keyword: str, max_results: int
+    src: str, keyword: str, max_results: int, *, stats_out: dict | None = None
 ) -> list[dict]:
     if src == "naver":
         return naver_news.search(keyword, max_results=max_results)
     if src == "google":
-        return google_news.search(keyword, max_results=max_results)
+        # stats_out(선택) 에 원문 링크 복원 방법별 카운트 누적 — 수집 로그에서 실패율 관측.
+        return google_news.search(keyword, max_results=max_results, stats_out=stats_out)
     raise ValueError(f"unsupported keyword source: {src}")
 
 
@@ -219,11 +220,13 @@ def collect_batch(
         stats: dict = {}
         bucket: list[dict] = []
         used_keywords: list[str] = []
+        # 구글 원문 링크 복원 통계(방법별) — 키워드 누적 후 소스 단위로 1회 로깅.
+        resolve_stats: dict = {} if src == "google" else None
         for kw in keyword_list:
             _ev("search_start", src=src, kw=kw)
             _t = _time.monotonic()
             try:
-                articles = _run_keyword_source(src, kw, max_results)
+                articles = _run_keyword_source(src, kw, max_results, stats_out=resolve_stats)
                 for art in articles:
                     art.setdefault("query", kw)
                 bucket.extend(articles)
@@ -236,6 +239,12 @@ def collect_batch(
                 errors.append({"source": src, "keyword": kw, "error": str(e)})
                 _ev("search_error", src=src, kw=kw, error=f"{type(e).__name__}: {str(e)[:120]}",
                     ms=int((_time.monotonic() - _t) * 1000))
+        if resolve_stats:
+            # unresolved = 원문 링크를 못 푼 기사 수 = 본문·사진 못 가져오는 기사 수.
+            total_r = sum(resolve_stats.values())
+            _ev("resolve", src=src, total=total_r, unresolved=resolve_stats.get("unresolved", 0),
+                direct=resolve_stats.get("direct", 0), decoded=resolve_stats.get("decoded", 0),
+                batch=resolve_stats.get("batch", 0), redirect=resolve_stats.get("redirect", 0))
         if bucket:
             # 캐시 채움 + 새 기사만 본문·og:image 병렬 fetch.
             stats = _enrich_bucket(bucket, src=src)

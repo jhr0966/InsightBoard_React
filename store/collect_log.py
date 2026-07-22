@@ -157,6 +157,18 @@ def render_text(payload: dict) -> str:
     if by_src_ms:
         lines.append("■ 단계별 소요(ms): " + " · ".join(f"{k}={v}" for k, v in by_src_ms.items()))
 
+    # 구글 원문 링크 복원 요약 — unresolved 가 곧 본문·사진 못 가져오는 기사 수.
+    for e in events:
+        if e.get("ev") == "resolve":
+            tot_r = int(e.get("total", 0) or 0)
+            unres = int(e.get("unresolved", 0) or 0)
+            rate = f"{round(100 * (tot_r - unres) / tot_r)}%" if tot_r else "-"
+            lines.append(
+                f"■ 구글 링크 복원 [{e.get('src')}]: {tot_r - unres}/{tot_r} 성공({rate}) · "
+                f"직링크 {e.get('direct', 0)} · base64 {e.get('decoded', 0)} · "
+                f"batch {e.get('batch', 0)} · redirect {e.get('redirect', 0)} · "
+                f"미복원 {unres}(=본문·사진 누락 위험)")
+
     # 실패/누락 — 검색 오류 + 본문 미확보 enrich 기사.
     fails = [e for e in events
              if e.get("ev") == "search_error"
