@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (UX — 모달·오버레이 기본기) — `fix-modal-a11y` (UX_AUDIT PR-C)
+- **Modal 접근성** (`components/ui`): **Esc 로 닫기**(dismissible 일 때만) + 열릴 때 모달로 포커스 이동 + `role="dialog"`·`aria-modal`. `dismissible={false}`(온보딩)면 ✕ 를 **숨겨** '닫기 금지' 의도를 지킨다(과거엔 ✕ 가 dismissible 을 무시하고 항상 닫혔음). 앱의 모든 모달(Feed·Collect·TaskDefs·Onboarding)에 일괄 적용.
+- **수집 진행 모달**: 수집 중엔 ✕/Esc/백드롭 닫기를 막는다(`dismissible={!running}`) — 닫아도 수집은 백그라운드로 계속 돌아 ✕ 가 고장처럼 보이던 문제 해소.
+- **SOLA 드로어 백드롭**: ≤1100px 에서 드로어가 오버레이가 될 때 백드롭 추가(탭하면 닫힘, 사이드바 오프캔버스와 동일). 넓은 화면(도킹형)에선 CSS 로 숨김.
+- 검증: 웹 빌드(tsc) OK · 프런트 전용(스키마·백엔드 무영향).
+
 ### Fixed (UX — 사례→제안서 흐름 배선) — `fix-case-handoff` (UX_AUDIT PR-B)
 - **"이 사례로 제안서 →" 플래그십 흐름 복구**: 과거엔 `/proposals?from=case` 로만 이동해 사례 식별자가 전달되지 않아, 인계 라벨·SOLA 프리필·사례 주입이 모두 동작하지 않았다. 이제 `case_id`·`work`(적용 작업)를 실어 보낸다.
 - **백엔드 — generate `case_ids` 옵션 추가**: 지정 사례를 근거 기사 매칭과 별개로 주입(§14-3 준수 — **승인된 사례만** 반영, 미승인은 무시). 사례 화면에서 넘어온 사례가 근거 기사와 매칭되지 않아도 제안서 근거로 확실히 포함된다.

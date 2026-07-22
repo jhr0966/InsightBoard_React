@@ -52,7 +52,11 @@ export default function Layout() {
       </div>
 
       {drawerOpen ? (
-        <AssistantDrawer screen={screen} onClose={() => setDrawer(false)} />
+        <>
+          {/* 좁은 화면(≤1100px)에선 드로어가 오버레이 → 백드롭 탭으로 닫기(CSS 로 폭 제어). */}
+          <div className="drawer-backdrop" onClick={() => setDrawer(false)} />
+          <AssistantDrawer screen={screen} onClose={() => setDrawer(false)} />
+        </>
       ) : (
         <button className="btn primary drawer-toggle" onClick={() => setDrawer(true)}>
           💬 SOLA

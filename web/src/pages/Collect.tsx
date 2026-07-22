@@ -130,8 +130,10 @@ interface CollectProgress {
 function CollectProgressModal({ prog, onClose }: { prog: CollectProgress | null; onClose: () => void }) {
   if (!prog) return null;
   const last = prog.steps[prog.steps.length - 1];
+  // 수집 중엔 ✕·Esc·백드롭 닫기를 막는다(닫아도 수집은 백그라운드로 계속 돌아
+  // 오히려 고장처럼 보였다). 완료/오류 시에만 닫을 수 있다.
   return (
-    <Modal open onClose={onClose} title="뉴스 수집" width={460}>
+    <Modal open onClose={onClose} dismissible={!prog.running} title="뉴스 수집" width={460}>
       {prog.running ? (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
