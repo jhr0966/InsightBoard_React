@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: SOLA 채팅 스트림 제어·자동 스크롤 (`fix-drawer-chat`, UX_AUDIT PR-D)
+
+**무엇을**: AssistantDrawer abortRef 를 만들어두고 .abort() 를 안 부르던 것 배선 — reset·언마운트·새 전송 시 스트림 중단(의도적 중단은 오류 말풍선 안 띄움). 메시지 끝 ref + 델타마다 scrollIntoView 자동 스크롤. UX_AUDIT PR-D 완료.
+
+**조치**: 웹 빌드 OK · 프런트 전용.
+
+**다음**: PR-E chore-ux-consistency(채택 대기 카운터·카피·날짜), PR-F(선택).
+
+---
+
 ## 2026-07-22 — fix: 모달·오버레이 기본기 (`fix-modal-a11y`, UX_AUDIT PR-C)
 
 **무엇을**: Modal 에 Esc 닫기(dismissible 시)+포커스 이동+role/aria, dismissible=false 면 ✕ 숨김(온보딩 ✕ 모순 해소). 수집 진행 모달은 running 중 닫기 차단(dismissible={!running}). SOLA 드로어 ≤1100px 백드롭 추가(넓은 화면은 CSS 로 숨김). UX_AUDIT PR-C 완료.
