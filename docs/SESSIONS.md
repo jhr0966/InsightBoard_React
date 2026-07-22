@@ -1,3 +1,13 @@
+## 2026-07-22 — chore: UX 카피·표기 일관화 (`chore-ux-consistency`, UX_AUDIT PR-E)
+
+**무엇을**: 사이드바 하단 통계를 proposals.summary 로 바꿔 항상 0이던 "채택 대기" 버그 해소(과제/채택/검토 중 실집계). Topbar 신선도 라벨 LIVE→"실시간". Proposals "(bookmark)" 잔재 카피 제거. TaskDefs "줄글 정의(task_def_text)"→"줄글 정의", 엑셀 파일 input 을 스타일드 라벨(📂 파일 선택)+선택 파일명 표시로 정돈. Collect 빠른수집 키워드·진단 URL 입력에 Enter 제출. UX_AUDIT PR-E 완료.
+
+**조치**: 웹 빌드 OK · 프런트 전용.
+
+**다음**: PR-F fix-ux-keyboard(선택 — 클릭 가능한 div/tr 키보드 접근성 표준화).
+
+---
+
 ## 2026-07-22 — fix: SOLA 채팅 스트림 제어·자동 스크롤 (`fix-drawer-chat`, UX_AUDIT PR-D)
 
 **무엇을**: AssistantDrawer abortRef 를 만들어두고 .abort() 를 안 부르던 것 배선 — reset·언마운트·새 전송 시 스트림 중단(의도적 중단은 오류 말풍선 안 띄움). 메시지 끝 ref + 델타마다 scrollIntoView 자동 스크롤. UX_AUDIT PR-D 완료.

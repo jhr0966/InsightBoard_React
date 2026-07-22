@@ -32,7 +32,7 @@ export default function Topbar({
     .map((a) => Date.parse(a.collected_at || a.published_at || a.date || ""))
     .filter((t) => !Number.isNaN(t)).sort((a, b) => b - a)[0];
   const ageH = latestTs ? (Date.now() - latestTs) / 3.6e6 : Infinity;
-  const fresh = ageH <= 6 ? { label: "LIVE", cls: "topbar-fresh-accent" }
+  const fresh = ageH <= 6 ? { label: "실시간", cls: "topbar-fresh-accent" }
     : ageH <= 24 ? { label: "최신", cls: "topbar-fresh-accent" }
     : Number.isFinite(ageH) ? { label: "오래됨", cls: "topbar-fresh-warn" }
     : { label: "수집 전", cls: "" };
