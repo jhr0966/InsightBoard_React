@@ -20,27 +20,53 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from api.deps import Identity, current_identity
+from persona import store as persona_store
 from config import DEFAULT_DAILY_KEYWORDS
 
 router = APIRouter(prefix="/api/collect", tags=["collect"])
 # 스키마 기본값 — top-level 에서 scraping 을 import 하지 않기 위해 로컬 상수.
 # 네이버는 기본 수집에서 제외(파서 미매칭·IP 이슈, 2026-07) → 구글+AI Times(tech).
 _DEFAULT_SOURCES = ("google", "tech")
+# 페르소나 폴백 수집 시 키워드 상한 — 관심 키워드가 많아도 google 검색이 폭주하지 않게.
+_PERSONA_KEYWORD_CAP = 6
 
 
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def _keywords_or_default(keywords: list[str]) -> list[str]:
-    """키워드가 비면 도메인 기본 키워드(`config.DEFAULT_DAILY_KEYWORDS`)로 폴백.
+def _resolve_keywords(keywords: list[str], identity: Identity) -> list[str]:
+    """수집 키워드 결정 — 명시 입력 > 페르소나 관심 키워드 > 도메인 기본값.
 
-    naver/google 은 키워드가 있어야 검색하므로, UI '지금 수집'(빈 키워드)·페르소나
-    관심 키워드 미설정 시 두 소스가 통째로 비던 문제 방어. tech(AI Times)는
-    키워드 무관이라 영향 없음. cron(daily_scrape)은 자체 기본값을 직접 넘긴다.
+    UI '지금 수집'(빈 키워드)이 과거엔 항상 광범위 기본값으로만 돌아, 사용자가
+    페르소나에 등록한 관심 키워드를 무시했다(Streamlit 판에는 있던 동작 회귀).
+    이제 빈 키워드면 그 사용자의 interest_keywords + derived_interests(muted 제외)로
+    수집하고, 그것도 없으면 도메인 기본값(config.DEFAULT_DAILY_KEYWORDS)으로 폴백.
+    naver/google 은 키워드가 있어야 검색하므로 빈 값 방어이기도 하다.
     """
     cleaned = [k.strip() for k in keywords if k and k.strip()]
-    return cleaned or list(DEFAULT_DAILY_KEYWORDS)
+    if cleaned:
+        return cleaned
+    persona_kws = _persona_keywords(identity)
+    return persona_kws or list(DEFAULT_DAILY_KEYWORDS)
+
+
+def _persona_keywords(identity: Identity) -> list[str]:
+    """사용자 페르소나의 수집용 관심 키워드 (interest + derived − muted, 상한 적용)."""
+    try:
+        p = persona_store.load(identity.user_id)
+    except Exception:  # noqa: BLE001 — 페르소나 로드 실패가 수집을 막지 않게.
+        return []
+    muted = {k.strip() for k in (getattr(p, "muted_keywords", []) or [])}
+    out: list[str] = []
+    for k in (list(getattr(p, "interest_keywords", []) or [])
+              + list(getattr(p, "derived_interests", []) or [])):
+        k = str(k).strip()
+        if k and k not in muted and k not in out:
+            out.append(k)
+        if len(out) >= _PERSONA_KEYWORD_CAP:
+            break
+    return out
 
 
 class CollectIn(BaseModel):
@@ -51,7 +77,7 @@ class CollectIn(BaseModel):
 
 
 @router.post("")
-def run_collect(body: CollectIn, _identity: Identity = Depends(current_identity)) -> dict:
+def run_collect(body: CollectIn, identity: Identity = Depends(current_identity)) -> dict:
     try:
         from scraping.run_daily import DEFAULT_COLLECT_SOURCES, collect_batch
     except ImportError as exc:  # 서버리스 등 scraping 미포함 환경
@@ -61,7 +87,7 @@ def run_collect(body: CollectIn, _identity: Identity = Depends(current_identity)
         ) from exc
 
     report = collect_batch(
-        _keywords_or_default(body.keywords),
+        _resolve_keywords(body.keywords, identity),
         sources=body.sources if body.sources is not None else DEFAULT_COLLECT_SOURCES,
         max_results=body.max_results,
         do_enrich=body.do_enrich,
@@ -75,7 +101,7 @@ def run_collect(body: CollectIn, _identity: Identity = Depends(current_identity)
 
 
 @router.post("/stream")
-def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_identity)) -> StreamingResponse:
+def run_collect_stream(body: CollectIn, identity: Identity = Depends(current_identity)) -> StreamingResponse:
     """수집 실행 — SSE 진행 스트림. collect_batch 를 백그라운드 스레드에서 돌리며
     `on_step`(source·keyword·found) 이벤트를 흘리고, 완료 시 결과 요약을 보낸다.
 
@@ -91,7 +117,7 @@ def run_collect_stream(body: CollectIn, _identity: Identity = Depends(current_id
         ) from exc
 
     sources = list(body.sources) if body.sources is not None else list(DEFAULT_COLLECT_SOURCES)
-    keywords = _keywords_or_default(body.keywords)
+    keywords = _resolve_keywords(body.keywords, identity)
     events: queue.Queue = queue.Queue()
     _SENTINEL = object()
 

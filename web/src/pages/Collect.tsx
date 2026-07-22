@@ -288,6 +288,9 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
           <input className="cl-search" value={kw} onChange={(e) => setKw(e.target.value)} placeholder="키워드(쉼표) 예: 용접 로봇, 디지털 트윈" />
           <button className="btn primary" disabled={collecting} onClick={() => onCollect(kw.split(",").map((s) => s.trim()).filter(Boolean))}>{collecting ? "수집 중…" : "수집"}</button>
         </div>
+        <div className="muted" style={{ fontSize: "var(--fs-micro)", marginTop: 6 }}>
+          비워 두고 수집하면 <b>내 페르소나 관심 키워드</b>로 모아요 (없으면 조선·자동화 기본 키워드).
+        </div>
       </div>
 
       <div className="card">
