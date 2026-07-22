@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed (UX — 카피·표기 일관화) — `chore-ux-consistency` (UX_AUDIT PR-E)
+- **사이드바 "채택 대기" 상시 0 버그 수정**: 구 bookmark 요약의 `pending`(상태 9종 개편으로 사라진 값)을 읽어 항상 0이었다 → Proposal 엔터티 summary 로 교체하고 라벨을 **과제·채택·검토 중**(reviewing+feasibility 합계)으로.
+- 카피: Topbar 신선도 "LIVE"→"실시간" · Proposals 힌트 "(bookmark)" 제거 · TaskDefs 필드 "줄글 정의 (task_def_text)"→"줄글 정의".
+- 입력 편의: Collect **빠른 수집 키워드·진단 URL 에 Enter 제출** 추가. TaskDefs **파일 input 을 스타일 라벨(📂 파일 선택 + 파일명 표시)**로 감싸 다른 버튼과 시각 일관.
+- 검증: 웹 빌드(tsc) OK · 프런트 전용.
+
 ### Fixed (UX — SOLA 채팅 스트림 제어·자동 스크롤) — `fix-drawer-chat` (UX_AUDIT PR-D)
 - **스트림 중단 배선** (`AssistantDrawer`): `AbortController` 를 만들어 두고도 `.abort()` 를 어디서도 안 불러 스트리밍을 취소할 수 없던 문제 수정 — 새 대화(reset)·드로어 닫기(언마운트)·새 전송 시작 시 진행 중 스트림을 중단한다. 의도적 중단은 오류 말풍선을 띄우지 않는다.
 - **자동 스크롤**: 메시지 목록 끝 ref + 델타마다 `scrollIntoView` — 스트리밍되는 답변이 화면 밖으로 밀려 안 보이던 문제 해소.

@@ -287,7 +287,9 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
       <div className="card">
         <div className="card-title">⚡ 빠른 수집</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <input className="cl-search" value={kw} onChange={(e) => setKw(e.target.value)} placeholder="키워드(쉼표) 예: 용접 로봇, 디지털 트윈" />
+          <input className="cl-search" value={kw} onChange={(e) => setKw(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !collecting) onCollect(kw.split(",").map((s) => s.trim()).filter(Boolean)); }}
+            placeholder="키워드(쉼표) 예: 용접 로봇, 디지털 트윈" />
           <button className="btn primary" disabled={collecting} onClick={() => onCollect(kw.split(",").map((s) => s.trim()).filter(Boolean))}>{collecting ? "수집 중…" : "수집"}</button>
         </div>
         <div className="muted" style={{ fontSize: "var(--fs-micro)", marginTop: 6 }}>
@@ -332,7 +334,8 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
       <div className="card">
         <div className="card-title">🔬 기사 진단</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <input className="cl-search" value={diagUrl} onChange={(e) => setDiagUrl(e.target.value)} placeholder="기사 URL" />
+          <input className="cl-search" value={diagUrl} onChange={(e) => setDiagUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && diagUrl && !diag.isPending) diag.mutate(); }} placeholder="기사 URL" />
           <button className="btn" disabled={!diagUrl || diag.isPending} onClick={() => diag.mutate()}>{diag.isPending ? "진단 중…" : "진단"}</button>
         </div>
         {diag.data && <DiagResult d={diag.data as unknown as DiagReport} />}

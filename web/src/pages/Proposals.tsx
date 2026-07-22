@@ -216,7 +216,7 @@ function Archive() {
     return (
       <>
         <EmptyState icon="📦" title="아직 저장된 과제가 없어요"
-          hint="'제안 생성' 탭에서 만들어 저장하거나, 예전 보관함(bookmark)의 제안서를 이관하세요." />
+          hint="'제안 생성' 탭에서 만들어 저장하거나, 예전 보관함의 제안서를 이관하세요." />
         <div style={{ textAlign: "center", marginTop: 8 }}>{migrateBtn}</div>
       </>
     );

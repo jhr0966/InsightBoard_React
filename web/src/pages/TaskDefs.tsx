@@ -24,6 +24,7 @@ export default function TaskDefs() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [preview, setPreview] = useState<{ diff: UploadPreview; file: File; replace: boolean } | null>(null);
+  const [fileName, setFileName] = useState("");
 
   const list = useQuery({ queryKey: ["taskdefs", q], queryFn: () => api.taskdefs.list(q ? { q } : undefined) });
   const upload = useMutation<IngestResult, Error, { file: File; replace: boolean }>({
@@ -58,7 +59,12 @@ export default function TaskDefs() {
       <div className="card">
         <div className="card-title">공정정의서 엑셀 업로드</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" />
+          {/* 네이티브 file input 을 숨기고 스타일 라벨로 대체 — 다른 .btn 들과 시각 일관. */}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} id="td-file"
+            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")} />
+          <label htmlFor="td-file" className="btn" style={{ cursor: "pointer" }}>📂 파일 선택</label>
+          <span className="muted" style={{ fontSize: "var(--fs-caption)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {fileName || "선택된 파일 없음"}</span>
           <button className="btn" disabled={prev.isPending || upload.isPending} onClick={() => onPick(false)}>{prev.isPending ? "확인 중…" : "추가"}</button>
           <button className="btn primary" disabled={prev.isPending || upload.isPending} onClick={() => onPick(true)}>교체</button>
           <button className="btn" style={{ marginLeft: "auto" }} onClick={() => setEditId("")}>＋ 새 작업 정의</button>
@@ -260,7 +266,7 @@ function EditForm({ id, onDone }: { id: string; onDone: () => void }) {
           {area("main_equipment", "🛠 주요 장비")}
           {field("이전 공정", cur.previous_process, (v) => set({ previous_process: v }))}
           {field("다음 공정", cur.next_process, (v) => set({ next_process: v }))}
-          <div className="td-field full"><label>줄글 정의 (task_def_text)</label>
+          <div className="td-field full"><label>줄글 정의</label>
             <textarea rows={3} value={curText} onChange={(e) => setTdText(e.target.value)}
               placeholder="공정정의서 원문(줄글). 매칭·제안에 함께 쓰입니다." /></div>
         </div>
