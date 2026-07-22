@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (UX — SOLA 채팅 스트림 제어·자동 스크롤) — `fix-drawer-chat` (UX_AUDIT PR-D)
+- **스트림 중단 배선** (`AssistantDrawer`): `AbortController` 를 만들어 두고도 `.abort()` 를 어디서도 안 불러 스트리밍을 취소할 수 없던 문제 수정 — 새 대화(reset)·드로어 닫기(언마운트)·새 전송 시작 시 진행 중 스트림을 중단한다. 의도적 중단은 오류 말풍선을 띄우지 않는다.
+- **자동 스크롤**: 메시지 목록 끝 ref + 델타마다 `scrollIntoView` — 스트리밍되는 답변이 화면 밖으로 밀려 안 보이던 문제 해소.
+- 검증: 웹 빌드(tsc) OK · 프런트 전용.
+
 ### Fixed (UX — 모달·오버레이 기본기) — `fix-modal-a11y` (UX_AUDIT PR-C)
 - **Modal 접근성** (`components/ui`): **Esc 로 닫기**(dismissible 일 때만) + 열릴 때 모달로 포커스 이동 + `role="dialog"`·`aria-modal`. `dismissible={false}`(온보딩)면 ✕ 를 **숨겨** '닫기 금지' 의도를 지킨다(과거엔 ✕ 가 dismissible 을 무시하고 항상 닫혔음). 앱의 모든 모달(Feed·Collect·TaskDefs·Onboarding)에 일괄 적용.
 - **수집 진행 모달**: 수집 중엔 ✕/Esc/백드롭 닫기를 막는다(`dismissible={!running}`) — 닫아도 수집은 백그라운드로 계속 돌아 ✕ 가 고장처럼 보이던 문제 해소.

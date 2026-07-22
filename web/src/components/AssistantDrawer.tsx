@@ -105,6 +105,7 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
   const [ctxLabels, setCtxLabels] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const threadRef = useRef<string | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
   const [params] = useSearchParams();
   const firedRef = useRef<Set<string>>(new Set());
 
@@ -138,6 +139,7 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
     const history = [...messages, { role: "user", content: text } as ChatMessage];
     setMessages([...history, { role: "assistant", content: "" }]);
 
+    abortRef.current?.abort();  // 혹시 남은 이전 스트림이 있으면 정리(겹침 방지)
     const ac = new AbortController();
     abortRef.current = ac;
     try {
@@ -149,6 +151,7 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
         });
       }, { signal: ac.signal });
     } catch (err) {
+      if (ac.signal.aborted) return;  // 리셋/닫기로 중단한 경우 — 오류 말풍선 표시 안 함
       setMessages((prev) => {
         const next = [...prev];
         next[next.length - 1] = { role: "assistant", content: `⚠️ ${(err as Error).message}` };
@@ -161,7 +164,12 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
     }
   }
 
-  function reset() { setMessages([]); threadRef.current = null; }
+  function reset() { abortRef.current?.abort(); abortRef.current = null; setBusy(false); setMessages([]); threadRef.current = null; }
+
+  // 드로어가 닫히거나(언마운트) 하면 진행 중 스트림을 중단 — 유령 스트림·상태 갱신 방지.
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
+  // 새 메시지·스트림 델타마다 맨 아래로 스크롤(스트리밍 텍스트가 화면 밖으로 밀리지 않게).
+  useEffect(() => { logEndRef.current?.scrollIntoView({ block: "end" }); }, [messages]);
 
   // 인계 도착 시 prefill 1회 자동 전송 (시그니처로 중복 방지 — 재마운트엔 sessionStorage).
   useEffect(() => {
@@ -209,6 +217,7 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
             {m.content || (busy && i === messages.length - 1 ? "…" : "")}
           </div>
         ))}
+        <div ref={logEndRef} />
       </div>
       {ctxLabels.length > 0 && (
         <div className="drawer-ctx" title="이번 답변에 주입된 컨텍스트">
