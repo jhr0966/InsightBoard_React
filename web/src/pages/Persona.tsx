@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import ChipInput from "../components/ChipInput";
 import ThemeSwitcher from "../components/ThemeSwitcher";
-import { Chip } from "../components/ui";
+import { Chip, LoadError } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import type { Persona } from "../api/types";
 
@@ -19,6 +19,7 @@ export default function PersonaPage() {
   const save = useMutation({
     mutationFn: (body: Persona) => api.persona.save(body),
     onSuccess: (d) => { qc.setQueryData(["persona"], d); setP(d); toast.push("✅ 페르소나를 저장했어요", "success"); },
+    onError: (e) => toast.push(`저장 실패: ${(e as Error).message}`, "danger"),
   });
   const derive = useMutation({
     // 분석 전 현재 폼 입력을 먼저 저장 — 저장 안 한 입력이 날아가고 옛 데이터로
@@ -33,8 +34,12 @@ export default function PersonaPage() {
   const reset = useMutation({
     mutationFn: () => api.persona.reset(),
     onSuccess: (d) => { qc.setQueryData(["persona"], d); setP(d); toast.push("초기화됨", "default"); },
+    onError: (e) => toast.push(`초기화 실패: ${(e as Error).message}`, "danger"),
   });
 
+  // 로드 실패 시 영구 스피너에 갇히지 않게 — 오류+재시도를 명확히 보여준다.
+  if (loaded.isError && !p)
+    return <LoadError message="페르소나를 불러오지 못했어요" onRetry={() => loaded.refetch()} />;
   if (!p) return <div className="muted">불러오는 중…</div>;
   const set = (patch: Partial<Persona>) => setP({ ...p, ...patch });
 

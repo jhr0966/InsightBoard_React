@@ -256,12 +256,12 @@ function SettingsView({ onCollect, collecting }: { onCollect: (kw: string[]) => 
     { label: "본문 확보율", ok: (crate.data?.pct ?? 0) >= 50, val: crate.data ? `${crate.data.pct}%` : "…" },
     { label: "정의된 작업", ok: (taskdefs.data?.length ?? 0) > 0, val: `${taskdefs.data?.length ?? 0}개` },
     { label: "활성 출처", ok: (sources.data?.items.filter((s) => s.enabled).length ?? 0) > 0, val: `${sources.data?.items.filter((s) => s.enabled).length ?? 0}개` },
-    { label: "LLM", ok: !!llm.data?.configured, val: llm.data?.configured ? "Ready" : "키 미설정" },
+    { label: "LLM", ok: !!llm.data?.configured, val: llm.data?.configured ? "정상" : "키 미설정" },
   ];
 
-  const toggle = useMutation({ mutationFn: (n: string) => api.sources.toggle(n), onSuccess: () => qc.invalidateQueries({ queryKey: ["sources"] }) });
+  const toggle = useMutation({ mutationFn: (n: string) => api.sources.toggle(n), onSuccess: () => qc.invalidateQueries({ queryKey: ["sources"] }), onError: (e) => toast.push(`출처 전환 실패: ${(e as Error).message}`, "danger") });
   const add = useMutation({ mutationFn: () => api.sources.add(name, url), onSuccess: () => { qc.invalidateQueries({ queryKey: ["sources"] }); setName(""); setUrl(""); toast.push("출처 추가됨", "success"); }, onError: (e) => toast.push((e as Error).message, "danger") });
-  const remove = useMutation({ mutationFn: (n: string) => api.sources.remove(n), onSuccess: () => qc.invalidateQueries({ queryKey: ["sources"] }) });
+  const remove = useMutation({ mutationFn: (n: string) => api.sources.remove(n), onSuccess: () => { qc.invalidateQueries({ queryKey: ["sources"] }); toast.push("🗑 출처를 제거했어요", "default"); }, onError: (e) => toast.push(`제거 실패: ${(e as Error).message}`, "danger") });
   const diag = useMutation({ mutationFn: () => api.collect.diagnose(diagUrl) });
 
   const daily = (status.data?.daily ?? []) as (string | null)[];

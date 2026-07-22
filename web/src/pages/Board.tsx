@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { DigestItem } from "../api/types";
-import { EmptyState } from "../components/ui";
+import { EmptyState, LoadError } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 
 function Section({ title, note, cta, children }: {
@@ -52,6 +52,7 @@ function DigestSection() {
       toast.push("이 기사와 비슷한 항목의 우선순위를 낮출게요", "default");
       qc.invalidateQueries({ queryKey: ["board", "digest"] });
     },
+    onError: (e) => toast.push(`처리 실패: ${(e as Error).message}`, "danger"),
   });
   const saveArticle = useMutation({
     mutationFn: async (it: DigestItem) => {
@@ -61,12 +62,14 @@ function DigestSection() {
         context: "board_digest", ranking_version: it.ranking_version }]);
     },
     onSuccess: () => toast.push("💾 저장했어요", "success"),
+    onError: (e) => toast.push(`저장 실패: ${(e as Error).message}`, "danger"),
   });
 
   const items = (digest.data?.items ?? []).filter((it) => !hidden.has(it.article_id));
   return (
     <Section title="오늘의 다이제스트" note="내 업무 기준 상위 기사">
       {digest.isLoading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
+        : digest.isError ? <LoadError message="다이제스트를 불러오지 못했어요" onRetry={() => digest.refetch()} />
         : items.length === 0 ? <EmptyState icon="🗞" title="다이제스트가 비어 있어요"
             hint={digest.data?.persona_set ? "수집이 쌓이면 내 업무 관련 기사가 골라집니다." : "페르소나를 설정하면 내 업무 기준으로 골라드려요."} />
         : <div style={{ display: "grid", gap: 10 }}>
@@ -148,7 +151,8 @@ export default function Board() {
       {/* ④ 자동화 제안 상위 3 — 행동 유도 카드(상세 분석은 분석실) */}
       <Section title="자동화 제안" note="부서 × 공정 기회 상위"
         cta={<button className="btn" onClick={() => nav("/insights")}>분석실에서 더 보기 →</button>}>
-        {(opps.data ?? []).length === 0 ? <EmptyState icon="🤖" title="아직 매칭된 자동화 제안이 없어요" hint="뉴스·작업정의가 쌓이면 표시됩니다." />
+        {opps.isError ? <LoadError message="자동화 제안을 불러오지 못했어요" onRetry={() => opps.refetch()} />
+          : (opps.data ?? []).length === 0 ? <EmptyState icon="🤖" title="아직 매칭된 자동화 제안이 없어요" hint="뉴스·작업정의가 쌓이면 표시됩니다." />
           : <div className="bd-opps">
             {(opps.data ?? []).slice(0, 3).map((c) => (
               <div className="bd-opp" key={`${c.dept}-${c.lv3}`}>
@@ -172,14 +176,16 @@ export default function Board() {
         cta={<button className="btn primary" disabled={collect.isPending} onClick={() => collect.mutate()}>
           {collect.isPending ? "수집 중…" : "지금 수집 →"}</button>}>
         <div className="card" style={{ margin: 0 }}>
-          <div className="bd-kw-line">
+          {keywords.isError && (persona.data?.interest_keywords ?? []).length === 0
+            ? <LoadError message="키워드를 불러오지 못했어요" compact onRetry={() => keywords.refetch()} />
+            : <div className="bd-kw-line">
             {(persona.data?.interest_keywords ?? []).map((k) => <span key={k} className="bd-kw bd-kw-strong">{k}</span>)}
             {(keywords.data ?? []).slice(0, 8).map((k) => (
               <span key={k.keyword} className="bd-kw">{k.keyword}<span className="bd-kw-n">{k.count}</span></span>
             ))}
             {(persona.data?.interest_keywords ?? []).length === 0 && (keywords.data ?? []).length === 0 &&
               <span className="muted">키워드가 없어요. 페르소나에서 관심 키워드를 추가하세요.</span>}
-          </div>
+          </div>}
         </div>
       </Section>
     </div>

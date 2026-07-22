@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { Badge, EmptyState, Tabs } from "../components/ui";
+import { Badge, EmptyState, Tabs, LoadError } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 
 // 적용 사례 라이브러리 (Step 12) — 뉴스에서 정제된 AI·자동화 사례 자산.
@@ -27,7 +27,10 @@ export default function Cases() {
   const setCaseStatus = useMutation({
     mutationFn: ({ id, s }: { id: string; s: string }) => api.cases.setStatus(id, s),
     onSuccess: (_d, v) => {
-      toast.push(v.s === "approved" ? "✅ 승인 — 이제 제안서 근거로 쓰여요" : "처리했어요", "success");
+      const msg = v.s === "approved" ? "✅ 승인 — 이제 제안서 근거로 쓰여요"
+        : v.s === "excluded" ? "제외했어요"
+        : v.s === "pending_review" ? "검토 대기로 되돌렸어요" : "처리했어요";
+      toast.push(msg, "success");
       qc.invalidateQueries({ queryKey: ["cases"] });
     },
     onError: (e) => toast.push((e as Error).message, "danger"),
@@ -58,6 +61,7 @@ export default function Cases() {
       </div>
 
       {cases.isLoading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
+        : cases.isError ? <LoadError message="사례를 불러오지 못했어요" onRetry={() => cases.refetch()} />
         : items.length === 0 ? (
           <EmptyState icon="📚" title="아직 사례가 없어요"
             hint="수집이 쌓이면 매일 자동 추출됩니다. '최근 기사에서 사례 추출'로 바로 시작할 수도 있어요." />

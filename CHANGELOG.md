@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (UX — 오류 상태·뮤테이션 피드백 전면 정비) — `fix-ux-error-states` (UX_AUDIT PR-A)
+- **오류가 "데이터 없음"으로 위장하던 문제 해소**: 공용 `<LoadError onRetry>` 컴포넌트 신설(`components/ui`) 후 전 화면 조회 실패에 배선 — Persona(로드 실패 시 **영구 스피너**였음)·Board(digest/opps/keywords)·Feed·Cases·Proposals Archive·TaskDefs(목록·상세)·Insights(탭별 공용 오류 라인). 백엔드 슬립·재배포 시 "기사가 없어요" 대신 "불러오지 못했어요 + 다시 시도"를 표시.
+- **무음 실패 제거**: 뮤테이션 `onError` 토스트 추가 — Onboarding save(**실패 시 마법사가 멈춘 듯 보이던** 문제)·Persona save/reset·Board dismiss/save·Proposals remove·TaskDefs 삭제·Collect 출처 토글/제거. 성공 피드백 보강 — Proposals 상태 전환("상태를 옮겼어요")·Cases 제외/대기 전환 구체 문구.
+- 검증: 웹 빌드(tsc) OK · pytest 611 passed(프런트 전용, 백엔드 무영향) · 스키마 무변경.
+
 ### Docs (UI/UX 감사 · 실행 계획) — `docs-ux-audit-plan`
 - **`docs/UX_AUDIT_2026-07.md` 신설**: 전 화면(8페이지+셸) 코드 감사 결과와 PR 단위 실행 계획(PR-A~F). 핵심 발견 — ①거의 모든 화면이 쿼리 오류를 "데이터 없음" 빈 상태로 위장 ②온보딩 저장 실패 시 마법사 정지 등 무음 실패 다수 ③사례→제안서 핸드오프가 사례 식별자를 전달하지 않아 미배선 ④Modal Esc/포커스 트랩 부재·수집 진행 모달 ✕ no-op·드로어 백드롭 부재 ⑤Sidebar "채택 대기"가 존재하지 않는 pending 상태를 읽어 상시 0. 부록으로 커스텀 RSS 후보·등록 절차(나중 추가용) 정리. 코드 무변경.
 

@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: UX 오류 상태·뮤테이션 피드백 (`fix-ux-error-states`, UX_AUDIT PR-A)
+
+**무엇을**: 공용 LoadError(onRetry) 컴포넌트 신설 → 전 화면 isError 배선(Persona 영구스피너·Board·Feed·Cases·Proposals·TaskDefs·Insights 탭별). 뮤테이션 onError 토스트(Onboarding save 정지·Persona·Board·Proposals remove·TaskDefs del·Collect toggle/remove) + 성공 피드백 보강(Proposals 상태전환·Cases 제외/대기). UX_AUDIT_2026-07 PR-A 완료.
+
+**조치**: 웹 빌드 OK · pytest 611 · 스키마 무변경.
+
+**다음**: PR-B fix-case-handoff (사례→제안서 배선).
+
+---
+
 ## 2026-07-22 — docs: UI/UX 감사 · 실행 계획 (`docs-ux-audit-plan`)
 
 **무엇을**: 전 화면 코드 감사 → docs/UX_AUDIT_2026-07.md 신설. 발견: 쿼리 오류가 빈 상태로 위장(전 화면)·무음 실패 다수(온보딩 저장 실패 시 마법사 정지, 페르소나 영구 스피너)·사례→제안서 핸드오프 미배선(case_id 미전달)·Modal Esc/포커스 트랩 부재·Sidebar 채택 대기 상시 0(존재하지 않는 pending 참조). 실행 계획 PR-A(오류·피드백)~PR-F(키보드 접근성) + RSS 후보 부록. 코드 무변경 — 실행은 후속 세션.

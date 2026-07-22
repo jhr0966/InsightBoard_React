@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { KPIStatGrid, EmptyState, Badge, Tabs } from "../components/ui";
+import { KPIStatGrid, EmptyState, Badge, Tabs, LoadError } from "../components/ui";
 import LineChart from "../components/charts/LineChart";
 import BubbleMatrix from "../components/charts/BubbleMatrix";
 import type { Bubble } from "../components/charts/BubbleMatrix";
@@ -108,6 +108,19 @@ export default function Insights() {
           <button key={d} className={`ia-filter-btn${d === days ? " on" : ""}`} onClick={() => setDays(d)}>{d}일</button>
         ))}
       </div>
+
+      {/* 탭별 공용 오류 라인 — 조회 실패를 "데이터 부족"으로 오인하지 않게. */}
+      {((tab === "trend" && (keywords.isError || volume.isError || trend.isError || emergence.isError))
+        || (tab === "matrix" && opps.isError)
+        || (tab === "heatmap" && heatmap.isError)) && (
+        <div style={{ margin: "8px 0" }}>
+          <LoadError compact message="이 탭의 분석 데이터를 불러오지 못했어요" onRetry={() => {
+            if (tab === "trend") { keywords.refetch(); volume.refetch(); trend.refetch(); emergence.refetch(); }
+            else if (tab === "matrix") opps.refetch();
+            else heatmap.refetch();
+          }} />
+        </div>
+      )}
 
       {/* A. 트렌드 → 공정 매핑 */}
       {tab === "trend" && <Section title="트렌드 → 공정 연결">

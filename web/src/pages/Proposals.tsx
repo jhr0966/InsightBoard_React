@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import { KPIStatGrid, Tabs, EmptyState } from "../components/ui";
+import { KPIStatGrid, Tabs, EmptyState, LoadError } from "../components/ui";
 import { KanbanBoard, KanbanColumn } from "../components/ui/Kanban";
 import { useToast } from "../components/ui/toast";
 import { ageLabel } from "../lib/time";
@@ -177,12 +177,13 @@ function Archive() {
   };
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => api.proposals.setStatus(id, status),
-    onSuccess: invalidate,
+    onSuccess: (_d, v) => { invalidate(); toast.push(`상태를 '${STATUS_LABEL[v.status] ?? v.status}'(으)로 옮겼어요`, "success"); },
     onError: (e) => toast.push((e as Error).message, "danger"),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api.proposals.removeEntity(id),
-    onSuccess: () => { invalidate(); toast.push("삭제됨", "default"); },
+    onSuccess: () => { invalidate(); toast.push("🗑 삭제했어요", "default"); },
+    onError: (e) => toast.push(`삭제 실패: ${(e as Error).message}`, "danger"),
   });
   // 구 bookmark 보관함 → 엔터티 이관 (명시적 버튼 · 원본 보존 · 멱등).
   const migrate = useMutation({
@@ -198,6 +199,7 @@ function Archive() {
   const adoptedRate = decided ? Math.round((count("adopted") / decided) * 100) : 0;
 
   if (all.isLoading) return <div className="muted">불러오는 중…</div>;
+  if (all.isError) return <LoadError message="과제를 불러오지 못했어요" onRetry={() => all.refetch()} />;
 
   const migrateBtn = (
     <button className="btn" disabled={migrate.isPending} onClick={() => migrate.mutate()}>
