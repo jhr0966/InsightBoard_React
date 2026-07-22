@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Docs (UI/UX 감사 · 실행 계획) — `docs-ux-audit-plan`
+- **`docs/UX_AUDIT_2026-07.md` 신설**: 전 화면(8페이지+셸) 코드 감사 결과와 PR 단위 실행 계획(PR-A~F). 핵심 발견 — ①거의 모든 화면이 쿼리 오류를 "데이터 없음" 빈 상태로 위장 ②온보딩 저장 실패 시 마법사 정지 등 무음 실패 다수 ③사례→제안서 핸드오프가 사례 식별자를 전달하지 않아 미배선 ④Modal Esc/포커스 트랩 부재·수집 진행 모달 ✕ no-op·드로어 백드롭 부재 ⑤Sidebar "채택 대기"가 존재하지 않는 pending 상태를 읽어 상시 0. 부록으로 커스텀 RSS 후보·등록 절차(나중 추가용) 정리. 코드 무변경.
+
 ### Fixed (출처 설정 실효화 — 토글·커스텀 RSS 를 실제 수집에 연결) — `feat-sources-wire`
 - **출처 토글이 수집에 반영**: 과거엔 `store.sources.disabled_set()`이 화면 표시·헬스에만 쓰이고 수집 경로엔 연결되지 않아 UI 에서 출처를 꺼도 계속 수집됐다. 이제 `api/routers/collect._resolve_sources_feeds`가 비활성 출처(구글 뉴스→google, AI Times→tech)를 수집 소스에서 제거.
 - **커스텀 RSS 가 UI 수집에 반영**: 등록한 커스텀 RSS 출처가 과거엔 cron CLI 만 수집(UI '지금 수집'·HTTP 자동수집은 무시)했다. 이제 UI/HTTP 수집도 등록된 커스텀 출처를 `extra_feeds` 로 함께 수집 → 조선/제조 전문지 RSS 를 추가해 커버리지 보강 가능. (명시적 `sources` 지정 시엔 그대로 사용, 커스텀 피드 미포함 — API 제어.)
