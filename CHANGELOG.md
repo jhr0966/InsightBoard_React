@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Fixed (Feed — 카드 클릭 시 모달 대신 원본이 바로 열리던 회귀) — `fix-feed-card-modal`
+- **`clickableProps` 에 `preventDefault` 복원** (`components/ui`): PR-F 에서 Feed 카드 래퍼의 `onClick` 을 헬퍼로 바꾸며 기존 `e.preventDefault()` 가 빠졌다 — `NewsCard` 는 `<a href={원문}>` 앵커라 클릭이 앵커 기본 이동으로 흘러 **자세히보기 모달 없이 원본 새 탭이 바로 열렸다**. 헬퍼의 클릭 핸들러가 `preventDefault` 후 `onClick` 만 태우도록 수정(다른 적용처는 div/tr 라 기본 동작이 없어 무해).
+
 ### Added (UX — 키보드 접근성 표준화) — `fix-ux-keyboard` (UX_AUDIT PR-F)
 - **공용 `clickableProps(onClick, label?)` 헬퍼** (`components/ui`): 마우스 `onClick` 만 있던 `div`/`tr` 에 스프레드하면 `role="button"`+`tabIndex=0`+Enter/Space 키 처리+`aria-label`(선택)을 한 번에 부여 — 클릭 가능한 요소를 키보드로도 조작 가능하게.
 - 적용: Feed **기사 카드·표 행**, Insights **트렌드 키워드 행·연결 공정 카드**, Sidebar **페르소나 카드**, Topbar **아바타**. Topbar **알림 벨·설정(⚙) 버튼에 `aria-label`** 추가(이모지만 있어 스크린리더가 못 읽던 문제).

@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: Feed 카드 클릭 → 모달 대신 원본 직행 회귀 (`fix-feed-card-modal`)
+
+**무엇을**: PR-F 가 Feed 카드 래퍼 onClick 을 `clickableProps` 로 바꾸며 기존 `e.preventDefault()` 가 빠짐 — NewsCard 는 `<a href=원문>` 앵커라 클릭이 기본 이동으로 흘러 자세히보기 모달 없이 원본 새 탭이 바로 열렸다. 헬퍼 클릭 핸들러에 preventDefault 복원(div/tr 적용처는 기본 동작 없어 무해).
+
+**조치**: 웹 빌드 OK · 프런트 전용.
+
+**다음**: 구글뉴스 본문·사진 미수집 원인 분석 결과 보고(원문 링크 복원 실패 → enrich 스킵 구조). 개선은 지시 대기.
+
+---
+
 ## 2026-07-22 — feat: UX 키보드 접근성 표준화 (`fix-ux-keyboard`, UX_AUDIT PR-F)
 
 **무엇을**: 공용 `clickableProps(onClick, label?)` 헬퍼 신설(role=button+tabIndex+Enter/Space+aria-label). 마우스 onClick 만 있던 div/tr 에 적용 — Feed 기사 카드·표 행, Insights 트렌드 키워드 행·연결 공정 카드, Sidebar 페르소나 카드, Topbar 아바타. Topbar 알림 벨·설정 버튼에 aria-label(이모지라 스크린리더 미독). UX_AUDIT PR-F(선택) 완료 = UX_AUDIT 전체(A~F) 마무리.
