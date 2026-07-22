@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { Modal } from "./ui";
+import { useToast } from "./ui/toast";
 import ChipInput from "./ChipInput";
 import type { Persona } from "../api/types";
 
@@ -10,6 +11,7 @@ const DISMISS = "onb.dismissed";
 // 온보딩 마법사 — 페르소나 미설정 시 노출. 6단계.
 export default function Onboarding({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [d, setD] = useState({ name: "", team: "", dept: "", job: "", interest_lv3: [] as string[], interest_keywords: [] as string[] });
   const set = (patch: Partial<typeof d>) => setD({ ...d, ...patch });
@@ -18,6 +20,9 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     mutationFn: () => api.persona.save(d as Partial<Persona>),
     // 저장·derive 후 닫지 않고 '첫 수집' 제안 단계(5)로.
     onSuccess: (p) => { qc.setQueryData(["persona"], p); api.persona.derive().catch(() => {}); setStep(5); },
+    // 저장 실패 시 onSuccess 가 안 돌아 step 4 에 그대로 머무는데, 피드백이 없어
+    // '멈춘 것'처럼 보였다 → 오류 토스트로 재시도를 유도(버튼은 다시 활성화됨).
+    onError: (e) => toast.push(`저장 실패: ${(e as Error).message} — 다시 시도해 주세요`, "danger"),
   });
   // 설정 후 첫 수집 — 관심 키워드 기준(비면 도메인 기본). Streamlit 온보딩 step5/6 이식.
   const collect = useMutation({

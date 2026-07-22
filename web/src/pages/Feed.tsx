@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { Tabs, EmptyState, Modal } from "../components/ui";
+import { Tabs, EmptyState, Modal, LoadError } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import NewsCard from "../components/NewsCard";
 import { useGlobalSearch } from "../search";
@@ -65,6 +65,7 @@ export default function Feed() {
       </div>
       {q && <div className="muted" style={{ marginBottom: 8 }}>검색: "{q}" — {items.length}건 (로드된 기사 기준)</div>}
       {news.isLoading ? <div className="bd-grid">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" />)}</div>
+        : news.isError ? <LoadError message="뉴스를 불러오지 못했어요" onRetry={() => news.refetch()} />
         : items.length === 0 ? <EmptyState icon="🗞" title="기사가 없어요" hint="수집 관리에서 수집을 시작하세요." />
         : mode === "table" ? <NewsTable items={items} onOpen={setOpen} />
         : <div className="bd-grid">{items.map((a) => (

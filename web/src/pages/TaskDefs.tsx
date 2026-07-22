@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { KPIStatGrid, EmptyState, Chip, Modal } from "../components/ui";
+import { KPIStatGrid, EmptyState, Chip, Modal, LoadError } from "../components/ui";
 import { useToast } from "../components/ui/toast";
 import { ageLabel } from "../lib/time";
 import type { IngestResult, UploadPreview } from "../api/types";
@@ -75,6 +75,7 @@ export default function TaskDefs() {
         placeholder="작업 정의 검색 (공정 ID·작업명·내용)" style={{ width: "100%", marginBottom: 16 }} />
 
       {list.isLoading ? <div className="td-list">{[0, 1, 2].map((i) => <div key={i} className="skel skel-card" style={{ height: 110 }} />)}</div>
+        : list.isError ? <LoadError message="작업 정의를 불러오지 못했어요" onRetry={() => list.refetch()} />
         : defs.length === 0 ? <EmptyState icon="📋" title="작업 정의가 없어요" hint="엑셀을 업로드하거나 새로 추가하세요." />
         : <div className="td-list">{defs.map((t) => (
           <div className="td-card" key={t.process_id} onClick={() => setViewId(t.process_id)}>
@@ -92,9 +93,14 @@ function DetailView({ id, onBack, onEdit, onDeleted }: { id: string; onBack: () 
   const [showHist, setShowHist] = useState(false);
   const t = useQuery({ queryKey: ["taskdef", id], queryFn: () => api.taskdefs.get(id) });
   const hist = useQuery({ queryKey: ["taskdef", id, "history"], queryFn: () => api.taskdefs.history(id), enabled: showHist });
-  const del = useMutation({ mutationFn: () => api.taskdefs.remove(id), onSuccess: () => { toast.push(`🗑️ ${id} 삭제`, "default"); onDeleted(); } });
+  const del = useMutation({
+    mutationFn: () => api.taskdefs.remove(id),
+    onSuccess: () => { toast.push(`🗑️ ${id} 삭제했어요`, "default"); onDeleted(); },
+    onError: (e) => toast.push(`삭제 실패: ${(e as Error).message}`, "danger"),
+  });
 
   if (t.isLoading) return <div className="muted">불러오는 중…</div>;
+  if (t.isError) return <LoadError message="작업 정의를 불러오지 못했어요" onRetry={() => t.refetch()} />;
   const j = (t.data?.json ?? {}) as Json;
   const meta = (j.org_meta ?? {}) as Json;
 

@@ -87,6 +87,32 @@ export function EmptyState({ icon = "🗂", title, hint }: { icon?: string; titl
   );
 }
 
+// 조회 실패 상태 — 빈 상태("데이터 없음")와 명확히 구분한다. 무료 호스팅 슬립/재배포로
+// 백엔드가 잠깐 죽는 경로가 잦아, "기사가 없어요" 대신 진짜 원인(연결 실패)을 보여준다.
+export function LoadError({
+  message = "불러오지 못했어요",
+  hint = "잠시 후 다시 시도해 주세요. 백엔드가 깨어나는 중일 수 있어요.",
+  onRetry,
+  compact = false,
+}: { message?: string; hint?: ReactNode; onRetry?: () => void; compact?: boolean }) {
+  if (compact) {
+    return (
+      <div className="muted" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--fs-caption)" }}>
+        <span style={{ color: "var(--semantic-danger)" }}>⚠ {message}</span>
+        {onRetry && <button className="btn" style={{ padding: "2px 10px" }} onClick={onRetry}>다시 시도</button>}
+      </div>
+    );
+  }
+  return (
+    <div className="empty-state">
+      <div className="empty-state-ic">⚠️</div>
+      <div className="empty-state-title">{message}</div>
+      <div className="muted">{hint}</div>
+      {onRetry && <button className="btn" style={{ marginTop: 10 }} onClick={onRetry}>다시 시도</button>}
+    </div>
+  );
+}
+
 // 모달/다이얼로그 — dismissible 제어(false 면 backdrop/Esc 로 안 닫힘)
 export function Modal({
   open,
