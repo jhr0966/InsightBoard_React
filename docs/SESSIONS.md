@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: 출처 설정 실효화 — 토글·커스텀 RSS 수집 연결 (`feat-sources-wire`)
+
+**무엇을**: disabled_set()·custom_sources() 가 화면/헬스에만 쓰이고 수집엔 무연결이던 것 수정. collect._resolve_sources_feeds 신설 — 미지정 수집(UI '지금 수집')에서 비활성 출처(구글뉴스→google, AI Times→tech) 제거 + 커스텀 RSS 를 extra_feeds 로 포함. 명시 sources 는 그대로. run_collect·stream 양쪽 배선.
+
+**조치**: 신규 테스트 4건 포함 pytest 611, 금지패턴 0, 스키마·프런트 무변경.
+
+**다음**: (선택) 조선/제조 전문지 RSS 를 커스텀 출처로 추가해 커버리지 확대.
+
+---
+
 ## 2026-07-22 — feat: 수집 키워드 정밀화 + 페르소나 연동 (`feat-collect-keywords`)
 
 **무엇을**: Streamlit 벤치마킹 감사에서 발견한 회귀 — '지금 수집'(빈 키워드)이 페르소나 관심 키워드를 무시하고 광범위 기본값으로만 돌던 것. collect._resolve_keywords(명시>페르소나 interest+derived−muted 상한6>도메인기본) 신설. DEFAULT_DAILY_KEYWORDS 를 ("AI","자동화")→조선/제조 6종으로 교체(무관 기사 혼입 해소). 빠른수집 안내문 추가.
