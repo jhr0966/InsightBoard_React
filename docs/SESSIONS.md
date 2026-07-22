@@ -1,3 +1,13 @@
+## 2026-07-22 — docs: UI/UX 감사 · 실행 계획 (`docs-ux-audit-plan`)
+
+**무엇을**: 전 화면 코드 감사 → docs/UX_AUDIT_2026-07.md 신설. 발견: 쿼리 오류가 빈 상태로 위장(전 화면)·무음 실패 다수(온보딩 저장 실패 시 마법사 정지, 페르소나 영구 스피너)·사례→제안서 핸드오프 미배선(case_id 미전달)·Modal Esc/포커스 트랩 부재·Sidebar 채택 대기 상시 0(존재하지 않는 pending 참조). 실행 계획 PR-A(오류·피드백)~PR-F(키보드 접근성) + RSS 후보 부록. 코드 무변경 — 실행은 후속 세션.
+
+**조치**: 문서 전용.
+
+**다음**: UX_AUDIT_2026-07.md 의 PR-A 부터 순서대로 실행 (실행 규칙 섹션 필독).
+
+---
+
 ## 2026-07-22 — fix: 출처 설정 실효화 — 토글·커스텀 RSS 수집 연결 (`feat-sources-wire`)
 
 **무엇을**: disabled_set()·custom_sources() 가 화면/헬스에만 쓰이고 수집엔 무연결이던 것 수정. collect._resolve_sources_feeds 신설 — 미지정 수집(UI '지금 수집')에서 비활성 출처(구글뉴스→google, AI Times→tech) 제거 + 커스텀 RSS 를 extra_feeds 로 포함. 명시 sources 는 그대로. run_collect·stream 양쪽 배선.
