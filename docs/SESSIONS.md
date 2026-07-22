@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: 구글뉴스 본문·사진 미수집 개선 (`fix-google-link-resolve`)
+
+**무엇을**: 구글뉴스가 사진·본문을 못 가져오던 근본 원인 = 원문 링크 복원 실패(구글은 RSS 에 리디렉트 링크만 주고, 미해석 링크는 enrich 를 의도적으로 스킵). ① 검색 세션에 구글 동의(CONSENT/SOCS) 쿠키를 심어 데이터센터 IP 에서 뜨는 동의 인터스티셜을 우회(batchexecute 서명 추출 실패 → 링크 미복원의 핵심 원인 제거). ② batchexecute 재시도 1회 + 해석 타임아웃 8→12s. ③ 복원 방법별 통계(직링크/base64/batch/redirect/미복원)를 google.search(stats_out) → run_daily resolve 이벤트 → 수집 로그 요약 한 줄로 노출(실패율 관측).
+
+**조치**: 신규 테스트 4건(동의 쿠키·통계·재시도·미복원 라벨) 포함 pytest 616/616, 금지패턴 0, 파일: `scraping/google.py`·`scraping/run_daily.py`·`store/collect_log.py`.
+
+**다음**: 다음 아침 자동수집(또는 수동 1회) 후 수집 로그의 "구글 링크 복원 N/M" 로 실효 확인. 여전히 미복원율 높으면 준비해둔 RSS 직접 출처(로봇신문 등) 투입 검토.
+
+---
+
 ## 2026-07-22 — fix: Feed 카드 클릭 → 모달 대신 원본 직행 회귀 (`fix-feed-card-modal`)
 
 **무엇을**: PR-F 가 Feed 카드 래퍼 onClick 을 `clickableProps` 로 바꾸며 기존 `e.preventDefault()` 가 빠짐 — NewsCard 는 `<a href=원문>` 앵커라 클릭이 기본 이동으로 흘러 자세히보기 모달 없이 원본 새 탭이 바로 열렸다. 헬퍼 클릭 핸들러에 preventDefault 복원(div/tr 적용처는 기본 동작 없어 무해).

@@ -39,7 +39,7 @@ def _fake_enrich(arts, **k):
 def test_collect_log_records_stage_events():
     clog = collect_log.CollectLog()
     with patch.object(run_daily, "_run_keyword_source",
-                      lambda src, kw, mx: _fake_articles(kw)), \
+                      lambda src, kw, mx, **kw2: _fake_articles(kw)), \
          patch.object(run_daily._enrich, "enrich_parallel", _fake_enrich):
         report = run_daily.collect_batch(["용접"], sources=("naver",), max_results=5, clog=clog)
 
@@ -62,7 +62,7 @@ def test_on_enrich_reports_global_progress():
     """on_enrich(done, total) 이 소스별 버킷을 전역 누적해 진행률을 통보한다."""
     ticks: list[tuple] = []
     with patch.object(run_daily, "_run_keyword_source",
-                      lambda src, kw, mx: _fake_articles(kw, n=3)), \
+                      lambda src, kw, mx, **kw2: _fake_articles(kw, n=3)), \
          patch.object(run_daily._enrich, "enrich_parallel", _fake_enrich_with_progress):
         run_daily.collect_batch(["용접"], sources=("naver",), max_results=5,
                                 on_enrich=lambda d, t: ticks.append((d, t)))
@@ -84,7 +84,7 @@ def _fake_enrich_with_progress(arts, **k):
 def test_search_error_event_on_failure():
     clog = collect_log.CollectLog()
 
-    def _boom(src, kw, mx):
+    def _boom(src, kw, mx, **kw2):
         raise RuntimeError("403 blocked")
 
     with patch.object(run_daily, "_run_keyword_source", _boom):

@@ -23,8 +23,28 @@ _RSS_URL = "https://news.google.com/rss/search?q={q}&hl={hl}&gl={gl}&ceid={ceid}
 
 # 구글 뉴스 RSS 의 media 네임스페이스(일부 항목에 대표 이미지 포함).
 _MRSS = "{http://search.yahoo.com/mrss/}"
-# 링크 해석용 짧은 타임아웃(리디렉트 추적 — 본 RSS 타임아웃보다 짧게).
-_RESOLVE_TIMEOUT = 8
+# 링크 해석용 타임아웃(리디렉트 추적·batchexecute — 본 RSS 타임아웃보다 짧게).
+# 8s 는 데이터센터에서 batchexecute 응답이 느릴 때 서명 왕복이 잘려 실패를 키웠다 → 12s.
+_RESOLVE_TIMEOUT = 12
+# batchexecute(신 포맷 토큰 해석) 재시도 횟수 — 구글이 봇 의심으로 간헐 빈 응답/동의 페이지를
+# 돌려주는 걸 1회 더 시도해 흡수. 실패 토큰만 재시도하므로 정상 경로엔 부담이 없다.
+_BATCH_RETRIES = 1
+
+
+def _apply_consent_cookies(session) -> None:
+    """구글 동의(consent) 인터스티셜 우회 쿠키를 세션에 심는다.
+
+    데이터센터 IP(Render 등)로 news.google.com 에 접근하면 구글이 쿠키 동의 페이지를
+    돌려주는 경우가 있는데, 그러면 batchexecute 서명(`data-n-a-sg`) 추출이 실패해
+    **원문 링크를 못 풀고 → 본문·사진이 통째로 비는** 핵심 원인이 된다. 브라우저가
+    '동의 완료' 후 갖는 `CONSENT`/`SOCS` 쿠키를 미리 심어 실제 콘텐츠를 받게 한다.
+    (pygooglenews·newspaper 등이 쓰는 표준 우회. 값 자체보다 '동의됨' 신호가 핵심.)
+    """
+    try:
+        session.cookies.set("CONSENT", "YES+cb", domain=".google.com")
+        session.cookies.set("SOCS", "CAISNQgQEitib3E", domain=".google.com")
+    except Exception:  # noqa: BLE001 — 쿠키 주입 실패는 무시(정상 경로로 진행).
+        pass
 
 
 def _media_image(item) -> str:
@@ -111,16 +131,26 @@ def _parse_batchexecute(text: str) -> str:
     return ""
 
 
-def _batchexecute_decode(session, token: str) -> str:
+def _batchexecute_decode(session, token: str, *, retries: int = _BATCH_RETRIES) -> str:
     """구글 뉴스 **신 포맷(불투명 토큰)** → 원문 URL. 구글 내부 batchexecute API 사용.
 
     1) `/rss/articles/<token>` 페이지에서 signature(`data-n-a-sg`)·timestamp
        (`data-n-a-ts`) 추출 → 2) batchexecute 로 POST → 응답에서 원문 URL 파싱.
     어떤 단계든 실패하면 빈 문자열(상위 폴백/안전망이 처리). 구글이 포맷을 바꾸면
-    깨질 수 있는(fragile) 경로라 예외를 모두 흡수한다.
+    깨질 수 있는(fragile) 경로라 예외를 모두 흡수한다. 간헐적 봇 의심 응답(빈 서명/
+    동의 페이지)은 `retries` 회 더 시도해 흡수한다(실패 토큰만 재시도 — 정상 경로 무부담).
     """
     if not token:
         return ""
+    for attempt in range(retries + 1):
+        url = _batchexecute_decode_once(session, token)
+        if url:
+            return url
+    return ""
+
+
+def _batchexecute_decode_once(session, token: str) -> str:
+    """batchexecute 1회 시도(재시도는 `_batchexecute_decode` 가 관리)."""
     try:
         art = session.get(f"https://news.google.com/rss/articles/{token}",
                           headers=default_headers(), timeout=_RESOLVE_TIMEOUT)
@@ -146,32 +176,37 @@ def _batchexecute_decode(session, token: str) -> str:
         return ""
 
 
-def _resolve_link(session, url: str) -> str:
-    """구글 뉴스 리디렉트 URL → 원문 URL(best-effort). 실패 시 원본 그대로.
+def _resolve_link_method(session, url: str) -> tuple[str, str]:
+    """구글 뉴스 리디렉트 URL → (원문 URL, 복원방법). 실패 시 (원본, "unresolved").
 
-    1) base64 디코드(요청 없음, 구 포맷) → 2) batchexecute 디코드(신 포맷 불투명 토큰)
-    → 3) 리디렉트 추적. 모두 실패하면 원본 구글 링크 유지(클릭 시 브라우저가 이동).
-    원문이 풀려야 enrich 가 진짜 og:image·본문을 가져온다(구글 카드 로고 일괄 표시 해결).
+    복원방법 라벨(수집 로그 통계용): "decoded"(base64) · "batch"(batchexecute) ·
+    "redirect"(리디렉트 추적) · "unresolved"(전부 실패 — 본문·사진 못 가져옴).
+    구글 링크가 아니면 ("passthrough") — 이미 원문(예: description 직링크)이라는 뜻.
     """
     if not url or "news.google.com" not in url:
-        return url
+        return url, "passthrough"
     decoded = _decode_google_url(url)
     if decoded:
-        return decoded
+        return decoded, "decoded"
     m = re.search(r"/articles/([A-Za-z0-9_\-]+)", url)
     if m:
         be = _batchexecute_decode(session, m.group(1))
         if be:
-            return be
+            return be, "batch"
     try:
         r = session.get(url, headers=default_headers(), timeout=_RESOLVE_TIMEOUT, allow_redirects=True)
         final = str(getattr(r, "url", "") or "")
         host = urlparse(final).netloc
         if final.startswith("http") and host and "google.com" not in host:
-            return final
+            return final, "redirect"
     except requests.RequestException:
         pass
-    return url
+    return url, "unresolved"
+
+
+def _resolve_link(session, url: str) -> str:
+    """구글 뉴스 리디렉트 URL → 원문 URL(best-effort). 실패 시 원본 그대로."""
+    return _resolve_link_method(session, url)[0]
 
 
 def _to_iso(rfc822: str) -> str:
@@ -235,8 +270,15 @@ def search(
     *,
     hl: str = "ko",
     gl: str = "KR",
+    stats_out: dict | None = None,
 ) -> list[dict]:
-    """구글 뉴스 RSS 검색."""
+    """구글 뉴스 RSS 검색.
+
+    stats_out(선택): 넘기면 원문 링크 **복원 방법별 카운트**를 채운다 —
+    {direct, decoded, batch, redirect, unresolved}. unresolved 가 곧 '본문·사진을
+    못 가져오는' 기사 수(구글 인터스티셜 링크가 안 풀린 것)라 수집 로그에서 실패율을
+    바로 볼 수 있다.
+    """
     if not keyword.strip():
         return []
     url = _RSS_URL.format(
@@ -247,6 +289,7 @@ def search(
     )
 
     session = build_session()
+    _apply_consent_cookies(session)  # 동의 인터스티셜 우회 — batchexecute 성공률↑.
     try:
         resp = session.get(url, headers=default_headers(), timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
@@ -284,13 +327,29 @@ def search(
 
     # 2) 원문 링크 복원 — **병렬**. 신 포맷은 batchexecute(2요청)라 순차면 매우 느리다.
     #    우선순위: description 직링크 → base64/batchexecute/리디렉트(_resolve_link).
+    import threading as _threading
+    _stats = {"direct": 0, "decoded": 0, "batch": 0, "redirect": 0, "unresolved": 0}
+    _stats_lock = _threading.Lock()
+
     def _resolve_one(p: dict) -> None:
-        p["link"] = _extract_original_link(p["description"]) or _resolve_link(session, p["raw_link"])
+        direct = _extract_original_link(p["description"])
+        if direct:
+            p["link"] = direct
+            method = "direct"
+        else:
+            p["link"], method = _resolve_link_method(session, p["raw_link"])
+        with _stats_lock:
+            # passthrough(구글 링크 아님)는 direct 로 합산 — 이미 원문이라는 뜻.
+            _stats["direct" if method == "passthrough" else method] += 1
 
     if parsed:
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=min(6, len(parsed))) as ex:
             list(ex.map(_resolve_one, parsed))
+
+    if stats_out is not None:
+        for k, v in _stats.items():
+            stats_out[k] = stats_out.get(k, 0) + v
 
     # 3) 기사 dict 빌드.
     out: list[dict] = []
