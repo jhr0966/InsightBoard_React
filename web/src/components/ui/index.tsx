@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 // ── 공통 UI 컴포넌트 (assets/v2 디자인 토큰 기반) ──
 
@@ -129,13 +129,24 @@ export function Modal({
   dismissible?: boolean;
   width?: number;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // Esc 로 닫기(dismissible 일 때만) + 열릴 때 모달로 포커스 이동(키보드 사용자·스크린리더).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && dismissible) onClose(); };
+    document.addEventListener("keydown", onKey);
+    ref.current?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, dismissible, onClose]);
   if (!open) return null;
   return (
     <div className="modal-overlay" onClick={() => dismissible && onClose()}>
-      <div className="modal" style={{ width: `min(${width}px, 94vw)` }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" ref={ref} tabIndex={-1} role="dialog" aria-modal="true"
+        style={{ width: `min(${width}px, 94vw)` }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <span>{title}</span>
-          <button className="btn" onClick={onClose}>✕</button>
+          {/* dismissible=false(온보딩 등)면 ✕ 를 숨겨 '닫기 금지' 의도를 지킨다. */}
+          {dismissible && <button className="btn" aria-label="닫기" onClick={onClose}>✕</button>}
         </div>
         <div className="modal-body">{children}</div>
       </div>

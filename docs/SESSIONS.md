@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: 모달·오버레이 기본기 (`fix-modal-a11y`, UX_AUDIT PR-C)
+
+**무엇을**: Modal 에 Esc 닫기(dismissible 시)+포커스 이동+role/aria, dismissible=false 면 ✕ 숨김(온보딩 ✕ 모순 해소). 수집 진행 모달은 running 중 닫기 차단(dismissible={!running}). SOLA 드로어 ≤1100px 백드롭 추가(넓은 화면은 CSS 로 숨김). UX_AUDIT PR-C 완료.
+
+**조치**: 웹 빌드 OK · 프런트 전용.
+
+**다음**: PR-D fix-drawer-chat (스트림 abort·자동 스크롤).
+
+---
+
 ## 2026-07-22 — fix: 사례→제안서 흐름 배선 (`fix-case-handoff`, UX_AUDIT PR-B)
 
 **무엇을**: "이 사례로 제안서 →"가 case_id·work 를 URL 로 전달(과거 from=case 만). generate 에 case_ids 옵션(승인 사례만 주입, 근거 기사 매칭 무관하게 지정 사례 포함). Proposals: case/opp 라벨, work 로 작업정의 자동선택, case_ids 전달. AssistantDrawer handoffPrefill case 분기+work. UX_AUDIT PR-B 완료.
