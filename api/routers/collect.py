@@ -51,6 +51,34 @@ def _resolve_keywords(keywords: list[str], identity: Identity) -> list[str]:
     return persona_kws or list(DEFAULT_DAILY_KEYWORDS)
 
 
+# 출처 표시명 → 수집 소스 id. AI Times 는 현재 유일한 tech 사이트라 tech 버킷에 대응.
+_SOURCE_NAME_TO_ID = {"구글 뉴스": "google", "AI Times": "tech"}
+
+
+def _resolve_sources_feeds(
+    body_sources: list[str] | None, default_sources: tuple[str, ...]
+) -> tuple[tuple[str, ...], list[tuple[str, str]]]:
+    """수집할 (소스 id 튜플, 커스텀 RSS 피드) 결정 — 출처 설정 토글·커스텀 RSS 반영.
+
+    과거엔 출처 토글(`store.sources.disabled_set`)이 화면 표시·헬스에만 쓰이고 수집
+    경로엔 연결되지 않아, UI 에서 출처를 꺼도 계속 수집됐고 등록한 커스텀 RSS 는 UI
+    수집에서 무시됐다(cron CLI 만 사용). 이제:
+      - 명시 sources 지정 시: 그대로 사용(커스텀 피드 없음 — 명시 API 제어).
+      - 미지정(UI '지금 수집')일 때: 기본 소스에서 **비활성 출처 제거** + 등록된
+        **커스텀 RSS 를 extra_feeds 로** 함께 수집.
+    """
+    if body_sources is not None:
+        return tuple(body_sources), []
+    from store import sources as src_store
+
+    disabled = src_store.disabled_set()
+    src = tuple(sid for sid in default_sources
+                if not any(_SOURCE_NAME_TO_ID.get(name) == sid and name in disabled
+                           for name in _SOURCE_NAME_TO_ID))
+    feeds = [(c.name, c.url) for c in src_store.custom_sources()]
+    return src, feeds
+
+
 def _persona_keywords(identity: Identity) -> list[str]:
     """사용자 페르소나의 수집용 관심 키워드 (interest + derived − muted, 상한 적용)."""
     try:
@@ -86,9 +114,10 @@ def run_collect(body: CollectIn, identity: Identity = Depends(current_identity))
             detail="수집 기능을 사용할 수 없는 환경입니다(서버리스 등). 로컬/전용 백엔드에서 실행하세요.",
         ) from exc
 
+    src, feeds = _resolve_sources_feeds(body.sources, DEFAULT_COLLECT_SOURCES)
     report = collect_batch(
         _resolve_keywords(body.keywords, identity),
-        sources=body.sources if body.sources is not None else DEFAULT_COLLECT_SOURCES,
+        sources=src, extra_feeds=feeds or None,
         max_results=body.max_results,
         do_enrich=body.do_enrich,
     )
@@ -116,7 +145,7 @@ def run_collect_stream(body: CollectIn, identity: Identity = Depends(current_ide
             detail="수집 기능을 사용할 수 없는 환경입니다(서버리스 등). 로컬/전용 백엔드에서 실행하세요.",
         ) from exc
 
-    sources = list(body.sources) if body.sources is not None else list(DEFAULT_COLLECT_SOURCES)
+    sources, extra_feeds = _resolve_sources_feeds(body.sources, DEFAULT_COLLECT_SOURCES)
     keywords = _resolve_keywords(body.keywords, identity)
     events: queue.Queue = queue.Queue()
     _SENTINEL = object()
@@ -141,7 +170,8 @@ def run_collect_stream(body: CollectIn, identity: Identity = Depends(current_ide
         t0 = time.monotonic()
         try:
             report = collect_batch(
-                keywords, sources=sources, max_results=body.max_results,
+                keywords, sources=sources, extra_feeds=extra_feeds or None,
+                max_results=body.max_results,
                 do_enrich=body.do_enrich, on_step=_on_step, on_enrich=_on_enrich, clog=clog,
             )
             duration = round(time.monotonic() - t0, 1)

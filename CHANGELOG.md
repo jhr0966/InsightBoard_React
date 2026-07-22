@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed (출처 설정 실효화 — 토글·커스텀 RSS 를 실제 수집에 연결) — `feat-sources-wire`
+- **출처 토글이 수집에 반영**: 과거엔 `store.sources.disabled_set()`이 화면 표시·헬스에만 쓰이고 수집 경로엔 연결되지 않아 UI 에서 출처를 꺼도 계속 수집됐다. 이제 `api/routers/collect._resolve_sources_feeds`가 비활성 출처(구글 뉴스→google, AI Times→tech)를 수집 소스에서 제거.
+- **커스텀 RSS 가 UI 수집에 반영**: 등록한 커스텀 RSS 출처가 과거엔 cron CLI 만 수집(UI '지금 수집'·HTTP 자동수집은 무시)했다. 이제 UI/HTTP 수집도 등록된 커스텀 출처를 `extra_feeds` 로 함께 수집 → 조선/제조 전문지 RSS 를 추가해 커버리지 보강 가능. (명시적 `sources` 지정 시엔 그대로 사용, 커스텀 피드 미포함 — API 제어.)
+- 검증: 신규 테스트 4건(`test_collect_sources_wire.py` — 명시 passthrough·커스텀 피드 포함·비활성 출처 제거·AI Times 비활성→tech 제거) 포함 pytest 611 passed · 금지패턴 0. 스키마·프런트 무변경(토글·커스텀 등록 UI 기존).
+
 ### Changed (수집 키워드 정밀화 + 페르소나 연동) — `feat-collect-keywords`
 - **'지금 수집'(빈 키워드)이 페르소나 관심 키워드로 수집**: 과거엔 빈 키워드면 항상 광범위 기본값("AI"/"자동화")으로만 돌아 사용자가 페르소나에 등록한 관심 키워드를 무시했다(Streamlit 판엔 있던 동작 회귀). 이제 `api/routers/collect._resolve_keywords`가 **명시 입력 > 페르소나(interest_keywords + derived_interests − muted, 상한 6) > 도메인 기본값** 순으로 결정. UI/스트림 수집 모두 적용. 시스템 트리거(자동수집·헤더 없음)는 페르소나가 비어 도메인 기본값으로 폴백.
 - **도메인 기본 키워드 교체** (`config.DEFAULT_DAILY_KEYWORDS`): `("AI", "자동화")` → `("스마트 조선소", "조선 자동화", "용접 로봇", "디지털 트윈", "제조 자동화", "산업용 로봇")`. 과거 광범위 키워드가 조선/제조와 무관한 기사(바둑 AI 등)를 대량 혼입시키던 문제 해소.
