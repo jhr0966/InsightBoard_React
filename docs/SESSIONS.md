@@ -1,3 +1,13 @@
+## 2026-07-22 — feat: 수집 키워드 정밀화 + 페르소나 연동 (`feat-collect-keywords`)
+
+**무엇을**: Streamlit 벤치마킹 감사에서 발견한 회귀 — '지금 수집'(빈 키워드)이 페르소나 관심 키워드를 무시하고 광범위 기본값으로만 돌던 것. collect._resolve_keywords(명시>페르소나 interest+derived−muted 상한6>도메인기본) 신설. DEFAULT_DAILY_KEYWORDS 를 ("AI","자동화")→조선/제조 6종으로 교체(무관 기사 혼입 해소). 빠른수집 안내문 추가.
+
+**조치**: 신규 테스트 5건 포함 pytest 607, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: PR② 출처 설정 실효화(토글·커스텀 RSS 를 실제 수집에 연결).
+
+---
+
 ## 2026-07-22 — fix: 자동수집 워크플로 거짓 실패 (`fix-daily-collect-parse`)
 
 **무엇을**: daily-collect 스케줄 런 2회가 failure 표시 → Actions 로그 확인 결과 수집은 성공(30건 저장)했고, 판정 스크립트의 `echo | python3 - <<PY` heredoc-stdin 충돌로 빈 입력 파싱 실패가 원인. 응답을 env(RESP)로 전달하도록 수정, 셸 로직 로컬 재현 검증. 수집 로그 판정: 총 80.6s·본문 97%·중단 0(워커6 효과 enrich:google 71.9→59.5s). 자동수집 데이터는 슬립 시 소실(무료 플랜 한계, 기지).
