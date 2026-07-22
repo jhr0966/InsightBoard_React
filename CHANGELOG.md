@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Fixed (UX — 사례→제안서 흐름 배선) — `fix-case-handoff` (UX_AUDIT PR-B)
+- **"이 사례로 제안서 →" 플래그십 흐름 복구**: 과거엔 `/proposals?from=case` 로만 이동해 사례 식별자가 전달되지 않아, 인계 라벨·SOLA 프리필·사례 주입이 모두 동작하지 않았다. 이제 `case_id`·`work`(적용 작업)를 실어 보낸다.
+- **백엔드 — generate `case_ids` 옵션 추가**: 지정 사례를 근거 기사 매칭과 별개로 주입(§14-3 준수 — **승인된 사례만** 반영, 미승인은 무시). 사례 화면에서 넘어온 사례가 근거 기사와 매칭되지 않아도 제안서 근거로 확실히 포함된다.
+- **프런트**: Proposals 가 `case`/`opp` 인계 라벨을 표시하고, `work` 로 작업정의 자동 선택, 생성 요청에 `case_ids` 전달. AssistantDrawer `handoffPrefill` 에 `case` 분기 추가("이 사례를 우리 작업에 적용하는 제안서 초안 검토") + `work` 파라미터 반영.
+- 검증: 신규 테스트 1건(`test_cases.py` — case_ids 지정 주입·미승인 무시) 포함 pytest 612 passed · OpenAPI 재생성(case_ids) + gen:types · 웹 빌드 OK · 금지패턴 0.
+
 ### Fixed (UX — 오류 상태·뮤테이션 피드백 전면 정비) — `fix-ux-error-states` (UX_AUDIT PR-A)
 - **오류가 "데이터 없음"으로 위장하던 문제 해소**: 공용 `<LoadError onRetry>` 컴포넌트 신설(`components/ui`) 후 전 화면 조회 실패에 배선 — Persona(로드 실패 시 **영구 스피너**였음)·Board(digest/opps/keywords)·Feed·Cases·Proposals Archive·TaskDefs(목록·상세)·Insights(탭별 공용 오류 라인). 백엔드 슬립·재배포 시 "기사가 없어요" 대신 "불러오지 못했어요 + 다시 시도"를 표시.
 - **무음 실패 제거**: 뮤테이션 `onError` 토스트 추가 — Onboarding save(**실패 시 마법사가 멈춘 듯 보이던** 문제)·Persona save/reset·Board dismiss/save·Proposals remove·TaskDefs 삭제·Collect 출처 토글/제거. 성공 피드백 보강 — Proposals 상태 전환("상태를 옮겼어요")·Cases 제외/대기 전환 구체 문구.

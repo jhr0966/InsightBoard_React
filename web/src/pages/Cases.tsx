@@ -108,7 +108,7 @@ export default function Cases() {
                       <button className="oa-mini" onClick={() => setCaseStatus.mutate({ id: c.case_id, s: "excluded" })}>제외</button>}
                     {c.review_status !== "pending_review" &&
                       <button className="oa-mini" onClick={() => setCaseStatus.mutate({ id: c.case_id, s: "pending_review" })}>↶ 대기로</button>}
-                    <button className="oa-mini" onClick={() => nav("/proposals?from=case")}>이 사례로 제안서 →</button>
+                    <button className="oa-mini" onClick={() => nav(`/proposals?from=case&case_id=${encodeURIComponent(c.case_id)}&work=${encodeURIComponent(c.target_work || c.title)}`)}>이 사례로 제안서 →</button>
                   </div>
                 </div>
               );

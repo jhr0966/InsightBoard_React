@@ -200,7 +200,7 @@ export const api = {
   },
 
   proposals: {
-    generate: (task: Record<string, unknown>, opts?: { days?: number; max_news?: number }) =>
+    generate: (task: Record<string, unknown>, opts?: { days?: number; max_news?: number; case_ids?: string[] }) =>
       req<{ proposal: string; task_process_id: string | null }>("/api/proposals/generate", {
         method: "POST",
         body: JSON.stringify({ task, ...opts }),

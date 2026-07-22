@@ -29,6 +29,8 @@ function Generate() {
   const from = params.get("from");
   const hoDept = params.get("dept") ?? "";
   const hoLv3 = params.get("lv3") ?? "";
+  const hoCaseId = params.get("case_id") ?? "";   // 사례 핸드오프 — 지정 사례 주입
+  const hoWork = params.get("work") ?? "";        // 사례의 적용 작업(작업정의 자동 선택 힌트)
   const [selected, setSelected] = useState("");
   const [draft, setDraft] = useState("");   // 현재 제안서 MD(생성/다듬기로 갱신)
   const [instr, setInstr] = useState("");    // 다듬기 지시
@@ -38,23 +40,27 @@ function Generate() {
   const [genMeta, setGenMeta] = useState<Record<string, unknown>>({});
   const taskdefs = useQuery({ queryKey: ["taskdefs", ""], queryFn: () => api.taskdefs.list() });
 
-  // 핸드오프(dept/lv3)면 매칭되는 작업정의를 자동 선택.
+  // 핸드오프(dept/lv3/work)면 매칭되는 작업정의를 자동 선택.
   useEffect(() => {
-    if (selected || !taskdefs.data || (!hoLv3 && !hoDept)) return;
+    if (selected || !taskdefs.data || (!hoLv3 && !hoDept && !hoWork)) return;
+    const hit = (t: (typeof taskdefs.data)[number], q: string) =>
+      !!q && (t.task?.includes(q) || (t.json?.process_name as string)?.includes(q) || t.process?.includes(q));
     const m = taskdefs.data.find((t) =>
-      (hoLv3 && (t.task?.includes(hoLv3) || (t.json?.process_name as string)?.includes(hoLv3) || t.process?.includes(hoLv3))) ||
-      (hoDept && t.dept?.includes(hoDept)));
+      hit(t, hoLv3) || hit(t, hoWork) || (hoDept && t.dept?.includes(hoDept)));
     if (m) setSelected(m.process_id);
-  }, [taskdefs.data, hoLv3, hoDept, selected]);
+  }, [taskdefs.data, hoLv3, hoDept, hoWork, selected]);
 
   const HANDOFF_LABEL: Record<string, string> = {
-    board: "📊 보드에서 인계됨", matrix: "🧭 매트릭스에서 인계됨", insights: "🔎 인사이트에서 인계됨", brief: "📊 보드 브리핑에서 인계됨",
+    board: "📊 보드에서 인계됨", matrix: "🧭 매트릭스에서 인계됨", insights: "🔎 인사이트에서 인계됨",
+    brief: "📊 보드 브리핑에서 인계됨", opp: "🧭 기회에서 인계됨", case: "📚 사례에서 인계됨",
   };
 
   const gen = useMutation({
     mutationFn: async (pid: string) => {
       const t = await api.taskdefs.get(pid);
-      return api.proposals.generate((t.json as Record<string, unknown>) ?? { process_id: pid });
+      // 사례에서 넘어왔으면 그 사례를 근거로 함께 주입(백엔드가 승인된 것만 반영).
+      return api.proposals.generate((t.json as Record<string, unknown>) ?? { process_id: pid },
+        hoCaseId ? { case_ids: [hoCaseId] } : undefined);
     },
     onSuccess: (d, pid) => {
       setDraft(d.proposal);
@@ -96,9 +102,9 @@ function Generate() {
     <>
       {from && (
         <div className="cl-alert" style={{ background: "var(--accent-ring)", color: "var(--accent-primary)", border: "1px solid var(--accent-ring)" }}>
-          {HANDOFF_LABEL[from] ?? "인계됨"}{(hoDept || hoLv3) && ` — ${hoDept}${hoLv3 ? ` · ${hoLv3}` : ""}`}
+          {HANDOFF_LABEL[from] ?? "인계됨"}{(hoDept || hoLv3 || hoWork) && ` — ${[hoDept, hoLv3, hoWork].filter(Boolean).join(" · ")}`}
           <span className="muted" style={{ marginLeft: "auto" }}>
-            {(hoLv3 || hoDept) ? "매칭 작업 자동 선택 · " : ""}✓ 오른쪽 SOLA가 자동 검토를 시작했어요
+            {(hoLv3 || hoDept || hoWork) ? "매칭 작업 자동 선택 · " : ""}{hoCaseId ? "사례 근거 주입 · " : ""}✓ 오른쪽 SOLA가 자동 검토를 시작했어요
           </span>
         </div>
       )}

@@ -4,8 +4,10 @@ import { api, streamChat } from "../api/client";
 import type { ChatMessage } from "../api/types";
 
 // 인계(?from=) → SOLA 자동 검토 prefill (ui/sola_workshop `_composer_prefill` 승계).
-function handoffPrefill(from: string, dept: string, lv3: string): string {
+function handoffPrefill(from: string, dept: string, lv3: string, work = ""): string {
   const target = [dept, lv3].filter(Boolean).join(" · ");
+  if (from === "case")
+    return `방금 넘어온 적용 사례${work ? `(${work})` : ""}를 우리 조선소 작업에 적용하는 제안서 초안을 검토해줘.\n사례의 정량 효과를 근거로, 우리 상황에 맞는 PoC 범위·기대 효과·위험요인을 정리해줘.`;
   if (from === "brief" || from === "board")
     return "오늘 보드 브리핑의 핵심 뉴스를 컨텍스트로, 부서장에게 보낼 1쪽 제안서 초안을 만들어줘.";
   if ((from === "matrix" || from === "opp") && target)
@@ -167,9 +169,10 @@ export default function AssistantDrawer({ screen, onClose }: { screen: string; o
     if (!from) return;
     const dept = params.get("dept") ?? "";
     const lv3 = params.get("lv3") ?? "";
-    const prefill = handoffPrefill(from, dept, lv3);
+    const work = params.get("work") ?? "";
+    const prefill = handoffPrefill(from, dept, lv3, work);
     if (!prefill) return;
-    const sig = `${from}|${dept}|${lv3}`;
+    const sig = `${from}|${dept}|${lv3}|${work}`;
     const key = `sola.handoff.${sig}`;
     if (firedRef.current.has(sig) || sessionStorage.getItem(key)) return;
     firedRef.current.add(sig);

@@ -1,3 +1,13 @@
+## 2026-07-22 — fix: 사례→제안서 흐름 배선 (`fix-case-handoff`, UX_AUDIT PR-B)
+
+**무엇을**: "이 사례로 제안서 →"가 case_id·work 를 URL 로 전달(과거 from=case 만). generate 에 case_ids 옵션(승인 사례만 주입, 근거 기사 매칭 무관하게 지정 사례 포함). Proposals: case/opp 라벨, work 로 작업정의 자동선택, case_ids 전달. AssistantDrawer handoffPrefill case 분기+work. UX_AUDIT PR-B 완료.
+
+**조치**: 신규 테스트 1건 포함 pytest 612, OpenAPI 재생성, 웹 빌드 OK, 금지패턴 0.
+
+**다음**: PR-C fix-modal-a11y (Modal Esc·포커스·수집모달 ✕·드로어 백드롭).
+
+---
+
 ## 2026-07-22 — fix: UX 오류 상태·뮤테이션 피드백 (`fix-ux-error-states`, UX_AUDIT PR-A)
 
 **무엇을**: 공용 LoadError(onRetry) 컴포넌트 신설 → 전 화면 isError 배선(Persona 영구스피너·Board·Feed·Cases·Proposals·TaskDefs·Insights 탭별). 뮤테이션 onError 토스트(Onboarding save 정지·Persona·Board·Proposals remove·TaskDefs del·Collect toggle/remove) + 성공 피드백 보강(Proposals 상태전환·Cases 제외/대기). UX_AUDIT_2026-07 PR-A 완료.
